@@ -1,0 +1,2 @@
+"""Terminal Markets ingestion pipeline."""
+
