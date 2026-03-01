@@ -28,6 +28,7 @@ class BackfillConfig:
     timeout_s: int = 30
     max_logs_per_vault: int | None = None
     max_full_logs_per_vault: int | None = None
+    max_swaps_per_vault: int | None = None
     include_reasoning: bool = True
     retry_max_attempts: int = 6
 
@@ -40,6 +41,7 @@ class BackfillSummary:
     logs_ingested: int = 0
     full_logs_ingested: int = 0
     full_log_failures: int = 0
+    swaps_ingested: int = 0
 
 
 class TerminalBackfillIngestor:
@@ -84,6 +86,13 @@ class TerminalBackfillIngestor:
                         continue
                     print(f"[{index}/{len(leaderboard_items)}] Backfilling logs: {vault_address}")
                     await self._backfill_vault_logs(api, vault_address)
+
+                for index, item in enumerate(leaderboard_items, start=1):
+                    vault_address = item.get("vaultAddress")
+                    if not vault_address:
+                        continue
+                    print(f"[{index}/{len(leaderboard_items)}] Backfilling swaps: {vault_address}")
+                    await self._backfill_vault_swaps(api, vault_address)
         finally:
             await self.db.close()
 
@@ -169,6 +178,42 @@ class TerminalBackfillIngestor:
                         elif result:
                             self.summary.full_logs_ingested += 1
                             full_logs_seen += 1
+
+            if not page.get("hasMoreItems"):
+                break
+
+            next_cursor = items[-1].get("cursor")
+            if not next_cursor:
+                break
+            cursor = next_cursor
+
+    async def _backfill_vault_swaps(self, api: TerminalMarketsApiClient, vault_address: str) -> None:
+        cursor: str | None = None
+        swaps_seen = 0
+
+        while True:
+            if self.config.max_swaps_per_vault is not None and swaps_seen >= self.config.max_swaps_per_vault:
+                break
+
+            page = await api.get_swaps_page(
+                vault_address,
+                limit=self.config.request_limit,
+                order="asc",
+                cursor=cursor,
+            )
+            items = page.get("items") or []
+            if not items:
+                break
+
+            if self.config.max_swaps_per_vault is not None:
+                remaining = self.config.max_swaps_per_vault - swaps_seen
+                if remaining <= 0:
+                    break
+                items = items[:remaining]
+
+            await self.db.upsert_swaps(items)
+            swaps_seen += len(items)
+            self.summary.swaps_ingested += len(items)
 
             if not page.get("hasMoreItems"):
                 break

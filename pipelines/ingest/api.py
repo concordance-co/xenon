@@ -126,3 +126,44 @@ class TerminalMarketsApiClient:
             raise TerminalApiError("Unexpected full-log response type")
         return result
 
+    async def get_swaps_page(
+        self,
+        vault_address: str,
+        *,
+        limit: int,
+        order: str = "asc",
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "vaultAddress": vault_address,
+            "limit": limit,
+            "order": order,
+        }
+        if cursor:
+            params["cursor"] = cursor
+        result = await self.request_json("/swaps", params=params)
+        if not isinstance(result, dict):
+            raise TerminalApiError("Unexpected swaps response type")
+        return result
+
+    async def get_candles(
+        self,
+        token_address: str,
+        *,
+        timeframe: str = "1h",
+        from_ts: int | None = None,
+        to_ts: int | None = None,
+        countback: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"timeframe": timeframe}
+        if to_ts is not None:
+            params["to"] = to_ts
+        if from_ts is not None:
+            params["from"] = from_ts
+        if countback is not None:
+            params["countback"] = countback
+        result = await self.request_json(f"/candles/{token_address}", params=params)
+        if not isinstance(result, dict):
+            raise TerminalApiError("Unexpected candles response type")
+        return result
+

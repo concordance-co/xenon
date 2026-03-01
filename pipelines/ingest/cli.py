@@ -23,6 +23,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--retry-max-attempts", type=int, default=6)
     parser.add_argument("--max-logs-per-vault", type=int, default=None)
     parser.add_argument("--max-full-logs-per-vault", type=int, default=None)
+    parser.add_argument("--max-swaps-per-vault", type=int, default=None)
     parser.add_argument(
         "--exclude-reasoning",
         action="store_true",
@@ -43,6 +44,7 @@ async def _run_from_args(args: argparse.Namespace) -> int:
         timeout_s=args.timeout_s,
         max_logs_per_vault=args.max_logs_per_vault,
         max_full_logs_per_vault=args.max_full_logs_per_vault,
+        max_swaps_per_vault=args.max_swaps_per_vault,
         include_reasoning=not args.exclude_reasoning,
         retry_max_attempts=args.retry_max_attempts,
     )
@@ -54,6 +56,7 @@ async def _run_from_args(args: argparse.Namespace) -> int:
     print(f"logs_ingested={summary.logs_ingested}")
     print(f"full_logs_ingested={summary.full_logs_ingested}")
     print(f"full_log_failures={summary.full_log_failures}")
+    print(f"swaps_ingested={summary.swaps_ingested}")
     return 0
 
 

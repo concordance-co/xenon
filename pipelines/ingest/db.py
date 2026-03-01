@@ -112,6 +112,39 @@ class IngestDatabase:
             CREATE INDEX IF NOT EXISTS idx_inference_logs_vault
             ON inference_logs(vault_address, id);
 
+            CREATE TABLE IF NOT EXISTS swaps (
+                transaction_hash TEXT NOT NULL,
+                block_number INTEGER NOT NULL,
+                log_index INTEGER NOT NULL,
+                timestamp INTEGER,
+                pool_id TEXT,
+                token_address TEXT,
+                token_name TEXT,
+                token_symbol TEXT,
+                vault_address TEXT NOT NULL,
+                is_reap_twap INTEGER,
+                side TEXT,
+                token_amount TEXT,
+                eth_amount TEXT,
+                eth_price_usd TEXT,
+                effective_price_eth TEXT,
+                effective_price_usd TEXT,
+                log_id INTEGER,
+                strategy_id TEXT,
+                fetched_at TEXT NOT NULL,
+                PRIMARY KEY (transaction_hash, log_index),
+                FOREIGN KEY (vault_address) REFERENCES vaults(vault_address)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_swaps_log_id
+            ON swaps(log_id);
+
+            CREATE INDEX IF NOT EXISTS idx_swaps_vault
+            ON swaps(vault_address, timestamp);
+
+            CREATE INDEX IF NOT EXISTS idx_swaps_token_timestamp
+            ON swaps(token_address, timestamp);
+
             CREATE TABLE IF NOT EXISTS full_logs (
                 log_id INTEGER PRIMARY KEY,
                 vault_address TEXT,
@@ -287,6 +320,67 @@ class IngestDatabase:
                     transaction_hash=excluded.transaction_hash,
                     created_at=excluded.created_at,
                     completed_at=excluded.completed_at,
+                    fetched_at=excluded.fetched_at
+                """,
+                rows,
+            )
+            await self.conn.commit()
+
+    async def upsert_swaps(self, swaps: Iterable[dict[str, Any]]) -> None:
+        assert self.conn is not None
+        now = _now_iso()
+        rows = []
+        for swap in swaps:
+            rows.append(
+                (
+                    swap.get("transactionHash"),
+                    swap.get("blockNumber"),
+                    swap.get("logIndex"),
+                    swap.get("timestamp"),
+                    swap.get("poolId"),
+                    swap.get("tokenAddress"),
+                    swap.get("tokenName"),
+                    swap.get("tokenSymbol"),
+                    swap.get("vaultAddress"),
+                    _as_bool_int(swap.get("isReapTwap")),
+                    swap.get("side"),
+                    swap.get("tokenAmount"),
+                    swap.get("ethAmount"),
+                    swap.get("ethPriceUsd"),
+                    swap.get("effectivePriceEth"),
+                    swap.get("effectivePriceUsd"),
+                    swap.get("logId"),
+                    swap.get("strategyId"),
+                    now,
+                )
+            )
+        if rows:
+            await self.conn.executemany(
+                """
+                INSERT INTO swaps (
+                    transaction_hash, block_number, log_index, timestamp,
+                    pool_id, token_address, token_name, token_symbol, vault_address,
+                    is_reap_twap, side, token_amount, eth_amount, eth_price_usd,
+                    effective_price_eth, effective_price_usd, log_id, strategy_id,
+                    fetched_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(transaction_hash, log_index) DO UPDATE SET
+                    block_number=excluded.block_number,
+                    timestamp=excluded.timestamp,
+                    pool_id=excluded.pool_id,
+                    token_address=excluded.token_address,
+                    token_name=excluded.token_name,
+                    token_symbol=excluded.token_symbol,
+                    vault_address=excluded.vault_address,
+                    is_reap_twap=excluded.is_reap_twap,
+                    side=excluded.side,
+                    token_amount=excluded.token_amount,
+                    eth_amount=excluded.eth_amount,
+                    eth_price_usd=excluded.eth_price_usd,
+                    effective_price_eth=excluded.effective_price_eth,
+                    effective_price_usd=excluded.effective_price_usd,
+                    log_id=excluded.log_id,
+                    strategy_id=excluded.strategy_id,
                     fetched_at=excluded.fetched_at
                 """,
                 rows,

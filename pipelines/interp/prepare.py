@@ -234,13 +234,13 @@ def _extract_swap_row(conn: sqlite3.Connection, log_id: int, transaction_hash: s
     row = conn.execute(
         """
         SELECT
-            transactionHash,
+            transaction_hash,
             side,
-            tokenAddress,
-            tokenSymbol,
-            effectivePriceUsd
+            token_address,
+            token_symbol,
+            effective_price_usd
         FROM swaps
-        WHERE logId = ?
+        WHERE log_id = ?
         LIMIT 1
         """,
         [log_id],
@@ -249,17 +249,62 @@ def _extract_swap_row(conn: sqlite3.Connection, log_id: int, transaction_hash: s
         row = conn.execute(
             """
             SELECT
-                transactionHash,
+                transaction_hash,
                 side,
-                tokenAddress,
-                tokenSymbol,
-                effectivePriceUsd
+                token_address,
+                token_symbol,
+                effective_price_usd
             FROM swaps
-            WHERE transactionHash = ?
+            WHERE transaction_hash = ?
             LIMIT 1
             """,
             [transaction_hash],
         ).fetchone()
+    if row is None:
+        return {}
+    return dict(row)
+
+
+def _extract_trade_outcome(conn: sqlite3.Connection, log_id: int) -> dict[str, Any]:
+    if not _table_exists(conn, "trade_outcomes"):
+        return {}
+    row = conn.execute(
+        """
+        SELECT
+            pnl_1h_pct,
+            pnl_4h_pct,
+            pnl_1d_pct,
+            was_profitable_1h,
+            entry_price_eth,
+            entry_price_usd
+        FROM trade_outcomes
+        WHERE log_id = ?
+        LIMIT 1
+        """,
+        [log_id],
+    ).fetchone()
+    if row is None:
+        return {}
+    return dict(row)
+
+
+def _extract_vault_config(conn: sqlite3.Connection, vault_address: str) -> dict[str, Any]:
+    if not _table_exists(conn, "vaults"):
+        return {}
+    row = conn.execute(
+        """
+        SELECT
+            trade_size,
+            trading_activity,
+            holding_style,
+            diversification,
+            asset_risk_preference
+        FROM vaults
+        WHERE vault_address = ?
+        LIMIT 1
+        """,
+        [vault_address],
+    ).fetchone()
     if row is None:
         return {}
     return dict(row)
@@ -342,8 +387,9 @@ class PrepareConfig:
     trade_sample_size: int = 150
     observation_sample_size: int = 150
     paired_sample_size: int = 100
-    transform_version: str = "interp_examples_v0.1"
+    transform_version: str = "interp_examples_v0.2"
     export_jsonl: bool = False
+    export_parquet: bool = False
     export_dir: Path = Path("data/interp_exports")
 
 
@@ -390,6 +436,17 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
             swap_token_address TEXT,
             swap_token_symbol TEXT,
             swap_price_usd REAL,
+            pnl_1h_pct REAL,
+            pnl_4h_pct REAL,
+            pnl_1d_pct REAL,
+            was_profitable_1h INTEGER,
+            entry_price_usd REAL,
+            entry_price_eth REAL,
+            vault_trade_size INTEGER,
+            vault_trading_activity INTEGER,
+            vault_holding_style INTEGER,
+            vault_diversification INTEGER,
+            vault_risk_preference INTEGER,
             parse_ok INTEGER NOT NULL,
             parse_error TEXT,
             has_messages INTEGER NOT NULL,
@@ -486,6 +543,8 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
 
         swap = _extract_swap_row(conn, int(row["log_id"]), row["transaction_hash"])
         joined_swap = bool(swap)
+        outcome = _extract_trade_outcome(conn, int(row["log_id"]))
+        vault_cfg = _extract_vault_config(conn, str(row["vault_address"]))
 
         example_id = f"{row['vault_address']}:{row['log_id']}"
         ingest_version = row["fetched_at"]
@@ -498,6 +557,9 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                 memory_snapshot_json, model_source, assistant_content, reasoning_content, tool_calls_json,
                 action_name, decision_type, trade_side, asset, size, observation_text,
                 joined_swap, swap_side, swap_token_address, swap_token_symbol, swap_price_usd,
+                pnl_1h_pct, pnl_4h_pct, pnl_1d_pct, was_profitable_1h,
+                entry_price_usd, entry_price_eth,
+                vault_trade_size, vault_trading_activity, vault_holding_style, vault_diversification, vault_risk_preference,
                 parse_ok, parse_error, has_messages, has_tools, has_market, has_portfolio, has_strategy, has_config, has_memory,
                 context_complete, missing_blocks_json, label_quality, label_confidence,
                 ingest_version, transform_version, built_at
@@ -507,6 +569,9 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                 ?, ?, ?, ?,
                 ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?,
                 ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
@@ -541,6 +606,17 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                 swap_token_address=excluded.swap_token_address,
                 swap_token_symbol=excluded.swap_token_symbol,
                 swap_price_usd=excluded.swap_price_usd,
+                pnl_1h_pct=excluded.pnl_1h_pct,
+                pnl_4h_pct=excluded.pnl_4h_pct,
+                pnl_1d_pct=excluded.pnl_1d_pct,
+                was_profitable_1h=excluded.was_profitable_1h,
+                entry_price_usd=excluded.entry_price_usd,
+                entry_price_eth=excluded.entry_price_eth,
+                vault_trade_size=excluded.vault_trade_size,
+                vault_trading_activity=excluded.vault_trading_activity,
+                vault_holding_style=excluded.vault_holding_style,
+                vault_diversification=excluded.vault_diversification,
+                vault_risk_preference=excluded.vault_risk_preference,
                 parse_ok=excluded.parse_ok,
                 parse_error=excluded.parse_error,
                 has_messages=excluded.has_messages,
@@ -587,9 +663,20 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                 decision["observation_text"],
                 1 if joined_swap else 0,
                 swap.get("side"),
-                swap.get("tokenAddress"),
-                swap.get("tokenSymbol"),
-                swap.get("effectivePriceUsd"),
+                swap.get("token_address"),
+                swap.get("token_symbol"),
+                swap.get("effective_price_usd"),
+                outcome.get("pnl_1h_pct"),
+                outcome.get("pnl_4h_pct"),
+                outcome.get("pnl_1d_pct"),
+                outcome.get("was_profitable_1h"),
+                outcome.get("entry_price_usd"),
+                outcome.get("entry_price_eth"),
+                vault_cfg.get("trade_size"),
+                vault_cfg.get("trading_activity"),
+                vault_cfg.get("holding_style"),
+                vault_cfg.get("diversification"),
+                vault_cfg.get("asset_risk_preference"),
                 1 if parse_ok else 0,
                 row["parse_error"],
                 1 if has_messages else 0,
@@ -758,6 +845,10 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
     if config.export_jsonl:
         export_count = _export_jsonl_tables(conn, config.export_dir)
 
+    parquet_count = 0
+    if config.export_parquet:
+        parquet_count = _export_parquet_tables(conn, config.export_dir)
+
     conn.close()
     return {
         "rows_scanned": len(rows),
@@ -774,6 +865,7 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         "observation_sample_count": int(obs_sample or 0),
         "paired_sample_count": int(pair_sample or 0),
         "export_files_written": int(export_count),
+        "parquet_files_written": int(parquet_count),
     }
 
 
@@ -824,6 +916,59 @@ def _export_jsonl_tables(conn: sqlite3.Connection, export_dir: Path) -> int:
     return files_written
 
 
+def _export_parquet_tables(conn: sqlite3.Connection, export_dir: Path) -> int:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    queries = {
+        "interp_examples_v0_high_quality.parquet": """
+            SELECT *
+            FROM interp_examples_v0
+            WHERE label_quality = 'high'
+            ORDER BY created_at DESC, log_id DESC
+        """,
+        "interp_sample_trade_v0.parquet": """
+            SELECT *
+            FROM interp_sample_trade_v0
+            ORDER BY created_at DESC, log_id DESC
+        """,
+        "interp_sample_observation_v0.parquet": """
+            SELECT *
+            FROM interp_sample_observation_v0
+            ORDER BY created_at DESC, log_id DESC
+        """,
+        "interp_sample_paired_v0.parquet": """
+            SELECT *
+            FROM interp_sample_paired_v0
+            ORDER BY created_at DESC, log_id DESC
+        """,
+        "interp_context_gaps_v0.parquet": """
+            SELECT *
+            FROM interp_context_gaps_v0
+            ORDER BY created_at DESC, log_id DESC
+        """,
+    }
+
+    export_dir.mkdir(parents=True, exist_ok=True)
+    files_written = 0
+
+    for name, sql in queries.items():
+        cursor = conn.execute(sql)
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        if not rows:
+            continue
+
+        data = {col: [row[idx] for row in rows] for idx, col in enumerate(columns)}
+        table = pa.Table.from_pydict(data)
+        out_path = export_dir / name
+        pq.write_table(table, out_path, compression="snappy")
+        files_written += 1
+        print(f"  Wrote {len(rows)} rows to {out_path}")
+
+    return files_written
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build context-complete interp dataset tables from Xenon full logs"
@@ -838,17 +983,22 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trade-sample-size", type=int, default=150)
     parser.add_argument("--observation-sample-size", type=int, default=150)
     parser.add_argument("--paired-sample-size", type=int, default=100)
-    parser.add_argument("--transform-version", default="interp_examples_v0.1")
+    parser.add_argument("--transform-version", default="interp_examples_v0.2")
     parser.add_argument(
         "--export-jsonl",
         action="store_true",
         help="Export high-quality and sample tables to JSONL files",
     )
     parser.add_argument(
+        "--export-parquet",
+        action="store_true",
+        help="Export high-quality and sample tables to Parquet files",
+    )
+    parser.add_argument(
         "--export-dir",
         type=Path,
         default=Path("data/interp_exports"),
-        help="Directory for JSONL exports when --export-jsonl is enabled",
+        help="Directory for exports when --export-jsonl or --export-parquet is enabled",
     )
     return parser
 
@@ -864,6 +1014,7 @@ def main(argv: list[str] | None = None) -> int:
         paired_sample_size=max(1, int(args.paired_sample_size)),
         transform_version=str(args.transform_version),
         export_jsonl=bool(args.export_jsonl),
+        export_parquet=bool(args.export_parquet),
         export_dir=args.export_dir,
     )
     stats = run_prepare(cfg)

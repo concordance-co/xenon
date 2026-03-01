@@ -1,67 +1,106 @@
-## Terminal Markets Ingestion (Phase 1 + Phase 2)
+# Xenon
 
-This repo now includes a one-shot backfill CLI for:
+Data pipeline for Terminal Markets inference logs → mechanistic interpretability.
 
-- Phase 1: leaderboard vault discovery + vault config + strategies
-- Phase 2: inference log metadata + full-log payload collection
+## Setup
 
-### Layout
+```bash
+uv sync                    # base deps (ingest + data prep)
+uv sync --extra interp     # + torch, transformers, safetensors (activation capture)
+uv sync --extra dev        # + pytest
+```
 
-- `pipelines/ingest/` - ingestion implementation (API client, DB, parser, storage, pipeline orchestration)
-- `pipelines/interp/` - reserved for replay/activation/SAE work
+## 1. Ingest
 
-### Storage model
-
-- Structured metadata is stored in SQLite (`data/terminal_ingest.db` by default).
-- Raw `/full-log/{id}` payloads are stored as gzip JSON files in `data/full_logs/`.
-- The `full_logs` table stores `payload_path` and `payload_sha256` so rows can be joined back to raw files by `log_id`.
-
-### Run
+Backfill vaults, inference logs, full-log payloads, and swaps from Terminal Markets API into SQLite + gzipped JSON.
 
 ```bash
 uv run -m pipelines.ingest --top-n 3
 ```
 
-Useful flags:
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--top-n` | `3` | Number of leaderboard vaults to ingest |
+| `--db-path` | `data/terminal_ingest.db` | SQLite database path |
+| `--raw-payload-dir` | `data/full_logs` | Gzipped payload storage |
+| `--leaderboard-sort-by` | `total_pnl_usd` | Sort metric |
+| `--request-limit` | `50` | API page size |
+| `--request-concurrency` | `10` | Concurrent API requests |
+| `--timeout-s` | `30` | Request timeout |
+| `--retry-max-attempts` | `6` | Max retries per request |
+| `--max-logs-per-vault` | unlimited | Cap inference logs per vault |
+| `--max-full-logs-per-vault` | unlimited | Cap full-log fetches per vault |
+| `--max-swaps-per-vault` | unlimited | Cap swaps per vault |
+| `--exclude-reasoning` | off | Omit reasoning_content from parsing |
 
-```bash
-uv run -m pipelines.ingest \
-  --top-n 3 \
-  --db-path data/terminal_ingest.db \
-  --raw-payload-dir data/full_logs \
-  --request-concurrency 10 \
-  --request-limit 50
-```
-
-Validation flags (optional):
-
-```bash
-uv run -m pipelines.ingest --top-n 3 --max-logs-per-vault 100 --max-full-logs-per-vault 100
-```
-
-### Explore Data (Web UI)
-
-Start a local read-only explorer for the ingested SQLite data:
+### Data Explorer
 
 ```bash
 uv run -m pipelines.ingest.explorer --db-path data/terminal_ingest.db --port 8765
 ```
 
-Then open [http://127.0.0.1:8765](http://127.0.0.1:8765).
+## 2. Interp Data Prep
 
-The explorer includes a **Dataset Readiness (Mech Interp)** section with:
-
-- full-log coverage and token-usage coverage
-- trade-link readiness (`transaction_hash`, optional swaps/outcomes joins when those tables exist)
-- tool distribution and suggested next pipeline steps
-- candidate rows to inspect likely dataset entries
-
-Useful explorer flags:
+Build interp-ready dataset from ingested data. Filters to high-quality `trade` + `record_observation` decisions with full context.
 
 ```bash
-uv run -m pipelines.ingest.explorer \
-  --db-path data/terminal_ingest.db \
-  --host 127.0.0.1 \
-  --port 8765 \
-  --payload-preview-chars 12000
+uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db
 ```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--db-path` | `data/terminal_ingest.db` | Source database |
+| `--limit` | `50000` | Max rows to scan |
+| `--include-all-decisions` | off | Keep all decision types, not just trade + observation |
+| `--trade-sample-size` | `150` | Trade sample table size |
+| `--observation-sample-size` | `150` | Observation sample table size |
+| `--paired-sample-size` | `100` | Paired sample table size |
+| `--export-jsonl` | off | Export tables to JSONL |
+| `--export-parquet` | off | Export tables to Parquet |
+| `--export-dir` | `data/interp_exports` | Export output directory |
+
+## 3. Activation Capture
+
+Capture residual-stream activations from Qwen3-8B for interp examples. Requires `--extra interp` deps.
+
+```bash
+# Validate tokenization (no inference)
+uv run --extra interp -m pipelines.interp.capture --validate-tokens
+
+# Capture 1 example
+uv run --extra interp -m pipelines.interp.capture --limit 1
+
+# Full run
+uv run --extra interp -m pipelines.interp.capture
+
+# Specific layers only
+uv run --extra interp -m pipelines.interp.capture --layers 0,12,24,35
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--parquet-path` | `data/interp_exports/interp_examples_v0_high_quality.parquet` | Input examples |
+| `--output-dir` | `data/activations` | Output directory |
+| `--model-id` | `Qwen/Qwen3-8B` | HuggingFace model ID |
+| `--device` | `mps` | Compute device (`mps`, `cpu`, `cuda`) |
+| `--limit` | all | Process only N examples |
+| `--layers` | all | Comma-separated layer indices |
+| `--skip-existing` | off | Skip log_ids with existing safetensor files |
+| `--validate-tokens` | off | Print tokenization details for 3 samples and exit |
+| `--add-generation-prompt` | off | Append assistant turn start tokens |
+
+Output: `data/activations/residual_stream/{log_id}.safetensors` + `data/activations/metadata.parquet`
+
+## Tests
+
+```bash
+uv run --extra dev -m pytest tests/test_ingest.py -v          # ingest only
+uv run --extra interp --extra dev -m pytest tests/test_capture.py -v  # capture only
+uv run --extra interp --extra dev -m pytest tests/ -v         # all
+```
+
+## Detailed Docs
+
+- [`pipelines/ingest/INGEST_RUNBOOK.md`](pipelines/ingest/INGEST_RUNBOOK.md) — schema reference, SQL verification queries, architecture
+- [`pipelines/interp/DATA_PREP_RUNBOOK.md`](pipelines/interp/DATA_PREP_RUNBOOK.md) — interp dataset extraction rules, quality tiers
+- [`pipelines/interp/README.md`](pipelines/interp/README.md) — activation capture details, output format, operational notes
