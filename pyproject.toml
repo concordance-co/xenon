@@ -16,6 +16,9 @@ interp = [
     "transformers>=4.51.0",
     "safetensors>=0.4.0",
 ]
+modal = [
+    "modal>=0.73.0",
+]
 dev = [
     "pytest>=8.0",
 ]

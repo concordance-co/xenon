@@ -26,6 +26,8 @@ class CaptureConfig:
     skip_existing: bool = False
     validate_tokens: bool = False
     add_generation_prompt: bool = False
+    capture_router: bool = True
+    capture_residual: bool = True
 
 
 def _load_examples(config: CaptureConfig) -> list[dict[str, Any]]:
@@ -152,6 +154,14 @@ def _validate_tokens(
         print(f"  Last 200 chars decoded:  {decoded[-200:]!r}")
 
 
+def _is_moe_model(model: Any) -> bool:
+    """Check if the model has MoE layers by looking for a gate on the first layer's MLP."""
+    try:
+        return hasattr(model.model.layers[0].mlp, "gate")
+    except (AttributeError, IndexError):
+        return False
+
+
 def _make_hook(layer_idx: int, storage: dict[int, Any]) -> Any:
     import torch
 
@@ -162,13 +172,36 @@ def _make_hook(layer_idx: int, storage: dict[int, Any]) -> Any:
     return hook_fn
 
 
+def _make_router_hook(
+    layer_idx: int,
+    logits_storage: dict[int, Any],
+    indices_storage: dict[int, Any],
+) -> Any:
+    import torch
+
+    def hook_fn(module: Any, input: Any, output: Any) -> None:
+        # Gate forward returns (router_logits, router_scores, router_indices)
+        router_logits = output[0]
+        router_indices = output[2]
+        logits_storage[layer_idx] = router_logits.detach().cpu().to(torch.float32)
+        indices_storage[layer_idx] = router_indices.detach().cpu().to(torch.int16)
+
+    return hook_fn
+
+
 def _capture_one(
     *,
     model: Any,
     tokenizer: Any,
     messages: list[dict[str, str]],
     config: CaptureConfig,
-) -> Any:
+) -> tuple[Any, Any, Any, Any]:
+    """Run a forward pass and capture activations.
+
+    Returns (residual, router_logits, router_indices, input_ids).
+    residual/router tensors are None when their capture flag is off or the model
+    doesn't support MoE.
+    """
     import torch
 
     encoded = tokenizer.apply_chat_template(
@@ -191,13 +224,28 @@ def _capture_one(
     all_layers = list(range(len(model.model.layers)))
     target_layers = config.layers if config.layers is not None else all_layers
 
-    storage: dict[int, Any] = {}
+    residual_storage: dict[int, Any] = {}
+    router_logits_storage: dict[int, Any] = {}
+    router_indices_storage: dict[int, Any] = {}
     handles = []
-    for layer_idx in target_layers:
-        handle = model.model.layers[layer_idx].register_forward_hook(
-            _make_hook(layer_idx, storage)
-        )
-        handles.append(handle)
+
+    is_moe = _is_moe_model(model)
+
+    # Residual stream hooks
+    if config.capture_residual:
+        for layer_idx in target_layers:
+            handle = model.model.layers[layer_idx].register_forward_hook(
+                _make_hook(layer_idx, residual_storage)
+            )
+            handles.append(handle)
+
+    # Router hooks (MoE only)
+    if config.capture_router and is_moe:
+        for layer_idx in target_layers:
+            handle = model.model.layers[layer_idx].mlp.gate.register_forward_hook(
+                _make_router_hook(layer_idx, router_logits_storage, router_indices_storage)
+            )
+            handles.append(handle)
 
     try:
         with torch.no_grad():
@@ -206,11 +254,22 @@ def _capture_one(
         for handle in handles:
             handle.remove()
 
-    ordered = [storage[i].squeeze(0) for i in sorted(storage.keys())]
-    stacked = torch.stack(ordered, dim=0)
-    # stacked shape: (num_layers_captured, seq_len, hidden_dim)
+    # Stack residual activations
+    residual = None
+    if config.capture_residual and residual_storage:
+        ordered = [residual_storage[i].squeeze(0) for i in sorted(residual_storage.keys())]
+        residual = torch.stack(ordered, dim=0)
 
-    return stacked, input_ids
+    # Stack router tensors
+    router_logits = None
+    router_indices = None
+    if config.capture_router and is_moe and router_logits_storage:
+        ordered_logits = [router_logits_storage[i].squeeze(0) for i in sorted(router_logits_storage.keys())]
+        ordered_indices = [router_indices_storage[i].squeeze(0) for i in sorted(router_indices_storage.keys())]
+        router_logits = torch.stack(ordered_logits, dim=0)
+        router_indices = torch.stack(ordered_indices, dim=0)
+
+    return residual, router_logits, router_indices, input_ids
 
 
 def _save_activations(
@@ -221,6 +280,21 @@ def _save_activations(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     save_file({"residual_stream": tensor}, str(output_path))
+    return output_path.stat().st_size
+
+
+def _save_router(
+    router_logits: Any,
+    router_indices: Any,
+    output_path: Path,
+) -> int:
+    from safetensors.torch import save_file
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    save_file(
+        {"router_logits": router_logits, "router_indices": router_indices},
+        str(output_path),
+    )
     return output_path.stat().st_size
 
 
@@ -241,8 +315,16 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
         _validate_tokens(config, examples, tokenizer)
         return {"validated": len(examples[:3])}
 
+    is_moe = _is_moe_model(model)
+    if config.capture_router and not is_moe:
+        print("WARNING: capture_router=True but model has no MoE layers; skipping router hooks")
+
     residual_dir = config.output_dir / "residual_stream"
-    residual_dir.mkdir(parents=True, exist_ok=True)
+    router_dir = config.output_dir / "router_logits"
+    if config.capture_residual:
+        residual_dir.mkdir(parents=True, exist_ok=True)
+    if config.capture_router and is_moe:
+        router_dir.mkdir(parents=True, exist_ok=True)
 
     metadata_rows: list[dict[str, Any]] = []
     processed = 0
@@ -256,11 +338,14 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
             skipped += 1
             continue
 
-        output_path = residual_dir / f"{log_id}.safetensors"
-        if config.skip_existing and output_path.exists():
-            print(f"  [{idx + 1}/{len(examples)}] Skipping existing: {log_id}")
-            skipped += 1
-            continue
+        # Skip if all output files already exist
+        if config.skip_existing:
+            residual_exists = not config.capture_residual or (residual_dir / f"{log_id}.safetensors").exists()
+            router_exists = not (config.capture_router and is_moe) or (router_dir / f"{log_id}.safetensors").exists()
+            if residual_exists and router_exists:
+                print(f"  [{idx + 1}/{len(examples)}] Skipping existing: {log_id}")
+                skipped += 1
+                continue
 
         messages = _parse_messages(row)
         if not messages:
@@ -270,7 +355,7 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
 
         try:
             t0 = time.monotonic()
-            activations, input_ids = _capture_one(
+            residual, router_logits, router_indices, input_ids = _capture_one(
                 model=model,
                 tokenizer=tokenizer,
                 messages=messages,
@@ -278,27 +363,51 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
             )
             elapsed = time.monotonic() - t0
 
-            file_size = _save_activations(activations, output_path)
+            file_size = 0
+            if residual is not None:
+                file_size += _save_activations(
+                    residual, residual_dir / f"{log_id}.safetensors"
+                )
+            if router_logits is not None and router_indices is not None:
+                file_size += _save_router(
+                    router_logits, router_indices,
+                    router_dir / f"{log_id}.safetensors",
+                )
 
             prompt_hash = hashlib.sha256(
                 input_ids.cpu().numpy().tobytes()
             ).hexdigest()
 
-            metadata_rows.append({
+            meta_row: dict[str, Any] = {
                 "log_id": int(log_id),
                 "seq_len": int(input_ids.shape[1]),
-                "num_layers_captured": int(activations.shape[0]),
-                "hidden_dim": int(activations.shape[2]),
                 "prompt_hash": prompt_hash,
                 "capture_timestamp": datetime.now(UTC).isoformat(),
                 "file_size_bytes": file_size,
                 "elapsed_s": round(elapsed, 2),
-            })
+                "has_router": router_logits is not None,
+            }
+            if residual is not None:
+                meta_row["num_layers_captured"] = int(residual.shape[0])
+                meta_row["hidden_dim"] = int(residual.shape[2])
+            else:
+                # Still record layer count from router tensors
+                meta_row["num_layers_captured"] = int(router_logits.shape[0]) if router_logits is not None else 0
+                meta_row["hidden_dim"] = 0
+            if router_logits is not None:
+                meta_row["num_experts"] = int(router_logits.shape[2])
+
+            metadata_rows.append(meta_row)
 
             processed += 1
+            shape_parts = []
+            if residual is not None:
+                shape_parts.append(f"residual={tuple(residual.shape)}")
+            if router_logits is not None:
+                shape_parts.append(f"router={tuple(router_logits.shape)}")
             print(
                 f"  [{idx + 1}/{len(examples)}] {log_id}: "
-                f"shape={tuple(activations.shape)}, "
+                f"{', '.join(shape_parts)}, "
                 f"{file_size / 1024 / 1024:.1f}MB, "
                 f"{elapsed:.1f}s"
             )
@@ -322,7 +431,7 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Capture residual-stream activations from Qwen3-8B for interp examples"
+        description="Capture activations (residual stream and/or MoE router logits) for interp examples"
     )
     parser.add_argument(
         "--parquet-path",
@@ -354,6 +463,18 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Append assistant turn start tokens to the chat template",
     )
+    parser.add_argument(
+        "--capture-router",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Capture MoE router logits (default: True, --no-capture-router to disable)",
+    )
+    parser.add_argument(
+        "--capture-residual",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Capture residual stream (default: True, --no-capture-residual to disable)",
+    )
     return parser
 
 
@@ -374,6 +495,8 @@ def main(argv: list[str] | None = None) -> int:
         skip_existing=args.skip_existing,
         validate_tokens=args.validate_tokens,
         add_generation_prompt=args.add_generation_prompt,
+        capture_router=args.capture_router,
+        capture_residual=args.capture_residual,
     )
     run_capture(cfg)
     return 0

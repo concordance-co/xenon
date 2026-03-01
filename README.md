@@ -2,105 +2,174 @@
 
 Data pipeline for Terminal Markets inference logs → mechanistic interpretability.
 
-## Setup
+Terminal Markets is a live AI trading competition where ~hundreds of AI vaults trade 16 meme tokens on Base 24/7, all running Qwen3-235B-A22B. Xenon captures the full decision-making pipeline — prompts, context, model outputs, trade executions — and then replays those prompts through smaller Qwen3 models to capture internal activations for interpretability research.
 
-```bash
-uv sync                    # base deps (ingest + data prep)
-uv sync --extra interp     # + torch, transformers, safetensors (activation capture)
-uv sync --extra dev        # + pytest
-```
+## How data flows
 
-## 1. Ingest
+### Phase 1: Ingest (API → SQLite + gzip)
 
-Backfill vaults, inference logs, full-log payloads, and swaps from Terminal Markets API into SQLite + gzipped JSON.
+The ingest pipeline pulls raw data from the Terminal Markets API: vault configs, inference logs (every LLM decision), full-log payloads (complete prompt + completion + context snapshots), and swap records (on-chain trade executions).
+
+Everything lands in a local SQLite database (`data/terminal_ingest.db`) plus gzipped JSON payload files (`data/full_logs/{shard}/{log_id}.json.gz`). The pipeline is idempotent — re-running updates existing rows via upserts.
 
 ```bash
 uv run -m pipelines.ingest --top-n 3
 ```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--top-n` | `3` | Number of leaderboard vaults to ingest |
-| `--db-path` | `data/terminal_ingest.db` | SQLite database path |
-| `--raw-payload-dir` | `data/full_logs` | Gzipped payload storage |
-| `--leaderboard-sort-by` | `total_pnl_usd` | Sort metric |
-| `--request-limit` | `50` | API page size |
-| `--request-concurrency` | `10` | Concurrent API requests |
-| `--timeout-s` | `30` | Request timeout |
-| `--retry-max-attempts` | `6` | Max retries per request |
-| `--max-logs-per-vault` | unlimited | Cap inference logs per vault |
-| `--max-full-logs-per-vault` | unlimited | Cap full-log fetches per vault |
-| `--max-swaps-per-vault` | unlimited | Cap swaps per vault |
-| `--exclude-reasoning` | off | Omit reasoning_content from parsing |
+Verify it worked:
 
-### Data Explorer
+```bash
+sqlite3 data/terminal_ingest.db "
+  SELECT 'vaults' AS tbl, COUNT(*) AS n FROM vaults
+  UNION ALL SELECT 'inference_logs', COUNT(*) FROM inference_logs
+  UNION ALL SELECT 'full_logs', COUNT(*) FROM full_logs
+  UNION ALL SELECT 'swaps', COUNT(*) FROM swaps;
+"
+```
+
+Browse the data in a web UI:
 
 ```bash
 uv run -m pipelines.ingest.explorer --db-path data/terminal_ingest.db --port 8765
 ```
 
-## 2. Interp Data Prep
+See [`pipelines/ingest/INGEST_RUNBOOK.md`](pipelines/ingest/INGEST_RUNBOOK.md) for schema reference and SQL verification queries.
 
-Build interp-ready dataset from ingested data. Filters to high-quality `trade` + `record_observation` decisions with full context.
+### Phase 2: Interp data prep (SQLite → cleaned parquet)
+
+The prepare pipeline joins inference logs with their full payloads, extracts structured context blocks (messages, market data, portfolio, strategy, config, memory), normalizes decisions (trade vs observation), and assigns quality tiers.
+
+Output: a clean `interp_examples_v0` table filtered to high-quality rows with complete context, plus sampled subsets for different analysis needs.
 
 ```bash
-uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db
+uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db --export-parquet
 ```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--db-path` | `data/terminal_ingest.db` | Source database |
-| `--limit` | `50000` | Max rows to scan |
-| `--include-all-decisions` | off | Keep all decision types, not just trade + observation |
-| `--trade-sample-size` | `150` | Trade sample table size |
-| `--observation-sample-size` | `150` | Observation sample table size |
-| `--paired-sample-size` | `100` | Paired sample table size |
-| `--export-jsonl` | off | Export tables to JSONL |
-| `--export-parquet` | off | Export tables to Parquet |
-| `--export-dir` | `data/interp_exports` | Export output directory |
-
-## 3. Activation Capture
-
-Capture residual-stream activations from Qwen3-8B for interp examples. Requires `--extra interp` deps.
+Verify it worked:
 
 ```bash
-# Validate tokenization (no inference)
+sqlite3 data/terminal_ingest.db "
+  SELECT label_quality, COUNT(*) FROM interp_examples_v0 GROUP BY 1;
+"
+ls -la data/interp_exports/
+```
+
+The key output is `data/interp_exports/interp_examples_v0_high_quality.parquet` — this is what the activation capture pipeline reads.
+
+See [`pipelines/interp/DATA_PREP_RUNBOOK.md`](pipelines/interp/DATA_PREP_RUNBOOK.md) for extraction rules and quality tier definitions.
+
+### Phase 3a: Local activation capture (Qwen3-8B, dense)
+
+For development and validation. Replays prompts through Qwen3-8B on your local machine (M4 Max / MPS), capturing residual-stream activations at each layer.
+
+```bash
+# Validate tokenization first (no model inference)
 uv run --extra interp -m pipelines.interp.capture --validate-tokens
 
-# Capture 1 example
-uv run --extra interp -m pipelines.interp.capture --limit 1
-
-# Full run
-uv run --extra interp -m pipelines.interp.capture
-
-# Specific layers only
-uv run --extra interp -m pipelines.interp.capture --layers 0,12,24,35
+# Capture 1 example, specific layers
+uv run --extra interp -m pipelines.interp.capture --limit 1 --layers 0,12,24,35
 ```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--parquet-path` | `data/interp_exports/interp_examples_v0_high_quality.parquet` | Input examples |
-| `--output-dir` | `data/activations` | Output directory |
-| `--model-id` | `Qwen/Qwen3-8B` | HuggingFace model ID |
-| `--device` | `mps` | Compute device (`mps`, `cpu`, `cuda`) |
-| `--limit` | all | Process only N examples |
-| `--layers` | all | Comma-separated layer indices |
-| `--skip-existing` | off | Skip log_ids with existing safetensor files |
-| `--validate-tokens` | off | Print tokenization details for 3 samples and exit |
-| `--add-generation-prompt` | off | Append assistant turn start tokens |
+Verify output:
 
-Output: `data/activations/residual_stream/{log_id}.safetensors` + `data/activations/metadata.parquet`
+```bash
+ls -la data/activations/residual_stream/
+python -c "
+from safetensors import safe_open
+f = safe_open('data/activations/residual_stream/$(ls data/activations/residual_stream/ | head -1)', framework='pt')
+t = f.get_tensor('residual_stream')
+print(f'Shape: {t.shape}')  # (num_layers, seq_len, 4096) for Qwen3-8B
+print(f'Dtype: {t.dtype}')  # float16
+"
+```
+
+Qwen3-8B is dense (no MoE), so only residual-stream activations are captured here.
+
+### Phase 3b: Modal activation capture (Qwen3-30B-A3B, MoE)
+
+For production captures. Runs on Modal with A100-80GB GPUs, using Qwen3-30B-A3B which has MoE layers (128 experts, top-8 active). This captures both residual-stream activations and MoE router logits — the router logits are the primary signal for interpretability since they reveal which experts the model selects for each token.
+
+```bash
+# One-time: cache model weights to Modal volume
+./scripts/modal_capture.sh download
+
+# Smoke test: 1 example, layer 24
+./scripts/modal_capture.sh smoke
+
+# Router logits only (recommended for scale — small and information-dense)
+./scripts/modal_capture.sh router
+
+# Full capture (residual + router)
+./scripts/modal_capture.sh full
+```
+
+Verify output:
+
+```bash
+# Check local metadata from the last run
+./scripts/modal_capture.sh meta
+
+# List files on the Modal volume
+./scripts/modal_capture.sh inspect
+
+# Inspect a specific example's tensor shapes on the volume
+./scripts/modal_capture.sh inspect --log-id 463208
+```
+
+Data lives on two Modal volumes:
+- `xenon-models` — cached Qwen3-30B-A3B weights (~18GB)
+- `xenon-data` — captured activations (safetensors + metadata)
+
+## Data layout
+
+```
+data/
+├── terminal_ingest.db                    # SQLite: vaults, inference_logs, full_logs, swaps
+├── full_logs/                            # Gzipped JSON payloads
+│   └── {shard}/{log_id}.json.gz          #   shard = log_id // 1000, zero-padded
+├── interp_exports/                       # Parquet exports from prepare step
+│   ├── interp_examples_v0_high_quality.parquet  # ← input to capture pipeline
+│   ├── interp_sample_trade_v0.parquet
+│   ├── interp_sample_observation_v0.parquet
+│   └── interp_sample_paired_v0.parquet
+└── activations/                          # Capture output (local runs)
+    ├── residual_stream/
+    │   └── {log_id}.safetensors          #   key: "residual_stream", (L, seq_len, hidden_dim) fp16
+    ├── router_logits/                    #   (MoE models only)
+    │   └── {log_id}.safetensors          #   keys: "router_logits" (L, seq_len, 128) fp32
+    │                                     #         "router_indices" (L, seq_len, 8) int16
+    └── metadata.parquet                  #   log_id, seq_len, has_router, num_experts, etc.
+```
+
+Modal volume (`xenon-data`) has the same `activations/` layout at `/data/activations/`.
+
+## Setup
+
+```bash
+uv sync                              # base deps (ingest + data prep)
+uv sync --extra interp               # + torch, transformers, safetensors
+uv sync --extra modal                # + modal (remote capture only)
+uv sync --extra dev                  # + pytest
+```
+
+For Modal, you also need:
+```bash
+modal token new                      # authenticate with Modal
+modal secret create huggingface HF_TOKEN=<your-token>  # for model downloads
+```
 
 ## Tests
 
 ```bash
-uv run --extra dev -m pytest tests/test_ingest.py -v          # ingest only
-uv run --extra interp --extra dev -m pytest tests/test_capture.py -v  # capture only
-uv run --extra interp --extra dev -m pytest tests/ -v         # all
+uv run --extra dev -m pytest tests/test_ingest.py -v          # ingest
+uv run --extra interp --extra dev -m pytest tests/test_capture.py -v  # capture (local)
+uv run --extra interp --extra dev -m pytest tests/ -v          # all
 ```
 
-## Detailed Docs
+Capture tests use fake model/tokenizer objects (no GPU or model download required) and cover residual capture, MoE router hooks, auto-detection (dense vs MoE), safetensor round-trips, and end-to-end `run_capture` with all config combinations.
 
-- [`pipelines/ingest/INGEST_RUNBOOK.md`](pipelines/ingest/INGEST_RUNBOOK.md) — schema reference, SQL verification queries, architecture
-- [`pipelines/interp/DATA_PREP_RUNBOOK.md`](pipelines/interp/DATA_PREP_RUNBOOK.md) — interp dataset extraction rules, quality tiers
-- [`pipelines/interp/README.md`](pipelines/interp/README.md) — activation capture details, output format, operational notes
+## Detailed docs
+
+- [`pipelines/ingest/INGEST_RUNBOOK.md`](pipelines/ingest/INGEST_RUNBOOK.md) — SQLite schema, SQL verification queries, API client reference
+- [`pipelines/interp/DATA_PREP_RUNBOOK.md`](pipelines/interp/DATA_PREP_RUNBOOK.md) — context extraction rules, quality tiers, sampling logic
+- [`pipelines/interp/README.md`](pipelines/interp/README.md) — activation capture details (local + Modal), output formats, MoE router capture

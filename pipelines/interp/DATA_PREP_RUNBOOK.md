@@ -10,14 +10,14 @@ This runbook documents how `pipelines.interp.prepare` builds an interp-ready dat
 The goal is to produce stable, auditable tables before any inference/probing work.
 
 ## Entry Point
-Run from `/Users/trentelmore/concordance/xenon`:
+Run from the project root:
 
 ```bash
 uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db
 ```
 
 Main module:
-- `/Users/trentelmore/concordance/xenon/pipelines/interp/prepare.py`
+- `pipelines/interp/prepare.py`
 
 ## Source Tables
 - `inference_logs`

@@ -21,10 +21,13 @@ import torch
 from pipelines.interp.capture import (
     CaptureConfig,
     _capture_one,
+    _is_moe_model,
     _load_examples,
     _make_hook,
+    _make_router_hook,
     _parse_messages,
     _save_activations,
+    _save_router,
     main,
     run_capture,
 )
@@ -68,6 +71,86 @@ class FakeDecoderLayer(torch.nn.Module):
 
     def forward(self, x: torch.Tensor, **kwargs: Any) -> tuple[torch.Tensor, ...]:
         return (self.linear(x),)
+
+
+class FakeGate(torch.nn.Module):
+    """Minimal stand-in for Qwen3MoeTopKRouter gate."""
+
+    def __init__(self, num_experts: int = 128, top_k: int = 8) -> None:
+        super().__init__()
+        self._num_experts = num_experts
+        self._top_k = top_k
+        # Needs a parameter so register_forward_hook works
+        self.weight = torch.nn.Parameter(torch.empty(0))
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        seq_len = x.shape[0] if x.dim() == 2 else x.shape[1]
+        batch_seq = seq_len  # flattened
+        router_logits = torch.randn(batch_seq, self._num_experts)
+        router_scores = torch.softmax(router_logits, dim=-1)
+        router_indices = torch.randint(0, self._num_experts, (batch_seq, self._top_k))
+        return router_logits, router_scores, router_indices
+
+
+class FakeMoEMLP(torch.nn.Module):
+    """MLP with a gate attribute to simulate MoE."""
+
+    def __init__(self, hidden_dim: int, num_experts: int = 128, top_k: int = 8) -> None:
+        super().__init__()
+        self.gate = FakeGate(num_experts, top_k)
+        self.linear = torch.nn.Linear(hidden_dim, hidden_dim, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Call gate so hooks fire
+        self.gate(x.view(-1, x.shape[-1]))
+        return self.linear(x)
+
+
+class FakeMoEDecoderLayer(torch.nn.Module):
+    """Decoder layer with an MoE MLP."""
+
+    def __init__(self, hidden_dim: int, num_experts: int = 128, top_k: int = 8) -> None:
+        super().__init__()
+        self.mlp = FakeMoEMLP(hidden_dim, num_experts, top_k)
+        self.linear = torch.nn.Linear(hidden_dim, hidden_dim, bias=False)
+
+    def forward(self, x: torch.Tensor, **kwargs: Any) -> tuple[torch.Tensor, ...]:
+        out = self.linear(x) + self.mlp(x)
+        return (out,)
+
+
+class FakeMoEModel(torch.nn.Module):
+    """Minimal MoE causal LM with .model.layers[i].mlp.gate."""
+
+    def __init__(
+        self, num_layers: int = 4, hidden_dim: int = 16,
+        num_experts: int = 128, top_k: int = 8,
+    ) -> None:
+        super().__init__()
+        self.model = SimpleNamespace(
+            layers=torch.nn.ModuleList(
+                [FakeMoEDecoderLayer(hidden_dim, num_experts, top_k) for _ in range(num_layers)]
+            )
+        )
+        self.config = SimpleNamespace(
+            hidden_size=hidden_dim,
+            max_position_embeddings=8192,
+        )
+        self._num_layers = num_layers
+        self._hidden_dim = hidden_dim
+
+    def forward(self, input_ids: torch.Tensor, **kwargs: Any) -> SimpleNamespace:
+        batch, seq_len = input_ids.shape
+        x = torch.randn(batch, seq_len, self._hidden_dim)
+        for layer in self.model.layers:
+            x = layer(x)[0]
+        return SimpleNamespace(logits=x)
+
+    def eval(self) -> "FakeMoEModel":
+        return self
+
+    def to(self, device: str) -> "FakeMoEModel":
+        return self
 
 
 class FakeModel(torch.nn.Module):
@@ -227,37 +310,39 @@ class TestCaptureOne:
     def test_captures_all_layers(self) -> None:
         model = FakeModel(num_layers=4, hidden_dim=16)
         tokenizer = FakeTokenizer(seq_len=10)
-        config = CaptureConfig(device="cpu")
+        config = CaptureConfig(device="cpu", capture_router=False)
 
-        activations, input_ids = _capture_one(
+        residual, router_logits, router_indices, input_ids = _capture_one(
             model=model,
             tokenizer=tokenizer,
             messages=SAMPLE_MESSAGES,
             config=config,
         )
-        assert activations.shape[0] == 4  # num_layers
-        assert activations.shape[1] == 10  # seq_len
-        assert activations.shape[2] == 16  # hidden_dim
-        assert activations.dtype == torch.float16
+        assert residual.shape[0] == 4  # num_layers
+        assert residual.shape[1] == 10  # seq_len
+        assert residual.shape[2] == 16  # hidden_dim
+        assert residual.dtype == torch.float16
         assert input_ids.shape == (1, 10)
+        assert router_logits is None
+        assert router_indices is None
 
     def test_captures_subset_of_layers(self) -> None:
         model = FakeModel(num_layers=4, hidden_dim=16)
         tokenizer = FakeTokenizer(seq_len=10)
-        config = CaptureConfig(device="cpu", layers=[0, 3])
+        config = CaptureConfig(device="cpu", layers=[0, 3], capture_router=False)
 
-        activations, _ = _capture_one(
+        residual, _, _, _ = _capture_one(
             model=model,
             tokenizer=tokenizer,
             messages=SAMPLE_MESSAGES,
             config=config,
         )
-        assert activations.shape[0] == 2  # only layers 0 and 3
+        assert residual.shape[0] == 2  # only layers 0 and 3
 
     def test_hooks_are_removed_after_forward(self) -> None:
         model = FakeModel(num_layers=4, hidden_dim=16)
         tokenizer = FakeTokenizer(seq_len=10)
-        config = CaptureConfig(device="cpu")
+        config = CaptureConfig(device="cpu", capture_router=False)
 
         # Count hooks before
         hooks_before = sum(
@@ -281,20 +366,20 @@ class TestCaptureOne:
         model = FakeModel(num_layers=4, hidden_dim=16)
         tokenizer = FakeTokenizer(seq_len=10)
 
-        config_no_gen = CaptureConfig(device="cpu", add_generation_prompt=False)
-        config_gen = CaptureConfig(device="cpu", add_generation_prompt=True)
+        config_no_gen = CaptureConfig(device="cpu", add_generation_prompt=False, capture_router=False)
+        config_gen = CaptureConfig(device="cpu", add_generation_prompt=True, capture_router=False)
 
-        act_no, ids_no = _capture_one(
+        res_no, _, _, ids_no = _capture_one(
             model=model, tokenizer=tokenizer,
             messages=SAMPLE_MESSAGES, config=config_no_gen,
         )
-        act_gen, ids_gen = _capture_one(
+        res_gen, _, _, ids_gen = _capture_one(
             model=model, tokenizer=tokenizer,
             messages=SAMPLE_MESSAGES, config=config_gen,
         )
         # FakeTokenizer adds 1 token for generation prompt
         assert ids_gen.shape[1] == ids_no.shape[1] + 1
-        assert act_gen.shape[1] == act_no.shape[1] + 1
+        assert res_gen.shape[1] == res_no.shape[1] + 1
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +419,7 @@ class TestRunCapture:
             parquet_path=parquet_path,
             output_dir=output_dir,
             device="cpu",
+            capture_router=False,
         )
 
     @patch("pipelines.interp.capture._load_model")
@@ -495,3 +581,245 @@ class TestCLI:
         main(["--parquet-path", "/tmp/x.parquet", "--device", "cpu"])
         cfg = mock_run.call_args[0][0]
         assert cfg.layers is None
+
+    @patch("pipelines.interp.capture.run_capture")
+    def test_capture_router_flags(self, mock_run: MagicMock) -> None:
+        mock_run.return_value = {"processed": 0, "skipped": 0, "errors": 0}
+        main(["--parquet-path", "/tmp/x.parquet", "--device", "cpu",
+              "--no-capture-residual"])
+        cfg = mock_run.call_args[0][0]
+        assert cfg.capture_residual is False
+        assert cfg.capture_router is True
+
+    @patch("pipelines.interp.capture.run_capture")
+    def test_no_capture_router_flag(self, mock_run: MagicMock) -> None:
+        mock_run.return_value = {"processed": 0, "skipped": 0, "errors": 0}
+        main(["--parquet-path", "/tmp/x.parquet", "--device", "cpu",
+              "--no-capture-router"])
+        cfg = mock_run.call_args[0][0]
+        assert cfg.capture_router is False
+        assert cfg.capture_residual is True
+
+
+# ---------------------------------------------------------------------------
+# MoE auto-detection
+# ---------------------------------------------------------------------------
+
+
+class TestMoEDetection:
+    def test_dense_model_not_moe(self) -> None:
+        model = FakeModel(num_layers=4, hidden_dim=16)
+        assert _is_moe_model(model) is False
+
+    def test_moe_model_detected(self) -> None:
+        model = FakeMoEModel(num_layers=4, hidden_dim=16)
+        assert _is_moe_model(model) is True
+
+
+# ---------------------------------------------------------------------------
+# MoE router hook tests
+# ---------------------------------------------------------------------------
+
+
+class TestMakeRouterHook:
+    def test_router_hook_captures_logits_and_indices(self) -> None:
+        logits_storage: dict[int, Any] = {}
+        indices_storage: dict[int, Any] = {}
+        hook = _make_router_hook(3, logits_storage, indices_storage)
+
+        fake_logits = torch.randn(5, 128)
+        fake_scores = torch.randn(5, 128)
+        fake_indices = torch.randint(0, 128, (5, 8))
+        hook(None, None, (fake_logits, fake_scores, fake_indices))
+
+        assert 3 in logits_storage
+        assert 3 in indices_storage
+        assert logits_storage[3].dtype == torch.float32
+        assert indices_storage[3].dtype == torch.int16
+        assert logits_storage[3].shape == (5, 128)
+        assert indices_storage[3].shape == (5, 8)
+
+    def test_router_hook_detaches_to_cpu(self) -> None:
+        logits_storage: dict[int, Any] = {}
+        indices_storage: dict[int, Any] = {}
+        hook = _make_router_hook(0, logits_storage, indices_storage)
+
+        logits = torch.randn(3, 128, requires_grad=True)
+        scores = torch.randn(3, 128)
+        indices = torch.randint(0, 128, (3, 8))
+        hook(None, None, (logits, scores, indices))
+
+        assert not logits_storage[0].requires_grad
+        assert logits_storage[0].device.type == "cpu"
+        assert indices_storage[0].device.type == "cpu"
+
+
+# ---------------------------------------------------------------------------
+# MoE capture integration tests
+# ---------------------------------------------------------------------------
+
+
+class TestMoECapture:
+    def test_capture_router_logits(self) -> None:
+        model = FakeMoEModel(num_layers=4, hidden_dim=16, num_experts=128, top_k=8)
+        tokenizer = FakeTokenizer(seq_len=10)
+        config = CaptureConfig(device="cpu", capture_router=True, capture_residual=True)
+
+        residual, router_logits, router_indices, input_ids = _capture_one(
+            model=model,
+            tokenizer=tokenizer,
+            messages=SAMPLE_MESSAGES,
+            config=config,
+        )
+        assert residual is not None
+        assert residual.shape == (4, 10, 16)
+
+        assert router_logits is not None
+        assert router_indices is not None
+        assert router_logits.shape == (4, 10, 128)
+        assert router_indices.shape == (4, 10, 8)
+        assert router_logits.dtype == torch.float32
+        assert router_indices.dtype == torch.int16
+
+    def test_capture_router_only(self) -> None:
+        model = FakeMoEModel(num_layers=4, hidden_dim=16)
+        tokenizer = FakeTokenizer(seq_len=10)
+        config = CaptureConfig(device="cpu", capture_router=True, capture_residual=False)
+
+        residual, router_logits, router_indices, input_ids = _capture_one(
+            model=model,
+            tokenizer=tokenizer,
+            messages=SAMPLE_MESSAGES,
+            config=config,
+        )
+        assert residual is None
+        assert router_logits is not None
+        assert router_indices is not None
+
+    def test_dense_model_skips_router(self) -> None:
+        model = FakeModel(num_layers=4, hidden_dim=16)
+        tokenizer = FakeTokenizer(seq_len=10)
+        config = CaptureConfig(device="cpu", capture_router=True, capture_residual=True)
+
+        residual, router_logits, router_indices, input_ids = _capture_one(
+            model=model,
+            tokenizer=tokenizer,
+            messages=SAMPLE_MESSAGES,
+            config=config,
+        )
+        assert residual is not None
+        assert router_logits is None
+        assert router_indices is None
+
+    def test_moe_hooks_removed_after_forward(self) -> None:
+        model = FakeMoEModel(num_layers=4, hidden_dim=16)
+        tokenizer = FakeTokenizer(seq_len=10)
+        config = CaptureConfig(device="cpu", capture_router=True, capture_residual=True)
+
+        hooks_before = sum(
+            len(layer._forward_hooks) + len(layer.mlp.gate._forward_hooks)
+            for layer in model.model.layers
+        )
+
+        _capture_one(
+            model=model,
+            tokenizer=tokenizer,
+            messages=SAMPLE_MESSAGES,
+            config=config,
+        )
+
+        hooks_after = sum(
+            len(layer._forward_hooks) + len(layer.mlp.gate._forward_hooks)
+            for layer in model.model.layers
+        )
+        assert hooks_after == hooks_before
+
+
+# ---------------------------------------------------------------------------
+# Router save/load round-trip
+# ---------------------------------------------------------------------------
+
+
+class TestSaveRouter:
+    def test_round_trip(self, tmp_path: Path) -> None:
+        from safetensors import safe_open
+
+        router_logits = torch.randn(4, 10, 128, dtype=torch.float32)
+        router_indices = torch.randint(0, 128, (4, 10, 8)).to(torch.int16)
+        out_path = tmp_path / "router_logits" / "test.safetensors"
+        file_size = _save_router(router_logits, router_indices, out_path)
+
+        assert out_path.exists()
+        assert file_size > 0
+
+        with safe_open(str(out_path), framework="pt") as f:
+            loaded_logits = f.get_tensor("router_logits")
+            loaded_indices = f.get_tensor("router_indices")
+        assert loaded_logits.shape == (4, 10, 128)
+        assert loaded_logits.dtype == torch.float32
+        assert torch.allclose(router_logits, loaded_logits)
+        assert loaded_indices.shape == (4, 10, 8)
+        assert loaded_indices.dtype == torch.int16
+        assert torch.equal(router_indices, loaded_indices)
+
+
+# ---------------------------------------------------------------------------
+# End-to-end MoE run_capture
+# ---------------------------------------------------------------------------
+
+
+class TestRunCaptureMoE:
+    def _setup(self, tmp_path: Path, num_rows: int = 3) -> CaptureConfig:
+        rows = [_make_example_row(i) for i in range(num_rows)]
+        parquet_path = _make_parquet(tmp_path, rows)
+        output_dir = tmp_path / "activations"
+        return CaptureConfig(
+            parquet_path=parquet_path,
+            output_dir=output_dir,
+            device="cpu",
+            capture_router=True,
+            capture_residual=True,
+        )
+
+    @patch("pipelines.interp.capture._load_model")
+    def test_captures_router_and_residual(self, mock_load: MagicMock, tmp_path: Path) -> None:
+        model = FakeMoEModel(num_layers=4, hidden_dim=16, num_experts=128, top_k=8)
+        tokenizer = FakeTokenizer(seq_len=10)
+        mock_load.return_value = (model, tokenizer)
+
+        config = self._setup(tmp_path, num_rows=2)
+        result = run_capture(config)
+
+        assert result["processed"] == 2
+        assert result["errors"] == 0
+
+        # Check residual files
+        residual_dir = config.output_dir / "residual_stream"
+        assert len(list(residual_dir.glob("*.safetensors"))) == 2
+
+        # Check router files
+        router_dir = config.output_dir / "router_logits"
+        assert len(list(router_dir.glob("*.safetensors"))) == 2
+
+        # Check metadata
+        meta = pq.read_table(config.output_dir / "metadata.parquet").to_pylist()
+        assert all(m["has_router"] is True for m in meta)
+        assert all(m["num_experts"] == 128 for m in meta)
+
+    @patch("pipelines.interp.capture._load_model")
+    def test_router_only_no_residual(self, mock_load: MagicMock, tmp_path: Path) -> None:
+        model = FakeMoEModel(num_layers=4, hidden_dim=16)
+        tokenizer = FakeTokenizer(seq_len=10)
+        mock_load.return_value = (model, tokenizer)
+
+        config = self._setup(tmp_path, num_rows=1)
+        config.capture_residual = False
+
+        result = run_capture(config)
+        assert result["processed"] == 1
+
+        residual_dir = config.output_dir / "residual_stream"
+        assert not residual_dir.exists() or len(list(residual_dir.glob("*.safetensors"))) == 0
+
+        router_dir = config.output_dir / "router_logits"
+        assert len(list(router_dir.glob("*.safetensors"))) == 1

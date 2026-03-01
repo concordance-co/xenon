@@ -1,114 +1,161 @@
-## Interp Pipeline
+# Interp Pipeline
 
-Lightweight replay tooling for activation/SAE iteration.
+Replay tooling for activation capture and interpretability research.
 
-## Dataset Prep (Context-Complete)
+## Data flow
 
-Build interp-ready tables focused on `trade` + `record_observation` decisions:
-
-```bash
-uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db
+```
+terminal_ingest.db (raw inference logs + payloads)
+    │
+    ▼  pipelines.interp.prepare
+interp_examples_v0 table → interp_examples_v0_high_quality.parquet
+    │
+    ▼  pipelines.interp.capture (local) or modal_capture.py (remote)
+data/activations/
+├── residual_stream/{log_id}.safetensors
+├── router_logits/{log_id}.safetensors    (MoE only)
+└── metadata.parquet
 ```
 
-Export JSONL for inference jobs:
+## Dataset Prep
+
+Build interp-ready tables from ingested data. Filters to `trade` + `record_observation` decisions with complete context (messages, market, portfolio, strategy, config).
 
 ```bash
-uv run -m pipelines.interp.prepare \
-  --db-path data/terminal_ingest.db \
-  --export-jsonl \
-  --export-dir data/interp_exports
+uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db --export-parquet
 ```
 
-This materializes:
+This creates:
+- `interp_examples_v0` — primary table (all quality tiers)
+- `interp_context_gaps_v0` — rows with parse errors or missing context
+- `interp_sample_trade_v0` — balanced buy/sell sample (default 150)
+- `interp_sample_observation_v0` — observation sample (default 150)
+- `interp_sample_paired_v0` — opposite decisions in same vault nearby (default 100)
 
-- `interp_examples_v0`
-- `interp_context_gaps_v0`
-- `interp_sample_trade_v0`
-- `interp_sample_observation_v0`
-- `interp_sample_paired_v0`
-
-Detailed runbook:
-
-- `/Users/trentelmore/concordance/xenon/pipelines/interp/DATA_PREP_RUNBOOK.md`
-
-## CLI
+Verify:
 
 ```bash
-uv run -m pipelines.interp \
-  --db-path data/terminal_ingest.db \
-  --api-base-url https://concordance--qwen3-openai-http-app.modal.run \
-  --api-kind openai_chat \
-  --endpoint-path /v1/chat/completions \
-  --auth-header-value trent-alpha-test \
-  --auto-try-auth-headers \
-  --limit 25
+sqlite3 data/terminal_ingest.db "SELECT label_quality, COUNT(*) FROM interp_examples_v0 GROUP BY 1;"
+ls -la data/interp_exports/*.parquet
 ```
 
-This command reads candidate rows from `inference_logs/full_logs` and writes
-results into `interp_runs`:
+See [`DATA_PREP_RUNBOOK.md`](DATA_PREP_RUNBOOK.md) for extraction rules and quality tier definitions.
 
-- `feature_timeline_json`
-- `unique_feature_count`
-- `timeline_position_count`
-- `run_error` (if API call failed)
+## Activation Capture
 
-By default, request bodies are built from raw full-log message arrays
-(`llm_request_payload.llm_input.messages`) to preserve structure for replay.
-`model` is sent only when `--model-id` is provided.
+Two paths: local (development/validation) and Modal (production).
 
-## Activation Capture (Local)
+### Local capture (Qwen3-8B, dense)
 
-Capture residual-stream activations from Qwen3-8B for all interp examples. Requires the `interp` optional dependency group (torch, transformers, safetensors).
-
-### Install
+Captures residual-stream activations on your local machine. Good for validating the pipeline and iterating on capture config. Qwen3-8B is dense — no MoE router logits.
 
 ```bash
 uv sync --extra interp
-```
 
-### Validate tokenization
-
-Inspect chat-template tokenization for 3 samples without running inference:
-
-```bash
+# Validate tokenization (no inference)
 uv run --extra interp -m pipelines.interp.capture --validate-tokens
-```
 
-### Capture activations
-
-```bash
 # Single example
 uv run --extra interp -m pipelines.interp.capture --limit 1
 
-# Specific layers only
+# Specific layers
 uv run --extra interp -m pipelines.interp.capture --layers 0,12,24,35
 
-# Full run (all examples)
-uv run --extra interp -m pipelines.interp.capture
-
-# Resume (skip already-captured log_ids)
+# Resume (skip already-captured)
 uv run --extra interp -m pipelines.interp.capture --skip-existing
 ```
 
-### Output structure
+Verify:
+
+```bash
+uv run --extra interp python -c "
+from safetensors import safe_open
+import glob
+f = safe_open(glob.glob('data/activations/residual_stream/*.safetensors')[0], framework='pt')
+t = f.get_tensor('residual_stream')
+print(f'Shape: {t.shape}')  # (36, seq_len, 4096) for Qwen3-8B
+print(f'Dtype: {t.dtype}')  # float16
+"
+```
+
+### Modal capture (Qwen3-30B-A3B, MoE)
+
+Captures both residual-stream activations and MoE router logits on A100-80GB. Router logits are the primary interpretability signal — they reveal which of the 128 experts the model selects (top-8) for each token at each layer.
+
+```bash
+uv sync --extra modal
+
+# One-time setup
+modal token new
+modal secret create huggingface HF_TOKEN=<your-token>
+
+# Cache model weights to volume (~18GB, ~5 min)
+./scripts/modal_capture.sh download
+
+# Smoke test: 1 example, layer 24
+./scripts/modal_capture.sh smoke
+
+# Router logits only (small + information-dense, recommended for scale)
+./scripts/modal_capture.sh router
+
+# Full capture (residual + router)
+./scripts/modal_capture.sh full
+```
+
+Verify:
+
+```bash
+# Local metadata from last run
+./scripts/modal_capture.sh meta
+
+# List files on Modal volume
+./scripts/modal_capture.sh inspect
+
+# Inspect specific example on volume
+./scripts/modal_capture.sh inspect --log-id 463208
+```
+
+All script commands accept extra flags:
+
+```bash
+./scripts/modal_capture.sh router --limit 10
+./scripts/modal_capture.sh full --layers 0,24,47
+```
+
+### Output format
 
 ```
 data/activations/
 ├── residual_stream/
-│   ├── {log_id}.safetensors    # (num_layers, seq_len, 4096) fp16
-│   └── ...
-└── metadata.parquet            # log_id, seq_len, num_layers_captured, prompt_hash, etc.
+│   └── {log_id}.safetensors
+│       key: "residual_stream"
+│       shape: (num_layers_captured, seq_len, hidden_dim) fp16
+│
+├── router_logits/                        # MoE models only
+│   └── {log_id}.safetensors
+│       key: "router_logits"
+│       shape: (num_layers_captured, seq_len, 128) fp32
+│       key: "router_indices"
+│       shape: (num_layers_captured, seq_len, 8) int16
+│
+└── metadata.parquet
+    columns: log_id, seq_len, num_layers_captured, hidden_dim,
+             has_router, num_experts, prompt_hash, file_size_bytes, elapsed_s
 ```
 
-### Verify output
+Modal captures write to the `xenon-data` volume at `/data/activations/` (same layout).
 
-```python
-from safetensors import safe_open
-f = safe_open("data/activations/residual_stream/<log_id>.safetensors", framework="pt")
-t = f.get_tensor("residual_stream")
-print(f"Shape: {t.shape}")  # (36, seq_len, 4096) for Qwen3-8B
-print(f"Dtype: {t.dtype}")  # float16
-```
+### Model reference
+
+| | Qwen3-8B (local) | Qwen3-30B-A3B (Modal) |
+|---|---|---|
+| Type | Dense | MoE |
+| Layers | 36 | 48 |
+| hidden_dim | 4096 | 2048 |
+| Experts | — | 128 total, top-8 active |
+| Gate class | — | `Qwen3MoeTopKRouter` at `.mlp.gate` |
+| Captures | residual only | residual + router logits |
+| Device | MPS / CPU | A100-80GB (CUDA) |
 
 ### CLI flags
 
@@ -123,13 +170,16 @@ print(f"Dtype: {t.dtype}")  # float16
 | `--skip-existing` | off | Skip log_ids with existing safetensor files |
 | `--validate-tokens` | off | Print tokenization details and exit |
 | `--add-generation-prompt` | off | Append assistant turn start tokens |
+| `--capture-router` / `--no-capture-router` | on | Capture MoE router logits (auto-skipped on dense models) |
+| `--capture-residual` / `--no-capture-residual` | on | Capture residual stream |
 
-### Notes
+### Operational notes
 
+- **MoE auto-detection**: If `capture_router=True` but the model is dense (no `.mlp.gate`), router hooks are silently skipped with a warning.
 - **MPS fp16**: If MPS fails with fp16, the module retries with float32 model weights (hooks still store fp16). Use `--device cpu` as last resort.
-- **First run**: Downloads ~16GB of Qwen3-8B weights to HuggingFace cache.
-- **Memory**: At 36 layers × 8K tokens × 4096 dim × 2 bytes ≈ 2.25GB per inference. Fine on 64GB M4 Max.
-- **Qwen3-8B is dense**: No MoE router logits to capture. Those come with Qwen3-30B-A3B on Modal.
+- **First local run**: Downloads ~16GB of Qwen3-8B weights to HuggingFace cache.
+- **Local memory**: At 36 layers x 8K tokens x 4096 dim x 2 bytes = ~2.25GB per inference. Fine on 64GB M4 Max.
+- **Modal cold start**: ~30s to load Qwen3-30B-A3B from volume into GPU memory. Model stays warm across batches within a single `modal run`.
 
 ## Tests
 
@@ -137,11 +187,13 @@ print(f"Dtype: {t.dtype}")  # float16
 uv run --extra interp --extra dev -m pytest tests/test_capture.py -v
 ```
 
-Tests use fake model/tokenizer objects (no 16GB download) and cover:
+Tests use fake model/tokenizer objects (no GPU or model download) and cover:
 
 - Message parsing from parquet rows
 - Hook registration, capture, and cleanup
-- Activation shape/dtype correctness
-- Safetensor round-trip serialization
-- End-to-end `run_capture` with skip-existing, limit, validate-tokens
-- CLI argument parsing
+- Activation shape/dtype correctness (residual fp16, router logits fp32, router indices int16)
+- MoE auto-detection (dense model skips router hooks)
+- Router hook capture with correct tensor shapes
+- Safetensor round-trip serialization (residual + router)
+- End-to-end `run_capture` with MoE and dense models
+- CLI argument parsing (including `--capture-router` / `--no-capture-residual` flags)
