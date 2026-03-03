@@ -8,9 +8,24 @@
 - Modal capture (Qwen3-30B-A3B): smoke tested on A100-80GB, router logits + residual stream captured
 - Tests: 38 passing (capture), ingest tests passing separately
 
-## Immediate: Full capture run
+## Immediate: Backfill first 24h of competition data
 
-Run the full dataset through Modal to build the activation corpus.
+Currently have 3 vaults, ~121 high-quality examples, 1 fully captured on Modal (smoke test). Next step is to widen the data before doing a full capture run.
+
+```bash
+# Backfill top 10 vaults (or more)
+uv run -m pipelines.ingest --top-n 10
+
+# Rebuild interp dataset with new data
+uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db --export-parquet
+
+# Check what we got
+sqlite3 data/terminal_ingest.db "
+  SELECT label_quality, COUNT(*) FROM interp_examples_v0 GROUP BY 1;
+"
+```
+
+Then run the full capture on the expanded dataset:
 
 ```bash
 # Router logits only first (small, fast, primary signal)
@@ -22,7 +37,7 @@ Run the full dataset through Modal to build the activation corpus.
 
 Monitor with `./scripts/modal_capture.sh inspect` and `./scripts/modal_capture.sh meta`.
 
-Estimate: 121 examples × ~2s each = ~4 min compute + cold start. Router-only files are small (~0.5MB/example/layer vs ~38MB for residual+router).
+Router-only files are small (~0.5MB/example/layer vs ~38MB for residual+router). At ~2s/example, even 500+ examples would finish in <20 min compute.
 
 ## Analysis: Router logit exploration
 
