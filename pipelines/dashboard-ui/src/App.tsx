@@ -24,7 +24,6 @@ export default function App() {
   const [runner, setRunner] = useState<RunnerState | null>(null)
   const [cmdMinimized, setCmdMinimized] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const { data: status, refetch } = useFetch<PipelineStatus>('/api/status')
   const [config, setConfig] = useState<PipelineConfig>(loadConfig)
 
@@ -42,26 +41,19 @@ export default function App() {
   const handleRun = useCallback((cmd: string) => {
     setRunner({ command: cmd })
     setCmdMinimized(false)
-    setActiveJobId(null)
   }, [])
 
   const handleReconnect = useCallback((jobId: string) => {
     setRunner({ jobId })
     setCmdMinimized(false)
-    setActiveJobId(jobId)
   }, [])
 
   const handleRunDone = useCallback(() => {
     setRunner(null)
     setCmdMinimized(false)
-    setActiveJobId(null)
     setRefreshKey(k => k + 1)
     refetch()
   }, [refetch])
-
-  const handleJobId = useCallback((id: string) => {
-    setActiveJobId(id)
-  }, [])
 
   return (
     <ConfigContext.Provider value={{ config, update: updateConfig }}>
@@ -105,7 +97,7 @@ export default function App() {
             onMinimize={() => setCmdMinimized(true)}
             onRestore={() => setCmdMinimized(false)}
             onClose={handleRunDone}
-            onJobId={handleJobId}
+            onJobId={() => {}}
           />
         )}
       </div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { fetchJson } from '../hooks/useApi'
-import s from './shared.module.css'
 import styles from './CommandRunner.module.css'
 
 interface Job {
@@ -34,7 +33,6 @@ export function JobList({ onReconnect }: Props) {
   }, [])
 
   const running = jobs.filter(j => j.running)
-  const finished = jobs.filter(j => !j.running)
 
   if (jobs.length === 0) return null
 
