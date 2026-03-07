@@ -46,18 +46,78 @@ for r in rows[:10]:
 if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
 "
     ;;
-  *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta} [extra flags]"
+  compact)
+    echo "Compacting activations on Modal..."
+    uv run --extra analysis --extra modal modal run pipelines/interp/modal_analysis.py --mode compact "$@"
+    ;;
+  analyze)
+    echo "Running analysis on Modal..."
+    uv run --extra analysis --extra modal modal run pipelines/interp/modal_analysis.py "$@"
     echo ""
-    echo "  download  Cache model weights to volume (one-time)"
-    echo "  smoke     Single example, single layer (sanity check)"
-    echo "  router    Router logits only, all examples"
-    echo "  full      Full capture (residual + router)"
-    echo "  inspect   List/inspect safetensors on Modal volume"
-    echo "  meta      Show local metadata.parquet summary"
+    echo "Downloading analysis results..."
+    modal volume get xenon-data analysis_results/ ./data/ --force
+    ;;
+  download-activations)
+    echo "Downloading activations from Modal volume..."
+    modal volume get xenon-data activations/ ./data/activations/ --force
+    ;;
+  download-results)
+    echo "Downloading analysis results from Modal volume..."
+    modal volume get xenon-data analysis_results/ ./data/ --force
+    ;;
+  upload-db)
+    echo "Uploading local SQLite DB to Modal volume..."
+    mkdir -p data
+    DB_PATH="${2:-data/terminal_ingest.db}"
+    if [ ! -f "$DB_PATH" ]; then
+      echo "Error: DB not found at $DB_PATH"
+      exit 1
+    fi
+    modal volume put xenon-data "$DB_PATH" ingest/terminal_ingest.db --force
+    echo "Done. DB uploaded to xenon-data:/ingest/terminal_ingest.db"
+    ;;
+  download-db)
+    echo "Downloading DB from Modal volume..."
+    mkdir -p data
+    modal volume get xenon-data ingest/terminal_ingest.db ./data/terminal_ingest.db --force
+    echo "Done. DB saved to data/terminal_ingest.db"
+    ;;
+  modal-ingest)
+    echo "Running ingest on Modal..."
+    shift 2>/dev/null || true
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode ingest "$@"
+    ;;
+  modal-prep)
+    echo "Running data prep on Modal..."
+    shift 2>/dev/null || true
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode prep "$@"
+    ;;
+  *)
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|upload-db|download-db|modal-ingest|modal-prep|download-activations|download-results} [extra flags]"
+    echo ""
+    echo "  download             Cache model weights to volume (one-time)"
+    echo "  smoke                Single example, single layer (sanity check)"
+    echo "  router               Router logits only, all examples"
+    echo "  full                 Full capture (residual + router)"
+    echo "  inspect              List/inspect safetensors on Modal volume"
+    echo "  meta                 Show local metadata.parquet summary"
+    echo "  compact              Consolidate per-example files into per-layer matrices"
+    echo "  analyze              Run analysis on Modal (probe/experts/pca)"
+    echo "  upload-db            Upload local SQLite DB to Modal volume"
+    echo "  download-db          Download DB from Modal volume to local"
+    echo "  modal-ingest         Run ingest on Modal (fetches from Terminal API)"
+    echo "  modal-prep           Run data prep on Modal"
+    echo "  download-activations Download activations from Modal volume"
+    echo "  download-results     Download analysis results from Modal volume"
     echo ""
     echo "Examples:"
     echo "  $0 router --limit 10"
+    echo "  $0 full --limit 50 --pool last_token"
     echo "  $0 inspect --log-id 463208      # inspect specific example"
+    echo "  $0 analyze --mode probe --target decision_type"
+    echo "  $0 analyze --mode all --target risk_tolerance"
+    echo "  $0 upload-db"
+    echo "  $0 modal-ingest --top-n 10 --selection random"
+    echo "  $0 modal-prep --export-parquet"
     ;;
 esac

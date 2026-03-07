@@ -19,6 +19,13 @@ interp = [
 modal = [
     "modal>=0.73.0",
 ]
+analysis = [
+    "torch>=2.4.0",
+    "safetensors>=0.4.0",
+    "scikit-learn>=1.4.0",
+    "matplotlib>=3.8.0",
+    "numpy>=1.26.0",
+]
 dev = [
     "pytest>=8.0",
 ]

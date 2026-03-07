@@ -15,7 +15,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-url", default="https://api.terminal.markets/api/v1")
     parser.add_argument("--db-path", type=Path, default=Path("data/terminal_ingest.db"))
     parser.add_argument("--raw-payload-dir", type=Path, default=Path("data/full_logs"))
-    parser.add_argument("--top-n", type=int, default=3, help="Top N leaderboard vaults to ingest")
+    parser.add_argument("--top-n", type=int, default=3, help="Number of vaults to ingest")
+    parser.add_argument("--selection", choices=["top", "random"], default="top",
+                        help="'top' = top N by sort order, 'random' = random sample from all vaults")
+    parser.add_argument("--random-seed", type=int, default=None, help="Seed for random vault selection")
     parser.add_argument("--leaderboard-sort-by", default="total_pnl_usd")
     parser.add_argument("--request-limit", type=int, default=50)
     parser.add_argument("--request-concurrency", type=int, default=10)
@@ -38,6 +41,8 @@ async def _run_from_args(args: argparse.Namespace) -> int:
         db_path=args.db_path,
         raw_payload_dir=args.raw_payload_dir,
         top_n=args.top_n,
+        selection=args.selection,
+        random_seed=args.random_seed,
         leaderboard_sort_by=args.leaderboard_sort_by,
         request_limit=args.request_limit,
         request_concurrency=args.request_concurrency,

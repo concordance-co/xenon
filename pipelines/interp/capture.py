@@ -28,6 +28,7 @@ class CaptureConfig:
     add_generation_prompt: bool = False
     capture_router: bool = True
     capture_residual: bool = True
+    pool_on_capture: str | None = None  # None = full sequence, "last_token", "mean_pool"
 
 
 def _load_examples(config: CaptureConfig) -> list[dict[str, Any]]:
@@ -272,6 +273,40 @@ def _capture_one(
     return residual, router_logits, router_indices, input_ids
 
 
+def _apply_pooling(
+    residual: Any,
+    router_logits: Any,
+    router_indices: Any,
+    pooling: str,
+) -> tuple[Any, Any, Any]:
+    """Pool the sequence dimension: (layers, seq_len, dim) → (layers, dim).
+
+    For router_indices with top-k, last_token gives (layers, top_k),
+    mean_pool gives (layers, num_experts) as a frequency histogram.
+    """
+    import torch
+
+    if pooling == "last_token":
+        if residual is not None:
+            residual = residual[:, -1, :]       # (layers, dim)
+        if router_logits is not None:
+            router_logits = router_logits[:, -1, :]  # (layers, num_experts)
+        if router_indices is not None:
+            router_indices = router_indices[:, -1, :]  # (layers, top_k)
+    elif pooling == "mean_pool":
+        if residual is not None:
+            residual = residual.mean(dim=1)     # (layers, dim)
+        if router_logits is not None:
+            router_logits = router_logits.mean(dim=1)  # (layers, num_experts)
+        if router_indices is not None:
+            # For indices, mean doesn't make sense — keep last token
+            router_indices = router_indices[:, -1, :]
+    else:
+        raise ValueError(f"Unknown pooling: {pooling}")
+
+    return residual, router_logits, router_indices
+
+
 def _save_activations(
     tensor: Any,
     output_path: Path,
@@ -279,8 +314,9 @@ def _save_activations(
     from safetensors.torch import save_file
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    save_file({"residual_stream": tensor}, str(output_path))
-    return output_path.stat().st_size
+    t = tensor.contiguous()
+    save_file({"residual_stream": t}, str(output_path))
+    return t.nelement() * t.element_size()
 
 
 def _save_router(
@@ -291,11 +327,10 @@ def _save_router(
     from safetensors.torch import save_file
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    save_file(
-        {"router_logits": router_logits, "router_indices": router_indices},
-        str(output_path),
-    )
-    return output_path.stat().st_size
+    rl = router_logits.contiguous()
+    ri = router_indices.contiguous()
+    save_file({"router_logits": rl, "router_indices": ri}, str(output_path))
+    return rl.nelement() * rl.element_size() + ri.nelement() * ri.element_size()
 
 
 def run_capture(config: CaptureConfig) -> dict[str, Any]:
@@ -363,6 +398,13 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
             )
             elapsed = time.monotonic() - t0
 
+            # Pool before saving if requested
+            seq_len = int(input_ids.shape[1])
+            if config.pool_on_capture:
+                residual, router_logits, router_indices = _apply_pooling(
+                    residual, router_logits, router_indices, config.pool_on_capture
+                )
+
             file_size = 0
             if residual is not None:
                 file_size += _save_activations(
@@ -378,24 +420,29 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
                 input_ids.cpu().numpy().tobytes()
             ).hexdigest()
 
+            num_model_layers = len(model.model.layers)
+            captured_layers = sorted(config.layers) if config.layers is not None else list(range(num_model_layers))
+
             meta_row: dict[str, Any] = {
                 "log_id": int(log_id),
-                "seq_len": int(input_ids.shape[1]),
+                "seq_len": seq_len,
                 "prompt_hash": prompt_hash,
                 "capture_timestamp": datetime.now(UTC).isoformat(),
                 "file_size_bytes": file_size,
                 "elapsed_s": round(elapsed, 2),
                 "has_router": router_logits is not None,
+                "captured_layers": json.dumps(captured_layers),
+                "pooling": config.pool_on_capture or "none",
             }
             if residual is not None:
                 meta_row["num_layers_captured"] = int(residual.shape[0])
-                meta_row["hidden_dim"] = int(residual.shape[2])
+                meta_row["hidden_dim"] = int(residual.shape[-1])
             else:
                 # Still record layer count from router tensors
                 meta_row["num_layers_captured"] = int(router_logits.shape[0]) if router_logits is not None else 0
                 meta_row["hidden_dim"] = 0
             if router_logits is not None:
-                meta_row["num_experts"] = int(router_logits.shape[2])
+                meta_row["num_experts"] = int(router_logits.shape[-1])
 
             metadata_rows.append(meta_row)
 
@@ -475,6 +522,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=True,
         help="Capture residual stream (default: True, --no-capture-residual to disable)",
     )
+    parser.add_argument(
+        "--pool-on-capture",
+        choices=["last_token", "mean_pool"],
+        default=None,
+        help="Pool the sequence dimension during capture to reduce file size ~9000x. "
+             "Stores (layers, dim) instead of (layers, seq_len, dim).",
+    )
     return parser
 
 
@@ -497,6 +551,7 @@ def main(argv: list[str] | None = None) -> int:
         add_generation_prompt=args.add_generation_prompt,
         capture_router=args.capture_router,
         capture_residual=args.capture_residual,
+        pool_on_capture=args.pool_on_capture,
     )
     run_capture(cfg)
     return 0

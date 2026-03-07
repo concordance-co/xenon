@@ -145,6 +145,14 @@ class IngestDatabase:
             CREATE INDEX IF NOT EXISTS idx_swaps_token_timestamp
             ON swaps(token_address, timestamp);
 
+            CREATE TABLE IF NOT EXISTS ingest_cursors (
+                vault_address TEXT NOT NULL,
+                resource TEXT NOT NULL,
+                last_cursor TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (vault_address, resource)
+            );
+
             CREATE TABLE IF NOT EXISTS full_logs (
                 log_id INTEGER PRIMARY KEY,
                 vault_address TEXT,
@@ -386,6 +394,31 @@ class IngestDatabase:
                 rows,
             )
             await self.conn.commit()
+
+    async def get_last_cursor(self, vault_address: str, resource: str) -> str | None:
+        """Get the last saved cursor for a vault+resource (logs, swaps)."""
+        assert self.conn is not None
+        cursor = await self.conn.execute(
+            "SELECT last_cursor FROM ingest_cursors WHERE vault_address = ? AND resource = ?",
+            (vault_address, resource),
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+
+    async def save_cursor(self, vault_address: str, resource: str, last_cursor: str) -> None:
+        """Save the latest cursor for a vault+resource."""
+        assert self.conn is not None
+        await self.conn.execute(
+            """
+            INSERT INTO ingest_cursors (vault_address, resource, last_cursor, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(vault_address, resource) DO UPDATE SET
+                last_cursor=excluded.last_cursor,
+                updated_at=excluded.updated_at
+            """,
+            (vault_address, resource, last_cursor, _now_iso()),
+        )
+        await self.conn.commit()
 
     async def fetch_existing_full_log_ids(self, log_ids: list[int]) -> set[int]:
         assert self.conn is not None

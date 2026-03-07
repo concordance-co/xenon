@@ -75,6 +75,7 @@ class CaptureWorker:
         layers: list[int] | None = None,
         capture_router: bool = True,
         capture_residual: bool = True,
+        pool_on_capture: str | None = None,
     ) -> list[dict]:
         import hashlib
         import json
@@ -84,6 +85,7 @@ class CaptureWorker:
 
         from pipelines.interp.capture import (
             CaptureConfig,
+            _apply_pooling,
             _capture_one,
             _parse_messages,
             _save_activations,
@@ -98,6 +100,7 @@ class CaptureWorker:
             layers=layers,
             capture_router=capture_router,
             capture_residual=capture_residual,
+            pool_on_capture=pool_on_capture,
         )
 
         residual_dir = output_dir / "residual_stream"
@@ -128,6 +131,12 @@ class CaptureWorker:
                 )
                 elapsed = time.monotonic() - t0
 
+                seq_len = int(input_ids.shape[1])
+                if pool_on_capture:
+                    residual, router_logits, router_indices = _apply_pooling(
+                        residual, router_logits, router_indices, pool_on_capture
+                    )
+
                 file_size = 0
                 if residual is not None:
                     file_size += _save_activations(
@@ -143,23 +152,28 @@ class CaptureWorker:
                     input_ids.cpu().numpy().tobytes()
                 ).hexdigest()
 
+                num_model_layers = len(self.model.model.layers)
+                captured_layers_list = sorted(layers) if layers is not None else list(range(num_model_layers))
+
                 meta_row = {
                     "log_id": int(log_id),
-                    "seq_len": int(input_ids.shape[1]),
+                    "seq_len": seq_len,
                     "prompt_hash": prompt_hash,
                     "capture_timestamp": datetime.now(UTC).isoformat(),
                     "file_size_bytes": file_size,
                     "elapsed_s": round(elapsed, 2),
                     "has_router": router_logits is not None,
+                    "captured_layers": json.dumps(captured_layers_list),
+                    "pooling": pool_on_capture or "none",
                 }
                 if residual is not None:
                     meta_row["num_layers_captured"] = int(residual.shape[0])
-                    meta_row["hidden_dim"] = int(residual.shape[2])
+                    meta_row["hidden_dim"] = int(residual.shape[-1])
                 else:
                     meta_row["num_layers_captured"] = int(router_logits.shape[0]) if router_logits is not None else 0
                     meta_row["hidden_dim"] = 0
                 if router_logits is not None:
-                    meta_row["num_experts"] = int(router_logits.shape[2])
+                    meta_row["num_experts"] = int(router_logits.shape[-1])
 
                 metadata_rows.append(meta_row)
                 print(f"  {log_id}: {file_size / 1024 / 1024:.1f}MB, {elapsed:.1f}s")
@@ -222,6 +236,26 @@ def inspect_volume(log_id: str = ""):
         print("  router_logits: not found")
 
 
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=300,
+)
+def write_metadata_to_volume(metadata_rows: list[dict]) -> int:
+    """Write metadata.parquet to the volume so analysis can find it."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq_
+    from pathlib import Path
+
+    meta_path = Path("/data/activations/metadata.parquet")
+    meta_path.parent.mkdir(parents=True, exist_ok=True)
+    table = pa.Table.from_pylist(metadata_rows)
+    pq_.write_table(table, meta_path, compression="snappy")
+    volume.commit()
+    print(f"Wrote metadata to volume: {meta_path} ({len(metadata_rows)} rows)")
+    return len(metadata_rows)
+
+
 @app.local_entrypoint()
 def main(
     parquet_path: str = "data/interp_exports/interp_examples_v0_high_quality.parquet",
@@ -231,6 +265,7 @@ def main(
     capture_residual: bool = True,
     batch_size: int = 10,
     model_id: str = "Qwen/Qwen3-30B-A3B",
+    pool: str = "",
 ):
     import json
     from pathlib import Path
@@ -266,6 +301,7 @@ def main(
             layers=parsed_layers,
             capture_router=capture_router,
             capture_residual=capture_residual,
+            pool_on_capture=pool if pool else None,
         ),
     ):
         all_metadata.extend(batch_meta)
@@ -274,10 +310,13 @@ def main(
         import pyarrow as pa
 
         meta_table = pa.Table.from_pylist(all_metadata)
-        # Write metadata to local file (volume already has the activations)
+        # Write metadata locally
         meta_path = Path("data/activations/metadata.parquet")
         meta_path.parent.mkdir(parents=True, exist_ok=True)
         pq.write_table(meta_table, meta_path, compression="snappy")
-        print(f"\nWrote metadata: {meta_path} ({len(all_metadata)} rows)")
+        print(f"\nWrote metadata locally: {meta_path} ({len(all_metadata)} rows)")
+
+        # Write metadata to volume so analysis can find it
+        write_metadata_to_volume.remote(all_metadata)
 
     print(f"\nDone: {len(all_metadata)} examples captured")

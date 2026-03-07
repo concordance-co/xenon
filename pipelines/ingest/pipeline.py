@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -24,13 +25,15 @@ class BackfillConfig:
     top_n: int = 3
     leaderboard_sort_by: str = "total_pnl_usd"
     request_limit: int = 50
-    request_concurrency: int = 10
+    request_concurrency: int = 5
     timeout_s: int = 30
     max_logs_per_vault: int | None = None
     max_full_logs_per_vault: int | None = None
     max_swaps_per_vault: int | None = None
     include_reasoning: bool = True
     retry_max_attempts: int = 6
+    selection: str = "top"  # "top" or "random"
+    random_seed: int | None = None
 
 
 @dataclass(slots=True)
@@ -64,9 +67,12 @@ class TerminalBackfillIngestor:
                 timeout_s=self.config.timeout_s,
                 retry_policy=retry_policy,
             ) as api:
-                leaderboard_items = await self._discover_top_vaults(api)
+                if self.config.selection == "random":
+                    leaderboard_items = await self._discover_random_vaults(api)
+                else:
+                    leaderboard_items = await self._discover_top_vaults(api)
                 self.summary.vaults_discovered = len(leaderboard_items)
-                print(f"Discovered {len(leaderboard_items)} vaults from leaderboard")
+                print(f"Discovered {len(leaderboard_items)} vaults ({self.config.selection} selection)")
 
                 for index, item in enumerate(leaderboard_items, start=1):
                     vault_address = item.get("vaultAddress")
@@ -124,8 +130,43 @@ class TerminalBackfillIngestor:
 
         return collected
 
-    async def _backfill_vault_logs(self, api: TerminalMarketsApiClient, vault_address: str) -> None:
+    async def _discover_random_vaults(self, api: TerminalMarketsApiClient) -> list[dict[str, Any]]:
+        """Page through entire leaderboard, then randomly sample top_n vaults."""
+        all_vaults: list[dict[str, Any]] = []
         cursor: str | None = None
+
+        print("Fetching all vaults from leaderboard for random sampling...")
+        while True:
+            page = await api.get_leaderboard_page(
+                limit=self.config.request_limit,
+                sort_by=self.config.leaderboard_sort_by,
+                cursor=cursor,
+            )
+            items = page.get("items") or []
+            if not items:
+                break
+            all_vaults.extend(items)
+            print(f"  ...fetched {len(all_vaults)} vaults so far")
+
+            if not page.get("hasMoreItems"):
+                break
+            cursor = items[-1].get("cursor")
+            if not cursor:
+                break
+
+        if len(all_vaults) <= self.config.top_n:
+            print(f"  Only {len(all_vaults)} vaults exist, using all of them")
+            return all_vaults
+
+        rng = random.Random(self.config.random_seed)
+        sampled = rng.sample(all_vaults, self.config.top_n)
+        print(f"  Randomly sampled {len(sampled)} from {len(all_vaults)} total vaults")
+        return sampled
+
+    async def _backfill_vault_logs(self, api: TerminalMarketsApiClient, vault_address: str) -> None:
+        cursor: str | None = await self.db.get_last_cursor(vault_address, "logs")
+        if cursor:
+            print(f"  Resuming logs from cursor {cursor[:20]}...")
         logs_seen = 0
         full_logs_seen = 0
 
@@ -179,16 +220,20 @@ class TerminalBackfillIngestor:
                             self.summary.full_logs_ingested += 1
                             full_logs_seen += 1
 
+            next_cursor = items[-1].get("cursor")
+            if next_cursor:
+                await self.db.save_cursor(vault_address, "logs", next_cursor)
+
             if not page.get("hasMoreItems"):
                 break
-
-            next_cursor = items[-1].get("cursor")
             if not next_cursor:
                 break
             cursor = next_cursor
 
     async def _backfill_vault_swaps(self, api: TerminalMarketsApiClient, vault_address: str) -> None:
-        cursor: str | None = None
+        cursor: str | None = await self.db.get_last_cursor(vault_address, "swaps")
+        if cursor:
+            print(f"  Resuming swaps from cursor {cursor[:20]}...")
         swaps_seen = 0
 
         while True:
@@ -215,10 +260,12 @@ class TerminalBackfillIngestor:
             swaps_seen += len(items)
             self.summary.swaps_ingested += len(items)
 
+            next_cursor = items[-1].get("cursor")
+            if next_cursor:
+                await self.db.save_cursor(vault_address, "swaps", next_cursor)
+
             if not page.get("hasMoreItems"):
                 break
-
-            next_cursor = items[-1].get("cursor")
             if not next_cursor:
                 break
             cursor = next_cursor

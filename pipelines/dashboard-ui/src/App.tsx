@@ -1,0 +1,114 @@
+import { useState, useCallback } from 'react'
+import { useFetch } from './hooks/useApi'
+import type { PipelineStatus } from './types/api'
+import { ConfigContext, loadConfig, saveConfig, type PipelineConfig } from './hooks/useConfig'
+import { PhaseStrip } from './components/PhaseStrip'
+import { IngestView } from './components/IngestView'
+import { PrepView } from './components/PrepView'
+import { CaptureView } from './components/CaptureView'
+import { AnalysisView } from './components/AnalysisView'
+import { CommandRunner } from './components/CommandRunner'
+import { JobList } from './components/JobList'
+import { PipelineFlow } from './components/PipelineFlow'
+import styles from './App.module.css'
+
+export type Phase = 'ingest' | 'prep' | 'capture' | 'analysis'
+
+interface RunnerState {
+  command?: string
+  jobId?: string
+}
+
+export default function App() {
+  const [activePhase, setActivePhase] = useState<Phase>('ingest')
+  const [runner, setRunner] = useState<RunnerState | null>(null)
+  const [cmdMinimized, setCmdMinimized] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+  const { data: status, refetch } = useFetch<PipelineStatus>('/api/status')
+  const [config, setConfig] = useState<PipelineConfig>(loadConfig)
+
+  const updateConfig = useCallback(<K extends keyof PipelineConfig>(
+    phase: K,
+    partial: Partial<PipelineConfig[K]>,
+  ) => {
+    setConfig(prev => {
+      const next = { ...prev, [phase]: { ...prev[phase], ...partial } }
+      saveConfig(next)
+      return next
+    })
+  }, [])
+
+  const handleRun = useCallback((cmd: string) => {
+    setRunner({ command: cmd })
+    setCmdMinimized(false)
+    setActiveJobId(null)
+  }, [])
+
+  const handleReconnect = useCallback((jobId: string) => {
+    setRunner({ jobId })
+    setCmdMinimized(false)
+    setActiveJobId(jobId)
+  }, [])
+
+  const handleRunDone = useCallback(() => {
+    setRunner(null)
+    setCmdMinimized(false)
+    setActiveJobId(null)
+    setRefreshKey(k => k + 1)
+    refetch()
+  }, [refetch])
+
+  const handleJobId = useCallback((id: string) => {
+    setActiveJobId(id)
+  }, [])
+
+  return (
+    <ConfigContext.Provider value={{ config, update: updateConfig }}>
+      <div className={styles.layout}>
+        <header className={styles.header}>
+          <div className={styles.headerLeft}>
+            <h1 className={styles.title}>
+              <span className={styles.titleAccent}>Xe</span>non
+            </h1>
+            <span className={styles.subtitle}>Pipeline Control</span>
+          </div>
+          <button className={styles.refreshBtn} onClick={refetch}>
+            Refresh
+          </button>
+        </header>
+
+        <PipelineFlow status={status} active={activePhase} onSelect={setActivePhase} />
+
+        {status && (
+          <PhaseStrip
+            status={status}
+            active={activePhase}
+            onSelect={setActivePhase}
+          />
+        )}
+
+        <main className={styles.main}>
+          {activePhase === 'ingest' && <IngestView onRun={handleRun} />}
+          {activePhase === 'prep' && <PrepView onRun={handleRun} />}
+          {activePhase === 'capture' && <CaptureView onRun={handleRun} />}
+          {activePhase === 'analysis' && <AnalysisView onRun={handleRun} refreshKey={refreshKey} />}
+        </main>
+
+        <JobList onReconnect={handleReconnect} />
+
+        {runner && (
+          <CommandRunner
+            command={runner.command}
+            jobId={runner.jobId}
+            minimized={cmdMinimized}
+            onMinimize={() => setCmdMinimized(true)}
+            onRestore={() => setCmdMinimized(false)}
+            onClose={handleRunDone}
+            onJobId={handleJobId}
+          />
+        )}
+      </div>
+    </ConfigContext.Provider>
+  )
+}
