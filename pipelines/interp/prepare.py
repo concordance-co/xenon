@@ -77,17 +77,50 @@ def _extract_first_text(messages: list[dict[str, Any]], role: str) -> str | None
     return None
 
 
+_payload_path_prefix_remap: str | None = None
+
+
+def _init_payload_remap(sample_path: str | None) -> None:
+    """Detect if payload paths need remapping (local → Modal) and cache the prefix."""
+    global _payload_path_prefix_remap
+    if not sample_path:
+        return
+    path = Path(sample_path)
+    if path.exists():
+        _payload_path_prefix_remap = ""  # no remap needed
+        return
+    # Try Modal path
+    parts = sample_path.split("full_logs/")
+    if len(parts) == 2:
+        modal_base = "/data/ingest/full_logs/"
+        modal_path = Path(modal_base + parts[1])
+        if modal_path.exists():
+            # Store the prefix to replace: everything before "full_logs/"
+            _payload_path_prefix_remap = parts[0] + "full_logs/"
+            print(f"  Payload path remap: '{_payload_path_prefix_remap}' → '/data/ingest/full_logs/'")
+            return
+    _payload_path_prefix_remap = None  # can't find files
+
+
 def _load_payload(payload_path: str | None) -> dict[str, Any] | None:
     if not payload_path:
         return None
+
+    if _payload_path_prefix_remap is None:
+        return None  # remap detection failed — files aren't available
+    elif _payload_path_prefix_remap:
+        payload_path = payload_path.replace(
+            _payload_path_prefix_remap, "/data/ingest/full_logs/", 1
+        )
+
     path = Path(payload_path)
-    if not path.exists():
-        return None
     try:
         with gzip.open(path, "rt", encoding="utf-8") as handle:
             data = json.load(handle)
         if isinstance(data, dict):
             return data
+    except (FileNotFoundError, OSError):
+        return None
     except Exception:
         return None
     return None
@@ -393,6 +426,63 @@ class PrepareConfig:
     export_dir: Path = Path("data/interp_exports")
 
 
+def _prefetch_swaps(conn: sqlite3.Connection) -> dict[int, dict]:
+    """Load all swaps into a dict keyed by log_id."""
+    if not _table_exists(conn, "swaps"):
+        return {}
+    rows = conn.execute(
+        """SELECT log_id, transaction_hash, side, token_address,
+                  token_symbol, effective_price_usd
+           FROM swaps"""
+    ).fetchall()
+    by_log: dict[int, dict] = {}
+    for r in rows:
+        lid = int(r["log_id"]) if r["log_id"] is not None else None
+        if lid is not None and lid not in by_log:
+            by_log[lid] = dict(r)
+    return by_log
+
+
+def _prefetch_outcomes(conn: sqlite3.Connection) -> dict[int, dict]:
+    """Load all trade outcomes into a dict keyed by log_id."""
+    if not _table_exists(conn, "trade_outcomes"):
+        return {}
+    rows = conn.execute(
+        """SELECT log_id, pnl_1h_pct, pnl_4h_pct, pnl_1d_pct,
+                  was_profitable_1h, entry_price_eth, entry_price_usd
+           FROM trade_outcomes"""
+    ).fetchall()
+    return {int(r["log_id"]): dict(r) for r in rows}
+
+
+def _prefetch_vault_configs(conn: sqlite3.Connection) -> dict[str, dict]:
+    """Load all vault configs into a dict keyed by vault_address."""
+    if not _table_exists(conn, "vaults"):
+        return {}
+    rows = conn.execute(
+        """SELECT vault_address, trade_size, trading_activity,
+                  holding_style, diversification, asset_risk_preference
+           FROM vaults"""
+    ).fetchall()
+    return {r["vault_address"]: dict(r) for r in rows}
+
+
+def _prefetch_strategies(conn: sqlite3.Connection) -> dict[str, list[dict]]:
+    """Load all strategies grouped by vault_address."""
+    if not _table_exists(conn, "strategies"):
+        return {}
+    rows = conn.execute(
+        """SELECT vault_address, strategy_id, content, enabled,
+                  strategy_priority, expiry, created_block, updated_block
+           FROM strategies
+           ORDER BY enabled DESC, CAST(strategy_id AS INTEGER) DESC"""
+    ).fetchall()
+    by_vault: dict[str, list[dict]] = {}
+    for r in rows:
+        by_vault.setdefault(r["vault_address"], []).append(dict(r))
+    return by_vault
+
+
 def run_prepare(config: PrepareConfig) -> dict[str, int]:
     if not config.db_path.exists():
         raise FileNotFoundError(f"Database not found: {config.db_path}")
@@ -401,6 +491,8 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA cache_size=-64000;")  # 64MB cache
+    conn.execute("PRAGMA mmap_size=268435456;")  # 256MB mmap
 
     conn.executescript(
         """
@@ -480,6 +572,7 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
             l.transaction_hash,
             l.tool,
             l.tool_args_json,
+            f.payload_gz,
             f.payload_path,
             f.parse_error,
             f.completion_text,
@@ -493,18 +586,93 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         LIMIT ?
     """
     rows = conn.execute(query, [config.limit]).fetchall()
+    print(f"  Queried {len(rows)} rows from inference_logs + full_logs")
+
+    # Check if we have inline payloads or need file-based fallback
+    has_inline = rows and rows[0]["payload_gz"] is not None
+    if not has_inline and rows:
+        _init_payload_remap(rows[0]["payload_path"])
+        print("  Using file-based payload loading (legacy DB)")
+    else:
+        print("  Using inline payload_gz (fast path)")
+
+    # Pre-fetch lookup tables into memory (eliminates per-row queries)
+    import time as _time
+    t0 = _time.monotonic()
+    swap_lookup = _prefetch_swaps(conn)
+    outcome_lookup = _prefetch_outcomes(conn)
+    vault_cfg_lookup = _prefetch_vault_configs(conn)
+    strategy_lookup = _prefetch_strategies(conn)
+    print(f"  Prefetched lookups in {_time.monotonic() - t0:.1f}s "
+          f"(swaps={len(swap_lookup)}, outcomes={len(outcome_lookup)}, "
+          f"vaults={len(vault_cfg_lookup)}, strategies={len(strategy_lookup)})")
+
+    # Get existing example_ids to skip re-processing
+    existing_ids: set[str] = set()
+    if _table_exists(conn, "interp_examples_v0"):
+        existing_ids = {
+            r[0] for r in conn.execute("SELECT example_id FROM interp_examples_v0").fetchall()
+        }
+        print(f"  {len(existing_ids)} existing examples (will skip)")
+
+    rows_to_process = []
+    skipped = 0
+    for row in rows:
+        example_id = f"{row['vault_address']}:{row['log_id']}"
+        if example_id in existing_ids:
+            skipped += 1
+        else:
+            rows_to_process.append(row)
+    print(f"  {skipped} already exist, {len(rows_to_process)} to process")
+
+    # Pre-load payloads: inline from DB (fast) or from files in parallel (legacy)
+    if rows_to_process and has_inline:
+        t1 = _time.monotonic()
+        payloads = []
+        for r in rows_to_process:
+            gz = r["payload_gz"]
+            if gz:
+                try:
+                    payloads.append(json.loads(gzip.decompress(gz)))
+                except Exception:
+                    payloads.append(None)
+            else:
+                payloads.append(_load_payload(r["payload_path"]))
+        loaded = sum(1 for p in payloads if p is not None)
+        print(f"  Decompressed {loaded}/{len(payloads)} inline payloads in {_time.monotonic() - t1:.1f}s")
+    elif rows_to_process:
+        from concurrent.futures import ThreadPoolExecutor
+        t1 = _time.monotonic()
+        payload_paths = [r["payload_path"] for r in rows_to_process]
+        with ThreadPoolExecutor(max_workers=32) as pool:
+            payloads = list(pool.map(_load_payload, payload_paths))
+        loaded = sum(1 for p in payloads if p is not None)
+        print(f"  Loaded {loaded}/{len(payloads)} payloads from files in {_time.monotonic() - t1:.1f}s")
+    else:
+        payloads = []
 
     inserted = 0
     focused = 0
-    for row in rows:
-        payload = _load_payload(row["payload_path"])
+    t0 = _time.monotonic()
+    for i, row in enumerate(rows_to_process):
+        payload = payloads[i]
         context = _extract_context_blocks(payload)
         if context["strategy"] is None:
-            context["strategy"] = _extract_strategy_fallback(
-                conn,
-                vault_address=str(row["vault_address"]),
-                strategy_id=row["strategy_id"],
-            )
+            vault_addr = str(row["vault_address"])
+            strats = strategy_lookup.get(vault_addr, [])
+            if strats:
+                strategy_id = row["strategy_id"]
+                matched = None
+                if strategy_id is not None:
+                    for s in strats:
+                        if str(s.get("strategy_id")) == str(strategy_id):
+                            matched = s
+                            break
+                context["strategy"] = {
+                    "strategy_id_from_log": strategy_id,
+                    "matched_strategy": matched,
+                    "vault_strategies": strats,
+                }
         tool_calls = context["tool_calls"] if context["tool_calls"] is not None else _json_loads(row["tool_calls_json"])
         decision = _extract_decision(
             tool_calls=tool_calls,
@@ -541,10 +709,11 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         else:
             quality = "low"
 
-        swap = _extract_swap_row(conn, int(row["log_id"]), row["transaction_hash"])
+        log_id = int(row["log_id"])
+        swap = swap_lookup.get(log_id, {})
         joined_swap = bool(swap)
-        outcome = _extract_trade_outcome(conn, int(row["log_id"]))
-        vault_cfg = _extract_vault_config(conn, str(row["vault_address"]))
+        outcome = outcome_lookup.get(log_id, {})
+        vault_cfg = vault_cfg_lookup.get(str(row["vault_address"]), {})
 
         example_id = f"{row['vault_address']}:{row['log_id']}"
         ingest_version = row["fetched_at"]
@@ -696,6 +865,15 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
             ),
         )
         inserted += 1
+        if inserted % 500 == 0:
+            conn.commit()
+            elapsed = _time.monotonic() - t0
+            rate = inserted / elapsed if elapsed > 0 else 0
+            print(f"  {inserted} inserted, {i+1}/{len(rows)} scanned ({rate:.0f} rows/s)")
+
+    conn.commit()
+    elapsed = _time.monotonic() - t0
+    print(f"  Done: {inserted} inserted, {skipped} skipped, {focused} focused in {elapsed:.1f}s")
 
     conn.executescript(
         """

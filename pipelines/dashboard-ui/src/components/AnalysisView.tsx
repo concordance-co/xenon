@@ -110,23 +110,6 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
             <span className={s.panelTitle}>Analysis Configuration</span>
           </div>
           <div className={s.panelBody}>
-            <div className={s.modeToggle}>
-              <button
-                className={c.mode === 'local' ? s.modeBtnActive : s.modeBtn}
-                onClick={() => update('analysis', { mode: 'local' })}
-              >
-                Local
-                <Tip text="Run analysis on your machine. Requires activations downloaded locally first (use 'download-activations'). Good for iteration with small datasets." />
-              </button>
-              <button
-                className={c.mode === 'modal' ? s.modeBtnActive : s.modeBtn}
-                onClick={() => update('analysis', { mode: 'modal' })}
-              >
-                Modal
-                <Tip text="Run on Modal cloud. Activations stay on the volume (~24GB) — no download needed. Uses cheap CPU instances since probes don't need GPUs." />
-              </button>
-            </div>
-
             <div className={s.configForm}>
               <div className={s.field}>
                 <label className={s.fieldLabel}>
@@ -245,11 +228,9 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
               >
                 Run Analysis
               </button>
-              {c.mode === 'modal' && (
-                <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh download-results')}>
-                  Download Results
-                </button>
-              )}
+              <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh download-results')}>
+                Download Results
+              </button>
             </div>
           </div>
         </div>

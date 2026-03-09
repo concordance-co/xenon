@@ -13,19 +13,19 @@ export function IngestView({ onRun }: Props) {
   const { config, update } = useConfig()
   const c = config.ingest
 
-  const cmd = buildIngestCmd(c, c.mode)
+  const cmd = buildIngestCmd(c)
 
   if (loading || !data) return <div className={s.empty}>Loading...</div>
 
   return (
     <div>
       <p className={s.phaseDesc}>
-        Pulls trading agent data from the Terminal Markets API. Discovers
-        vaults from the leaderboard — either the top performers by PnL or
-        a random sample for diversity — then fetches their strategies,
-        inference logs (the LLM's decision-making records), and on-chain
-        swap history. Run locally or on Modal (cloud). For Modal, upload
-        your local DB first to continue from existing data.
+        Pulls trading agent data from the Terminal Markets API on Modal cloud.
+        Discovers vaults from the leaderboard — either the top performers by
+        PnL or a random sample for diversity — then fetches their strategies,
+        inference logs (the LLM's decision-making records), and on-chain swap
+        history. Upload your local DB first to continue from existing data, or
+        start fresh on Modal.
       </p>
 
       <div className={s.statsRow}>
@@ -68,23 +68,6 @@ export function IngestView({ onRun }: Props) {
             <span className={s.panelTitle}>Configuration</span>
           </div>
           <div className={s.panelBody}>
-            <div className={s.modeToggle}>
-              <button
-                className={c.mode === 'local' ? s.modeBtnActive : s.modeBtn}
-                onClick={() => update('ingest', { mode: 'local' })}
-              >
-                Local
-                <Tip text="Run ingest on your machine. Data saved to the local SQLite DB." />
-              </button>
-              <button
-                className={c.mode === 'modal' ? s.modeBtnActive : s.modeBtn}
-                onClick={() => update('ingest', { mode: 'modal' })}
-              >
-                Modal
-                <Tip text="Run ingest on Modal cloud. DB lives on the xenon-data volume. Upload your local DB first to continue from existing data, or start fresh on Modal." />
-              </button>
-            </div>
-
             <div className={s.configForm}>
               <div className={s.field}>
                 <label className={s.fieldLabel}>
@@ -136,20 +119,6 @@ export function IngestView({ onRun }: Props) {
                   onChange={e => update('ingest', { concurrency: Number(e.target.value) || 1 })}
                 />
               </div>
-              {c.mode === 'local' && (
-                <div className={s.field}>
-                  <label className={s.fieldLabel}>
-                    DB Path
-                    <Tip text="Path to the SQLite database file. All ingested data (vaults, strategies, logs, swaps) is stored here. Shared with the prep phase." />
-                  </label>
-                  <input
-                    type="text"
-                    className={s.fieldInput}
-                    value={c.dbPath}
-                    onChange={e => update('ingest', { dbPath: e.target.value })}
-                  />
-                </div>
-              )}
               <div className={s.field}>
                 <label className={s.fieldLabel}>
                   Exclude Reasoning
@@ -174,16 +143,12 @@ export function IngestView({ onRun }: Props) {
               >
                 Run Ingest
               </button>
-              {c.mode === 'modal' && (
-                <>
-                  <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh upload-db')}>
-                    Upload DB
-                  </button>
-                  <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh download-db')}>
-                    Download DB
-                  </button>
-                </>
-              )}
+              <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh upload-db')}>
+                Upload DB
+              </button>
+              <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh download-db')}>
+                Download DB
+              </button>
             </div>
           </div>
         </div>

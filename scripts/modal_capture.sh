@@ -84,16 +84,29 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     ;;
   modal-ingest)
     echo "Running ingest on Modal..."
-    shift 2>/dev/null || true
     uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode ingest "$@"
     ;;
   modal-prep)
     echo "Running data prep on Modal..."
-    shift 2>/dev/null || true
     uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode prep "$@"
     ;;
+  backfill-payloads)
+    echo "Migrating file payloads into DB (one-time)..."
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode backfill-payloads
+    ;;
+  modal-snapshot)
+    echo "Writing stats snapshot on Modal..."
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode snapshot "$@"
+    echo "Downloading snapshot..."
+    mkdir -p data
+    modal volume get xenon-data dashboard_stats.json ./data/dashboard_stats.json --force
+    ;;
+  modal-stats)
+    mkdir -p data
+    modal volume get xenon-data dashboard_stats.json ./data/dashboard_stats.json --force 2>/dev/null
+    ;;
   *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|upload-db|download-db|modal-ingest|modal-prep|download-activations|download-results} [extra flags]"
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|upload-db|download-db|modal-ingest|modal-prep|modal-stats|download-activations|download-results} [extra flags]"
     echo ""
     echo "  download             Cache model weights to volume (one-time)"
     echo "  smoke                Single example, single layer (sanity check)"
@@ -107,6 +120,9 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  download-db          Download DB from Modal volume to local"
     echo "  modal-ingest         Run ingest on Modal (fetches from Terminal API)"
     echo "  modal-prep           Run data prep on Modal"
+    echo "  backfill-payloads    Migrate file payloads into DB inline (one-time)"
+    echo "  modal-snapshot       Write & download stats snapshot from Modal DB"
+    echo "  modal-stats          Download cached stats snapshot (no Modal run)"
     echo "  download-activations Download activations from Modal volume"
     echo "  download-results     Download analysis results from Modal volume"
     echo ""

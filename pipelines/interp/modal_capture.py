@@ -44,7 +44,7 @@ def download_model(model_id: str = "Qwen/Qwen3-30B-A3B"):
     gpu="A100-80GB",
     volumes={"/data": volume, "/models": model_volume},
     image=image,
-    timeout=3600,
+    timeout=7200,
 )
 class CaptureWorker:
     model_id: str = modal.parameter(default="Qwen/Qwen3-30B-A3B")
@@ -236,24 +236,136 @@ def inspect_volume(log_id: str = ""):
         print("  router_logits: not found")
 
 
+@app.function(volumes={"/data": volume}, image=image, timeout=300)
+def get_completed_log_ids(
+    capture_router: bool = True,
+    capture_residual: bool = True,
+    pool_on_capture: str | None = None,
+) -> set[int]:
+    """Return log_ids that already have matching captures on the volume.
+
+    Checks compact files first (post-compaction), then falls back to
+    per-log safetensors files + metadata.parquet.
+    """
+    from pathlib import Path
+
+    base = Path("/data/activations")
+    compact_dir = base / "compact"
+    pooling = pool_on_capture or "last_token"
+
+    # --- Check compact files first ---
+    # Compact files are named: {source}_{pooling}_layer{N}.safetensors
+    # and contain a "log_ids" array with all captured log_ids.
+    compact_ids = _check_compact(compact_dir, pooling, capture_router, capture_residual)
+    if compact_ids is not None:
+        return compact_ids
+
+    # --- Fall back to per-log files + metadata ---
+    import pyarrow.parquet as pq_
+
+    meta_path = base / "metadata.parquet"
+    if not meta_path.exists():
+        return set()
+
+    table = pq_.read_table(meta_path)
+    rows = table.to_pylist()
+    completed = set()
+    expected_pooling = pool_on_capture or "none"
+
+    residual_dir = base / "residual_stream"
+    router_dir = base / "router_logits"
+
+    for r in rows:
+        log_id = r["log_id"]
+        if r.get("pooling", "none") != expected_pooling:
+            continue
+        if capture_router:
+            if not r.get("has_router", False):
+                continue
+            if not (router_dir / f"{log_id}.safetensors").exists():
+                continue
+        if capture_residual:
+            if not (residual_dir / f"{log_id}.safetensors").exists():
+                continue
+        completed.add(log_id)
+
+    return completed
+
+
+def _check_compact(
+    compact_dir, pooling: str, capture_router: bool, capture_residual: bool
+) -> set[int] | None:
+    """Read log_ids from compact files. Returns None if no compact files match."""
+    from pathlib import Path
+
+    if not compact_dir.exists():
+        return None
+
+    # Find any compact file matching this source+pooling to read log_ids
+    sources_needed = []
+    if capture_router:
+        sources_needed.append("router")
+    if capture_residual:
+        sources_needed.append("residual")
+    if not sources_needed:
+        sources_needed.append("router")
+
+    result_ids: set[int] | None = None
+
+    for source in sources_needed:
+        # Find any layer file for this source+pooling
+        pattern = f"{source}_{pooling}_layer*.safetensors"
+        matches = sorted(compact_dir.glob(pattern))
+        if not matches:
+            return None  # No compact files for this source — can't use compact path
+
+        # Read log_ids from the first matching file
+        from safetensors import safe_open
+
+        with safe_open(str(matches[0]), framework="numpy") as f:
+            if "log_ids" not in f.keys():
+                return None
+            ids = set(int(x) for x in f.get_tensor("log_ids"))
+
+        if result_ids is None:
+            result_ids = ids
+        else:
+            # If we need both router and residual, only count log_ids present in both
+            result_ids = result_ids & ids
+
+    return result_ids
+
+
 @app.function(
     volumes={"/data": volume},
     image=image,
     timeout=300,
 )
 def write_metadata_to_volume(metadata_rows: list[dict]) -> int:
-    """Write metadata.parquet to the volume so analysis can find it."""
+    """Merge new metadata rows into metadata.parquet on the volume."""
     import pyarrow as pa
     import pyarrow.parquet as pq_
     from pathlib import Path
 
     meta_path = Path("/data/activations/metadata.parquet")
     meta_path.parent.mkdir(parents=True, exist_ok=True)
-    table = pa.Table.from_pylist(metadata_rows)
+
+    # Merge with existing metadata
+    existing_rows: list[dict] = []
+    if meta_path.exists():
+        existing_rows = pq_.read_table(meta_path).to_pylist()
+
+    # Build lookup by log_id — new rows overwrite old ones
+    by_id = {r["log_id"]: r for r in existing_rows}
+    for r in metadata_rows:
+        by_id[r["log_id"]] = r
+
+    merged = sorted(by_id.values(), key=lambda r: r["log_id"])
+    table = pa.Table.from_pylist(merged)
     pq_.write_table(table, meta_path, compression="snappy")
     volume.commit()
-    print(f"Wrote metadata to volume: {meta_path} ({len(metadata_rows)} rows)")
-    return len(metadata_rows)
+    print(f"Wrote metadata to volume: {meta_path} ({len(merged)} rows, {len(metadata_rows)} new)")
+    return len(merged)
 
 
 @app.local_entrypoint()
@@ -267,7 +379,6 @@ def main(
     model_id: str = "Qwen/Qwen3-30B-A3B",
     pool: str = "",
 ):
-    import json
     from pathlib import Path
 
     import pyarrow.parquet as pq
@@ -288,6 +399,27 @@ def main(
     if layers:
         parsed_layers = [int(x.strip()) for x in layers.split(",")]
 
+    pool_val = pool if pool else None
+
+    # Check which log_ids are already captured with matching config
+    print("Checking for existing captures on volume...")
+    completed = get_completed_log_ids.remote(
+        capture_router=capture_router,
+        capture_residual=capture_residual,
+        pool_on_capture=pool_val,
+    )
+    before = len(rows)
+    rows = [r for r in rows if r.get("log_id") not in completed]
+    skipped = before - len(rows)
+    if skipped > 0:
+        print(f"  Skipping {skipped} already-captured examples ({len(rows)} remaining)")
+    else:
+        print(f"  No existing captures found, processing all {len(rows)} examples")
+
+    if not rows:
+        print("\nAll examples already captured. Nothing to do.")
+        return
+
     # Partition into batches
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
     print(f"  {len(batches)} batches of up to {batch_size}")
@@ -301,7 +433,7 @@ def main(
             layers=parsed_layers,
             capture_router=capture_router,
             capture_residual=capture_residual,
-            pool_on_capture=pool if pool else None,
+            pool_on_capture=pool_val,
         ),
     ):
         all_metadata.extend(batch_meta)
@@ -316,7 +448,9 @@ def main(
         pq.write_table(meta_table, meta_path, compression="snappy")
         print(f"\nWrote metadata locally: {meta_path} ({len(all_metadata)} rows)")
 
-        # Write metadata to volume so analysis can find it
+        # Merge metadata into volume (appends to existing)
         write_metadata_to_volume.remote(all_metadata)
 
-    print(f"\nDone: {len(all_metadata)} examples captured")
+    print(f"\nDone: {len(all_metadata)} examples captured, {skipped} skipped (already done)")
+    if all_metadata and skipped > 0:
+        print("Note: New captures added alongside compacted data. Re-run compact to consolidate.")

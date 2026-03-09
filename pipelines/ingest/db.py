@@ -28,6 +28,7 @@ class FullLogRecord:
     vault_address: str | None
     payload_meta: RawPayloadMetadata
     parsed: ParsedFullLog
+    payload_gz: bytes | None = None  # gzip-compressed raw JSON payload
 
 
 class IngestDatabase:
@@ -159,6 +160,7 @@ class IngestDatabase:
                 payload_path TEXT NOT NULL,
                 payload_sha256 TEXT NOT NULL,
                 payload_size_bytes INTEGER NOT NULL,
+                payload_gz BLOB,
                 prompt_text TEXT,
                 completion_text TEXT,
                 reasoning_content TEXT,
@@ -174,6 +176,14 @@ class IngestDatabase:
             );
             """
         )
+        # Migrate: add payload_gz column to existing DBs
+        try:
+            await self.conn.execute(
+                "ALTER TABLE full_logs ADD COLUMN payload_gz BLOB"
+            )
+            await self.conn.commit()
+        except Exception:
+            pass  # column already exists
         await self.conn.commit()
 
     async def upsert_vault(self, leaderboard_item: dict[str, Any], vault_config: dict[str, Any]) -> None:
@@ -438,15 +448,17 @@ class IngestDatabase:
             """
             INSERT INTO full_logs (
                 log_id, vault_address, payload_path, payload_sha256, payload_size_bytes,
+                payload_gz,
                 prompt_text, completion_text, reasoning_content, tool_calls_json,
                 llm_model, prompt_tokens, completion_tokens, reasoning_tokens, total_tokens,
                 parse_error, fetched_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(log_id) DO UPDATE SET
                 vault_address=excluded.vault_address,
                 payload_path=excluded.payload_path,
                 payload_sha256=excluded.payload_sha256,
                 payload_size_bytes=excluded.payload_size_bytes,
+                payload_gz=excluded.payload_gz,
                 prompt_text=excluded.prompt_text,
                 completion_text=excluded.completion_text,
                 reasoning_content=excluded.reasoning_content,
@@ -465,6 +477,7 @@ class IngestDatabase:
                 record.payload_meta.payload_path,
                 record.payload_meta.payload_sha256,
                 record.payload_meta.payload_size_bytes,
+                record.payload_gz,
                 record.parsed.prompt_text,
                 record.parsed.completion_text,
                 record.parsed.reasoning_content,

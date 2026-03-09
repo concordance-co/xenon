@@ -280,11 +280,19 @@ class TerminalBackfillIngestor:
         payload = await api.get_full_log(log_id)
         payload_meta = self.payload_store.write(log_id, payload)
         parsed = parse_full_log(payload, include_reasoning=self.config.include_reasoning)
+
+        # Compress payload JSON for inline DB storage
+        import gzip as _gzip
+        payload_gz = _gzip.compress(
+            json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
+        )
+
         record = FullLogRecord(
             log_id=log_id,
             vault_address=log_item.get("vault_address"),
             payload_meta=payload_meta,
             parsed=parsed,
+            payload_gz=payload_gz,
         )
         await self.db.upsert_full_log(record)
         return True

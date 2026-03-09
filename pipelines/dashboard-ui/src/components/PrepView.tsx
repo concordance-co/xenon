@@ -13,7 +13,7 @@ export function PrepView({ onRun }: Props) {
   const { config, update } = useConfig()
   const c = config.prep
 
-  const cmd = buildPrepCmd(c, c.mode)
+  const cmd = buildPrepCmd(c)
 
   if (loading || !data) return <div className={s.empty}>Loading...</div>
 
@@ -24,11 +24,12 @@ export function PrepView({ onRun }: Props) {
     <div>
       <p className={s.phaseDesc}>
         Transforms raw ingested data into labeled examples for interpretability
-        research. Parses each inference log to extract the LLM's decision
-        (trade vs. observe), trade side (buy/sell), asset, risk tolerance, and
-        profitability outcomes. Assigns quality tiers based on completeness.
-        Samples balanced subsets of trades, observations, and paired examples
-        from the same vault. Exports to parquet for downstream capture.
+        research on Modal cloud. Parses each inference log to extract the LLM's
+        decision (trade vs. observe), trade side (buy/sell), asset, risk
+        tolerance, and profitability outcomes. Assigns quality tiers based on
+        completeness. Samples balanced subsets of trades, observations, and
+        paired examples from the same vault. Exports to parquet on the Modal
+        volume for downstream capture.
       </p>
 
       <div className={s.statsRow}>
@@ -101,37 +102,7 @@ export function PrepView({ onRun }: Props) {
             <span className={s.panelTitle}>Configuration</span>
           </div>
           <div className={s.panelBody}>
-            <div className={s.modeToggle}>
-              <button
-                className={c.mode === 'local' ? s.modeBtnActive : s.modeBtn}
-                onClick={() => update('prep', { mode: 'local' })}
-              >
-                Local
-                <Tip text="Run prep on your machine using the local SQLite DB." />
-              </button>
-              <button
-                className={c.mode === 'modal' ? s.modeBtnActive : s.modeBtn}
-                onClick={() => update('prep', { mode: 'modal' })}
-              >
-                Modal
-                <Tip text="Run prep on Modal cloud. Uses the DB on the xenon-data volume. Exports (parquet) are written directly to the volume for capture to use." />
-              </button>
-            </div>
             <div className={s.configForm}>
-              {c.mode === 'local' && (
-                <div className={s.field}>
-                  <label className={s.fieldLabel}>
-                    DB Path
-                    <Tip text="Path to the SQLite database created by ingest. Must match the ingest DB path to find the raw data." />
-                  </label>
-                  <input
-                    type="text"
-                    className={s.fieldInput}
-                    value={c.dbPath}
-                    onChange={e => update('prep', { dbPath: e.target.value })}
-                  />
-                </div>
-              )}
               <div className={s.field}>
                 <label className={s.fieldLabel}>
                   Trade Sample

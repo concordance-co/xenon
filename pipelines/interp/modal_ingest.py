@@ -28,7 +28,7 @@ image = (
 @app.function(
     volumes={"/data": volume},
     image=image,
-    timeout=3600,
+    timeout=14400,
     cpu=2,
 )
 def run_ingest(
@@ -72,6 +72,9 @@ def run_ingest(
     )
 
     summary = asyncio.run(run_backfill(config))
+
+    # Write stats snapshot for the dashboard
+    _write_stats_snapshot()
     volume.commit()
 
     result = {
@@ -90,7 +93,7 @@ def run_ingest(
 @app.function(
     volumes={"/data": volume},
     image=image,
-    timeout=1800,
+    timeout=7200,
     cpu=2,
 )
 def run_prep(
@@ -128,10 +131,224 @@ def run_prep(
     )
 
     stats = run_prepare(config)
+
+    # Write stats snapshot for the dashboard
+    _write_stats_snapshot()
     volume.commit()
 
     print(f"\nPrep complete: {stats}")
     return stats
+
+
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=7200,
+    cpu=2,
+)
+def backfill_payload_gz() -> dict:
+    """Migrate file-based payloads into the payload_gz column in the DB."""
+    import gzip
+    import sqlite3
+    from pathlib import Path
+
+    db_path = Path("/data/ingest/terminal_ingest.db")
+    if not db_path.exists():
+        return {"error": "DB not found"}
+
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+
+    # Add column if missing
+    try:
+        conn.execute("ALTER TABLE full_logs ADD COLUMN payload_gz BLOB")
+        conn.commit()
+    except Exception:
+        pass
+
+    # Find rows that have a payload_path but no payload_gz
+    rows = conn.execute(
+        "SELECT log_id, payload_path FROM full_logs WHERE payload_gz IS NULL AND payload_path != ''"
+    ).fetchall()
+
+    print(f"Backfilling {len(rows)} payloads into DB...")
+    migrated = 0
+    missing = 0
+
+    for i, row in enumerate(rows):
+        payload_path = row["payload_path"]
+        path = Path(payload_path)
+
+        # Remap local paths to Modal volume paths
+        if not path.exists():
+            parts = payload_path.split("full_logs/")
+            if len(parts) == 2:
+                path = Path("/data/ingest/full_logs/") / parts[1]
+
+        if path.exists():
+            # File is already gzipped, just read the raw bytes
+            raw_gz = path.read_bytes()
+            conn.execute(
+                "UPDATE full_logs SET payload_gz = ? WHERE log_id = ?",
+                (raw_gz, row["log_id"]),
+            )
+            migrated += 1
+        else:
+            missing += 1
+
+        if (i + 1) % 1000 == 0:
+            conn.commit()
+            print(f"  {i + 1}/{len(rows)} processed ({migrated} migrated, {missing} missing)")
+
+    conn.commit()
+    conn.close()
+    volume.commit()
+
+    result = {"total": len(rows), "migrated": migrated, "missing": missing}
+    print(f"Backfill complete: {result}")
+    return result
+
+
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=600,
+    cpu=2,
+)
+def write_stats_snapshot() -> None:
+    """Remote-callable wrapper for _write_stats_snapshot."""
+    _write_stats_snapshot()
+    volume.commit()
+    print("Stats snapshot written and committed.")
+
+
+def _write_stats_snapshot() -> None:
+    """Write a small JSON stats file to the volume after ingest/prep.
+
+    The dashboard downloads this ~1KB file instead of the whole DB.
+    """
+    import json as _json
+    import sqlite3
+    from pathlib import Path
+
+    db_path = Path("/data/ingest/terminal_ingest.db")
+    exports_dir = Path("/data/interp_exports")
+    out_path = Path("/data/dashboard_stats.json")
+
+    result: dict = {
+        "ingest": {
+            "vault_count": 0, "strategy_count": 0, "log_count": 0,
+            "full_log_count": 0, "full_log_coverage_pct": 0,
+            "parse_error_count": 0, "tables": [],
+        },
+        "prep": {
+            "total_examples": 0, "high_quality": 0, "medium_quality": 0, "low_quality": 0,
+            "trade_count": 0, "observation_count": 0,
+            "export_files": [], "label_distribution": [],
+        },
+    }
+
+    if not db_path.exists():
+        out_path.write_text(_json.dumps(result))
+        return
+
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+
+    def table_exists(name: str) -> bool:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", [name]
+        ).fetchone()
+        return row is not None
+
+    def table_count(name: str) -> int:
+        if not table_exists(name):
+            return 0
+        row = conn.execute(f"SELECT COUNT(*) AS n FROM [{name}]").fetchone()
+        return int(row["n"]) if row else 0
+
+    # --- Ingest stats ---
+    table_names = ["vaults", "strategies", "inference_logs", "full_logs", "swaps",
+                    "trade_outcomes", "interp_examples_v0"]
+    tables = []
+    for tn in table_names:
+        if table_exists(tn):
+            tables.append({"name": tn, "count": table_count(tn)})
+
+    vc = table_count("vaults")
+    sc = table_count("strategies")
+    lc = table_count("inference_logs")
+    flc = table_count("full_logs")
+    cov = round((flc / lc) * 100, 1) if lc else 0
+
+    pe = 0
+    if table_exists("full_logs"):
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM full_logs WHERE parse_error IS NOT NULL AND parse_error != ''"
+        ).fetchone()
+        pe = int(row["n"]) if row else 0
+
+    result["ingest"] = {
+        "vault_count": vc, "strategy_count": sc, "log_count": lc,
+        "full_log_count": flc, "full_log_coverage_pct": cov,
+        "parse_error_count": pe, "tables": tables,
+    }
+
+    # --- Prep stats ---
+    if table_exists("interp_examples_v0"):
+        row = conn.execute("SELECT COUNT(*) AS n FROM interp_examples_v0").fetchone()
+        result["prep"]["total_examples"] = int(row["n"]) if row else 0
+
+        for quality in ("high", "medium", "low"):
+            qrow = conn.execute(
+                "SELECT COUNT(*) AS n FROM interp_examples_v0 WHERE label_quality = ?",
+                [quality],
+            ).fetchone()
+            result["prep"][f"{quality}_quality"] = int(qrow["n"]) if qrow else 0
+
+        dt_rows = conn.execute(
+            """SELECT decision_type, COUNT(*) AS count,
+               GROUP_CONCAT(DISTINCT trade_side) AS trade_side,
+               AVG(vault_risk_preference) AS avg_risk
+               FROM interp_examples_v0 GROUP BY decision_type"""
+        ).fetchall()
+        result["prep"]["label_distribution"] = [
+            {
+                "decision_type": r["decision_type"],
+                "count": r["count"],
+                "trade_side": r["trade_side"],
+                "avg_risk": float(r["avg_risk"]) if r["avg_risk"] is not None else None,
+            }
+            for r in dt_rows
+        ]
+        result["prep"]["trade_count"] = sum(
+            r["count"] for r in result["prep"]["label_distribution"]
+            if r["decision_type"] == "trade"
+        )
+        result["prep"]["observation_count"] = sum(
+            r["count"] for r in result["prep"]["label_distribution"]
+            if r["decision_type"] == "record_observation"
+        )
+
+    conn.close()
+
+    # Export files on volume
+    if exports_dir.exists():
+        for f in sorted(exports_dir.iterdir()):
+            if f.suffix in (".parquet", ".jsonl"):
+                size = f.stat().st_size
+                if size > 1024 * 1024:
+                    size_str = f"{size / 1024 / 1024:.1f} MB"
+                elif size > 1024:
+                    size_str = f"{size / 1024:.1f} KB"
+                else:
+                    size_str = f"{size} B"
+                result["prep"]["export_files"].append({"name": f.name, "size": size_str})
+
+    out_path.write_text(_json.dumps(result))
+    print(f"Wrote dashboard stats snapshot to {out_path}")
 
 
 @app.local_entrypoint()
@@ -174,5 +391,12 @@ def main(
         )
         print(f"\nPrep result: {result}")
 
+    elif mode == "snapshot":
+        write_stats_snapshot.remote()
+
+    elif mode == "backfill-payloads":
+        result = backfill_payload_gz.remote()
+        print(f"\nBackfill result: {result}")
+
     else:
-        print(f"Unknown mode: {mode}. Use 'ingest' or 'prep'.")
+        print(f"Unknown mode: {mode}. Use 'ingest', 'prep', 'snapshot', or 'backfill-payloads'.")

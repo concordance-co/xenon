@@ -13,16 +13,16 @@ class TerminalApiError(RuntimeError):
 
 @dataclass(slots=True)
 class RetryPolicy:
-    max_attempts: int = 6
-    initial_backoff_s: float = 1.0
-    max_backoff_s: float = 60.0
+    max_attempts: int = 10
+    initial_backoff_s: float = 2.0
+    max_backoff_s: float = 120.0
 
 
 class TerminalMarketsApiClient:
     def __init__(
         self,
         base_url: str,
-        concurrency: int = 10,
+        concurrency: int = 3,
         timeout_s: int = 30,
         retry_policy: RetryPolicy | None = None,
     ) -> None:

@@ -801,6 +801,67 @@ refreshAll();
 # Backend store
 # ---------------------------------------------------------------------------
 
+class _ModalStatsCache:
+    """Cache for Modal DB stats. Downloads a small JSON from the volume."""
+
+    def __init__(self, ttl_s: float = 300) -> None:
+        self.ttl_s = ttl_s
+        self._data: dict[str, Any] | None = None
+        self._fetched_at: float = 0
+        self._lock = threading.Lock()
+        self._fetching = False
+
+    def get(self) -> dict[str, Any] | None:
+        if self._data and (time.monotonic() - self._fetched_at) < self.ttl_s:
+            return self._data
+        # Try local file first (already downloaded)
+        self._try_load_local()
+        # Trigger background download from volume
+        self._start_fetch()
+        return self._data
+
+    def invalidate(self) -> None:
+        """Force re-fetch on next get()."""
+        self._fetched_at = 0
+
+    def _try_load_local(self) -> None:
+        try:
+            stats_path = Path("data/dashboard_stats.json")
+            if stats_path.exists():
+                self._data = json.loads(stats_path.read_text())
+                if self._fetched_at == 0:
+                    self._fetched_at = time.monotonic()
+        except Exception:
+            pass
+
+    def _start_fetch(self) -> None:
+        with self._lock:
+            if self._fetching:
+                return
+            self._fetching = True
+        t = threading.Thread(target=self._fetch, daemon=True)
+        t.start()
+
+    def _fetch(self) -> None:
+        try:
+            subprocess.run(
+                ["./scripts/modal_capture.sh", "modal-stats"],
+                capture_output=True, text=True, timeout=30,
+            )
+            stats_path = Path("data/dashboard_stats.json")
+            if stats_path.exists():
+                self._data = json.loads(stats_path.read_text())
+                self._fetched_at = time.monotonic()
+        except Exception as exc:
+            print(f"[modal-stats] fetch failed: {exc}")
+        finally:
+            with self._lock:
+                self._fetching = False
+
+
+_modal_stats = _ModalStatsCache()
+
+
 class DashboardStore:
     def __init__(self, db_path: Path, data_dir: Path) -> None:
         self.db_path = db_path
@@ -832,17 +893,30 @@ class DashboardStore:
 
     def get_status(self) -> dict[str, Any]:
         conn = self._connect()
+        modal = _modal_stats.get()
 
         # Ingest
         ingest = {"log_count": 0, "status": "empty"}
-        if conn:
+        if modal and modal.get("ingest"):
+            lc = modal["ingest"].get("log_count", 0)
+            ingest["log_count"] = lc
+            ingest["status"] = "ready" if lc > 0 else "empty"
+        elif conn:
             lc = self._table_count(conn, "inference_logs")
             ingest["log_count"] = lc
             ingest["status"] = "ready" if lc > 0 else "empty"
 
         # Prep
         prep = {"total_examples": 0, "status": "empty"}
-        if conn and self._table_exists(conn, "interp_examples_v0"):
+        if modal and modal.get("prep"):
+            tc = modal["prep"].get("total_examples", 0)
+            prep["total_examples"] = tc
+            has_exports = len(modal["prep"].get("export_files", [])) > 0
+            if tc > 0 and has_exports:
+                prep["status"] = "ready"
+            elif tc > 0:
+                prep["status"] = "partial"
+        elif conn and self._table_exists(conn, "interp_examples_v0"):
             tc = self._table_count(conn, "interp_examples_v0")
             prep["total_examples"] = tc
             hq = self.exports_dir / "interp_examples_v0_high_quality.parquet"
@@ -892,13 +966,21 @@ class DashboardStore:
     # --- Ingest detail ---
 
     def get_ingest(self) -> dict[str, Any]:
+        empty = {
+            "vault_count": 0, "strategy_count": 0, "log_count": 0,
+            "full_log_count": 0, "full_log_coverage_pct": 0,
+            "parse_error_count": 0, "tables": [],
+        }
+
+        # Try Modal stats first
+        modal = _modal_stats.get()
+        if modal and modal.get("ingest"):
+            return modal["ingest"]
+
+        # Fall back to local DB
         conn = self._connect()
         if not conn:
-            return {
-                "vault_count": 0, "strategy_count": 0, "log_count": 0,
-                "full_log_count": 0, "full_log_coverage_pct": 0,
-                "parse_error_count": 0, "tables": [],
-            }
+            return empty
 
         table_names = ["vaults", "strategies", "inference_logs", "full_logs", "swaps",
                         "trade_outcomes", "interp_examples_v0"]
@@ -936,6 +1018,12 @@ class DashboardStore:
             "parquet_exported": False, "export_files": [], "label_distribution": [],
         }
 
+        # Try Modal stats first
+        modal = _modal_stats.get()
+        if modal and modal.get("prep"):
+            return modal["prep"]
+
+        # Fall back to local DB
         conn = self._connect()
         if conn and self._table_exists(conn, "interp_examples_v0"):
             row = conn.execute(
@@ -980,7 +1068,7 @@ class DashboardStore:
         if conn:
             conn.close()
 
-        # Export files
+        # Export files (local)
         if self.exports_dir.exists():
             for f in sorted(self.exports_dir.iterdir()):
                 if f.suffix in (".parquet", ".jsonl"):
@@ -1301,6 +1389,8 @@ def _stream_job(handler: BaseHTTPRequestHandler, job: _Job, from_line: int) -> N
                 cursor += 1
 
             if done:
+                # Invalidate modal stats cache so next request fetches fresh data
+                _modal_stats.invalidate()
                 break
 
             time.sleep(0.1)
