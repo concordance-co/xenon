@@ -70,6 +70,9 @@ class VLLMCaptureConfig:
     router_top_k: int = 8  # top-k indices to save alongside full logits
     router_dtype: str = "float16"  # storage dtype for router logits
 
+    # Metadata
+    metadata_flush_interval: int = 10  # flush metadata every N examples
+
 
 # ---------------------------------------------------------------------------
 # Helpers reused from capture.py
@@ -435,7 +438,7 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
     processed = 0
     skipped = 0
     errors = 0
-    flush_interval = 10  # flush metadata every N examples
+    flush_interval = config.metadata_flush_interval
 
     for idx, row in enumerate(examples):
         log_id = row.get("log_id")
@@ -510,6 +513,7 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
                     router_logits,
                     router_indices,
                     router_dir / f"{log_id}.safetensors",
+                    router_dtype=config.router_dtype,
                 )
 
             # Build metadata row (same schema as HF capture)
@@ -669,6 +673,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default=8,
         help="Number of top-k router indices to save (default: 8)",
     )
+    parser.add_argument(
+        "--router-dtype",
+        choices=["float16", "float32"],
+        default="float16",
+        help="Storage dtype for router logits (default: float16)",
+    )
+    parser.add_argument(
+        "--metadata-flush-interval",
+        type=int,
+        default=10,
+        help="Flush metadata every N examples (default: 10)",
+    )
     return parser
 
 
@@ -695,6 +711,8 @@ def main(argv: list[str] | None = None) -> int:
         max_model_len=args.max_model_len,
         max_tokens_buffer=args.max_tokens_buffer,
         router_top_k=args.router_top_k,
+        router_dtype=args.router_dtype,
+        metadata_flush_interval=args.metadata_flush_interval,
     )
     run_vllm_capture(cfg)
     return 0

@@ -163,6 +163,7 @@ class VLLMCaptureWorker:
         capture_residual: bool = True,
         pool_on_capture: str | None = None,
         router_top_k: int = 8,
+        router_dtype: str = "float16",
     ) -> list[dict]:
         """Capture activations for a batch of examples.
 
@@ -200,6 +201,7 @@ class VLLMCaptureWorker:
             capture_residual=capture_residual,
             pool_on_capture=pool_on_capture,
             router_top_k=router_top_k,
+            router_dtype=router_dtype,
         )
 
         metadata_rows: list[dict] = []
@@ -249,6 +251,7 @@ class VLLMCaptureWorker:
                         router_logits,
                         router_indices,
                         router_dir / f"{log_id}.safetensors",
+                        router_dtype=router_dtype,
                     )
 
                 prompt_hash = hashlib.sha256(
@@ -362,7 +365,7 @@ def inspect_volume(log_id: str = ""):
 
 @app.function(volumes={"/data": volume}, image=image, timeout=300)
 def write_metadata_to_volume(metadata_rows: list[dict]) -> int:
-    """Write metadata.parquet to the volume so analysis can find it."""
+    """Merge new metadata rows into metadata.parquet on the volume."""
     from pathlib import Path
 
     import pyarrow as pa
@@ -370,11 +373,64 @@ def write_metadata_to_volume(metadata_rows: list[dict]) -> int:
 
     meta_path = Path("/data/activations/metadata.parquet")
     meta_path.parent.mkdir(parents=True, exist_ok=True)
-    table = pa.Table.from_pylist(metadata_rows)
+
+    # Merge with existing metadata
+    existing_rows: list[dict] = []
+    if meta_path.exists():
+        existing_rows = pq_.read_table(meta_path).to_pylist()
+
+    # Build lookup by log_id — new rows overwrite old ones
+    by_id = {r["log_id"]: r for r in existing_rows}
+    for r in metadata_rows:
+        by_id[r["log_id"]] = r
+
+    merged = sorted(by_id.values(), key=lambda r: r["log_id"])
+    table = pa.Table.from_pylist(merged)
     pq_.write_table(table, meta_path, compression="snappy")
     volume.commit()
-    print(f"Wrote metadata to volume: {meta_path} ({len(metadata_rows)} rows)")
-    return len(metadata_rows)
+    print(f"Wrote metadata to volume: {meta_path} ({len(merged)} rows, {len(metadata_rows)} new)")
+    return len(merged)
+
+
+@app.function(volumes={"/data": volume}, image=image, timeout=300)
+def get_completed_log_ids(
+    capture_router: bool = True,
+    capture_residual: bool = True,
+    pool_on_capture: str | None = None,
+) -> set[int]:
+    """Return log_ids that already have captures on the volume."""
+    from pathlib import Path
+
+    import pyarrow.parquet as pq_
+
+    base = Path("/data/activations")
+    meta_path = base / "metadata.parquet"
+    if not meta_path.exists():
+        return set()
+
+    table = pq_.read_table(meta_path)
+    rows = table.to_pylist()
+    completed = set()
+    expected_pooling = pool_on_capture or "none"
+
+    residual_dir = base / "residual_stream"
+    router_dir = base / "router_logits"
+
+    for r in rows:
+        log_id = r["log_id"]
+        if r.get("pooling", "none") != expected_pooling:
+            continue
+        if capture_router:
+            if not r.get("has_router", False):
+                continue
+            if not (router_dir / f"{log_id}.safetensors").exists():
+                continue
+        if capture_residual:
+            if not (residual_dir / f"{log_id}.safetensors").exists():
+                continue
+        completed.add(log_id)
+
+    return completed
 
 
 @app.local_entrypoint()
@@ -391,6 +447,7 @@ def main(
     gpu_memory_utilization: str = "0.90",
     max_model_len: int = 0,
     router_top_k: int = 8,
+    router_dtype: str = "float16",
 ):
     """Local entrypoint: reads parquet locally, dispatches batches to Modal workers."""
     from pathlib import Path
@@ -413,6 +470,27 @@ def main(
     if layers:
         parsed_layers = [int(x.strip()) for x in layers.split(",")]
 
+    pool_val = pool if pool else None
+
+    # Check which log_ids are already captured with matching config
+    print("Checking for existing captures on volume...")
+    completed = get_completed_log_ids.remote(
+        capture_router=capture_router,
+        capture_residual=capture_residual,
+        pool_on_capture=pool_val,
+    )
+    before = len(rows)
+    rows = [r for r in rows if r.get("log_id") not in completed]
+    skipped = before - len(rows)
+    if skipped > 0:
+        print(f"  Skipping {skipped} already-captured examples ({len(rows)} remaining)")
+    else:
+        print(f"  No existing captures found, processing all {len(rows)} examples")
+
+    if not rows:
+        print("\nAll examples already captured. Nothing to do.")
+        return
+
     # Partition into batches
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
     print(f"  {len(batches)} batches of up to {batch_size}")
@@ -422,6 +500,7 @@ def main(
         tensor_parallel_size=tensor_parallel_size,
         gpu_memory_utilization=str(gpu_memory_utilization),
         max_model_len=max_model_len,
+        capture_residual=capture_residual,
     )
 
     all_metadata: list[dict] = []
@@ -431,11 +510,16 @@ def main(
             layers=parsed_layers,
             capture_router=capture_router,
             capture_residual=capture_residual,
-            pool_on_capture=pool if pool else None,
+            pool_on_capture=pool_val,
             router_top_k=router_top_k,
+            router_dtype=router_dtype,
         ),
     ):
         all_metadata.extend(batch_meta)
+
+        # Incremental metadata flush to volume every batch
+        if len(all_metadata) % 50 == 0 or len(all_metadata) == len(rows):
+            write_metadata_to_volume.remote(all_metadata)
 
     if all_metadata:
         import pyarrow as pa
@@ -445,11 +529,9 @@ def main(
         meta_path = Path("data/activations/metadata.parquet")
         meta_path.parent.mkdir(parents=True, exist_ok=True)
         pq.write_table(meta_table, meta_path, compression="snappy")
-        print(
-            f"\nWrote metadata locally: {meta_path} ({len(all_metadata)} rows)"
-        )
+        print(f"\nWrote metadata locally: {meta_path} ({len(all_metadata)} rows)")
 
-        # Write metadata to volume so analysis can find it
+        # Final merge metadata into volume
         write_metadata_to_volume.remote(all_metadata)
 
-    print(f"\nDone: {len(all_metadata)} examples captured")
+    print(f"\nDone: {len(all_metadata)} examples captured, {skipped} skipped (already done)")
