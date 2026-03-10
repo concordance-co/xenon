@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,13 +31,14 @@ class FullLogRecord:
     vault_address: str | None
     payload_meta: RawPayloadMetadata
     parsed: ParsedFullLog
-    payload_gz: bytes | None = None  # gzip-compressed raw JSON payload
 
 
 class IngestDatabase:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
         self.conn: aiosqlite.Connection | None = None
+        self._batch_depth: int = 0
+        self._batch_lock: asyncio.Lock = asyncio.Lock()
 
     async def connect(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,6 +51,50 @@ class IngestDatabase:
         if self.conn is not None:
             await self.conn.close()
             self.conn = None
+
+    @asynccontextmanager
+    async def batch(self) -> AsyncIterator[None]:
+        """Group multiple writes into a single transaction.
+
+        Acquires a lock so concurrent coroutines do not interleave
+        transactions on the same connection.  Supports nesting: only
+        the outermost batch issues BEGIN/COMMIT.  On exception the
+        outermost batch issues ROLLBACK.
+        """
+        assert self.conn is not None
+        # The lock ensures that concurrent coroutines wait their turn
+        # rather than interleaving BEGIN/COMMIT pairs.
+        acquired = self._batch_depth > 0  # already inside a batch (nested)
+        if not acquired:
+            await self._batch_lock.acquire()
+        try:
+            if self._batch_depth == 0:
+                await self.conn.execute("BEGIN")
+            self._batch_depth += 1
+            try:
+                yield
+            except BaseException:
+                self._batch_depth -= 1
+                if self._batch_depth == 0:
+                    await self.conn.execute("ROLLBACK")
+                raise
+            else:
+                self._batch_depth -= 1
+                if self._batch_depth == 0:
+                    await self.conn.commit()
+        finally:
+            if not acquired:
+                self._batch_lock.release()
+
+    async def commit(self) -> None:
+        """Commit only if we are not inside a batch context.
+
+        When inside a ``batch()`` the outermost context manager handles
+        the commit, so this is intentionally a no-op in that case.
+        """
+        assert self.conn is not None
+        if self._batch_depth == 0:
+            await self.conn.commit()
 
     async def init_schema(self) -> None:
         assert self.conn is not None
@@ -160,7 +208,6 @@ class IngestDatabase:
                 payload_path TEXT NOT NULL,
                 payload_sha256 TEXT NOT NULL,
                 payload_size_bytes INTEGER NOT NULL,
-                payload_gz BLOB,
                 prompt_text TEXT,
                 completion_text TEXT,
                 reasoning_content TEXT,
@@ -176,14 +223,6 @@ class IngestDatabase:
             );
             """
         )
-        # Migrate: add payload_gz column to existing DBs
-        try:
-            await self.conn.execute(
-                "ALTER TABLE full_logs ADD COLUMN payload_gz BLOB"
-            )
-            await self.conn.commit()
-        except Exception:
-            pass  # column already exists
         await self.conn.commit()
 
     async def upsert_vault(self, leaderboard_item: dict[str, Any], vault_config: dict[str, Any]) -> None:
@@ -250,7 +289,7 @@ class IngestDatabase:
                 "fetched_at": now,
             },
         )
-        await self.conn.commit()
+        await self.commit()
 
     async def upsert_strategies(self, vault_address: str, strategies: Iterable[dict[str, Any]]) -> None:
         assert self.conn is not None
@@ -290,7 +329,7 @@ class IngestDatabase:
                 """,
                 rows,
             )
-            await self.conn.commit()
+            await self.commit()
 
     async def upsert_inference_logs(self, logs: Iterable[dict[str, Any]]) -> None:
         assert self.conn is not None
@@ -342,7 +381,7 @@ class IngestDatabase:
                 """,
                 rows,
             )
-            await self.conn.commit()
+            await self.commit()
 
     async def upsert_swaps(self, swaps: Iterable[dict[str, Any]]) -> None:
         assert self.conn is not None
@@ -403,7 +442,7 @@ class IngestDatabase:
                 """,
                 rows,
             )
-            await self.conn.commit()
+            await self.commit()
 
     async def get_last_cursor(self, vault_address: str, resource: str) -> str | None:
         """Get the last saved cursor for a vault+resource (logs, swaps)."""
@@ -428,7 +467,7 @@ class IngestDatabase:
             """,
             (vault_address, resource, last_cursor, _now_iso()),
         )
-        await self.conn.commit()
+        await self.commit()
 
     async def fetch_existing_full_log_ids(self, log_ids: list[int]) -> set[int]:
         assert self.conn is not None
@@ -448,17 +487,15 @@ class IngestDatabase:
             """
             INSERT INTO full_logs (
                 log_id, vault_address, payload_path, payload_sha256, payload_size_bytes,
-                payload_gz,
                 prompt_text, completion_text, reasoning_content, tool_calls_json,
                 llm_model, prompt_tokens, completion_tokens, reasoning_tokens, total_tokens,
                 parse_error, fetched_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(log_id) DO UPDATE SET
                 vault_address=excluded.vault_address,
                 payload_path=excluded.payload_path,
                 payload_sha256=excluded.payload_sha256,
                 payload_size_bytes=excluded.payload_size_bytes,
-                payload_gz=excluded.payload_gz,
                 prompt_text=excluded.prompt_text,
                 completion_text=excluded.completion_text,
                 reasoning_content=excluded.reasoning_content,
@@ -477,7 +514,6 @@ class IngestDatabase:
                 record.payload_meta.payload_path,
                 record.payload_meta.payload_sha256,
                 record.payload_meta.payload_size_bytes,
-                record.payload_gz,
                 record.parsed.prompt_text,
                 record.parsed.completion_text,
                 record.parsed.reasoning_content,
@@ -491,4 +527,4 @@ class IngestDatabase:
                 _now_iso(),
             ),
         )
-        await self.conn.commit()
+        await self.commit()

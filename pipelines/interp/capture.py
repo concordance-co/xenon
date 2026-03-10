@@ -29,6 +29,33 @@ class CaptureConfig:
     capture_router: bool = True
     capture_residual: bool = True
     pool_on_capture: str | None = None  # None = full sequence, "last_token", "mean_pool"
+    router_dtype: str = "float16"  # "float16" or "float32" for router logits storage
+    metadata_flush_interval: int = 10  # write metadata.parquet every N examples
+
+
+def _flush_metadata(metadata_rows: list[dict[str, Any]], output_dir: Path) -> None:
+    """Atomically write metadata.parquet via a .tmp rename."""
+    meta_path = output_dir / "metadata.parquet"
+    tmp_path = output_dir / "metadata.parquet.tmp"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    table = pa.Table.from_pylist(metadata_rows)
+    pq.write_table(table, tmp_path, compression="snappy")
+    tmp_path.rename(meta_path)
+
+
+def _load_existing_metadata(output_dir: Path) -> list[dict[str, Any]]:
+    """Load previously written metadata.parquet if it exists, for resume support."""
+    meta_path = output_dir / "metadata.parquet"
+    if not meta_path.exists():
+        return []
+    try:
+        table = pq.read_table(meta_path)
+        rows = table.to_pylist()
+        print(f"Loaded {len(rows)} existing metadata rows from {meta_path}")
+        return rows
+    except Exception as exc:
+        print(f"WARNING: Could not load existing metadata ({exc}), starting fresh")
+        return []
 
 
 def _load_examples(config: CaptureConfig) -> list[dict[str, Any]]:
@@ -323,11 +350,15 @@ def _save_router(
     router_logits: Any,
     router_indices: Any,
     output_path: Path,
+    router_dtype: str = "float16",
 ) -> int:
+    import torch
     from safetensors.torch import save_file
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    rl = router_logits.contiguous()
+    # Cast router logits to the configured storage dtype
+    target_dtype = torch.float16 if router_dtype == "float16" else torch.float32
+    rl = router_logits.to(target_dtype).contiguous()
     ri = router_indices.contiguous()
     save_file({"router_logits": rl, "router_indices": ri}, str(output_path))
     return rl.nelement() * rl.element_size() + ri.nelement() * ri.element_size()
@@ -361,10 +392,14 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
     if config.capture_router and is_moe:
         router_dir.mkdir(parents=True, exist_ok=True)
 
-    metadata_rows: list[dict[str, Any]] = []
+    # Load existing metadata for resume support
+    metadata_rows: list[dict[str, Any]] = _load_existing_metadata(config.output_dir)
+    existing_log_ids: set[int] = {int(r["log_id"]) for r in metadata_rows}
+
     processed = 0
     skipped = 0
     errors = 0
+    flush_counter = 0  # counts new items since last flush
 
     for idx, row in enumerate(examples):
         log_id = row.get("log_id")
@@ -375,9 +410,11 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
 
         # Skip if all output files already exist
         if config.skip_existing:
+            # Check metadata-based skip (from previous partial run)
+            in_metadata = int(log_id) in existing_log_ids
             residual_exists = not config.capture_residual or (residual_dir / f"{log_id}.safetensors").exists()
             router_exists = not (config.capture_router and is_moe) or (router_dir / f"{log_id}.safetensors").exists()
-            if residual_exists and router_exists:
+            if (in_metadata and residual_exists and router_exists) or (residual_exists and router_exists):
                 print(f"  [{idx + 1}/{len(examples)}] Skipping existing: {log_id}")
                 skipped += 1
                 continue
@@ -414,6 +451,7 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
                 file_size += _save_router(
                     router_logits, router_indices,
                     router_dir / f"{log_id}.safetensors",
+                    router_dtype=config.router_dtype,
                 )
 
             prompt_hash = hashlib.sha256(
@@ -445,6 +483,12 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
                 meta_row["num_experts"] = int(router_logits.shape[-1])
 
             metadata_rows.append(meta_row)
+            flush_counter += 1
+
+            # Incremental metadata flush
+            if flush_counter >= config.metadata_flush_interval:
+                _flush_metadata(metadata_rows, config.output_dir)
+                flush_counter = 0
 
             processed += 1
             shape_parts = []
@@ -467,9 +511,8 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
             traceback.print_exc()
 
     if metadata_rows:
+        _flush_metadata(metadata_rows, config.output_dir)
         meta_path = config.output_dir / "metadata.parquet"
-        table = pa.Table.from_pylist(metadata_rows)
-        pq.write_table(table, meta_path, compression="snappy")
         print(f"\nWrote metadata: {meta_path} ({len(metadata_rows)} rows)")
 
     print(f"\nDone: {processed} captured, {skipped} skipped, {errors} errors")
@@ -529,6 +572,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Pool the sequence dimension during capture to reduce file size ~9000x. "
              "Stores (layers, dim) instead of (layers, seq_len, dim).",
     )
+    parser.add_argument(
+        "--router-dtype",
+        choices=["float16", "float32"],
+        default="float16",
+        help="Storage dtype for router logits (default: float16). "
+             "Use float32 for backwards compatibility with older captures.",
+    )
+    parser.add_argument(
+        "--metadata-flush-interval",
+        type=int,
+        default=10,
+        help="Write metadata.parquet every N examples for crash resilience (default: 10).",
+    )
     return parser
 
 
@@ -552,6 +608,8 @@ def main(argv: list[str] | None = None) -> int:
         capture_router=args.capture_router,
         capture_residual=args.capture_residual,
         pool_on_capture=args.pool_on_capture,
+        router_dtype=args.router_dtype,
+        metadata_flush_interval=args.metadata_flush_interval,
     )
     run_capture(cfg)
     return 0

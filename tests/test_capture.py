@@ -21,8 +21,10 @@ import torch
 from pipelines.interp.capture import (
     CaptureConfig,
     _capture_one,
+    _flush_metadata,
     _is_moe_model,
     _load_examples,
+    _load_existing_metadata,
     _make_hook,
     _make_router_hook,
     _parse_messages,
@@ -545,6 +547,8 @@ class TestCLI:
         assert args.skip_existing is False
         assert args.validate_tokens is False
         assert args.add_generation_prompt is False
+        assert args.router_dtype == "float16"
+        assert args.metadata_flush_interval == 10
 
     def test_all_flags(self) -> None:
         from pipelines.interp.capture import _build_parser
@@ -599,6 +603,36 @@ class TestCLI:
         cfg = mock_run.call_args[0][0]
         assert cfg.capture_router is False
         assert cfg.capture_residual is True
+
+    @patch("pipelines.interp.capture.run_capture")
+    def test_router_dtype_default(self, mock_run: MagicMock) -> None:
+        mock_run.return_value = {"processed": 0, "skipped": 0, "errors": 0}
+        main(["--parquet-path", "/tmp/x.parquet", "--device", "cpu"])
+        cfg = mock_run.call_args[0][0]
+        assert cfg.router_dtype == "float16"
+
+    @patch("pipelines.interp.capture.run_capture")
+    def test_router_dtype_fp32(self, mock_run: MagicMock) -> None:
+        mock_run.return_value = {"processed": 0, "skipped": 0, "errors": 0}
+        main(["--parquet-path", "/tmp/x.parquet", "--device", "cpu",
+              "--router-dtype", "float32"])
+        cfg = mock_run.call_args[0][0]
+        assert cfg.router_dtype == "float32"
+
+    @patch("pipelines.interp.capture.run_capture")
+    def test_metadata_flush_interval_default(self, mock_run: MagicMock) -> None:
+        mock_run.return_value = {"processed": 0, "skipped": 0, "errors": 0}
+        main(["--parquet-path", "/tmp/x.parquet", "--device", "cpu"])
+        cfg = mock_run.call_args[0][0]
+        assert cfg.metadata_flush_interval == 10
+
+    @patch("pipelines.interp.capture.run_capture")
+    def test_metadata_flush_interval_custom(self, mock_run: MagicMock) -> None:
+        mock_run.return_value = {"processed": 0, "skipped": 0, "errors": 0}
+        main(["--parquet-path", "/tmp/x.parquet", "--device", "cpu",
+              "--metadata-flush-interval", "25"])
+        cfg = mock_run.call_args[0][0]
+        assert cfg.metadata_flush_interval == 25
 
 
 # ---------------------------------------------------------------------------
@@ -741,7 +775,7 @@ class TestMoECapture:
 
 
 class TestSaveRouter:
-    def test_round_trip(self, tmp_path: Path) -> None:
+    def test_round_trip_fp16_default(self, tmp_path: Path) -> None:
         from safetensors import safe_open
 
         router_logits = torch.randn(4, 10, 128, dtype=torch.float32)
@@ -756,11 +790,44 @@ class TestSaveRouter:
             loaded_logits = f.get_tensor("router_logits")
             loaded_indices = f.get_tensor("router_indices")
         assert loaded_logits.shape == (4, 10, 128)
+        assert loaded_logits.dtype == torch.float16  # default is fp16
+        assert loaded_indices.shape == (4, 10, 8)
+        assert loaded_indices.dtype == torch.int16
+        assert torch.equal(router_indices, loaded_indices)
+
+    def test_round_trip_fp32_explicit(self, tmp_path: Path) -> None:
+        from safetensors import safe_open
+
+        router_logits = torch.randn(4, 10, 128, dtype=torch.float32)
+        router_indices = torch.randint(0, 128, (4, 10, 8)).to(torch.int16)
+        out_path = tmp_path / "router_logits" / "test_fp32.safetensors"
+        file_size = _save_router(router_logits, router_indices, out_path, router_dtype="float32")
+
+        assert out_path.exists()
+        assert file_size > 0
+
+        with safe_open(str(out_path), framework="pt") as f:
+            loaded_logits = f.get_tensor("router_logits")
+            loaded_indices = f.get_tensor("router_indices")
+        assert loaded_logits.shape == (4, 10, 128)
         assert loaded_logits.dtype == torch.float32
         assert torch.allclose(router_logits, loaded_logits)
         assert loaded_indices.shape == (4, 10, 8)
         assert loaded_indices.dtype == torch.int16
         assert torch.equal(router_indices, loaded_indices)
+
+    def test_fp16_halves_storage(self, tmp_path: Path) -> None:
+        router_logits = torch.randn(4, 10, 128, dtype=torch.float32)
+        router_indices = torch.randint(0, 128, (4, 10, 8)).to(torch.int16)
+
+        fp16_path = tmp_path / "fp16.safetensors"
+        fp32_path = tmp_path / "fp32.safetensors"
+        size_fp16 = _save_router(router_logits, router_indices, fp16_path, router_dtype="float16")
+        size_fp32 = _save_router(router_logits, router_indices, fp32_path, router_dtype="float32")
+
+        # fp16 logits should be roughly half the size of fp32 logits
+        # (indices are the same size in both)
+        assert size_fp16 < size_fp32
 
 
 # ---------------------------------------------------------------------------
@@ -823,3 +890,93 @@ class TestRunCaptureMoE:
 
         router_dir = config.output_dir / "router_logits"
         assert len(list(router_dir.glob("*.safetensors"))) == 1
+
+
+# ---------------------------------------------------------------------------
+# Incremental metadata tests
+# ---------------------------------------------------------------------------
+
+
+class TestFlushMetadata:
+    def test_atomic_write(self, tmp_path: Path) -> None:
+        rows = [{"log_id": 1, "seq_len": 10}, {"log_id": 2, "seq_len": 20}]
+        _flush_metadata(rows, tmp_path)
+
+        meta_path = tmp_path / "metadata.parquet"
+        assert meta_path.exists()
+        # .tmp file should not remain
+        assert not (tmp_path / "metadata.parquet.tmp").exists()
+
+        loaded = pq.read_table(meta_path).to_pylist()
+        assert len(loaded) == 2
+        assert loaded[0]["log_id"] == 1
+
+    def test_overwrites_previous(self, tmp_path: Path) -> None:
+        _flush_metadata([{"log_id": 1}], tmp_path)
+        _flush_metadata([{"log_id": 1}, {"log_id": 2}, {"log_id": 3}], tmp_path)
+
+        loaded = pq.read_table(tmp_path / "metadata.parquet").to_pylist()
+        assert len(loaded) == 3
+
+
+class TestLoadExistingMetadata:
+    def test_no_file_returns_empty(self, tmp_path: Path) -> None:
+        result = _load_existing_metadata(tmp_path)
+        assert result == []
+
+    def test_loads_existing(self, tmp_path: Path) -> None:
+        rows = [{"log_id": 42, "seq_len": 100}]
+        _flush_metadata(rows, tmp_path)
+        result = _load_existing_metadata(tmp_path)
+        assert len(result) == 1
+        assert result[0]["log_id"] == 42
+
+
+class TestIncrementalMetadata:
+    def _setup(self, tmp_path: Path, num_rows: int = 15) -> CaptureConfig:
+        rows = [_make_example_row(i) for i in range(num_rows)]
+        parquet_path = _make_parquet(tmp_path, rows)
+        output_dir = tmp_path / "activations"
+        return CaptureConfig(
+            parquet_path=parquet_path,
+            output_dir=output_dir,
+            device="cpu",
+            capture_router=False,
+            metadata_flush_interval=5,
+        )
+
+    @patch("pipelines.interp.capture._load_model")
+    def test_metadata_written_incrementally(self, mock_load: MagicMock, tmp_path: Path) -> None:
+        model = FakeModel(num_layers=4, hidden_dim=16)
+        tokenizer = FakeTokenizer(seq_len=10)
+        mock_load.return_value = (model, tokenizer)
+
+        config = self._setup(tmp_path, num_rows=12)
+        result = run_capture(config)
+
+        assert result["processed"] == 12
+        # Final metadata should contain all rows
+        meta = pq.read_table(config.output_dir / "metadata.parquet").to_pylist()
+        assert len(meta) == 12
+
+    @patch("pipelines.interp.capture._load_model")
+    def test_resume_from_existing_metadata(self, mock_load: MagicMock, tmp_path: Path) -> None:
+        model = FakeModel(num_layers=4, hidden_dim=16)
+        tokenizer = FakeTokenizer(seq_len=10)
+        mock_load.return_value = (model, tokenizer)
+
+        config = self._setup(tmp_path, num_rows=5)
+        config.skip_existing = True
+
+        # Run once
+        result1 = run_capture(config)
+        assert result1["processed"] == 5
+
+        # Run again -- all should be skipped (files + metadata exist)
+        result2 = run_capture(config)
+        assert result2["processed"] == 0
+        assert result2["skipped"] == 5
+
+        # Metadata should still have 5 rows (loaded existing + no new)
+        meta = pq.read_table(config.output_dir / "metadata.parquet").to_pylist()
+        assert len(meta) == 5

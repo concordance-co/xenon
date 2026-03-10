@@ -59,6 +59,7 @@ class TerminalBackfillIngestor:
         await self.db.init_schema()
 
         retry_policy = RetryPolicy(max_attempts=self.config.retry_max_attempts)
+        vault_sem = asyncio.Semaphore(self.config.request_concurrency)
 
         try:
             async with TerminalMarketsApiClient(
@@ -74,31 +75,50 @@ class TerminalBackfillIngestor:
                 self.summary.vaults_discovered = len(leaderboard_items)
                 print(f"Discovered {len(leaderboard_items)} vaults ({self.config.selection} selection)")
 
-                for index, item in enumerate(leaderboard_items, start=1):
-                    vault_address = item.get("vaultAddress")
-                    if not vault_address:
-                        continue
-                    print(f"[{index}/{len(leaderboard_items)}] Fetching vault + strategies: {vault_address}")
-                    vault_config = await api.get_vault(vault_address)
-                    strategies = await api.get_strategies(vault_address)
-                    await self.db.upsert_vault(item, vault_config)
-                    await self.db.upsert_strategies(vault_address, strategies)
+                # --- Phase 1: vault config + strategy fetches (parallel) ---
+                valid_items = [
+                    (idx, item) for idx, item in enumerate(leaderboard_items, start=1)
+                    if item.get("vaultAddress")
+                ]
+
+                async def _ingest_vault_meta(index: int, item: dict[str, Any]) -> None:
+                    vault_address = item["vaultAddress"]
+                    async with vault_sem:
+                        print(f"[{index}/{len(leaderboard_items)}] Fetching vault + strategies: {vault_address}")
+                        vault_config, strategies = await asyncio.gather(
+                            api.get_vault(vault_address),
+                            api.get_strategies(vault_address),
+                        )
+                    # DB writes are serialised through the batch context
+                    async with self.db.batch():
+                        await self.db.upsert_vault(item, vault_config)
+                        await self.db.upsert_strategies(vault_address, strategies)
                     self.summary.vaults_ingested += 1
                     self.summary.strategies_ingested += len(strategies)
 
-                for index, item in enumerate(leaderboard_items, start=1):
-                    vault_address = item.get("vaultAddress")
-                    if not vault_address:
-                        continue
+                await asyncio.gather(
+                    *[_ingest_vault_meta(idx, item) for idx, item in valid_items]
+                )
+
+                # --- Phase 2: log backfill (parallel across vaults) ---
+                async def _backfill_logs_task(index: int, item: dict[str, Any]) -> None:
+                    vault_address = item["vaultAddress"]
                     print(f"[{index}/{len(leaderboard_items)}] Backfilling logs: {vault_address}")
                     await self._backfill_vault_logs(api, vault_address)
 
-                for index, item in enumerate(leaderboard_items, start=1):
-                    vault_address = item.get("vaultAddress")
-                    if not vault_address:
-                        continue
+                await asyncio.gather(
+                    *[_backfill_logs_task(idx, item) for idx, item in valid_items]
+                )
+
+                # --- Phase 3: swap backfill (parallel across vaults) ---
+                async def _backfill_swaps_task(index: int, item: dict[str, Any]) -> None:
+                    vault_address = item["vaultAddress"]
                     print(f"[{index}/{len(leaderboard_items)}] Backfilling swaps: {vault_address}")
                     await self._backfill_vault_swaps(api, vault_address)
+
+                await asyncio.gather(
+                    *[_backfill_swaps_task(idx, item) for idx, item in valid_items]
+                )
         finally:
             await self.db.close()
 
@@ -192,37 +212,39 @@ class TerminalBackfillIngestor:
                     break
                 items = items[:remaining_logs]
 
-            await self.db.upsert_inference_logs(items)
-            logs_seen += len(items)
-            self.summary.logs_ingested += len(items)
+            # Batch all DB writes for this page into one transaction
+            async with self.db.batch():
+                await self.db.upsert_inference_logs(items)
+                logs_seen += len(items)
+                self.summary.logs_ingested += len(items)
 
-            page_ids = [int(item["id"]) for item in items if item.get("id") is not None]
-            existing_ids = await self.db.fetch_existing_full_log_ids(page_ids)
-            missing_items = [item for item in items if int(item["id"]) not in existing_ids]
+                page_ids = [int(item["id"]) for item in items if item.get("id") is not None]
+                existing_ids = await self.db.fetch_existing_full_log_ids(page_ids)
+                missing_items = [item for item in items if int(item["id"]) not in existing_ids]
 
-            if self.config.max_full_logs_per_vault is not None:
-                remaining_full = self.config.max_full_logs_per_vault - full_logs_seen
-                if remaining_full <= 0:
-                    break
-                missing_items = missing_items[:remaining_full]
+                if self.config.max_full_logs_per_vault is not None:
+                    remaining_full = self.config.max_full_logs_per_vault - full_logs_seen
+                    if remaining_full <= 0:
+                        break
+                    missing_items = missing_items[:remaining_full]
 
-            if missing_items:
-                for batch in _batched(missing_items, self.config.request_concurrency):
-                    results = await asyncio.gather(
-                        *[self._fetch_and_store_full_log(api, item) for item in batch],
-                        return_exceptions=True,
-                    )
-                    for result in results:
-                        if isinstance(result, Exception):
-                            self.summary.full_log_failures += 1
-                            print(f"Failed full-log fetch: {result}")
-                        elif result:
-                            self.summary.full_logs_ingested += 1
-                            full_logs_seen += 1
+                if missing_items:
+                    for batch in _batched(missing_items, self.config.request_concurrency):
+                        results = await asyncio.gather(
+                            *[self._fetch_and_store_full_log(api, item) for item in batch],
+                            return_exceptions=True,
+                        )
+                        for result in results:
+                            if isinstance(result, Exception):
+                                self.summary.full_log_failures += 1
+                                print(f"Failed full-log fetch: {result}")
+                            elif result:
+                                self.summary.full_logs_ingested += 1
+                                full_logs_seen += 1
 
-            next_cursor = items[-1].get("cursor")
-            if next_cursor:
-                await self.db.save_cursor(vault_address, "logs", next_cursor)
+                next_cursor = items[-1].get("cursor")
+                if next_cursor:
+                    await self.db.save_cursor(vault_address, "logs", next_cursor)
 
             if not page.get("hasMoreItems"):
                 break
@@ -256,13 +278,14 @@ class TerminalBackfillIngestor:
                     break
                 items = items[:remaining]
 
-            await self.db.upsert_swaps(items)
-            swaps_seen += len(items)
-            self.summary.swaps_ingested += len(items)
+            async with self.db.batch():
+                await self.db.upsert_swaps(items)
+                swaps_seen += len(items)
+                self.summary.swaps_ingested += len(items)
 
-            next_cursor = items[-1].get("cursor")
-            if next_cursor:
-                await self.db.save_cursor(vault_address, "swaps", next_cursor)
+                next_cursor = items[-1].get("cursor")
+                if next_cursor:
+                    await self.db.save_cursor(vault_address, "swaps", next_cursor)
 
             if not page.get("hasMoreItems"):
                 break
@@ -278,21 +301,14 @@ class TerminalBackfillIngestor:
             return False
         log_id = int(log_id_raw)
         payload = await api.get_full_log(log_id)
-        payload_meta = self.payload_store.write(log_id, payload)
+        # Offload synchronous gzip write to a thread so it doesn't block the event loop
+        payload_meta = await asyncio.to_thread(self.payload_store.write, log_id, payload)
         parsed = parse_full_log(payload, include_reasoning=self.config.include_reasoning)
-
-        # Compress payload JSON for inline DB storage
-        import gzip as _gzip
-        payload_gz = _gzip.compress(
-            json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
-        )
-
         record = FullLogRecord(
             log_id=log_id,
             vault_address=log_item.get("vault_address"),
             payload_meta=payload_meta,
             parsed=parsed,
-            payload_gz=payload_gz,
         )
         await self.db.upsert_full_log(record)
         return True

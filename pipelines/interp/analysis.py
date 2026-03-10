@@ -163,13 +163,18 @@ class AnalysisDataset:
         print(f"  Joined: {len(joined)} examples "
               f"(missed: {missed_id} no activation, {missed_quality} low quality)")
 
-        # Check for activation files
+        # Check for activation files using a single directory listing
+        # instead of N individual stat() calls (much faster on NAS).
         source = self.config.data_source
         subdir = "router_logits" if source == "router" else "residual_stream"
         act_dir = self.config.activations_dir / subdir
+        try:
+            existing_files = set(p.name for p in act_dir.iterdir()) if act_dir.is_dir() else set()
+        except OSError:
+            existing_files = set()
         files_found = sum(
             1 for r in joined
-            if (act_dir / f"{r['log_id']}.safetensors").exists()
+            if f"{r['log_id']}.safetensors" in existing_files
         )
         print(f"  Activation files ({subdir}): {files_found}/{len(joined)} found")
 
@@ -277,19 +282,26 @@ class AnalysisDataset:
 
             if include_router_indices:
                 ri_path = compact_dir / f"router_{pooling}_layer{layer}.safetensors"
-                feat_path = path  # might have router_indices in same file
-                ri_source = None
-                if ri_path.exists():
-                    ri_source = ri_path
-                elif feat_path.exists():
-                    # Check if current source file has router_indices
-                    with safe_open(str(feat_path), framework="numpy") as check:
-                        if "router_indices" in check.keys():
-                            ri_source = feat_path
 
                 ri_layer_cache: list[np.ndarray | None] = [None] * len(self.rows)
-                if ri_source:
-                    with safe_open(str(ri_source), framework="numpy") as rf:
+                ri_loaded = False
+
+                # Try dedicated router file first
+                if ri_path.exists():
+                    with safe_open(str(ri_path), framework="numpy") as rf:
+                        if "router_indices" in rf.keys():
+                            ri_data = rf.get_tensor("router_indices")
+                            ri_log_ids = rf.get_tensor("log_ids")
+                            for ci, lid in enumerate(ri_log_ids):
+                                row_idx = row_log_ids.get(int(lid))
+                                if row_idx is not None:
+                                    ri_layer_cache[row_idx] = ri_data[ci]
+                            ri_loaded = True
+
+                # Fall back to checking the already-opened source file's keys
+                # (re-open once instead of open-to-check then open-to-read)
+                if not ri_loaded and path.exists():
+                    with safe_open(str(path), framework="numpy") as rf:
                         if "router_indices" in rf.keys():
                             ri_data = rf.get_tensor("router_indices")
                             ri_log_ids = rf.get_tensor("log_ids")
@@ -305,7 +317,13 @@ class AnalysisDataset:
         return True
 
     def _load_per_example(self, target_layers: list[int], include_router_indices: bool) -> None:
-        """Fallback: load features from individual per-example safetensor files."""
+        """Fallback: load features from individual per-example safetensor files.
+
+        Opens each safetensor file exactly once and extracts all needed layers
+        in a single pass. When router indices are needed and the source is
+        already 'router', they are read from the same open file handle to
+        avoid a redundant second open.
+        """
         from safetensors import safe_open
 
         source = self.config.data_source
@@ -317,6 +335,9 @@ class AnalysisDataset:
         else:
             subdir = "residual_stream"
             key = "residual_stream"
+
+        # When source is router, router_indices live in the same file
+        ri_same_file = include_router_indices and source == "router"
 
         self._feature_cache: dict[int, list[np.ndarray | None]] = {
             layer: [] for layer in target_layers
@@ -339,11 +360,19 @@ class AnalysisDataset:
                         self._ri_cache[layer].append(None)
                 continue
 
+            # Single open: read main tensor and (if same file) router indices
             with safe_open(str(path), framework="numpy") as f:
                 tensor = f.get_tensor(key)
+                if ri_same_file and "router_indices" in f.keys():
+                    ri_tensor = f.get_tensor("router_indices")
+                elif ri_same_file:
+                    ri_tensor = None
+                else:
+                    ri_tensor = None
 
-            ri_tensor = None
-            if include_router_indices:
+            # Only open a separate file when source != router and we need
+            # router_indices from the router_logits directory
+            if include_router_indices and not ri_same_file:
                 ri_path = self.config.activations_dir / "router_logits" / f"{log_id}.safetensors"
                 if ri_path.exists():
                     with safe_open(str(ri_path), framework="numpy") as rf:
@@ -403,53 +432,12 @@ class AnalysisDataset:
                 return np.empty((0, 0)), valid_y
             return np.stack(features, axis=0), valid_y
 
-        # Fallback: load from disk
-        from safetensors import safe_open
-
-        source = self.config.data_source
-        pooling = self.config.pooling
-
-        if source == "router":
-            subdir = "router_logits"
-            key = "router_logits"
-        else:
-            subdir = "residual_stream"
-            key = "residual_stream"
-
-        features = []
-        valid_mask = []
-
-        for i, row in enumerate(self.rows):
-            log_id = row["log_id"]
-            path = self.config.activations_dir / subdir / f"{log_id}.safetensors"
-
-            if not path.exists():
-                valid_mask.append(False)
-                continue
-
-            with safe_open(str(path), framework="numpy") as f:
-                tensor = f.get_tensor(key)
-
-            layer_data = tensor[tensor_idx]
-
-            if layer_data.ndim == 1:
-                vec = layer_data
-            elif pooling == "last_token":
-                vec = layer_data[-1]
-            else:
-                vec = layer_data.mean(axis=0)
-
-            features.append(vec)
-            valid_mask.append(True)
-
-        valid_y = self.y[np.array(valid_mask)]
-        if len(features) == 0:
-            return np.empty((0, 0)), valid_y
-        X = np.stack(features, axis=0)
-        if len(features) < len(self.rows):
-            print(f"    get_features: {len(features)}/{len(self.rows)} loaded, "
-                  f"{len(np.unique(valid_y))} classes in valid set")
-        return X, valid_y
+        # Fallback: preload ALL captured layers in a single pass over files,
+        # then return the requested layer. This avoids reopening every file
+        # when get_features is called once per layer (e.g. 48 layers ×
+        # N examples = 48N opens reduced to N).
+        self._load_per_example(self.captured_layers, include_router_indices=False)
+        return self.get_features(layer)  # now served from cache
 
     def get_router_indices(self, layer: int) -> tuple[np.ndarray, np.ndarray]:
         """Load router_indices for a single layer. Returns (indices, y)."""
@@ -466,36 +454,10 @@ class AnalysisDataset:
             valid_y = self.y[np.array(self._valid_mask)]
             return np.stack(indices_list) if indices_list else np.empty((0, 0)), valid_y
 
-        # Fallback: load from disk
-        from safetensors import safe_open
-
-        indices_list = []
-        valid_mask = []
-
-        for i, row in enumerate(self.rows):
-            log_id = row["log_id"]
-            path = self.config.activations_dir / "router_logits" / f"{log_id}.safetensors"
-
-            if not path.exists():
-                valid_mask.append(False)
-                continue
-
-            with safe_open(str(path), framework="numpy") as f:
-                ri = f.get_tensor("router_indices")
-
-            layer_ri = ri[tensor_idx]
-
-            if layer_ri.ndim == 1:
-                indices_list.append(layer_ri)
-            elif self.config.pooling == "last_token":
-                indices_list.append(layer_ri[-1])
-            else:
-                indices_list.append(layer_ri.reshape(-1))
-
-            valid_mask.append(True)
-
-        valid_y = self.y[valid_mask]
-        return np.stack(indices_list) if indices_list else np.empty((0, 0)), valid_y
+        # Fallback: preload ALL captured layers (with router indices) in a
+        # single pass, then return the requested layer from cache.
+        self._load_per_example(self.captured_layers, include_router_indices=True)
+        return self.get_router_indices(layer)  # now served from cache
 
 
 # ---------------------------------------------------------------------------

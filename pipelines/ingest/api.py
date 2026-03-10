@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import random
 from dataclasses import dataclass
 from typing import Any
 
 import aiohttp
+
+logger = logging.getLogger(__name__)
 
 
 class TerminalApiError(RuntimeError):
@@ -13,16 +17,16 @@ class TerminalApiError(RuntimeError):
 
 @dataclass(slots=True)
 class RetryPolicy:
-    max_attempts: int = 10
-    initial_backoff_s: float = 2.0
-    max_backoff_s: float = 120.0
+    max_attempts: int = 6
+    initial_backoff_s: float = 1.0
+    max_backoff_s: float = 60.0
 
 
 class TerminalMarketsApiClient:
     def __init__(
         self,
         base_url: str,
-        concurrency: int = 3,
+        concurrency: int = 10,
         timeout_s: int = 30,
         retry_policy: RetryPolicy | None = None,
     ) -> None:
@@ -60,7 +64,8 @@ class TerminalMarketsApiClient:
                                 raise TerminalApiError(
                                     f"API request failed after retries: {url} status={response.status} body={body}"
                                 )
-                            await asyncio.sleep(delay)
+                            jittered_delay = delay * (1 + random.uniform(0, 0.3))
+                            await asyncio.sleep(jittered_delay)
                             delay = min(delay * 2, self.retry_policy.max_backoff_s)
                             continue
 
@@ -70,9 +75,14 @@ class TerminalMarketsApiClient:
 
                         return await response.json()
             except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                logger.warning(
+                    "Connection error on attempt %d/%d for %s: %s",
+                    attempt, self.retry_policy.max_attempts, url, exc,
+                )
                 if attempt == self.retry_policy.max_attempts:
                     raise TerminalApiError(f"API request failed after retries: {url} error={exc}") from exc
-                await asyncio.sleep(delay)
+                jittered_delay = delay * (1 + random.uniform(0, 0.3))
+                await asyncio.sleep(jittered_delay)
                 delay = min(delay * 2, self.retry_policy.max_backoff_s)
 
         raise TerminalApiError(f"Unreachable retry state for {url}")

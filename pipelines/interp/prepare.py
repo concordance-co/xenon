@@ -3,11 +3,14 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
@@ -77,50 +80,17 @@ def _extract_first_text(messages: list[dict[str, Any]], role: str) -> str | None
     return None
 
 
-_payload_path_prefix_remap: str | None = None
-
-
-def _init_payload_remap(sample_path: str | None) -> None:
-    """Detect if payload paths need remapping (local → Modal) and cache the prefix."""
-    global _payload_path_prefix_remap
-    if not sample_path:
-        return
-    path = Path(sample_path)
-    if path.exists():
-        _payload_path_prefix_remap = ""  # no remap needed
-        return
-    # Try Modal path
-    parts = sample_path.split("full_logs/")
-    if len(parts) == 2:
-        modal_base = "/data/ingest/full_logs/"
-        modal_path = Path(modal_base + parts[1])
-        if modal_path.exists():
-            # Store the prefix to replace: everything before "full_logs/"
-            _payload_path_prefix_remap = parts[0] + "full_logs/"
-            print(f"  Payload path remap: '{_payload_path_prefix_remap}' → '/data/ingest/full_logs/'")
-            return
-    _payload_path_prefix_remap = None  # can't find files
-
-
 def _load_payload(payload_path: str | None) -> dict[str, Any] | None:
     if not payload_path:
         return None
-
-    if _payload_path_prefix_remap is None:
-        return None  # remap detection failed — files aren't available
-    elif _payload_path_prefix_remap:
-        payload_path = payload_path.replace(
-            _payload_path_prefix_remap, "/data/ingest/full_logs/", 1
-        )
-
     path = Path(payload_path)
+    if not path.exists():
+        return None
     try:
         with gzip.open(path, "rt", encoding="utf-8") as handle:
             data = json.load(handle)
         if isinstance(data, dict):
             return data
-    except (FileNotFoundError, OSError):
-        return None
     except Exception:
         return None
     return None
@@ -426,63 +396,6 @@ class PrepareConfig:
     export_dir: Path = Path("data/interp_exports")
 
 
-def _prefetch_swaps(conn: sqlite3.Connection) -> dict[int, dict]:
-    """Load all swaps into a dict keyed by log_id."""
-    if not _table_exists(conn, "swaps"):
-        return {}
-    rows = conn.execute(
-        """SELECT log_id, transaction_hash, side, token_address,
-                  token_symbol, effective_price_usd
-           FROM swaps"""
-    ).fetchall()
-    by_log: dict[int, dict] = {}
-    for r in rows:
-        lid = int(r["log_id"]) if r["log_id"] is not None else None
-        if lid is not None and lid not in by_log:
-            by_log[lid] = dict(r)
-    return by_log
-
-
-def _prefetch_outcomes(conn: sqlite3.Connection) -> dict[int, dict]:
-    """Load all trade outcomes into a dict keyed by log_id."""
-    if not _table_exists(conn, "trade_outcomes"):
-        return {}
-    rows = conn.execute(
-        """SELECT log_id, pnl_1h_pct, pnl_4h_pct, pnl_1d_pct,
-                  was_profitable_1h, entry_price_eth, entry_price_usd
-           FROM trade_outcomes"""
-    ).fetchall()
-    return {int(r["log_id"]): dict(r) for r in rows}
-
-
-def _prefetch_vault_configs(conn: sqlite3.Connection) -> dict[str, dict]:
-    """Load all vault configs into a dict keyed by vault_address."""
-    if not _table_exists(conn, "vaults"):
-        return {}
-    rows = conn.execute(
-        """SELECT vault_address, trade_size, trading_activity,
-                  holding_style, diversification, asset_risk_preference
-           FROM vaults"""
-    ).fetchall()
-    return {r["vault_address"]: dict(r) for r in rows}
-
-
-def _prefetch_strategies(conn: sqlite3.Connection) -> dict[str, list[dict]]:
-    """Load all strategies grouped by vault_address."""
-    if not _table_exists(conn, "strategies"):
-        return {}
-    rows = conn.execute(
-        """SELECT vault_address, strategy_id, content, enabled,
-                  strategy_priority, expiry, created_block, updated_block
-           FROM strategies
-           ORDER BY enabled DESC, CAST(strategy_id AS INTEGER) DESC"""
-    ).fetchall()
-    by_vault: dict[str, list[dict]] = {}
-    for r in rows:
-        by_vault.setdefault(r["vault_address"], []).append(dict(r))
-    return by_vault
-
-
 def run_prepare(config: PrepareConfig) -> dict[str, int]:
     if not config.db_path.exists():
         raise FileNotFoundError(f"Database not found: {config.db_path}")
@@ -491,8 +404,6 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("PRAGMA cache_size=-64000;")  # 64MB cache
-    conn.execute("PRAGMA mmap_size=268435456;")  # 256MB mmap
 
     conn.executescript(
         """
@@ -572,7 +483,6 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
             l.transaction_hash,
             l.tool,
             l.tool_args_json,
-            f.payload_gz,
             f.payload_path,
             f.parse_error,
             f.completion_text,
@@ -586,139 +496,8 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         LIMIT ?
     """
     rows = conn.execute(query, [config.limit]).fetchall()
-    print(f"  Queried {len(rows)} rows from inference_logs + full_logs")
 
-    # Check if we have inline payloads or need file-based fallback
-    has_inline = rows and rows[0]["payload_gz"] is not None
-    if not has_inline and rows:
-        _init_payload_remap(rows[0]["payload_path"])
-        print("  Using file-based payload loading (legacy DB)")
-    else:
-        print("  Using inline payload_gz (fast path)")
-
-    # Pre-fetch lookup tables into memory (eliminates per-row queries)
-    import time as _time
-    t0 = _time.monotonic()
-    swap_lookup = _prefetch_swaps(conn)
-    outcome_lookup = _prefetch_outcomes(conn)
-    vault_cfg_lookup = _prefetch_vault_configs(conn)
-    strategy_lookup = _prefetch_strategies(conn)
-    print(f"  Prefetched lookups in {_time.monotonic() - t0:.1f}s "
-          f"(swaps={len(swap_lookup)}, outcomes={len(outcome_lookup)}, "
-          f"vaults={len(vault_cfg_lookup)}, strategies={len(strategy_lookup)})")
-
-    # Get existing example_ids to skip re-processing
-    existing_ids: set[str] = set()
-    if _table_exists(conn, "interp_examples_v0"):
-        existing_ids = {
-            r[0] for r in conn.execute("SELECT example_id FROM interp_examples_v0").fetchall()
-        }
-        print(f"  {len(existing_ids)} existing examples (will skip)")
-
-    rows_to_process = []
-    skipped = 0
-    for row in rows:
-        example_id = f"{row['vault_address']}:{row['log_id']}"
-        if example_id in existing_ids:
-            skipped += 1
-        else:
-            rows_to_process.append(row)
-    print(f"  {skipped} already exist, {len(rows_to_process)} to process")
-
-    # Pre-load payloads: inline from DB (fast) or from files in parallel (legacy)
-    if rows_to_process and has_inline:
-        t1 = _time.monotonic()
-        payloads = []
-        for r in rows_to_process:
-            gz = r["payload_gz"]
-            if gz:
-                try:
-                    payloads.append(json.loads(gzip.decompress(gz)))
-                except Exception:
-                    payloads.append(None)
-            else:
-                payloads.append(_load_payload(r["payload_path"]))
-        loaded = sum(1 for p in payloads if p is not None)
-        print(f"  Decompressed {loaded}/{len(payloads)} inline payloads in {_time.monotonic() - t1:.1f}s")
-    elif rows_to_process:
-        from concurrent.futures import ThreadPoolExecutor
-        t1 = _time.monotonic()
-        payload_paths = [r["payload_path"] for r in rows_to_process]
-        with ThreadPoolExecutor(max_workers=32) as pool:
-            payloads = list(pool.map(_load_payload, payload_paths))
-        loaded = sum(1 for p in payloads if p is not None)
-        print(f"  Loaded {loaded}/{len(payloads)} payloads from files in {_time.monotonic() - t1:.1f}s")
-    else:
-        payloads = []
-
-    inserted = 0
-    focused = 0
-    t0 = _time.monotonic()
-    for i, row in enumerate(rows_to_process):
-        payload = payloads[i]
-        context = _extract_context_blocks(payload)
-        if context["strategy"] is None:
-            vault_addr = str(row["vault_address"])
-            strats = strategy_lookup.get(vault_addr, [])
-            if strats:
-                strategy_id = row["strategy_id"]
-                matched = None
-                if strategy_id is not None:
-                    for s in strats:
-                        if str(s.get("strategy_id")) == str(strategy_id):
-                            matched = s
-                            break
-                context["strategy"] = {
-                    "strategy_id_from_log": strategy_id,
-                    "matched_strategy": matched,
-                    "vault_strategies": strats,
-                }
-        tool_calls = context["tool_calls"] if context["tool_calls"] is not None else _json_loads(row["tool_calls_json"])
-        decision = _extract_decision(
-            tool_calls=tool_calls,
-            tool_fallback=row["tool"],
-            tool_args_json=row["tool_args_json"],
-        )
-        if config.only_focus_decisions and decision["decision_type"] not in {"trade", "record_observation"}:
-            continue
-        focused += 1
-
-        messages = context["messages"]
-        has_messages = bool(messages)
-        has_tools = context["tools"] is not None
-        has_market = context["market"] is not None
-        has_portfolio = context["portfolio"] is not None
-        has_strategy = context["strategy"] is not None
-        has_config = context["config"] is not None
-        has_memory = context["memory"] is not None
-        parse_ok = not bool(row["parse_error"])
-        context_complete = has_messages and has_market and has_portfolio and has_strategy and has_config
-        missing = _missing_blocks(
-            has_messages=has_messages,
-            has_market=has_market,
-            has_portfolio=has_portfolio,
-            has_strategy=has_strategy,
-            has_config=has_config,
-            has_memory=has_memory,
-            has_tools=has_tools,
-        )
-        if parse_ok and context_complete:
-            quality = "high"
-        elif parse_ok and len(missing) <= 2 and all(x in {"memory", "tools"} for x in missing):
-            quality = "medium"
-        else:
-            quality = "low"
-
-        log_id = int(row["log_id"])
-        swap = swap_lookup.get(log_id, {})
-        joined_swap = bool(swap)
-        outcome = outcome_lookup.get(log_id, {})
-        vault_cfg = vault_cfg_lookup.get(str(row["vault_address"]), {})
-
-        example_id = f"{row['vault_address']}:{row['log_id']}"
-        ingest_version = row["fetched_at"]
-        conn.execute(
-            """
+    _UPSERT_SQL = """
             INSERT INTO interp_examples_v0 (
                 example_id, log_id, vault_address, created_at, strategy_id, transaction_hash, is_trade,
                 prompt_messages_json, system_text, user_text, tools_available_json,
@@ -802,78 +581,156 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                 ingest_version=excluded.ingest_version,
                 transform_version=excluded.transform_version,
                 built_at=excluded.built_at
-            """,
-            (
-                example_id,
-                int(row["log_id"]),
-                row["vault_address"],
-                row["created_at"],
-                row["strategy_id"],
-                row["transaction_hash"],
-                1 if decision["decision_type"] == "trade" else 0,
-                _json_dumps(messages),
-                _extract_first_text(messages, "system"),
-                _extract_first_text(messages, "user"),
-                _json_dumps(context["tools"]),
-                _json_dumps(context["market"]),
-                _json_dumps(context["portfolio"]),
-                _json_dumps(context["strategy"]),
-                _json_dumps(context["config"]),
-                _json_dumps(context["memory"]),
-                context["model_source"] or row["llm_model"],
-                context["assistant_content"] if context["assistant_content"] is not None else row["completion_text"],
-                context["reasoning_content"] if context["reasoning_content"] is not None else row["reasoning_content"],
-                _json_dumps(tool_calls),
-                decision["action_name"],
-                decision["decision_type"],
-                decision["trade_side"],
-                decision["asset"],
-                None if decision["size"] is None else str(decision["size"]),
-                decision["observation_text"],
-                1 if joined_swap else 0,
-                swap.get("side"),
-                swap.get("token_address"),
-                swap.get("token_symbol"),
-                swap.get("effective_price_usd"),
-                outcome.get("pnl_1h_pct"),
-                outcome.get("pnl_4h_pct"),
-                outcome.get("pnl_1d_pct"),
-                outcome.get("was_profitable_1h"),
-                outcome.get("entry_price_usd"),
-                outcome.get("entry_price_eth"),
-                vault_cfg.get("trade_size"),
-                vault_cfg.get("trading_activity"),
-                vault_cfg.get("holding_style"),
-                vault_cfg.get("diversification"),
-                vault_cfg.get("asset_risk_preference"),
-                1 if parse_ok else 0,
-                row["parse_error"],
-                1 if has_messages else 0,
-                1 if has_tools else 0,
-                1 if has_market else 0,
-                1 if has_portfolio else 0,
-                1 if has_strategy else 0,
-                1 if has_config else 0,
-                1 if has_memory else 0,
-                1 if context_complete else 0,
-                _json_dumps(missing),
-                quality,
-                quality,
-                ingest_version,
-                config.transform_version,
-                _now_iso(),
-            ),
-        )
-        inserted += 1
-        if inserted % 500 == 0:
-            conn.commit()
-            elapsed = _time.monotonic() - t0
-            rate = inserted / elapsed if elapsed > 0 else 0
-            print(f"  {inserted} inserted, {i+1}/{len(rows)} scanned ({rate:.0f} rows/s)")
+            """
 
-    conn.commit()
-    elapsed = _time.monotonic() - t0
-    print(f"  Done: {inserted} inserted, {skipped} skipped, {focused} focused in {elapsed:.1f}s")
+    _BATCH_SIZE = 500
+    inserted = 0
+    focused = 0
+    error_count = 0
+    insert_batch: list[tuple] = []
+
+    def _flush_batch() -> None:
+        nonlocal inserted
+        if not insert_batch:
+            return
+        conn.executemany(_UPSERT_SQL, insert_batch)
+        inserted += len(insert_batch)
+        insert_batch.clear()
+
+    conn.execute("BEGIN TRANSACTION")
+    try:
+        for row in rows:
+            log_id = row["log_id"]
+            try:
+                payload = _load_payload(row["payload_path"])
+                context = _extract_context_blocks(payload)
+                if context["strategy"] is None:
+                    context["strategy"] = _extract_strategy_fallback(
+                        conn,
+                        vault_address=str(row["vault_address"]),
+                        strategy_id=row["strategy_id"],
+                    )
+                tool_calls = context["tool_calls"] if context["tool_calls"] is not None else _json_loads(row["tool_calls_json"])
+                decision = _extract_decision(
+                    tool_calls=tool_calls,
+                    tool_fallback=row["tool"],
+                    tool_args_json=row["tool_args_json"],
+                )
+                if config.only_focus_decisions and decision["decision_type"] not in {"trade", "record_observation"}:
+                    continue
+                focused += 1
+
+                messages = context["messages"]
+                has_messages = bool(messages)
+                has_tools = context["tools"] is not None
+                has_market = context["market"] is not None
+                has_portfolio = context["portfolio"] is not None
+                has_strategy = context["strategy"] is not None
+                has_config = context["config"] is not None
+                has_memory = context["memory"] is not None
+                parse_ok = not bool(row["parse_error"])
+                context_complete = has_messages and has_market and has_portfolio and has_strategy and has_config
+                missing = _missing_blocks(
+                    has_messages=has_messages,
+                    has_market=has_market,
+                    has_portfolio=has_portfolio,
+                    has_strategy=has_strategy,
+                    has_config=has_config,
+                    has_memory=has_memory,
+                    has_tools=has_tools,
+                )
+                if parse_ok and context_complete:
+                    quality = "high"
+                elif parse_ok and len(missing) <= 2 and all(x in {"memory", "tools"} for x in missing):
+                    quality = "medium"
+                else:
+                    quality = "low"
+
+                swap = _extract_swap_row(conn, int(log_id), row["transaction_hash"])
+                joined_swap = bool(swap)
+                outcome = _extract_trade_outcome(conn, int(log_id))
+                vault_cfg = _extract_vault_config(conn, str(row["vault_address"]))
+
+                example_id = f"{row['vault_address']}:{log_id}"
+                ingest_version = row["fetched_at"]
+                insert_batch.append((
+                    example_id,
+                    int(log_id),
+                    row["vault_address"],
+                    row["created_at"],
+                    row["strategy_id"],
+                    row["transaction_hash"],
+                    1 if decision["decision_type"] == "trade" else 0,
+                    _json_dumps(messages),
+                    _extract_first_text(messages, "system"),
+                    _extract_first_text(messages, "user"),
+                    _json_dumps(context["tools"]),
+                    _json_dumps(context["market"]),
+                    _json_dumps(context["portfolio"]),
+                    _json_dumps(context["strategy"]),
+                    _json_dumps(context["config"]),
+                    _json_dumps(context["memory"]),
+                    context["model_source"] or row["llm_model"],
+                    context["assistant_content"] if context["assistant_content"] is not None else row["completion_text"],
+                    context["reasoning_content"] if context["reasoning_content"] is not None else row["reasoning_content"],
+                    _json_dumps(tool_calls),
+                    decision["action_name"],
+                    decision["decision_type"],
+                    decision["trade_side"],
+                    decision["asset"],
+                    None if decision["size"] is None else str(decision["size"]),
+                    decision["observation_text"],
+                    1 if joined_swap else 0,
+                    swap.get("side"),
+                    swap.get("token_address"),
+                    swap.get("token_symbol"),
+                    swap.get("effective_price_usd"),
+                    outcome.get("pnl_1h_pct"),
+                    outcome.get("pnl_4h_pct"),
+                    outcome.get("pnl_1d_pct"),
+                    outcome.get("was_profitable_1h"),
+                    outcome.get("entry_price_usd"),
+                    outcome.get("entry_price_eth"),
+                    vault_cfg.get("trade_size"),
+                    vault_cfg.get("trading_activity"),
+                    vault_cfg.get("holding_style"),
+                    vault_cfg.get("diversification"),
+                    vault_cfg.get("asset_risk_preference"),
+                    1 if parse_ok else 0,
+                    row["parse_error"],
+                    1 if has_messages else 0,
+                    1 if has_tools else 0,
+                    1 if has_market else 0,
+                    1 if has_portfolio else 0,
+                    1 if has_strategy else 0,
+                    1 if has_config else 0,
+                    1 if has_memory else 0,
+                    1 if context_complete else 0,
+                    _json_dumps(missing),
+                    quality,
+                    quality,
+                    ingest_version,
+                    config.transform_version,
+                    _now_iso(),
+                ))
+
+                if len(insert_batch) >= _BATCH_SIZE:
+                    _flush_batch()
+                    conn.commit()
+                    conn.execute("BEGIN TRANSACTION")
+
+            except Exception:
+                error_count += 1
+                logger.error("Failed to process log_id=%s, skipping row", log_id, exc_info=True)
+                continue
+
+        # Flush any remaining rows in the final partial batch.
+        _flush_batch()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        logger.error("Fatal error during prepare insert loop, rolling back", exc_info=True)
+        raise
 
     conn.executescript(
         """
@@ -1032,6 +889,7 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         "rows_scanned": len(rows),
         "rows_focus_kept": focused,
         "rows_written": inserted,
+        "row_errors": error_count,
         "total_examples": int(totals["total"] or 0),
         "trade_count": int(totals["trade_count"] or 0),
         "observation_count": int(totals["observation_count"] or 0),
