@@ -308,7 +308,7 @@ def _capture_one_vllm(
             tensors = load_file(str(connector_file))
             # The connector saves with key "hidden_states" and "token_ids".
             # Shape: (num_layers, seq_len, hidden_dim).
-            hs = tensors.get("hidden_states") or next(iter(tensors.values()))
+            hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
             residual = hs.to(torch.float16)
 
             # Re-save in our canonical format with the "residual_stream" key
