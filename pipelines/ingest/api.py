@@ -22,11 +22,30 @@ class RetryPolicy:
     max_backoff_s: float = 60.0
 
 
+class _RateLimiter:
+    """Token-bucket rate limiter: allows *rate* requests per second."""
+
+    def __init__(self, rate: float) -> None:
+        self._rate = rate
+        self._min_interval = 1.0 / rate
+        self._lock = asyncio.Lock()
+        self._last: float = 0.0
+
+    async def acquire(self) -> None:
+        async with self._lock:
+            now = asyncio.get_event_loop().time()
+            wait = self._min_interval - (now - self._last)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            self._last = asyncio.get_event_loop().time()
+
+
 class TerminalMarketsApiClient:
     def __init__(
         self,
         base_url: str,
         concurrency: int = 10,
+        requests_per_second: float = 2.0,
         timeout_s: int = 30,
         retry_policy: RetryPolicy | None = None,
     ) -> None:
@@ -34,6 +53,7 @@ class TerminalMarketsApiClient:
         self.timeout_s = timeout_s
         self.retry_policy = retry_policy or RetryPolicy()
         self.semaphore = asyncio.Semaphore(concurrency)
+        self._rate_limiter = _RateLimiter(requests_per_second)
         self.session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self) -> "TerminalMarketsApiClient":
@@ -56,24 +76,31 @@ class TerminalMarketsApiClient:
 
         for attempt in range(1, self.retry_policy.max_attempts + 1):
             try:
+                await self._rate_limiter.acquire()
                 async with self.semaphore:
                     async with self.session.get(url, params=params) as response:
                         if response.status in {429, 500, 502, 503, 504}:
                             body = await response.text()
-                            if attempt == self.retry_policy.max_attempts:
-                                raise TerminalApiError(
-                                    f"API request failed after retries: {url} status={response.status} body={body}"
-                                )
-                            jittered_delay = delay * (1 + random.uniform(0, 0.3))
-                            await asyncio.sleep(jittered_delay)
-                            delay = min(delay * 2, self.retry_policy.max_backoff_s)
-                            continue
-
-                        if response.status >= 400:
+                            status = response.status
+                        elif response.status >= 400:
                             body = await response.text()
                             raise TerminalApiError(f"API request failed: {url} status={response.status} body={body}")
-
-                        return await response.json()
+                        else:
+                            return await response.json()
+                # Semaphore released — now handle retryable errors
+                if attempt == self.retry_policy.max_attempts:
+                    raise TerminalApiError(
+                        f"API request failed after retries: {url} status={status} body={body}"
+                    )
+                # Back off longer on rate limits
+                retry_delay = delay * 3 if status == 429 else delay
+                jittered_delay = retry_delay * (1 + random.uniform(0, 0.3))
+                logger.warning(
+                    "Retryable %d on attempt %d/%d for %s, sleeping %.1fs",
+                    status, attempt, self.retry_policy.max_attempts, url, jittered_delay,
+                )
+                await asyncio.sleep(jittered_delay)
+                delay = min(delay * 2, self.retry_policy.max_backoff_s)
             except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
                 logger.warning(
                     "Connection error on attempt %d/%d for %s: %s",

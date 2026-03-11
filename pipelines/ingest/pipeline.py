@@ -25,7 +25,8 @@ class BackfillConfig:
     top_n: int = 3
     leaderboard_sort_by: str = "total_pnl_usd"
     request_limit: int = 50
-    request_concurrency: int = 5
+    request_concurrency: int = 3
+    requests_per_second: float = 2.0
     timeout_s: int = 30
     max_logs_per_vault: int | None = None
     max_full_logs_per_vault: int | None = None
@@ -65,6 +66,7 @@ class TerminalBackfillIngestor:
             async with TerminalMarketsApiClient(
                 base_url=self.config.base_url,
                 concurrency=self.config.request_concurrency,
+                requests_per_second=self.config.requests_per_second,
                 timeout_s=self.config.timeout_s,
                 retry_policy=retry_policy,
             ) as api:
