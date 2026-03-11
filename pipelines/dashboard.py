@@ -1085,6 +1085,30 @@ class DashboardStore:
 
         return result
 
+    # --- Outcomes detail ---
+
+    def get_outcomes(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "total_outcomes": 0, "unlabeled_swaps": 0, "total_swaps": 0,
+            "avg_pnl_1h": None, "avg_pnl_4h": None, "avg_pnl_1d": None,
+            "win_rate_1h": None, "risk_breakdown": [],
+        }
+
+        modal = _modal_stats.get()
+        if modal and modal.get("outcomes"):
+            return modal["outcomes"]
+
+        # Legacy snapshot (pre-outcomes key): extract counts from ingest.tables
+        if modal and modal.get("ingest", {}).get("tables"):
+            tables = {t["name"]: t["count"] for t in modal["ingest"]["tables"]}
+            sw = tables.get("swaps", 0)
+            oc = tables.get("trade_outcomes", 0)
+            result["total_swaps"] = sw
+            result["total_outcomes"] = oc
+            result["unlabeled_swaps"] = sw - oc
+
+        return result
+
     # --- Capture detail ---
 
     def get_capture(self) -> dict[str, Any]:
@@ -1470,6 +1494,8 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                 self._json(store.get_ingest())
             elif path == "/api/prep":
                 self._json(store.get_prep())
+            elif path == "/api/outcomes":
+                self._json(store.get_outcomes())
             elif path == "/api/capture":
                 self._json(store.get_capture())
             elif path == "/api/analysis":
@@ -1488,6 +1514,17 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                     self._not_found()
             elif path == "/api/jobs":
                 self._json(_job_registry.list_jobs())
+            elif path == "/api/backend-url":
+                url = os.environ.get("XENON_BACKEND_URL")
+                if not url:
+                    url_file = os.path.expanduser("~/.xenon_backend_url")
+                    if os.path.exists(url_file):
+                        with open(url_file) as f:
+                            url = f.read().strip()
+                if url:
+                    self._json({"url": url.rstrip("/")})
+                else:
+                    self._json({"url": None, "error": "No backend URL configured. Set XENON_BACKEND_URL or write to ~/.xenon_backend_url"})
 
             # Static files from React build (production)
             else:

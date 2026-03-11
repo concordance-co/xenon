@@ -75,13 +75,13 @@ Then re-run capture on the expanded dataset.
 
 ### PnL outcome labels
 
-`outcomes.py` exists but may need candle data populated. Outcome labels (`pnl_1h_pct`, `was_profitable_1h`) are essential for supervised probing. Check:
+`outcomes.py` computes forward-looking PnL from candle data. Outcome labels (`pnl_1h_pct`, `was_profitable_1h`) are essential for supervised probing. Run from the dashboard Ingest tab or:
 
 ```bash
-sqlite3 data/terminal_ingest.db "SELECT COUNT(*) FROM trade_outcomes;"
+./scripts/modal_capture.sh modal-outcomes
+# Check via backend API:
+./scripts/xenon_backend.sh query "SELECT COUNT(*) FROM trade_outcomes"
 ```
-
-If empty, need to run the outcomes pipeline to fetch candle data and compute PnL.
 
 ### Volume data lifecycle
 

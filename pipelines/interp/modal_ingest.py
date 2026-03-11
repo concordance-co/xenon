@@ -1,13 +1,11 @@
-"""Modal wrapper for running ingest and data prep on the cloud.
+"""Modal wrapper for running ingest, data prep, and outcomes on the cloud.
 
-Uploads the local SQLite DB to the xenon-data volume, then runs
-ingest (fetching more data from Terminal Markets API) or prep
-(building labeled examples from the DB) on Modal.
+All operations run directly against the DB on the xenon-data Modal volume.
 
 Usage (via wrapper script):
-    ./scripts/modal_capture.sh upload-db
     ./scripts/modal_capture.sh modal-ingest --top-n 10 --selection random
     ./scripts/modal_capture.sh modal-prep --export-parquet
+    ./scripts/modal_capture.sh modal-outcomes
 """
 
 import modal
@@ -116,7 +114,7 @@ def run_prep(
     if not db_path.exists():
         raise FileNotFoundError(
             f"DB not found at {db_path}. Upload it first with: "
-            "./scripts/modal_capture.sh upload-db"
+            "./scripts/modal_capture.sh modal-ingest"
         )
 
     config = PrepareConfig(
@@ -137,6 +135,48 @@ def run_prep(
     volume.commit()
 
     print(f"\nPrep complete: {stats}")
+    return stats
+
+
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=7200,
+    cpu=2,
+)
+def run_outcomes(
+    concurrency: int = 5,
+    timeout_s: int = 30,
+    retry_max_attempts: int = 6,
+    limit: int = -1,
+) -> dict:
+    """Compute forward-looking PnL for swaps using Terminal Markets candle data."""
+    import asyncio
+    from pathlib import Path
+
+    from pipelines.interp.outcomes import OutcomesConfig, run_outcomes
+
+    db_path = Path("/data/ingest/terminal_ingest.db")
+    if not db_path.exists():
+        raise FileNotFoundError(
+            f"DB not found at {db_path}. Run ingest first with: "
+            "./scripts/modal_capture.sh modal-ingest"
+        )
+
+    config = OutcomesConfig(
+        db_path=db_path,
+        concurrency=concurrency,
+        timeout_s=timeout_s,
+        retry_max_attempts=retry_max_attempts,
+        limit=limit if limit >= 0 else None,
+    )
+
+    stats = asyncio.run(run_outcomes(config))
+
+    _write_stats_snapshot()
+    volume.commit()
+
+    print(f"\nOutcomes complete: {stats}")
     return stats
 
 
@@ -243,6 +283,11 @@ def _write_stats_snapshot() -> None:
             "full_log_count": 0, "full_log_coverage_pct": 0,
             "parse_error_count": 0, "tables": [],
         },
+        "outcomes": {
+            "total_outcomes": 0, "unlabeled_swaps": 0, "total_swaps": 0,
+            "avg_pnl_1h": None, "avg_pnl_4h": None, "avg_pnl_1d": None,
+            "win_rate_1h": None, "risk_breakdown": [],
+        },
         "prep": {
             "total_examples": 0, "high_quality": 0, "medium_quality": 0, "low_quality": 0,
             "trade_count": 0, "observation_count": 0,
@@ -295,6 +340,60 @@ def _write_stats_snapshot() -> None:
         "full_log_count": flc, "full_log_coverage_pct": cov,
         "parse_error_count": pe, "tables": tables,
     }
+
+    # --- Outcomes stats ---
+    total_swaps = table_count("swaps")
+    result["outcomes"]["total_swaps"] = total_swaps
+
+    if table_exists("trade_outcomes"):
+        oc = table_count("trade_outcomes")
+        result["outcomes"]["total_outcomes"] = oc
+        result["outcomes"]["unlabeled_swaps"] = total_swaps - oc
+
+        if oc > 0:
+            agg = conn.execute(
+                """SELECT
+                    AVG(pnl_1h_pct) AS avg_1h,
+                    AVG(pnl_4h_pct) AS avg_4h,
+                    AVG(pnl_1d_pct) AS avg_1d,
+                    AVG(CASE WHEN was_profitable_1h = 1 THEN 1.0 ELSE 0.0 END) AS wr_1h
+                FROM trade_outcomes
+                WHERE pnl_1h_pct IS NOT NULL"""
+            ).fetchone()
+            if agg:
+                result["outcomes"]["avg_pnl_1h"] = round(agg["avg_1h"], 4) if agg["avg_1h"] is not None else None
+                result["outcomes"]["avg_pnl_4h"] = round(agg["avg_4h"], 4) if agg["avg_4h"] is not None else None
+                result["outcomes"]["avg_pnl_1d"] = round(agg["avg_1d"], 4) if agg["avg_1d"] is not None else None
+                result["outcomes"]["win_rate_1h"] = round(agg["wr_1h"], 4) if agg["wr_1h"] is not None else None
+
+            risk_rows = conn.execute(
+                """SELECT
+                    COALESCE(v.asset_risk_preference, 0) AS risk_level,
+                    COUNT(*) AS cnt,
+                    AVG(t.pnl_1h_pct) AS avg_1h,
+                    AVG(t.pnl_4h_pct) AS avg_4h,
+                    AVG(t.pnl_1d_pct) AS avg_1d,
+                    AVG(CASE WHEN t.was_profitable_1h = 1 THEN 1.0 ELSE 0.0 END) AS wr_1h
+                FROM trade_outcomes t
+                JOIN swaps s ON s.log_id = t.log_id
+                JOIN vaults v ON v.vault_address = s.vault_address
+                WHERE t.pnl_1h_pct IS NOT NULL
+                GROUP BY risk_level
+                ORDER BY risk_level"""
+            ).fetchall()
+            result["outcomes"]["risk_breakdown"] = [
+                {
+                    "risk_level": int(r["risk_level"]),
+                    "count": r["cnt"],
+                    "avg_pnl_1h": round(r["avg_1h"], 4) if r["avg_1h"] is not None else None,
+                    "avg_pnl_4h": round(r["avg_4h"], 4) if r["avg_4h"] is not None else None,
+                    "avg_pnl_1d": round(r["avg_1d"], 4) if r["avg_1d"] is not None else None,
+                    "win_rate_1h": round(r["wr_1h"], 4) if r["wr_1h"] is not None else None,
+                }
+                for r in risk_rows
+            ]
+    else:
+        result["outcomes"]["unlabeled_swaps"] = total_swaps
 
     # --- Prep stats ---
     if table_exists("interp_examples_v0"):
@@ -368,6 +467,10 @@ def main(
     include_all_decisions: bool = False,
     export_parquet: bool = True,
     export_jsonl: bool = False,
+    # Outcomes args
+    outcomes_limit: int = -1,
+    timeout_s: int = 30,
+    retry_max_attempts: int = 6,
 ):
     if mode == "ingest":
         result = run_ingest.remote(
@@ -391,6 +494,15 @@ def main(
         )
         print(f"\nPrep result: {result}")
 
+    elif mode == "outcomes":
+        result = run_outcomes.remote(
+            concurrency=concurrency,
+            timeout_s=timeout_s,
+            retry_max_attempts=retry_max_attempts,
+            limit=outcomes_limit,
+        )
+        print(f"\nOutcomes result: {result}")
+
     elif mode == "snapshot":
         write_stats_snapshot.remote()
 
@@ -399,4 +511,4 @@ def main(
         print(f"\nBackfill result: {result}")
 
     else:
-        print(f"Unknown mode: {mode}. Use 'ingest', 'prep', 'snapshot', or 'backfill-payloads'.")
+        print(f"Unknown mode: {mode}. Use 'ingest', 'prep', 'outcomes', 'snapshot', or 'backfill-payloads'.")

@@ -16,6 +16,11 @@ export interface PrepConfig {
   includeAllDecisions: boolean
 }
 
+export interface OutcomesConfig {
+  concurrency: number
+  limit: number
+}
+
 export interface CaptureConfig {
   captureRouter: boolean
   captureResidual: boolean
@@ -40,6 +45,7 @@ export interface AnalysisConfig {
 export interface PipelineConfig {
   ingest: IngestConfig
   prep: PrepConfig
+  outcomes: OutcomesConfig
   capture: CaptureConfig
   analysis: AnalysisConfig
 }
@@ -58,6 +64,10 @@ export const DEFAULT_CONFIG: PipelineConfig = {
     observationSampleSize: 150,
     pairedSampleSize: 100,
     includeAllDecisions: false,
+  },
+  outcomes: {
+    concurrency: 5,
+    limit: 0,
   },
   capture: {
     captureRouter: true,
@@ -90,6 +100,7 @@ export function loadConfig(): PipelineConfig {
     return {
       ingest: { ...DEFAULT_CONFIG.ingest, ...saved.ingest },
       prep: { ...DEFAULT_CONFIG.prep, ...saved.prep },
+      outcomes: { ...DEFAULT_CONFIG.outcomes, ...saved.outcomes },
       capture: { ...DEFAULT_CONFIG.capture, ...saved.capture },
       analysis: { ...DEFAULT_CONFIG.analysis, ...saved.analysis },
     }
@@ -120,6 +131,13 @@ export function buildPrepCmd(c: PrepConfig): string {
   if (c.observationSampleSize !== 150) cmd += ` --observation-sample-size ${c.observationSampleSize}`
   if (c.pairedSampleSize !== 100) cmd += ` --paired-sample-size ${c.pairedSampleSize}`
   if (c.includeAllDecisions) cmd += ' --include-all-decisions'
+  return cmd
+}
+
+export function buildOutcomesCmd(c: OutcomesConfig): string {
+  let cmd = './scripts/modal_capture.sh modal-outcomes'
+  if (c.concurrency !== 5) cmd += ` --concurrency ${c.concurrency}`
+  if (c.limit > 0) cmd += ` --outcomes-limit ${c.limit}`
   return cmd
 }
 

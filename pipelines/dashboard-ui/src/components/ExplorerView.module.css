@@ -1,0 +1,73 @@
+/* ─── Query editor ─── */
+.queryInput {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-sub);
+  color: var(--text);
+  tab-size: 2;
+}
+
+.queryInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ─── Scrollable data grid ─── */
+.dataGrid {
+  overflow-x: auto;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+/* ─── Truncated cell ─── */
+.cellTruncate {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Error banner ─── */
+.errorBanner {
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--rose);
+  border-radius: var(--radius);
+  background: var(--rose-dim);
+  color: var(--rose);
+  font-size: 0.8125rem;
+  margin-bottom: var(--space-lg);
+}
+
+/* ─── Toolbar row ─── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-lg);
+}
+
+.toolbar select {
+  min-width: 200px;
+}
+
+/* ─── Row count label ─── */
+.rowCount {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* ─── Hint ─── */
+.hint {
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  margin-top: var(--space-xs);
+}

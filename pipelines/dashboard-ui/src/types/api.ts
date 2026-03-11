@@ -64,6 +64,26 @@ export interface PrepData {
   label_distribution: LabelDistRow[]
 }
 
+export interface RiskBreakdownRow {
+  risk_level: number
+  count: number
+  avg_pnl_1h: number | null
+  avg_pnl_4h: number | null
+  avg_pnl_1d: number | null
+  win_rate_1h: number | null
+}
+
+export interface OutcomesData {
+  total_outcomes: number
+  unlabeled_swaps: number
+  total_swaps: number
+  avg_pnl_1h: number | null
+  avg_pnl_4h: number | null
+  avg_pnl_1d: number | null
+  win_rate_1h: number | null
+  risk_breakdown: RiskBreakdownRow[]
+}
+
 export interface CaptureRow {
   log_id: number
   seq_len: number
@@ -130,4 +150,38 @@ export interface Job {
   running: boolean
   return_code: number | null
   line_count: number
+}
+
+// --- Explorer (Backend API) ---
+
+export interface BackendTableInfo {
+  name: string
+  count: number
+}
+
+export interface BackendColumnInfo {
+  name: string
+  type: string
+  notnull: boolean
+  pk: boolean
+  default: string | null
+}
+
+export interface BackendSchemaResponse {
+  table: string
+  columns: BackendColumnInfo[]
+}
+
+export interface BackendSampleResponse {
+  table: string
+  columns: string[]
+  rows: Record<string, unknown>[]
+  row_count: number
+}
+
+export interface BackendQueryResponse {
+  columns: string[]
+  rows: Record<string, unknown>[]
+  row_count: number
+  sql: string
 }
