@@ -6,6 +6,8 @@ import argparse
 import asyncio
 import json
 import sqlite3
+import time
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -144,21 +146,28 @@ async def _process_swap(
     swap: dict[str, Any],
 ) -> dict[str, Any] | None:
     token_address = swap["token_address"]
-    swap_ts = swap["timestamp"]
+    swap_ts_raw = swap["timestamp"]
     side = swap["side"]
 
-    if not token_address or not swap_ts:
+    if not token_address or swap_ts_raw is None:
+        return None
+    try:
+        swap_ts = int(swap_ts_raw)
+    except (TypeError, ValueError):
         return None
 
-    entry_price_eth = (
-        float(swap["effective_price_eth"]) if swap["effective_price_eth"] else None
-    )
-    entry_price_usd = (
-        float(swap["effective_price_usd"]) if swap["effective_price_usd"] else None
-    )
-    eth_price_usd = (
-        float(swap["eth_price_usd"]) if swap["eth_price_usd"] else None
-    )
+    try:
+        entry_price_eth = (
+            float(swap["effective_price_eth"]) if swap["effective_price_eth"] else None
+        )
+        entry_price_usd = (
+            float(swap["effective_price_usd"]) if swap["effective_price_usd"] else None
+        )
+        eth_price_usd = (
+            float(swap["eth_price_usd"]) if swap["eth_price_usd"] else None
+        )
+    except (TypeError, ValueError):
+        return None
 
     if entry_price_eth is None or entry_price_eth == 0:
         return None
@@ -224,7 +233,15 @@ async def run_outcomes(config: OutcomesConfig) -> dict[str, int]:
 
     labeled = 0
     failed = 0
+    failure_reasons: Counter[str] = Counter()
+    started_at = time.monotonic()
     retry_policy = RetryPolicy(max_attempts=config.retry_max_attempts)
+
+    print(
+        "Starting outcomes run "
+        f"(concurrency={config.concurrency}, timeout_s={config.timeout_s}, "
+        f"retry_max_attempts={config.retry_max_attempts})"
+    )
 
     async with TerminalMarketsApiClient(
         base_url=config.base_url,
@@ -242,60 +259,83 @@ async def run_outcomes(config: OutcomesConfig) -> dict[str, int]:
             for result in results:
                 if isinstance(result, Exception):
                     failed += 1
-                    print(f"  Failed: {result}")
+                    key = type(result).__name__
+                    failure_reasons[key] += 1
+                    if failure_reasons[key] <= 3:
+                        print(f"  Failed ({key}): {result}")
                 elif result is not None:
-                    conn.execute(
-                        """
-                        INSERT INTO trade_outcomes (
-                            log_id, transaction_hash, side, token_address,
-                            entry_price_eth, entry_price_usd, eth_price_usd_at_entry,
-                            price_1h_eth, price_4h_eth, price_1d_eth,
-                            price_1h_usd, price_4h_usd, price_1d_usd,
-                            pnl_1h_pct, pnl_4h_pct, pnl_1d_pct,
-                            was_profitable_1h, candle_data_json, computed_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(log_id) DO UPDATE SET
-                            price_1h_eth=excluded.price_1h_eth,
-                            price_4h_eth=excluded.price_4h_eth,
-                            price_1d_eth=excluded.price_1d_eth,
-                            price_1h_usd=excluded.price_1h_usd,
-                            price_4h_usd=excluded.price_4h_usd,
-                            price_1d_usd=excluded.price_1d_usd,
-                            pnl_1h_pct=excluded.pnl_1h_pct,
-                            pnl_4h_pct=excluded.pnl_4h_pct,
-                            pnl_1d_pct=excluded.pnl_1d_pct,
-                            was_profitable_1h=excluded.was_profitable_1h,
-                            candle_data_json=excluded.candle_data_json,
-                            computed_at=excluded.computed_at
-                        """,
-                        (
-                            result["log_id"],
-                            result["transaction_hash"],
-                            result["side"],
-                            result["token_address"],
-                            result["entry_price_eth"],
-                            result["entry_price_usd"],
-                            result["eth_price_usd_at_entry"],
-                            result["price_1h_eth"],
-                            result["price_4h_eth"],
-                            result["price_1d_eth"],
-                            result["price_1h_usd"],
-                            result["price_4h_usd"],
-                            result["price_1d_usd"],
-                            result["pnl_1h_pct"],
-                            result["pnl_4h_pct"],
-                            result["pnl_1d_pct"],
-                            result["was_profitable_1h"],
-                            result["candle_data_json"],
-                            _now_iso(),
-                        ),
-                    )
-                    labeled += 1
+                    try:
+                        conn.execute(
+                            """
+                            INSERT INTO trade_outcomes (
+                                log_id, transaction_hash, side, token_address,
+                                entry_price_eth, entry_price_usd, eth_price_usd_at_entry,
+                                price_1h_eth, price_4h_eth, price_1d_eth,
+                                price_1h_usd, price_4h_usd, price_1d_usd,
+                                pnl_1h_pct, pnl_4h_pct, pnl_1d_pct,
+                                was_profitable_1h, candle_data_json, computed_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ON CONFLICT(log_id) DO UPDATE SET
+                                price_1h_eth=excluded.price_1h_eth,
+                                price_4h_eth=excluded.price_4h_eth,
+                                price_1d_eth=excluded.price_1d_eth,
+                                price_1h_usd=excluded.price_1h_usd,
+                                price_4h_usd=excluded.price_4h_usd,
+                                price_1d_usd=excluded.price_1d_usd,
+                                pnl_1h_pct=excluded.pnl_1h_pct,
+                                pnl_4h_pct=excluded.pnl_4h_pct,
+                                pnl_1d_pct=excluded.pnl_1d_pct,
+                                was_profitable_1h=excluded.was_profitable_1h,
+                                candle_data_json=excluded.candle_data_json,
+                                computed_at=excluded.computed_at
+                            """,
+                            (
+                                result["log_id"],
+                                result["transaction_hash"],
+                                result["side"],
+                                result["token_address"],
+                                result["entry_price_eth"],
+                                result["entry_price_usd"],
+                                result["eth_price_usd_at_entry"],
+                                result["price_1h_eth"],
+                                result["price_4h_eth"],
+                                result["price_1d_eth"],
+                                result["price_1h_usd"],
+                                result["price_4h_usd"],
+                                result["price_1d_usd"],
+                                result["pnl_1h_pct"],
+                                result["pnl_4h_pct"],
+                                result["pnl_1d_pct"],
+                                result["was_profitable_1h"],
+                                result["candle_data_json"],
+                                _now_iso(),
+                            ),
+                        )
+                        labeled += 1
+                    except Exception as exc:
+                        failed += 1
+                        failure_reasons["sqlite_write_error"] += 1
+                        if failure_reasons["sqlite_write_error"] <= 3:
+                            print(f"  Failed (sqlite_write_error): log_id={result.get('log_id')} err={exc}")
                 else:
                     failed += 1
+                    failure_reasons["not_labelable"] += 1
             conn.commit()
 
+            processed = min(i + batch_size, len(unlabeled))
+            if processed % max(100, batch_size * 20) == 0 or processed == len(unlabeled):
+                elapsed_s = max(1e-6, time.monotonic() - started_at)
+                rate = processed / elapsed_s
+                print(
+                    f"Progress: {processed}/{len(unlabeled)} "
+                    f"({processed/len(unlabeled)*100:.1f}%) "
+                    f"labeled={labeled} failed={failed} rate={rate:.1f}/s"
+                )
+
     conn.close()
+    if failure_reasons:
+        top = sorted(failure_reasons.items(), key=lambda kv: kv[1], reverse=True)[:8]
+        print(f"Failure breakdown: {top}")
     return {"processed": len(unlabeled), "labeled": labeled, "failed": failed}
 
 

@@ -55,7 +55,11 @@ export default function App() {
     setRunner(null)
     setCmdMinimized(false)
     setRefreshKey(k => k + 1)
-    refetch()
+    refetch('/api/status?refresh=1')
+  }, [refetch])
+
+  const handleRefresh = useCallback(() => {
+    refetch('/api/status?refresh=1')
   }, [refetch])
 
   return (
@@ -85,7 +89,7 @@ export default function App() {
             </button>
           </div>
           {view === 'pipeline' && (
-            <button className={styles.refreshBtn} onClick={refetch}>
+            <button className={styles.refreshBtn} onClick={handleRefresh}>
               Refresh
             </button>
           )}

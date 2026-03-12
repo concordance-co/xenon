@@ -1,7 +1,102 @@
-/* ─── Query editor ─── */
-.queryInput {
+.explorerRoot {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.workspaceNav {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 3px;
+  gap: 3px;
+  background: color-mix(in oklch, var(--surface) 72%, var(--bg-sub) 28%);
+  width: fit-content;
+}
+
+.workspaceTab,
+.workspaceTabActive {
+  border: none;
+  border-radius: calc(var(--radius-lg) - 3px);
+  padding: 9px 14px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: transparent;
+  transition: all 140ms var(--ease-out);
+}
+
+.workspaceTab:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.workspaceTabActive {
+  color: var(--accent);
+  background: color-mix(in oklch, var(--accent-dim) 70%, var(--surface) 30%);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.queryLayout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: var(--space-lg);
+}
+
+.queryResultGrid {
+  margin-top: var(--space-xl);
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 360px);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.historyStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+}
+
+.historyLabel {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.historyBtn {
+  border: 1px solid var(--border);
+  background: var(--bg-sub);
+  color: var(--text-2);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyBtn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.queryInput,
+.codeArea {
   width: 100%;
-  min-height: 100px;
+  min-height: 108px;
   resize: vertical;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
@@ -14,60 +109,211 @@
   tab-size: 2;
 }
 
-.queryInput:focus {
+.codeArea {
+  min-height: 84px;
+}
+
+.queryInput:focus,
+.codeArea:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-/* ─── Scrollable data grid ─── */
 .dataGrid {
   overflow-x: auto;
-  max-height: 520px;
   overflow-y: auto;
+  max-height: 540px;
 }
 
-/* ─── Truncated cell ─── */
 .cellTruncate {
-  max-width: 300px;
+  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* ─── Error banner ─── */
-.errorBanner {
+.chartWrap {
+  width: 100%;
+  height: 280px;
+}
+
+.labelLayout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.specList {
+  display: grid;
+  gap: var(--space-xs);
+  max-height: 460px;
+  overflow: auto;
+  margin-bottom: var(--space-md);
+}
+
+.specItem,
+.specItemActive {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-sm);
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-2);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.specItem:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.specItemActive {
+  border-color: var(--accent);
+  background: color-mix(in oklch, var(--accent-dim) 70%, var(--surface) 30%);
+  color: var(--accent);
+}
+
+.specItemMeta {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-3);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: var(--space-md);
+}
+
+.previewBlocks {
+  margin-top: var(--space-xl);
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.metricRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: var(--space-sm);
+}
+
+.metricCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sub);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.metricLabel {
+  color: var(--text-3);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+
+.previewGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+.readinessBox {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sub);
+  padding: var(--space-md);
+  display: grid;
+  gap: 4px;
+}
+
+.probeLayout {
+  max-width: 900px;
+}
+
+.probeText {
+  color: var(--text-2);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  max-width: 68ch;
+}
+
+.cmdBlock {
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  background: var(--bg-sub);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
   padding: var(--space-md) var(--space-lg);
+}
+
+.reasonList {
+  margin-top: var(--space-sm);
+  padding-left: 1rem;
+  color: var(--text-2);
+  font-size: 0.79rem;
+  display: grid;
+  gap: 4px;
+}
+
+.subhead {
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-sm);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.errorBanner {
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--rose);
   border-radius: var(--radius);
   background: var(--rose-dim);
   color: var(--rose);
-  font-size: 0.8125rem;
-  margin-bottom: var(--space-lg);
+  font-size: 0.8rem;
 }
 
-/* ─── Toolbar row ─── */
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-lg);
-}
-
-.toolbar select {
-  min-width: 200px;
-}
-
-/* ─── Row count label ─── */
 .rowCount {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-3);
 }
 
-/* ─── Hint ─── */
 .hint {
-  font-size: 0.6875rem;
+  font-size: 0.68rem;
   color: var(--text-3);
-  margin-top: var(--space-xs);
+}
+
+@media (max-width: 1020px) {
+  .queryLayout,
+  .queryResultGrid,
+  .labelLayout,
+  .previewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .metricRow {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
 }

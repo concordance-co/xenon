@@ -280,7 +280,7 @@ HTML_PAGE = r"""<!doctype html>
       <div class="header-sub">Ingest → Data Prep → Activation Capture → Analysis</div>
     </div>
     <div class="header-actions">
-      <button class="btn" onclick="refreshAll()">Refresh</button>
+      <button class="btn" onclick="refreshAll(true)">Refresh</button>
     </div>
   </div>
 
@@ -753,7 +753,7 @@ function runCmd(phase, cmd) {
     html += `\n<span class="${data.returncode === 0 ? 'run-ok' : 'run-err'}">\nExit code: ${data.returncode}</span>`;
     logEl.innerHTML = html;
     // Refresh after run
-    setTimeout(refreshAll, 500);
+    setTimeout(() => refreshAll(true), 500);
   }).catch(err => {
     logEl.innerHTML = `<span class="run-err">Error: ${esc(err.message)}</span>`;
   });
@@ -782,9 +782,9 @@ async function loadTab(tab) {
   } catch(e) { console.error("loadTab error:", e); }
 }
 
-async function refreshAll() {
+async function refreshAll(force = false) {
   try {
-    statusData = await api("/api/status");
+    statusData = await api(force ? "/api/status?refresh=1" : "/api/status");
     renderPhaseCards(statusData);
     await loadTab(currentTab);
   } catch(e) { console.error("refreshAll error:", e); }
@@ -824,6 +824,31 @@ class _ModalStatsCache:
         """Force re-fetch on next get()."""
         self._fetched_at = 0
 
+    def force_refresh(self, timeout_s: float = 45.0) -> dict[str, Any] | None:
+        """Refresh stats synchronously for explicit UI refresh actions."""
+        self.invalidate()
+
+        # If another request is already fetching, wait briefly for it.
+        deadline = time.monotonic() + timeout_s
+        while True:
+            with self._lock:
+                fetching = self._fetching
+                if not fetching:
+                    self._fetching = True
+                    break
+            if time.monotonic() >= deadline:
+                self._try_load_local()
+                return self._data
+            time.sleep(0.05)
+
+        try:
+            # Explicit refresh should recompute snapshot on Modal first.
+            self._fetch_once(recompute=True)
+        finally:
+            with self._lock:
+                self._fetching = False
+        return self._data
+
     def _try_load_local(self) -> None:
         try:
             stats_path = Path("data/dashboard_stats.json")
@@ -844,9 +869,23 @@ class _ModalStatsCache:
 
     def _fetch(self) -> None:
         try:
+            # Background refresh only downloads the latest existing snapshot.
+            self._fetch_once(recompute=False)
+        finally:
+            with self._lock:
+                self._fetching = False
+
+    def _fetch_once(self, recompute: bool) -> None:
+        try:
+            cmd = ["./scripts/modal_capture.sh", "modal-snapshot"] if recompute else [
+                "./scripts/modal_capture.sh",
+                "modal-stats",
+            ]
             subprocess.run(
-                ["./scripts/modal_capture.sh", "modal-stats"],
-                capture_output=True, text=True, timeout=30,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60 if recompute else 30,
             )
             stats_path = Path("data/dashboard_stats.json")
             if stats_path.exists():
@@ -854,9 +893,6 @@ class _ModalStatsCache:
                 self._fetched_at = time.monotonic()
         except Exception as exc:
             print(f"[modal-stats] fetch failed: {exc}")
-        finally:
-            with self._lock:
-                self._fetching = False
 
 
 _modal_stats = _ModalStatsCache()
@@ -1489,6 +1525,9 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
 
             # API routes
             if path == "/api/status":
+                refresh = (query.get("refresh", ["0"])[0] or "").lower() in {"1", "true", "yes"}
+                if refresh:
+                    _modal_stats.force_refresh()
                 self._json(store.get_status())
             elif path == "/api/ingest":
                 self._json(store.get_ingest())
@@ -1555,6 +1594,9 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                 body = json.loads(self.rfile.read(length)) if length else {}
                 job_id = body.get("job_id", "")
                 _reconnect_job_streaming(self, job_id)
+            elif parsed.path == "/api/status/refresh":
+                _modal_stats.force_refresh()
+                self._json(store.get_status())
             else:
                 self._not_found()
 

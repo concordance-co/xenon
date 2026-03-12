@@ -5,11 +5,12 @@ export function useFetch<T>(url: string) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async (targetUrl?: string) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(url)
+      const requestUrl = targetUrl ?? url
+      const res = await fetch(requestUrl)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setData(json)

@@ -98,6 +98,54 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Migrating file payloads into DB (one-time)..."
     uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode backfill-payloads
     ;;
+  modal-repair-db)
+    echo "Attempting in-place SQLite repair on Modal volume..."
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode repair-db
+    ;;
+  modal-inspect-db)
+    TARGET_PATH="${1:-ingest/terminal_ingest.db}"
+    echo "Inspecting DB on Modal volume: ${TARGET_PATH}"
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode inspect-db --inspect-path "${TARGET_PATH}"
+    ;;
+  modal-inspect-full-logs)
+    SHARD="${1:-}"
+    SAMPLE_N="${2:-8}"
+    if [ -n "$SHARD" ]; then
+      echo "Inspecting full logs shard on Modal volume: ${SHARD}"
+      uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode inspect-full-logs --inspect-shard "${SHARD}" --inspect-sample-n "${SAMPLE_N}"
+    else
+      echo "Inspecting all full logs on Modal volume..."
+      uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode inspect-full-logs --inspect-sample-n "${SAMPLE_N}"
+    fi
+    ;;
+  modal-rebuild-from-files)
+    echo "Rebuilding DB from existing full_logs JSON files on Modal volume..."
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode rebuild-from-files "$@"
+    ;;
+  modal-backup-db)
+    REASON="${1:-manual}"
+    echo "Creating DB backup snapshot on Modal (reason=${REASON}, retain=30)..."
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode backup-db --backup-reason "${REASON}"
+    ;;
+  modal-list-db-backups)
+    LIMIT="${1:-30}"
+    echo "Listing DB backups on Modal (limit=${LIMIT})..."
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode list-db-backups --backup-list-limit "${LIMIT}"
+    ;;
+  modal-restore-db)
+    BACKUP_NAME=""
+    if [ "${1:-}" != "" ] && [[ "${1:-}" != --* ]]; then
+      BACKUP_NAME="${1}"
+      shift || true
+    fi
+    if [ -n "$BACKUP_NAME" ]; then
+      echo "Restoring DB from named backup on Modal: ${BACKUP_NAME}"
+      uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode restore-db --restore-backup-name "${BACKUP_NAME}" "$@"
+    else
+      echo "Restoring DB from latest backup on Modal..."
+      uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode restore-db "$@"
+    fi
+    ;;
   modal-snapshot)
     echo "Writing stats snapshot on Modal..."
     uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode snapshot "$@"
@@ -110,7 +158,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     modal volume get xenon-data dashboard_stats.json ./data/dashboard_stats.json --force 2>/dev/null
     ;;
   *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|upload-db|download-db|modal-ingest|modal-prep|modal-outcomes|modal-stats|download-activations|download-results} [extra flags]"
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|upload-db|download-db|modal-ingest|modal-prep|modal-outcomes|modal-repair-db|modal-inspect-db|modal-inspect-full-logs|modal-rebuild-from-files|modal-backup-db|modal-list-db-backups|modal-restore-db|modal-stats|download-activations|download-results} [extra flags]"
     echo ""
     echo "  download             Cache model weights to volume (one-time)"
     echo "  smoke                Single example, single layer (sanity check)"
@@ -125,6 +173,13 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  modal-ingest         Run ingest on Modal (fetches from Terminal API)"
     echo "  modal-prep           Run data prep on Modal"
     echo "  modal-outcomes       Compute trade outcomes (PnL) on Modal"
+    echo "  modal-repair-db      Attempt in-place SQLite salvage on Modal volume"
+    echo "  modal-inspect-db     Inspect a DB file on Modal volume (integrity, tables, key counts)"
+    echo "  modal-inspect-full-logs [shard] [sample_n]  Inspect full_logs .json.gz coverage on Modal"
+    echo "  modal-rebuild-from-files  Rebuild ingest DB from existing full_logs JSON files (no API)"
+    echo "  modal-backup-db [reason]  Snapshot DB (+wal/shm) with fixed retention (30 snapshots)"
+    echo "  modal-list-db-backups [limit]      List DB backup snapshots on Modal volume"
+    echo "  modal-restore-db [backup_name] [flags]  Restore live DB from backup with safety checks"
     echo "  backfill-payloads    Migrate file payloads into DB inline (one-time)"
     echo "  modal-snapshot       Write & download stats snapshot from Modal DB"
     echo "  modal-stats          Download cached stats snapshot (no Modal run)"

@@ -44,5 +44,17 @@ export function useBackendUrl() {
     return res.json()
   }, [url])
 
-  return { url, loading, error, backendFetch, backendPost }
+  const backendDelete = useCallback(async <T,>(path: string): Promise<T> => {
+    if (!url) throw new Error('Backend not configured')
+    const res = await fetch(`${url}${path}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      let detail = `HTTP ${res.status}`
+      try { detail = JSON.parse(text).detail ?? detail } catch { /* */ }
+      throw new Error(detail)
+    }
+    return res.json()
+  }, [url])
+
+  return { url, loading, error, backendFetch, backendPost, backendDelete }
 }
