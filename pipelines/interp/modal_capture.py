@@ -18,10 +18,11 @@ app = modal.App("xenon-activation-capture")
 volume = modal.Volume.from_name("xenon-data", create_if_missing=True)
 model_volume = modal.Volume.from_name("xenon-models", create_if_missing=True)
 hf_secret = modal.Secret.from_name("huggingface")
+neon_secret = modal.Secret.from_name("xenon-neon")
 
 image = (
     modal.Image.debian_slim(python_version="3.13")
-    .pip_install("torch", "transformers", "safetensors", "pyarrow", "huggingface_hub")
+    .pip_install("torch", "transformers", "safetensors", "pyarrow", "huggingface_hub", "psycopg[binary]")
     .add_local_python_source("pipelines")
 )
 
@@ -322,6 +323,15 @@ def merge_compact_batches(num_batches: int) -> int:
         all_log_ids = []
         all_ri = []
 
+        # Load existing final file first so we don't lose previous data
+        out_path = compact_dir / f"{key}.safetensors"
+        if out_path.exists():
+            with safe_open(str(out_path), framework="numpy") as f:
+                all_features.append(f.get_tensor("features"))
+                all_log_ids.append(f.get_tensor("log_ids"))
+                if "router_indices" in f.keys():
+                    all_ri.append(f.get_tensor("router_indices"))
+
         for bf in sorted(batch_files):
             with safe_open(str(bf), framework="numpy") as f:
                 all_features.append(f.get_tensor("features"))
@@ -329,17 +339,30 @@ def merge_compact_batches(num_batches: int) -> int:
                 if "router_indices" in f.keys():
                     all_ri.append(f.get_tensor("router_indices"))
 
-        out_path = compact_dir / f"{key}.safetensors"
-        tensors: dict[str, np.ndarray] = {
-            "features": np.concatenate(all_features, axis=0),
-            "log_ids": np.concatenate(all_log_ids, axis=0),
-        }
-        if all_ri:
-            tensors["router_indices"] = np.concatenate(all_ri, axis=0)
+        features = np.concatenate(all_features, axis=0)
+        log_ids = np.concatenate(all_log_ids, axis=0)
+        ri = np.concatenate(all_ri, axis=0) if all_ri else None
 
-        save_file(tensors, str(out_path))
+        # Deduplicate by log_id — keep last occurrence (newest data wins)
+        _, unique_idx = np.unique(log_ids, return_index=True)
+        unique_idx = np.sort(unique_idx)  # preserve order
+        features = features[unique_idx]
+        log_ids = log_ids[unique_idx]
+
+        tensors: dict[str, np.ndarray] = {
+            "features": features,
+            "log_ids": log_ids,
+        }
+        if ri is not None:
+            tensors["router_indices"] = ri[unique_idx]
+
+        # Write to tmp then rename for atomicity
+        tmp_path = compact_dir / f"{key}.tmp.safetensors"
+        save_file(tensors, str(tmp_path))
+        tmp_path.rename(out_path)
+
         size_mb = out_path.stat().st_size / 1024 / 1024
-        n = tensors["log_ids"].shape[0]
+        n = log_ids.shape[0]
         print(f"  {key}: {n} examples, {size_mb:.1f} MB")
 
         # Remove batch files
@@ -373,29 +396,33 @@ def write_metadata_to_volume(metadata_rows: list[dict]) -> int:
     return len(metadata_rows)
 
 
-@app.local_entrypoint()
-def main(
+@app.function(
+    image=image,
+    secrets=[neon_secret],
+    volumes={"/data": volume},
+    timeout=7200,
+)
+def run_capture(
     limit: int = 0,
-    layers: str = "",
+    layers_str: str = "",
     capture_router: bool = True,
     capture_residual: bool = True,
     batch_size: int = 10,
     model_id: str = "Qwen/Qwen3-30B-A3B",
     pool: str = "",
     router_dtype: str = "float16",
-):
-    import json
-    from pathlib import Path
-
+) -> str:
+    """Orchestrator: load examples from Neon, fan out to GPU workers, merge results."""
     from pipelines.interp.capture import _load_examples_from_neon
 
     rows = _load_examples_from_neon(limit=limit if limit > 0 else None)
+    if not rows:
+        return "No examples to capture"
 
     parsed_layers: list[int] | None = None
-    if layers:
-        parsed_layers = [int(x.strip()) for x in layers.split(",")]
+    if layers_str:
+        parsed_layers = [int(x.strip()) for x in layers_str.split(",")]
 
-    # Partition into batches
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
     batch_indices = list(range(len(batches)))
     print(f"  {len(batches)} batches of up to {batch_size}")
@@ -417,9 +444,33 @@ def main(
         all_metadata.extend(batch_meta)
 
     if all_metadata:
-        # Write metadata to volume
         write_metadata_to_volume.remote(all_metadata)
-        # Merge batch compact files into final compact files
         merge_compact_batches.remote(len(batches))
 
-    print(f"\nDone: {len(all_metadata)} examples captured")
+    summary = f"Done: {len(all_metadata)} examples captured in {len(batches)} batches"
+    print(f"\n{summary}")
+    return summary
+
+
+@app.local_entrypoint()
+def main(
+    limit: int = 0,
+    layers: str = "",
+    capture_router: bool = True,
+    capture_residual: bool = True,
+    batch_size: int = 10,
+    model_id: str = "Qwen/Qwen3-30B-A3B",
+    pool: str = "",
+    router_dtype: str = "float16",
+):
+    result = run_capture.remote(
+        limit=limit,
+        layers_str=layers,
+        capture_router=capture_router,
+        capture_residual=capture_residual,
+        batch_size=batch_size,
+        model_id=model_id,
+        pool=pool,
+        router_dtype=router_dtype,
+    )
+    print(result)

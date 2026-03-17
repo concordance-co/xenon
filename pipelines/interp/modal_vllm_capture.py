@@ -25,6 +25,7 @@ app = modal.App("xenon-vllm-capture")
 volume = modal.Volume.from_name("xenon-data", create_if_missing=True)
 model_volume = modal.Volume.from_name("xenon-models", create_if_missing=True)
 hf_secret = modal.Secret.from_name("huggingface")
+neon_secret = modal.Secret.from_name("xenon-neon")
 
 image = (
     modal.Image.debian_slim(python_version="3.13")
@@ -35,6 +36,7 @@ image = (
         "safetensors",
         "pyarrow",
         "huggingface_hub",
+        "psycopg[binary]",
     )
     .env({"VLLM_ALLOW_INSECURE_SERIALIZATION": "1"})
     .add_local_python_source("pipelines")
@@ -433,10 +435,15 @@ def get_completed_log_ids(
     return completed
 
 
-@app.local_entrypoint()
-def main(
+@app.function(
+    image=image,
+    secrets=[neon_secret],
+    volumes={"/data": volume},
+    timeout=7200,
+)
+def run_vllm_capture(
     limit: int = 0,
-    layers: str = "",
+    layers_str: str = "",
     capture_router: bool = True,
     capture_residual: bool = True,
     batch_size: int = 10,
@@ -447,17 +454,17 @@ def main(
     max_model_len: int = 0,
     router_top_k: int = 8,
     router_dtype: str = "float16",
-):
-    """Local entrypoint: loads examples from Neon, dispatches batches to Modal workers."""
-    from pathlib import Path
-
+) -> str:
+    """Orchestrator: load examples from Neon, fan out to GPU workers, write metadata."""
     from pipelines.interp.capture import _load_examples_from_neon
 
     rows = _load_examples_from_neon(limit=limit if limit > 0 else None)
+    if not rows:
+        return "No examples to capture"
 
     parsed_layers: list[int] | None = None
-    if layers:
-        parsed_layers = [int(x.strip()) for x in layers.split(",")]
+    if layers_str:
+        parsed_layers = [int(x.strip()) for x in layers_str.split(",")]
 
     pool_val = pool if pool else None
 
@@ -477,10 +484,8 @@ def main(
         print(f"  No existing captures found, processing all {len(rows)} examples")
 
     if not rows:
-        print("\nAll examples already captured. Nothing to do.")
-        return
+        return f"All {before} examples already captured. Nothing to do."
 
-    # Partition into batches
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
     print(f"  {len(batches)} batches of up to {batch_size}")
 
@@ -511,7 +516,40 @@ def main(
             write_metadata_to_volume.remote(all_metadata)
 
     if all_metadata:
-        # Final merge metadata into volume
         write_metadata_to_volume.remote(all_metadata)
 
-    print(f"\nDone: {len(all_metadata)} examples captured, {skipped} skipped (already done)")
+    summary = f"Done: {len(all_metadata)} examples captured, {skipped} skipped (already done)"
+    print(f"\n{summary}")
+    return summary
+
+
+@app.local_entrypoint()
+def main(
+    limit: int = 0,
+    layers: str = "",
+    capture_router: bool = True,
+    capture_residual: bool = True,
+    batch_size: int = 10,
+    model_id: str = "Qwen/Qwen3-30B-A3B",
+    pool: str = "",
+    tensor_parallel_size: int = 1,
+    gpu_memory_utilization: str = "0.90",
+    max_model_len: int = 0,
+    router_top_k: int = 8,
+    router_dtype: str = "float16",
+):
+    result = run_vllm_capture.remote(
+        limit=limit,
+        layers_str=layers,
+        capture_router=capture_router,
+        capture_residual=capture_residual,
+        batch_size=batch_size,
+        model_id=model_id,
+        pool=pool,
+        tensor_parallel_size=tensor_parallel_size,
+        gpu_memory_utilization=gpu_memory_utilization,
+        max_model_len=max_model_len,
+        router_top_k=router_top_k,
+        router_dtype=router_dtype,
+    )
+    print(result)

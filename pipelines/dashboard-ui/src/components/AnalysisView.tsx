@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useFetch, fetchJson } from '../hooks/useApi'
 import { useConfig, buildAnalysisCmd } from '../hooks/useConfig'
-import type { AnalysisData, ProbeRow, ExpertRow } from '../types/api'
+import type { AnalysisData, ProbeRow, ExpertRow, FileTreeEntry } from '../types/api'
 import { ProbeChart } from './ProbeChart'
 import { Tip } from './Tip'
 import s from './shared.module.css'
@@ -25,12 +25,12 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') setLightboxImg(null)
     if (!data?.pca_images?.length) return
-    const imgs = data.pca_images
+    const imgNames = data.pca_images.map(i => i.name)
     setLightboxImg(cur => {
       if (!cur) return cur
-      const idx = imgs.indexOf(cur)
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') return imgs[Math.min(idx + 1, imgs.length - 1)]
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') return imgs[Math.max(idx - 1, 0)]
+      const idx = imgNames.indexOf(cur)
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') return imgNames[Math.min(idx + 1, imgNames.length - 1)]
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') return imgNames[Math.max(idx - 1, 0)]
       return cur
     })
   }, [data?.pca_images])
@@ -102,7 +102,7 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
         <Stat label="Probe Results" value={data.probe_files.length} />
         <Stat label="Expert Analysis" value={data.has_expert_specialization ? 'Available' : 'None'} />
         <Stat label="PCA Plots" value={data.pca_images.length} />
-        <Stat label="Total Results" value={data.total_results} />
+        <Stat label="Total Files" value={data.total_results} />
       </div>
 
       <div className={s.grid2}>
@@ -240,26 +240,9 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
           <div className={s.panelHead}>
             <span className={s.panelTitle}>Result Files</span>
           </div>
-          <div className={s.panelBody}>
-            {data.result_files.length > 0 ? (
-              <table className={s.table}>
-                <thead><tr><th>File</th><th style={{ textAlign: 'right' }}>Size</th></tr></thead>
-                <tbody>
-                  {data.result_files.map(f => (
-                    <tr
-                      key={f.name}
-                      style={{ cursor: f.name.endsWith('.parquet') && f.name.startsWith('probe_') ? 'pointer' : 'default' }}
-                      onClick={() => {
-                        if (f.name.startsWith('probe_') && f.name.endsWith('.parquet')) loadProbe(f.name)
-                      }}
-                      className={probeFile === f.name ? s.highlight : ''}
-                    >
-                      <td className="mono">{f.name}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{f.size}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className={s.panelBody} style={{ maxHeight: 400, overflowY: 'auto' }}>
+            {data.file_tree?.length > 0 ? (
+              <FileTree entries={data.file_tree} depth={0} probeFile={probeFile} onLoadProbe={loadProbe} />
             ) : (
               <div className={s.empty}>No results yet. Run analysis first.</div>
             )}
@@ -400,22 +383,26 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
             </ul>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
               {data.pca_images.map(img => (
-                <img
-                  key={img}
-                  src={`/api/analysis/pca/${img}`}
-                  alt={img}
-                  title={img}
-                  onClick={() => setLightboxImg(img)}
-                  style={{
-                    width: '100%',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)',
-                    cursor: 'pointer',
-                    transition: 'transform 120ms var(--ease-out)',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
-                  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                />
+                <div key={img.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <img
+                    src={`/api/analysis/pca/${img.name}`}
+                    alt={img.name}
+                    title={img.name}
+                    onClick={() => setLightboxImg(img.name)}
+                    style={{
+                      width: '100%',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      transition: 'transform 120ms var(--ease-out)',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                  />
+                  <span style={{ fontSize: '0.625rem', color: 'var(--text-4)', textAlign: 'center' }}>
+                    {new Date(img.modified_at).toLocaleString()}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
@@ -474,6 +461,72 @@ function Stat({ label, value }: { label: string; value: string | number }) {
       <div className={s.statValue}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
+    </div>
+  )
+}
+
+function FileTree({ entries, depth, probeFile, onLoadProbe }: {
+  entries: FileTreeEntry[]
+  depth: number
+  probeFile: string | null
+  onLoadProbe: (file: string) => void
+}) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+
+  return (
+    <div style={{ fontSize: '0.8125rem' }}>
+      {entries.map(entry => {
+        const isDir = entry.type === 'dir'
+        const isCollapsed = collapsed.has(entry.path)
+        const isProbe = !isDir && entry.name.startsWith('probe_') && entry.name.endsWith('.parquet')
+        const isActive = probeFile === entry.path
+
+        return (
+          <div key={entry.path}>
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '3px 0', paddingLeft: depth * 16,
+                cursor: isDir || isProbe ? 'pointer' : 'default',
+                background: isActive ? 'oklch(22% 0.02 185 / 0.3)' : 'transparent',
+                borderRadius: 'var(--radius)',
+              }}
+              onClick={() => {
+                if (isDir) setCollapsed(prev => {
+                  const next = new Set(prev)
+                  isCollapsed ? next.delete(entry.path) : next.add(entry.path)
+                  return next
+                })
+                else if (isProbe) onLoadProbe(entry.path)
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'oklch(20% 0.010 70)' }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+            >
+              <span style={{ width: 14, textAlign: 'center', fontSize: '0.6875rem', color: 'var(--text-4)', flexShrink: 0 }}>
+                {isDir ? (isCollapsed ? '+' : '-') : ' '}
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-mono)', color: isDir ? 'oklch(75% 0.06 185)' : 'var(--text-2)',
+                fontWeight: isDir ? 600 : 400, flex: 1,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {entry.name}
+              </span>
+              {!isDir && entry.size && (
+                <span style={{ fontSize: '0.6875rem', color: 'var(--text-4)', flexShrink: 0 }}>
+                  {entry.size}
+                </span>
+              )}
+              <span style={{ fontSize: '0.625rem', color: 'var(--text-4)', flexShrink: 0 }}>
+                {new Date(entry.modified_at).toLocaleString()}
+              </span>
+            </div>
+            {isDir && !isCollapsed && entry.children && (
+              <FileTree entries={entry.children} depth={depth + 1} probeFile={probeFile} onLoadProbe={onLoadProbe} />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

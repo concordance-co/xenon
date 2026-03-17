@@ -5,7 +5,7 @@ import random
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from pipelines.ingest.api import RetryPolicy, TerminalApiError, TerminalMarketsApiClient
+from pipelines.ingest.api import RetryPolicy, TerminalApiDeferrable, TerminalApiError, TerminalMarketsApiClient
 from pipelines.ingest.db import FullLogRecord, IngestDatabase
 from pipelines.ingest.full_log_parser import parse_full_log
 
@@ -22,7 +22,7 @@ class BackfillConfig:
     leaderboard_sort_by: str = "total_pnl_usd"
     request_limit: int = 50
     request_concurrency: int = 3
-    requests_per_second: float = 2.0
+    requests_per_second: float = 6.0
     timeout_s: int = 30
     max_logs_per_vault: int | None = None
     max_full_logs_per_vault: int | None = None
@@ -78,6 +78,11 @@ class TerminalBackfillIngestor:
                     if item.get("vaultAddress")
                 ]
 
+                existing_vaults = await self.db.get_existing_vault_addresses()
+                new_items = [(idx, item) for idx, item in valid_items if item["vaultAddress"] not in existing_vaults]
+                if len(new_items) < len(valid_items):
+                    print(f"Skipping {len(valid_items) - len(new_items)} vaults already in DB, fetching {len(new_items)} new")
+
                 async def _ingest_vault_meta(index: int, item: dict[str, Any]) -> None:
                     vault_address = item["vaultAddress"]
                     async with vault_sem:
@@ -94,14 +99,19 @@ class TerminalBackfillIngestor:
                     self.summary.strategies_ingested += len(strategies)
 
                 await asyncio.gather(
-                    *[_ingest_vault_meta(idx, item) for idx, item in valid_items]
+                    *[_ingest_vault_meta(idx, item) for idx, item in new_items]
                 )
 
                 # --- Phase 2: log backfill (parallel across vaults) ---
+                deferred_ids = await self.db.get_deferred_log_ids()
+                if deferred_ids:
+                    print(f"Skipping {len(deferred_ids)} previously deferred logs")
+
                 async def _backfill_logs_task(index: int, item: dict[str, Any]) -> None:
                     vault_address = item["vaultAddress"]
-                    print(f"[{index}/{len(leaderboard_items)}] Backfilling logs: {vault_address}")
-                    await self._backfill_vault_logs(api, vault_address)
+                    async with vault_sem:
+                        print(f"[{index}/{len(leaderboard_items)}] Backfilling logs: {vault_address}")
+                        await self._backfill_vault_logs(api, vault_address, deferred_ids)
 
                 await asyncio.gather(
                     *[_backfill_logs_task(idx, item) for idx, item in valid_items]
@@ -110,12 +120,33 @@ class TerminalBackfillIngestor:
                 # --- Phase 3: swap backfill (parallel across vaults) ---
                 async def _backfill_swaps_task(index: int, item: dict[str, Any]) -> None:
                     vault_address = item["vaultAddress"]
-                    print(f"[{index}/{len(leaderboard_items)}] Backfilling swaps: {vault_address}")
-                    await self._backfill_vault_swaps(api, vault_address)
+                    async with vault_sem:
+                        print(f"[{index}/{len(leaderboard_items)}] Backfilling swaps: {vault_address}")
+                        await self._backfill_vault_swaps(api, vault_address)
 
                 await asyncio.gather(
                     *[_backfill_swaps_task(idx, item) for idx, item in valid_items]
                 )
+
+                # --- Phase 4: retry deferred logs (one attempt each) ---
+                deferred_ids_final = await self.db.get_deferred_log_ids()
+                if deferred_ids_final:
+                    print(f"\nRetrying {len(deferred_ids_final)} deferred logs...")
+                    recovered = 0
+                    for batch in _batched(list(deferred_ids_final), self.config.request_concurrency):
+                        items_to_retry = [{"id": lid, "vault_address": None} for lid in batch]
+                        results = await asyncio.gather(
+                            *[self._fetch_and_store_full_log(api, item) for item in items_to_retry],
+                            return_exceptions=True,
+                        )
+                        for lid, result in zip(batch, results):
+                            if isinstance(result, Exception):
+                                pass  # stays deferred
+                            elif result:
+                                await self.db.remove_deferred_log(lid)
+                                recovered += 1
+                                self.summary.full_logs_ingested += 1
+                    print(f"  Recovered {recovered}/{len(deferred_ids_final)} deferred logs")
         finally:
             await self.db.close()
 
@@ -180,12 +211,15 @@ class TerminalBackfillIngestor:
         print(f"  Randomly sampled {len(sampled)} from {len(all_vaults)} total vaults")
         return sampled
 
-    async def _backfill_vault_logs(self, api: TerminalMarketsApiClient, vault_address: str) -> None:
+    async def _backfill_vault_logs(
+        self, api: TerminalMarketsApiClient, vault_address: str, deferred_ids: set[int] | None = None,
+    ) -> None:
         cursor: str | None = await self.db.get_last_cursor(vault_address, "logs")
         if cursor:
             print(f"  Resuming logs from cursor {cursor[:20]}...")
         logs_seen = 0
         full_logs_seen = 0
+        _deferred = deferred_ids or set()
 
         while True:
             if self.config.max_logs_per_vault is not None and logs_seen >= self.config.max_logs_per_vault:
@@ -217,7 +251,12 @@ class TerminalBackfillIngestor:
 
                 page_ids = [int(item["id"]) for item in items if item.get("id") is not None]
                 existing_ids = await self.db.fetch_existing_full_log_ids(page_ids)
-                missing_items = [item for item in items if int(item["id"]) not in existing_ids]
+                missing_items = [
+                    item for item in items
+                    if item.get("id") is not None
+                    and int(item["id"]) not in existing_ids
+                    and int(item["id"]) not in _deferred
+                ]
 
                 if self.config.max_full_logs_per_vault is not None:
                     remaining_full = self.config.max_full_logs_per_vault - full_logs_seen
@@ -231,11 +270,17 @@ class TerminalBackfillIngestor:
                             *[self._fetch_and_store_full_log(api, item) for item in batch],
                             return_exceptions=True,
                         )
-                        for result in results:
-                            if isinstance(result, Exception):
+                        for item_result, item in zip(results, batch):
+                            if isinstance(item_result, TerminalApiDeferrable):
+                                log_id = int(item["id"])
+                                await self.db.defer_log(log_id, vault_address, item_result.status)
+                                _deferred.add(log_id)
                                 self.summary.full_log_failures += 1
-                                print(f"Failed full-log fetch: {result}")
-                            elif result:
+                                print(f"  Deferred log {log_id} (status={item_result.status})")
+                            elif isinstance(item_result, Exception):
+                                self.summary.full_log_failures += 1
+                                print(f"Failed full-log fetch: {item_result}")
+                            elif item_result:
                                 self.summary.full_logs_ingested += 1
                                 full_logs_seen += 1
 

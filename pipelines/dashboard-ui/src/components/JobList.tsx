@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { fetchJson } from '../hooks/useApi'
 import styles from './CommandRunner.module.css'
 
@@ -58,6 +58,29 @@ export function JobList({ onReconnect, onViewModalLogs }: Props) {
     poll()
     timer = setInterval(poll, 5000)
     return () => clearInterval(timer)
+  }, [])
+
+  const [cancelling, setCancelling] = useState<Set<string>>(new Set())
+  const [confirmCancel, setConfirmCancel] = useState<{ appId: string; appName: string } | null>(null)
+
+  const doCancel = useCallback(async (appId: string) => {
+    setCancelling(prev => new Set(prev).add(appId))
+    setConfirmCancel(null)
+    try {
+      await fetch('/api/modal-cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app_id: appId }),
+      })
+    } catch (err) {
+      console.error('Cancel failed:', err)
+    } finally {
+      setCancelling(prev => {
+        const next = new Set(prev)
+        next.delete(appId)
+        return next
+      })
+    }
   }, [])
 
   const runningLocal = localJobs.filter(j => j.running)
@@ -162,6 +185,24 @@ export function JobList({ onReconnect, onViewModalLogs }: Props) {
                       {j.tasks} task{j.tasks !== 1 ? 's' : ''}
                     </span>
                   )}
+                  {j.active && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmCancel({ appId: j.app_id, appName: j.name }) }}
+                      disabled={cancelling.has(j.app_id)}
+                      style={{
+                        fontSize: '0.5625rem',
+                        padding: '1px 6px',
+                        borderRadius: 3,
+                        border: '1px solid oklch(40% 0.12 15)',
+                        background: 'transparent',
+                        color: 'oklch(65% 0.14 15)',
+                        cursor: cancelling.has(j.app_id) ? 'wait' : 'pointer',
+                        opacity: cancelling.has(j.app_id) ? 0.5 : 1,
+                      }}
+                    >
+                      {cancelling.has(j.app_id) ? '...' : 'Cancel'}
+                    </button>
+                  )}
                 </div>
                 <div style={{ fontSize: '0.625rem', color: 'oklch(45% 0.008 70)', marginTop: 2, paddingLeft: 20 }}>
                   {j.created_at && new Date(j.created_at).toLocaleString()}
@@ -226,6 +267,59 @@ export function JobList({ onReconnect, onViewModalLogs }: Props) {
           </>
         )}
       </div>
+
+      {/* Cancel confirmation modal */}
+      {confirmCancel && (
+        <div
+          onClick={() => setConfirmCancel(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'oklch(16% 0.012 70)',
+              border: '1px solid oklch(28% 0.010 70)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'var(--space-lg)',
+              width: 340,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+            }}
+          >
+            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'oklch(88% 0.006 70)', marginBottom: 'var(--space-sm)' }}>
+              Cancel job?
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: 'oklch(65% 0.008 70)', marginBottom: 'var(--space-md)', fontFamily: 'var(--font-mono)' }}>
+              {confirmCancel.appName}
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setConfirmCancel(null)}
+                style={{
+                  fontSize: '0.75rem', padding: '6px 14px', borderRadius: 'var(--radius)',
+                  border: '1px solid oklch(30% 0.010 70)', background: 'transparent',
+                  color: 'oklch(72% 0.008 70)', cursor: 'pointer',
+                }}
+              >
+                Keep running
+              </button>
+              <button
+                onClick={() => doCancel(confirmCancel.appId)}
+                style={{
+                  fontSize: '0.75rem', padding: '6px 14px', borderRadius: 'var(--radius)',
+                  border: '1px solid oklch(45% 0.14 15)', background: 'oklch(30% 0.08 15)',
+                  color: 'oklch(85% 0.10 15)', cursor: 'pointer', fontWeight: 600,
+                }}
+              >
+                Cancel job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

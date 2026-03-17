@@ -37,6 +37,13 @@ class AnalysisConfig:
     n_folds: int = 5
     layers: list[int] | None = None
     limit: int | None = None
+
+    def run_dir(self) -> Path:
+        """Per-run output directory: output_dir / YYYYMMDD_HHMMSS_{target}_{mode}"""
+        from datetime import UTC, datetime
+        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        name = f"{ts}_{self.target}_{self.mode}"
+        return self.output_dir / name
     seed: int = 42
 
 
@@ -1036,6 +1043,11 @@ def _needs_compact(config: AnalysisConfig) -> bool:
 
 def dispatch(config: AnalysisConfig) -> dict:
     """Run analysis based on config.mode. Returns results dict."""
+    # Compact writes to the base output_dir; everything else gets a per-run subdir
+    if config.mode != "compact":
+        config.output_dir = config.run_dir()
+        print(f"Output directory: {config.output_dir}")
+
     results = {}
 
     if config.mode == "compact":

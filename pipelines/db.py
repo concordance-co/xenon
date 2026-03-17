@@ -223,6 +223,17 @@ CREATE TABLE IF NOT EXISTS ingest_cursors (
 );
 """
 
+DDL_DEFERRED_LOGS = """\
+CREATE TABLE IF NOT EXISTS deferred_logs (
+    log_id          BIGINT PRIMARY KEY,
+    vault_address   TEXT NOT NULL,
+    last_status     INT NOT NULL,
+    attempts        INT NOT NULL DEFAULT 1,
+    first_seen_at   TEXT NOT NULL,
+    last_attempted_at TEXT NOT NULL
+);
+"""
+
 DDL_INTERP_EXAMPLES = """\
 CREATE TABLE IF NOT EXISTS interp_examples_v0 (
     example_id           TEXT PRIMARY KEY,
@@ -337,6 +348,7 @@ TABLE_DDLS: list[str] = [
     DDL_FULL_LOGS,
     DDL_SWAPS,
     DDL_INGEST_CURSORS,
+    DDL_DEFERRED_LOGS,
     DDL_TRADE_OUTCOMES,
     DDL_INTERP_EXAMPLES,
     DDL_PREP_TARGET_SPECS,

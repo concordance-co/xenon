@@ -98,17 +98,26 @@ export interface CaptureData {
   recent_captures: CaptureRow[]
 }
 
-export interface ResultFile {
+export interface FileTreeEntry {
   name: string
-  size: string
+  path: string
+  type: 'file' | 'dir'
+  size?: string
+  modified_at: string
+  children?: FileTreeEntry[]
+}
+
+export interface PcaImage {
+  name: string
+  modified_at: string
 }
 
 export interface AnalysisData {
   total_results: number
   probe_files: string[]
   has_expert_specialization: boolean
-  pca_images: string[]
-  result_files: ResultFile[]
+  pca_images: PcaImage[]
+  file_tree: FileTreeEntry[]
 }
 
 export interface ProbeRow {

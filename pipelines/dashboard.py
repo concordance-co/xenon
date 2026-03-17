@@ -1039,39 +1039,66 @@ class DashboardStore:
 
     # --- Analysis detail ---
 
+    def _size_str(self, size: int) -> str:
+        if size > 1024 * 1024:
+            return f"{size / 1024 / 1024:.1f} MB"
+        elif size > 1024:
+            return f"{size / 1024:.1f} KB"
+        return f"{size} B"
+
     def get_analysis(self) -> dict[str, Any]:
         result: dict[str, Any] = {
             "total_results": 0, "probe_files": [], "has_expert_specialization": False,
-            "pca_images": [], "result_files": [],
+            "pca_images": [], "file_tree": [],
         }
 
         if not self.results_dir.exists():
             return result
 
-        for f in sorted(self.results_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
-            size = f.stat().st_size
-            if size > 1024 * 1024:
-                size_str = f"{size / 1024 / 1024:.1f} MB"
-            elif size > 1024:
-                size_str = f"{size / 1024:.1f} KB"
-            else:
-                size_str = f"{size} B"
+        def _walk(directory: Path, rel_prefix: str = "") -> list[dict]:
+            """Build a tree of files and directories, sorted by mtime descending."""
+            entries: list[dict] = []
+            if not directory.exists():
+                return entries
+            children = sorted(directory.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+            for child in children:
+                rel_path = f"{rel_prefix}/{child.name}" if rel_prefix else child.name
+                st = child.stat()
+                mtime = datetime.fromtimestamp(st.st_mtime, tz=UTC).isoformat()
+                if child.is_dir():
+                    sub = _walk(child, rel_path)
+                    entries.append({
+                        "name": child.name, "path": rel_path, "type": "dir",
+                        "modified_at": mtime, "children": sub,
+                    })
+                else:
+                    entry = {
+                        "name": child.name, "path": rel_path, "type": "file",
+                        "size": self._size_str(st.st_size), "modified_at": mtime,
+                    }
+                    entries.append(entry)
+                    result["total_results"] += 1
+                    # Classify files for quick access
+                    if child.name.startswith("probe_") and child.suffix == ".parquet":
+                        result["probe_files"].append(rel_path)
+                    elif child.name == "expert_specialization.parquet":
+                        result["has_expert_specialization"] = True
+                    elif child.suffix == ".png":
+                        result["pca_images"].append({"name": rel_path, "modified_at": mtime})
+            return entries
 
-            result["result_files"].append({"name": f.name, "size": size_str})
-            result["total_results"] += 1
-
-            if f.name.startswith("probe_") and f.suffix == ".parquet":
-                result["probe_files"].append(f.name)
-            elif f.name == "expert_specialization.parquet":
-                result["has_expert_specialization"] = True
-            elif f.suffix == ".png":
-                result["pca_images"].append(f.name)
-
+        result["file_tree"] = _walk(self.results_dir)
+        result["pca_images"].sort(key=lambda x: x["modified_at"], reverse=True)
         return result
 
     def get_probe_data(self, filename: str) -> dict[str, Any]:
         path = self.results_dir / filename
-        if not path.exists() or not path.suffix == ".parquet":
+        if not path.exists() or path.suffix != ".parquet":
+            return {"rows": []}
+        # Prevent path traversal
+        try:
+            path.resolve().relative_to(self.results_dir.resolve())
+        except ValueError:
             return {"rows": []}
         try:
             import pyarrow.parquet as pq
@@ -1092,9 +1119,12 @@ class DashboardStore:
             return {"rows": []}
 
     def get_pca_image(self, filename: str) -> bytes | None:
-        # Sanitize filename to prevent path traversal
-        clean = Path(filename).name
-        path = self.results_dir / clean
+        path = self.results_dir / filename
+        # Prevent path traversal
+        try:
+            path.resolve().relative_to(self.results_dir.resolve())
+        except ValueError:
+            return None
         if not path.exists() or path.suffix != ".png":
             return None
         return path.read_bytes()
@@ -1134,6 +1164,7 @@ class JobRegistry:
             text=True, bufsize=1,
             cwd=str(Path.cwd()),
             env=env,
+            start_new_session=True,
         )
         job = _Job(job_id, cmd, proc)
         with self._lock:
@@ -1274,6 +1305,24 @@ def _get_modal_jobs() -> dict:
         return _run_modal_coro(_fetch())
     except Exception as e:
         return {"jobs": [], "error": str(e)}
+
+
+def _cancel_modal_app(app_id: str) -> dict:
+    """Stop a Modal app by app_id."""
+    try:
+        from modal.client import _Client
+        from modal_proto import api_pb2
+
+        async def _stop():
+            client = await _Client.from_env()
+            await client.stub.AppStop(
+                api_pb2.AppStopRequest(app_id=app_id, source=api_pb2.APP_STOP_SOURCE_WEB)
+            )
+            return {"ok": True}
+
+        return _run_modal_coro(_stop())
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ---------------------------------------------------------------------------
@@ -1606,6 +1655,12 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                 body = json.loads(self.rfile.read(length)) if length else {}
                 app_id = body.get("app_id", "")
                 _stream_modal_logs(self, app_id)
+            elif parsed.path == "/api/modal-cancel":
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length)) if length else {}
+                app_id = body.get("app_id", "")
+                result = _cancel_modal_app(app_id)
+                self._json(result)
             elif parsed.path == "/api/status/refresh":
                 _modal_stats.force_refresh()
                 self._json(store.get_status())

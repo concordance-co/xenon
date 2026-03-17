@@ -15,6 +15,17 @@ class TerminalApiError(RuntimeError):
     pass
 
 
+class TerminalApiDeferrable(TerminalApiError):
+    """Raised when a request failed with a retryable status after all retries.
+
+    The caller should defer this item and retry later instead of blocking.
+    """
+
+    def __init__(self, message: str, status: int):
+        super().__init__(message)
+        self.status = status
+
+
 @dataclass(slots=True)
 class RetryPolicy:
     max_attempts: int = 6
@@ -45,7 +56,7 @@ class TerminalMarketsApiClient:
         self,
         base_url: str,
         concurrency: int = 10,
-        requests_per_second: float = 2.0,
+        requests_per_second: float = 6.0,
         timeout_s: int = 30,
         retry_policy: RetryPolicy | None = None,
     ) -> None:
@@ -80,7 +91,12 @@ class TerminalMarketsApiClient:
                 await self._rate_limiter.acquire()
                 async with self.semaphore:
                     async with self.session.get(url, params=params) as response:
-                        if response.status in {429, 500, 502, 503, 504}:
+                        if response.status == 502:
+                            body = await response.text()
+                            raise TerminalApiDeferrable(
+                                f"502 from {url}, deferring", status=502,
+                            )
+                        elif response.status in {429, 500, 503, 504}:
                             body = await response.text()
                             status = response.status
                         elif response.status >= 400:
@@ -90,11 +106,17 @@ class TerminalMarketsApiClient:
                             return await response.json()
                 # Semaphore released — now handle retryable errors
                 if attempt == self.retry_policy.max_attempts:
-                    raise TerminalApiError(
-                        f"API request failed after retries: {url} status={status} body={body}"
+                    raise TerminalApiDeferrable(
+                        f"API request failed after retries: {url} status={status} body={body}",
+                        status=status,
                     )
-                # Back off longer on rate limits
-                retry_delay = delay * 3 if status == 429 else delay
+                # Back off longer on rate limits, shorter on 502s
+                if status == 429:
+                    retry_delay = delay * 3
+                elif status == 502:
+                    retry_delay = min(delay, 2.0)  # cap at 2s for 502
+                else:
+                    retry_delay = delay
                 jittered_delay = retry_delay * (1 + random.uniform(0, 0.3))
                 logger.warning(
                     "Retryable %d on attempt %d/%d for %s, sleeping %.1fs",

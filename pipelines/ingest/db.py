@@ -110,6 +110,14 @@ class IngestDatabase:
                 await cur.execute(idx)
         await self.conn.commit()
 
+    async def get_existing_vault_addresses(self) -> set[str]:
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
+        async with self.conn.cursor() as cur:
+            await cur.execute("SELECT vault_address FROM vaults")
+            rows = await cur.fetchall()
+        return {r["vault_address"] for r in rows}
+
     async def upsert_vault(self, leaderboard_item: dict[str, Any], vault_config: dict[str, Any]) -> None:
         if self.conn is None:
             raise RuntimeError("IngestDatabase not connected — call connect() first")
@@ -377,6 +385,39 @@ class IngestDatabase:
         )
         rows = await cursor.fetchall()
         return {int(row["log_id"]) for row in rows}
+
+    async def defer_log(self, log_id: int, vault_address: str, status: int) -> None:
+        """Record a log that failed to fetch so we can retry it later."""
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
+        now = _now_iso()
+        await self.conn.execute(
+            """
+            INSERT INTO deferred_logs (log_id, vault_address, last_status, attempts, first_seen_at, last_attempted_at)
+            VALUES (%s, %s, %s, 1, %s, %s)
+            ON CONFLICT(log_id) DO UPDATE SET
+                last_status=excluded.last_status,
+                attempts=deferred_logs.attempts + 1,
+                last_attempted_at=excluded.last_attempted_at
+            """,
+            (log_id, vault_address, status, now, now),
+        )
+        await self.commit()
+
+    async def get_deferred_log_ids(self) -> set[int]:
+        """Return all deferred log IDs (to skip during normal backfill)."""
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
+        cursor = await self.conn.execute("SELECT log_id FROM deferred_logs")
+        rows = await cursor.fetchall()
+        return {int(row["log_id"]) for row in rows}
+
+    async def remove_deferred_log(self, log_id: int) -> None:
+        """Remove a log from the deferred table after successful fetch."""
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
+        await self.conn.execute("DELETE FROM deferred_logs WHERE log_id = %s", (log_id,))
+        await self.commit()
 
     async def upsert_full_log(self, record: FullLogRecord) -> None:
         if self.conn is None:
