@@ -40,8 +40,12 @@ class IngestDatabase:
         self._batch_lock: asyncio.Lock = asyncio.Lock()
 
     async def connect(self) -> None:
-        from pipelines.db import require_neon_dsn
+        from pipelines.db import ensure_schema, require_neon_dsn
         dsn = require_neon_dsn()
+        # Run sync schema migrations (INT→BIGINT, etc.) before opening async conn
+        import psycopg
+        with psycopg.connect(dsn, row_factory=dict_row) as sync_conn:
+            ensure_schema(sync_conn)
         self.conn = await AsyncConnection.connect(dsn, autocommit=False, row_factory=dict_row)
 
     async def close(self) -> None:
@@ -73,7 +77,7 @@ class IngestDatabase:
                 yield
             except BaseException:
                 self._batch_depth -= 1
-                if self._batch_depth == 0:
+                if self._batch_depth == 0 and self.conn is not None:
                     await self.conn.execute("ROLLBACK")
                 raise
             else:

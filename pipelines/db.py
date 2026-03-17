@@ -101,8 +101,8 @@ CREATE TABLE IF NOT EXISTS vaults (
     total_pnl_usd      DOUBLE PRECISION,
     realized_pnl_usd   DOUBLE PRECISION,
     unrealized_pnl_usd DOUBLE PRECISION,
-    created_block       INT,
-    updated_block       INT,
+    created_block       BIGINT,
+    updated_block       BIGINT,
     fetched_at          TEXT NOT NULL
 );
 """
@@ -113,11 +113,11 @@ CREATE TABLE IF NOT EXISTS strategies (
     strategy_id         TEXT NOT NULL,
     vault_owner_address TEXT,
     content             TEXT,
-    expiry              INT,
+    expiry              BIGINT,
     enabled             BOOLEAN,
     strategy_priority   TEXT,
-    created_block       INT,
-    updated_block       INT,
+    created_block       BIGINT,
+    updated_block       BIGINT,
     fetched_at          TEXT NOT NULL,
     PRIMARY KEY (vault_address, strategy_id),
     FOREIGN KEY (vault_address) REFERENCES vaults(vault_address)
@@ -368,6 +368,12 @@ _BOOLEAN_MIGRATIONS: list[tuple[str, list[str]]] = [
     ),
 ]
 
+# Columns to migrate from INT to BIGINT on existing databases.
+_BIGINT_MIGRATIONS: list[tuple[str, list[str]]] = [
+    ("vaults", ["created_block", "updated_block"]),
+    ("strategies", ["expiry", "created_block", "updated_block"]),
+]
+
 # Dead columns to drop from existing databases.
 _DEAD_COLUMNS: list[tuple[str, list[str]]] = [
     ("full_logs", ["payload_path", "payload_sha256", "payload_size_bytes"]),
@@ -396,6 +402,19 @@ def _migrate_existing_schema(conn: psycopg.Connection) -> None:
                     ).fetchone()
                     if row:
                         cur.execute(f'ALTER TABLE "{table}" DROP COLUMN IF EXISTS "{col}"')
+
+            # Migrate INT -> BIGINT
+            for table, columns in _BIGINT_MIGRATIONS:
+                for col in columns:
+                    row = cur.execute(
+                        "SELECT data_type FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = %s AND column_name = %s",
+                        [table, col],
+                    ).fetchone()
+                    if row and row["data_type"] == "integer":
+                        cur.execute(
+                            f'ALTER TABLE "{table}" ALTER COLUMN "{col}" TYPE BIGINT'
+                        )
 
             # Migrate INT -> BOOLEAN
             for table, columns in _BOOLEAN_MIGRATIONS:
