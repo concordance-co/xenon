@@ -3,8 +3,8 @@ import type { Phase } from '../App'
 import styles from './PipelineFlow.module.css'
 
 const PHASES: { key: Phase; label: string; desc: string }[] = [
-  { key: 'ingest', label: 'Ingest', desc: 'Terminal API → SQLite' },
-  { key: 'prep', label: 'Data Prep', desc: 'Label + sample → Parquet' },
+  { key: 'ingest', label: 'Ingest', desc: 'Terminal API → Neon' },
+  { key: 'prep', label: 'Data Prep', desc: 'JSONB → interp_examples' },
   { key: 'capture', label: 'Capture', desc: 'LLM activations → Safetensors' },
   { key: 'analysis', label: 'Analysis', desc: 'Probe + PCA on routing' },
 ]

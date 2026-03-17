@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from pathlib import Path
 from typing import Sequence
 
 from pipelines.ingest.pipeline import BackfillConfig, run_backfill
@@ -13,8 +12,6 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Run one-shot Terminal Markets phase1+phase2 backfill"
     )
     parser.add_argument("--base-url", default="https://api.terminal.markets/api/v1")
-    parser.add_argument("--db-path", type=Path, default=Path("data/terminal_ingest.db"))
-    parser.add_argument("--raw-payload-dir", type=Path, default=Path("data/full_logs"))
     parser.add_argument("--top-n", type=int, default=3, help="Number of vaults to ingest")
     parser.add_argument("--selection", choices=["top", "random"], default="top",
                         help="'top' = top N by sort order, 'random' = random sample from all vaults")
@@ -38,8 +35,6 @@ def _build_parser() -> argparse.ArgumentParser:
 async def _run_from_args(args: argparse.Namespace) -> int:
     config = BackfillConfig(
         base_url=args.base_url,
-        db_path=args.db_path,
-        raw_payload_dir=args.raw_payload_dir,
         top_n=args.top_n,
         selection=args.selection,
         random_seed=args.random_seed,

@@ -6,7 +6,6 @@ viewing analysis results, and running pipeline commands.
 Usage:
     uv run -m pipelines.dashboard
     uv run -m pipelines.dashboard --port 8800
-    uv run -m pipelines.dashboard --db-path data/terminal_ingest.db
 """
 
 from __future__ import annotations
@@ -14,8 +13,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from datetime import UTC, datetime
 import selectors
-import sqlite3
 import subprocess
 import threading
 import time
@@ -403,8 +402,7 @@ function renderPrep(data) {
   el.innerHTML = `
     <div class="stats-row">
       ${[["Total Examples", s.total_examples], ["High Quality", s.high_quality], ["Medium Quality", s.medium_quality],
-         ["Low Quality", s.low_quality], ["Trades", s.trade_count], ["Observations", s.observation_count],
-         ["Parquet Exported", s.parquet_exported ? "Yes" : "No"]].map(([l,v]) =>
+         ["Low Quality", s.low_quality], ["Trades", s.trade_count], ["Observations", s.observation_count]].map(([l,v]) =>
         `<div class="stat-card"><div class="stat-label">${l}</div><div class="stat-value">${fmt(v)}</div></div>`
       ).join("")}
     </div>
@@ -412,16 +410,13 @@ function renderPrep(data) {
       <div class="panel">
         <div class="panel-head"><h3>Commands</h3></div>
         <div class="panel-body">
-          <div class="cmd-block"># Build interp dataset + export parquet
-uv run -m pipelines.interp.prepare \\
-  --db-path data/terminal_ingest.db \\
-  --export-parquet
+          <div class="cmd-block"># Build interp dataset (reads/writes Neon Postgres)
+./scripts/modal_capture.sh modal-prep
 
 # Optional: compute trade outcomes
-uv run -m pipelines.interp.outcomes \\
-  --db-path data/terminal_ingest.db</div>
+./scripts/modal_capture.sh modal-outcomes</div>
           <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn--accent btn--sm" onclick="runCmd('prep', 'uv run -m pipelines.interp.prepare --db-path data/terminal_ingest.db --export-parquet')">Run Prep + Export</button>
+            <button class="btn btn--accent btn--sm" onclick="runCmd('prep', './scripts/modal_capture.sh modal-prep')">Run Prep</button>
           </div>
         </div>
       </div>
@@ -434,7 +429,7 @@ uv run -m pipelines.interp.outcomes \\
               ${(s.export_files || []).map(f => `<tr><td class="mono">${esc(f.name)}</td><td class="mono">${f.size}</td></tr>`).join("")}
             </tbody>
           </table>
-          ${!s.export_files || !s.export_files.length ? '<div class="empty">No exports yet. Run data prep with --export-parquet.</div>' : ''}
+          ${!s.export_files || !s.export_files.length ? '<div class="empty">No export files found.</div>' : ''}
         </div>
       </div>
     </div>
@@ -899,36 +894,14 @@ _modal_stats = _ModalStatsCache()
 
 
 class DashboardStore:
-    def __init__(self, db_path: Path, data_dir: Path) -> None:
-        self.db_path = db_path
+    def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
         self.activations_dir = data_dir / "activations"
-        self.exports_dir = data_dir / "interp_exports"
         self.results_dir = data_dir / "analysis_results"
-
-    def _connect(self) -> sqlite3.Connection | None:
-        if not self.db_path.exists():
-            return None
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    def _table_exists(self, conn: sqlite3.Connection, name: str) -> bool:
-        row = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", [name]
-        ).fetchone()
-        return row is not None
-
-    def _table_count(self, conn: sqlite3.Connection, name: str) -> int:
-        if not self._table_exists(conn, name):
-            return 0
-        row = conn.execute(f"SELECT COUNT(*) AS n FROM [{name}]").fetchone()
-        return int(row["n"]) if row else 0
 
     # --- Status ---
 
     def get_status(self) -> dict[str, Any]:
-        conn = self._connect()
         modal = _modal_stats.get()
 
         # Ingest
@@ -937,29 +910,14 @@ class DashboardStore:
             lc = modal["ingest"].get("log_count", 0)
             ingest["log_count"] = lc
             ingest["status"] = "ready" if lc > 0 else "empty"
-        elif conn:
-            lc = self._table_count(conn, "inference_logs")
-            ingest["log_count"] = lc
-            ingest["status"] = "ready" if lc > 0 else "empty"
 
         # Prep
         prep = {"total_examples": 0, "status": "empty"}
         if modal and modal.get("prep"):
             tc = modal["prep"].get("total_examples", 0)
             prep["total_examples"] = tc
-            has_exports = len(modal["prep"].get("export_files", [])) > 0
-            if tc > 0 and has_exports:
+            if tc > 0:
                 prep["status"] = "ready"
-            elif tc > 0:
-                prep["status"] = "partial"
-        elif conn and self._table_exists(conn, "interp_examples_v0"):
-            tc = self._table_count(conn, "interp_examples_v0")
-            prep["total_examples"] = tc
-            hq = self.exports_dir / "interp_examples_v0_high_quality.parquet"
-            if tc > 0 and hq.exists():
-                prep["status"] = "ready"
-            elif tc > 0:
-                prep["status"] = "partial"
 
         # Capture
         capture = {"total_files": 0, "status": "empty"}
@@ -989,9 +947,6 @@ class DashboardStore:
             analysis["total_results"] = len(files)
             analysis["status"] = "ready" if files else "empty"
 
-        if conn:
-            conn.close()
-
         return {
             "ingest": ingest,
             "prep": prep,
@@ -1008,42 +963,11 @@ class DashboardStore:
             "parse_error_count": 0, "tables": [],
         }
 
-        # Try Modal stats first
         modal = _modal_stats.get()
         if modal and modal.get("ingest"):
             return modal["ingest"]
 
-        # Fall back to local DB
-        conn = self._connect()
-        if not conn:
-            return empty
-
-        table_names = ["vaults", "strategies", "inference_logs", "full_logs", "swaps",
-                        "trade_outcomes", "interp_examples_v0"]
-        tables = []
-        for tn in table_names:
-            if self._table_exists(conn, tn):
-                tables.append({"name": tn, "count": self._table_count(conn, tn)})
-
-        vc = self._table_count(conn, "vaults")
-        sc = self._table_count(conn, "strategies")
-        lc = self._table_count(conn, "inference_logs")
-        flc = self._table_count(conn, "full_logs")
-        cov = round((flc / lc) * 100, 1) if lc else 0
-
-        pe = 0
-        if self._table_exists(conn, "full_logs"):
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM full_logs WHERE parse_error IS NOT NULL AND parse_error != ''"
-            ).fetchone()
-            pe = int(row["n"]) if row else 0
-
-        conn.close()
-        return {
-            "vault_count": vc, "strategy_count": sc, "log_count": lc,
-            "full_log_count": flc, "full_log_coverage_pct": cov,
-            "parse_error_count": pe, "tables": tables,
-        }
+        return empty
 
     # --- Prep detail ---
 
@@ -1051,73 +975,12 @@ class DashboardStore:
         result: dict[str, Any] = {
             "total_examples": 0, "high_quality": 0, "medium_quality": 0, "low_quality": 0,
             "trade_count": 0, "observation_count": 0,
-            "parquet_exported": False, "export_files": [], "label_distribution": [],
+            "export_files": [], "label_distribution": [],
         }
 
-        # Try Modal stats first
         modal = _modal_stats.get()
         if modal and modal.get("prep"):
             return modal["prep"]
-
-        # Fall back to local DB
-        conn = self._connect()
-        if conn and self._table_exists(conn, "interp_examples_v0"):
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM interp_examples_v0"
-            ).fetchone()
-            result["total_examples"] = int(row["n"]) if row else 0
-
-            # Quality breakdown
-            for quality in ("high", "medium", "low"):
-                qrow = conn.execute(
-                    "SELECT COUNT(*) AS n FROM interp_examples_v0 WHERE label_quality = ?",
-                    [quality],
-                ).fetchone()
-                result[f"{quality}_quality"] = int(qrow["n"]) if qrow else 0
-
-            # Decision type breakdown
-            dt_rows = conn.execute(
-                """SELECT decision_type, COUNT(*) AS count,
-                   GROUP_CONCAT(DISTINCT trade_side) AS trade_side,
-                   AVG(vault_risk_preference) AS avg_risk
-                   FROM interp_examples_v0 GROUP BY decision_type"""
-            ).fetchall()
-            result["label_distribution"] = [
-                {
-                    "decision_type": r["decision_type"],
-                    "count": r["count"],
-                    "trade_side": r["trade_side"],
-                    "avg_risk": r["avg_risk"],
-                }
-                for r in dt_rows
-            ]
-
-            result["trade_count"] = sum(
-                r["count"] for r in result["label_distribution"]
-                if r["decision_type"] == "trade"
-            )
-            result["observation_count"] = sum(
-                r["count"] for r in result["label_distribution"]
-                if r["decision_type"] == "record_observation"
-            )
-
-        if conn:
-            conn.close()
-
-        # Export files (local)
-        if self.exports_dir.exists():
-            for f in sorted(self.exports_dir.iterdir()):
-                if f.suffix in (".parquet", ".jsonl"):
-                    size = f.stat().st_size
-                    if size > 1024 * 1024:
-                        size_str = f"{size / 1024 / 1024:.1f} MB"
-                    elif size > 1024:
-                        size_str = f"{size / 1024:.1f} KB"
-                    else:
-                        size_str = f"{size} B"
-                    result["export_files"].append({"name": f.name, "size": size_str})
-                    if f.name == "interp_examples_v0_high_quality.parquet":
-                        result["parquet_exported"] = True
 
         return result
 
@@ -1133,15 +996,6 @@ class DashboardStore:
         modal = _modal_stats.get()
         if modal and modal.get("outcomes"):
             return modal["outcomes"]
-
-        # Legacy snapshot (pre-outcomes key): extract counts from ingest.tables
-        if modal and modal.get("ingest", {}).get("tables"):
-            tables = {t["name"]: t["count"] for t in modal["ingest"]["tables"]}
-            sw = tables.get("swaps", 0)
-            oc = tables.get("trade_outcomes", 0)
-            result["total_swaps"] = sw
-            result["total_outcomes"] = oc
-            result["unlabeled_swaps"] = sw - oc
 
         return result
 
@@ -1348,6 +1202,81 @@ _job_registry = JobRegistry()
 
 
 # ---------------------------------------------------------------------------
+# Modal API helpers (persistent event loop for gRPC client reuse)
+# ---------------------------------------------------------------------------
+
+import asyncio as _asyncio
+import concurrent.futures as _futures
+
+_XENON_APP_PREFIXES = (
+    "xenon-backend", "xenon-ingest", "xenon-activation-capture",
+    "xenon-vllm-capture", "xenon-analysis", "xenon-migrate",
+)
+_ACTIVE_STATES = {1, 2, 3, 6, 8}
+_STATE_LABELS = {
+    1: "running", 2: "running", 3: "deployed", 4: "stopping",
+    5: "stopped", 6: "initializing", 7: "disabled", 8: "running", 9: "derived",
+}
+
+# Single persistent event loop for all Modal API calls.
+# This keeps the _Client singleton alive across requests.
+_modal_loop: _asyncio.AbstractEventLoop | None = None
+_modal_thread: threading.Thread | None = None
+
+
+def _get_modal_loop() -> _asyncio.AbstractEventLoop:
+    global _modal_loop, _modal_thread
+    if _modal_loop is None or _modal_loop.is_closed():
+        _modal_loop = _asyncio.new_event_loop()
+        _modal_thread = threading.Thread(
+            target=_modal_loop.run_forever, daemon=True, name="modal-loop"
+        )
+        _modal_thread.start()
+    return _modal_loop
+
+
+def _run_modal_coro(coro):
+    """Submit a coroutine to the persistent Modal event loop and wait for result."""
+    loop = _get_modal_loop()
+    future = _asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result(timeout=30)
+
+
+def _get_modal_jobs() -> dict:
+    """Query Modal API for running Xenon apps."""
+    try:
+        from modal.client import _Client
+        from modal_proto import api_pb2
+
+        async def _fetch():
+            client = await _Client.from_env()
+            resp = await client.stub.AppList(
+                api_pb2.AppListRequest(environment_name="main")
+            )
+            jobs = []
+            for app_item in resp.apps:
+                name = app_item.description or app_item.name or ""
+                if not any(name.startswith(p) for p in _XENON_APP_PREFIXES):
+                    continue
+                state_int = app_item.state
+                jobs.append({
+                    "app_id": app_item.app_id,
+                    "name": name,
+                    "state": _STATE_LABELS.get(state_int, "unknown"),
+                    "tasks": app_item.n_running_tasks,
+                    "created_at": datetime.fromtimestamp(app_item.created_at, tz=UTC).isoformat() if app_item.created_at else None,
+                    "stopped_at": datetime.fromtimestamp(app_item.stopped_at, tz=UTC).isoformat() if app_item.stopped_at else None,
+                    "active": state_int in _ACTIVE_STATES,
+                })
+            jobs.sort(key=lambda j: (not j["active"], j["created_at"] or ""))
+            return {"jobs": jobs}
+
+        return _run_modal_coro(_fetch())
+    except Exception as e:
+        return {"jobs": [], "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
 # Allowed commands (whitelist for safety)
 # ---------------------------------------------------------------------------
 
@@ -1458,6 +1387,82 @@ def _stream_job(handler: BaseHTTPRequestHandler, job: _Job, from_line: int) -> N
         pass  # Client disconnected — job keeps running in background
 
 
+def _stream_modal_logs(handler: BaseHTTPRequestHandler, app_id: str) -> None:
+    """Stream logs from a Modal app as SSE."""
+    handler.send_response(200)
+    handler.send_header("Content-Type", "text/event-stream")
+    handler.send_header("Cache-Control", "no-cache")
+    handler.send_header("Connection", "keep-alive")
+    handler.end_headers()
+
+    try:
+        from modal.client import _Client
+        from modal_proto import api_pb2
+
+        # Use a queue to bridge async log stream → sync SSE writes
+        import queue
+        log_queue: queue.Queue[tuple[str, str] | None] = queue.Queue()
+
+        async def _stream():
+            try:
+                client = await _Client.from_env()
+                last_entry_id = ""
+
+                while True:
+                    try:
+                        request = api_pb2.AppGetLogsRequest(
+                            app_id=app_id,
+                            timeout=55,
+                            last_entry_id=last_entry_id,
+                        )
+                        async for log_batch in client.stub.AppGetLogs.unary_stream(request):
+                            if log_batch.entry_id:
+                                last_entry_id = log_batch.entry_id
+                            if log_batch.app_done:
+                                log_queue.put(("done", "{}"))
+                                log_queue.put(None)  # sentinel
+                                return
+                            if log_batch.image_id:
+                                continue
+                            for log in log_batch.items:
+                                if log.data:
+                                    fd = log.file_descriptor
+                                    event = "stderr" if fd == 2 else "stdout"
+                                    for line in log.data.rstrip("\n").split("\n"):
+                                        log_queue.put((event, line))
+                                elif log.task_state:
+                                    state_name = api_pb2.TaskState.Name(log.task_state)
+                                    log_queue.put(("state", state_name))
+                    except Exception as exc:
+                        err_name = type(exc).__name__
+                        if err_name in ("ServiceError", "InternalError", "StreamTerminatedError"):
+                            await _asyncio.sleep(1)
+                            continue
+                        log_queue.put(("error", f"{err_name}: {exc}"))
+                        log_queue.put(None)
+                        return
+            except Exception as exc:
+                log_queue.put(("error", str(exc)))
+                log_queue.put(None)
+
+        # Submit to persistent Modal loop
+        loop = _get_modal_loop()
+        _asyncio.run_coroutine_threadsafe(_stream(), loop)
+
+        # Read from queue and write SSE on this thread
+        while True:
+            item = log_queue.get(timeout=120)
+            if item is None:
+                break
+            _sse_write(handler, item[0], item[1])
+
+    except (BrokenPipeError, ConnectionResetError):
+        pass
+    except Exception as e:
+        _sse_write(handler, "error", str(e))
+        _sse_write(handler, "done", "{}")
+
+
 def _sse_write(handler: BaseHTTPRequestHandler, event: str, data: str) -> None:
     try:
         payload = f"event: {event}\ndata: {data}\n\n"
@@ -1553,6 +1558,8 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                     self._not_found()
             elif path == "/api/jobs":
                 self._json(_job_registry.list_jobs())
+            elif path == "/api/modal-jobs":
+                self._json(_get_modal_jobs())
             elif path == "/api/backend-url":
                 url = os.environ.get("XENON_BACKEND_URL")
                 if not url:
@@ -1594,6 +1601,11 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                 body = json.loads(self.rfile.read(length)) if length else {}
                 job_id = body.get("job_id", "")
                 _reconnect_job_streaming(self, job_id)
+            elif parsed.path == "/api/modal-logs":
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length)) if length else {}
+                app_id = body.get("app_id", "")
+                _stream_modal_logs(self, app_id)
             elif parsed.path == "/api/status/refresh":
                 _modal_stats.force_refresh()
                 self._json(store.get_status())
@@ -1612,7 +1624,6 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Xenon Pipeline Dashboard")
-    p.add_argument("--db-path", type=Path, default=Path("data/terminal_ingest.db"))
     p.add_argument("--data-dir", type=Path, default=Path("data"))
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8800)
@@ -1621,7 +1632,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _build_parser().parse_args()
-    store = DashboardStore(db_path=args.db_path, data_dir=args.data_dir)
+    store = DashboardStore(data_dir=args.data_dir)
     handler = _make_handler(store)
     server = ThreadingHTTPServer((args.host, args.port), handler)
     url = f"http://{args.host}:{args.port}"

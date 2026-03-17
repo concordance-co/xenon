@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.13.3",
-    "aiosqlite>=0.22.1",
+    "psycopg[binary]>=3.2.0",
     "pyarrow>=23.0.1",
 ]
 

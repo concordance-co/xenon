@@ -6,46 +6,43 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, Iterable
 
-import aiosqlite
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from pipelines.ingest.full_log_parser import ParsedFullLog
-from pipelines.ingest.payload_store import RawPayloadMetadata
 
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _as_bool_int(value: Any) -> int | None:
+def _as_bool(value: Any) -> bool | None:
     if value is None:
         return None
-    return 1 if bool(value) else 0
+    return bool(value)
 
 
 @dataclass(slots=True)
 class FullLogRecord:
     log_id: int
     vault_address: str | None
-    payload_meta: RawPayloadMetadata
     parsed: ParsedFullLog
+    raw_payload: dict | None = None
 
 
 class IngestDatabase:
-    def __init__(self, db_path: Path) -> None:
-        self.db_path = db_path
-        self.conn: aiosqlite.Connection | None = None
+    def __init__(self) -> None:
+        self.conn: AsyncConnection | None = None
         self._batch_depth: int = 0
         self._batch_lock: asyncio.Lock = asyncio.Lock()
 
     async def connect(self) -> None:
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = await aiosqlite.connect(self.db_path)
-        await self.conn.execute("PRAGMA journal_mode=WAL;")
-        await self.conn.execute("PRAGMA synchronous=NORMAL;")
-        await self.conn.execute("PRAGMA foreign_keys=ON;")
+        from pipelines.db import require_neon_dsn
+        dsn = require_neon_dsn()
+        self.conn = await AsyncConnection.connect(dsn, autocommit=False, row_factory=dict_row)
 
     async def close(self) -> None:
         if self.conn is not None:
@@ -61,7 +58,8 @@ class IngestDatabase:
         the outermost batch issues BEGIN/COMMIT.  On exception the
         outermost batch issues ROLLBACK.
         """
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         # The lock ensures that concurrent coroutines wait their turn
         # rather than interleaving BEGIN/COMMIT pairs.
         acquired = self._batch_depth > 0  # already inside a batch (nested)
@@ -92,141 +90,25 @@ class IngestDatabase:
         When inside a ``batch()`` the outermost context manager handles
         the commit, so this is intentionally a no-op in that case.
         """
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         if self._batch_depth == 0:
             await self.conn.commit()
 
     async def init_schema(self) -> None:
-        assert self.conn is not None
-        await self.conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS vaults (
-                vault_address TEXT PRIMARY KEY,
-                owner_address TEXT,
-                nft_id TEXT,
-                nft_name TEXT,
-                persona_json TEXT,
-                trade_size INTEGER,
-                trading_activity INTEGER,
-                holding_style INTEGER,
-                diversification INTEGER,
-                asset_risk_preference INTEGER,
-                max_trade_amount TEXT,
-                slippage_bps TEXT,
-                paused INTEGER,
-                state TEXT,
-                leaderboard_rank INTEGER,
-                total_pnl_usd REAL,
-                realized_pnl_usd REAL,
-                unrealized_pnl_usd REAL,
-                created_block INTEGER,
-                updated_block INTEGER,
-                fetched_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS strategies (
-                vault_address TEXT NOT NULL,
-                strategy_id TEXT NOT NULL,
-                vault_owner_address TEXT,
-                content TEXT,
-                expiry INTEGER,
-                enabled INTEGER,
-                strategy_priority TEXT,
-                created_block INTEGER,
-                updated_block INTEGER,
-                fetched_at TEXT NOT NULL,
-                PRIMARY KEY (vault_address, strategy_id),
-                FOREIGN KEY (vault_address) REFERENCES vaults(vault_address)
-            );
-
-            CREATE TABLE IF NOT EXISTS inference_logs (
-                id INTEGER PRIMARY KEY,
-                cursor TEXT,
-                vault_address TEXT NOT NULL,
-                request_id TEXT,
-                execution_key TEXT,
-                tool TEXT,
-                tool_args_json TEXT,
-                strategy_id TEXT,
-                status TEXT,
-                inference_duration_ms INTEGER,
-                error TEXT,
-                transaction_hash TEXT,
-                created_at TEXT,
-                completed_at TEXT,
-                fetched_at TEXT NOT NULL,
-                FOREIGN KEY (vault_address) REFERENCES vaults(vault_address)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_inference_logs_vault
-            ON inference_logs(vault_address, id);
-
-            CREATE TABLE IF NOT EXISTS swaps (
-                transaction_hash TEXT NOT NULL,
-                block_number INTEGER NOT NULL,
-                log_index INTEGER NOT NULL,
-                timestamp INTEGER,
-                pool_id TEXT,
-                token_address TEXT,
-                token_name TEXT,
-                token_symbol TEXT,
-                vault_address TEXT NOT NULL,
-                is_reap_twap INTEGER,
-                side TEXT,
-                token_amount TEXT,
-                eth_amount TEXT,
-                eth_price_usd TEXT,
-                effective_price_eth TEXT,
-                effective_price_usd TEXT,
-                log_id INTEGER,
-                strategy_id TEXT,
-                fetched_at TEXT NOT NULL,
-                PRIMARY KEY (transaction_hash, log_index),
-                FOREIGN KEY (vault_address) REFERENCES vaults(vault_address)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_swaps_log_id
-            ON swaps(log_id);
-
-            CREATE INDEX IF NOT EXISTS idx_swaps_vault
-            ON swaps(vault_address, timestamp);
-
-            CREATE INDEX IF NOT EXISTS idx_swaps_token_timestamp
-            ON swaps(token_address, timestamp);
-
-            CREATE TABLE IF NOT EXISTS ingest_cursors (
-                vault_address TEXT NOT NULL,
-                resource TEXT NOT NULL,
-                last_cursor TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                PRIMARY KEY (vault_address, resource)
-            );
-
-            CREATE TABLE IF NOT EXISTS full_logs (
-                log_id INTEGER PRIMARY KEY,
-                vault_address TEXT,
-                payload_path TEXT NOT NULL,
-                payload_sha256 TEXT NOT NULL,
-                payload_size_bytes INTEGER NOT NULL,
-                prompt_text TEXT,
-                completion_text TEXT,
-                reasoning_content TEXT,
-                tool_calls_json TEXT,
-                llm_model TEXT,
-                prompt_tokens INTEGER,
-                completion_tokens INTEGER,
-                reasoning_tokens INTEGER,
-                total_tokens INTEGER,
-                parse_error TEXT,
-                fetched_at TEXT NOT NULL,
-                FOREIGN KEY (log_id) REFERENCES inference_logs(id)
-            );
-            """
-        )
+        from pipelines.db import TABLE_DDLS, INDEX_DDLS
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
+        async with self.conn.cursor() as cur:
+            for ddl in TABLE_DDLS:
+                await cur.execute(ddl)
+            for idx in INDEX_DDLS:
+                await cur.execute(idx)
         await self.conn.commit()
 
     async def upsert_vault(self, leaderboard_item: dict[str, Any], vault_config: dict[str, Any]) -> None:
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         now = _now_iso()
         await self.conn.execute(
             """
@@ -237,11 +119,11 @@ class IngestDatabase:
                 leaderboard_rank, total_pnl_usd, realized_pnl_usd, unrealized_pnl_usd,
                 created_block, updated_block, fetched_at
             ) VALUES (
-                :vault_address, :owner_address, :nft_id, :nft_name, :persona_json,
-                :trade_size, :trading_activity, :holding_style, :diversification,
-                :asset_risk_preference, :max_trade_amount, :slippage_bps, :paused, :state,
-                :leaderboard_rank, :total_pnl_usd, :realized_pnl_usd, :unrealized_pnl_usd,
-                :created_block, :updated_block, :fetched_at
+                %(vault_address)s, %(owner_address)s, %(nft_id)s, %(nft_name)s, %(persona_json)s,
+                %(trade_size)s, %(trading_activity)s, %(holding_style)s, %(diversification)s,
+                %(asset_risk_preference)s, %(max_trade_amount)s, %(slippage_bps)s, %(paused)s, %(state)s,
+                %(leaderboard_rank)s, %(total_pnl_usd)s, %(realized_pnl_usd)s, %(unrealized_pnl_usd)s,
+                %(created_block)s, %(updated_block)s, %(fetched_at)s
             )
             ON CONFLICT(vault_address) DO UPDATE SET
                 owner_address=excluded.owner_address,
@@ -270,7 +152,7 @@ class IngestDatabase:
                 "owner_address": leaderboard_item.get("ownerAddress") or vault_config.get("ownerAddress"),
                 "nft_id": leaderboard_item.get("nftId") or vault_config.get("nftId"),
                 "nft_name": leaderboard_item.get("nftName") or vault_config.get("nftName"),
-                "persona_json": json.dumps(vault_config.get("persona"), ensure_ascii=True),
+                "persona_json": json.dumps(vault_config.get("persona"), ensure_ascii=True) if vault_config.get("persona") is not None else None,
                 "trade_size": vault_config.get("tradeSize"),
                 "trading_activity": vault_config.get("tradingActivity"),
                 "holding_style": vault_config.get("holdingStyle"),
@@ -278,7 +160,7 @@ class IngestDatabase:
                 "asset_risk_preference": vault_config.get("assetRiskPreference"),
                 "max_trade_amount": vault_config.get("maxTradeAmount"),
                 "slippage_bps": vault_config.get("slippageBps"),
-                "paused": _as_bool_int(vault_config.get("paused")),
+                "paused": _as_bool(vault_config.get("paused")),
                 "state": vault_config.get("state"),
                 "leaderboard_rank": leaderboard_item.get("rank"),
                 "total_pnl_usd": leaderboard_item.get("totalPnlUsd"),
@@ -292,7 +174,8 @@ class IngestDatabase:
         await self.commit()
 
     async def upsert_strategies(self, vault_address: str, strategies: Iterable[dict[str, Any]]) -> None:
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         now = _now_iso()
         rows = []
         for strategy in strategies:
@@ -303,7 +186,7 @@ class IngestDatabase:
                     strategy.get("vaultOwnerAddress"),
                     strategy.get("content"),
                     strategy.get("expiry"),
-                    _as_bool_int(strategy.get("enabled")),
+                    _as_bool(strategy.get("enabled")),
                     strategy.get("strategyPriority"),
                     strategy.get("createdBlock"),
                     strategy.get("updatedBlock"),
@@ -311,28 +194,31 @@ class IngestDatabase:
                 )
             )
         if rows:
-            await self.conn.executemany(
-                """
-                INSERT INTO strategies (
-                    vault_address, strategy_id, vault_owner_address, content, expiry,
-                    enabled, strategy_priority, created_block, updated_block, fetched_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(vault_address, strategy_id) DO UPDATE SET
-                    vault_owner_address=excluded.vault_owner_address,
-                    content=excluded.content,
-                    expiry=excluded.expiry,
-                    enabled=excluded.enabled,
-                    strategy_priority=excluded.strategy_priority,
-                    created_block=excluded.created_block,
-                    updated_block=excluded.updated_block,
-                    fetched_at=excluded.fetched_at
-                """,
-                rows,
-            )
+            async with self.conn.cursor() as cur:
+                for row in rows:
+                    await cur.execute(
+                        """
+                        INSERT INTO strategies (
+                            vault_address, strategy_id, vault_owner_address, content, expiry,
+                            enabled, strategy_priority, created_block, updated_block, fetched_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT(vault_address, strategy_id) DO UPDATE SET
+                            vault_owner_address=excluded.vault_owner_address,
+                            content=excluded.content,
+                            expiry=excluded.expiry,
+                            enabled=excluded.enabled,
+                            strategy_priority=excluded.strategy_priority,
+                            created_block=excluded.created_block,
+                            updated_block=excluded.updated_block,
+                            fetched_at=excluded.fetched_at
+                        """,
+                        row,
+                    )
             await self.commit()
 
     async def upsert_inference_logs(self, logs: Iterable[dict[str, Any]]) -> None:
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         now = _now_iso()
         rows = []
         for log_item in logs:
@@ -344,7 +230,7 @@ class IngestDatabase:
                     log_item.get("request_id"),
                     log_item.get("execution_key"),
                     log_item.get("tool"),
-                    json.dumps(log_item.get("tool_args"), ensure_ascii=True, separators=(",", ":")),
+                    json.dumps(log_item.get("tool_args"), ensure_ascii=True, separators=(",", ":")) if log_item.get("tool_args") is not None else None,
                     log_item.get("strategyId"),
                     log_item.get("status"),
                     log_item.get("inference_duration_ms"),
@@ -356,35 +242,38 @@ class IngestDatabase:
                 )
             )
         if rows:
-            await self.conn.executemany(
-                """
-                INSERT INTO inference_logs (
-                    id, cursor, vault_address, request_id, execution_key, tool, tool_args_json,
-                    strategy_id, status, inference_duration_ms, error, transaction_hash,
-                    created_at, completed_at, fetched_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    cursor=excluded.cursor,
-                    vault_address=excluded.vault_address,
-                    request_id=excluded.request_id,
-                    execution_key=excluded.execution_key,
-                    tool=excluded.tool,
-                    tool_args_json=excluded.tool_args_json,
-                    strategy_id=excluded.strategy_id,
-                    status=excluded.status,
-                    inference_duration_ms=excluded.inference_duration_ms,
-                    error=excluded.error,
-                    transaction_hash=excluded.transaction_hash,
-                    created_at=excluded.created_at,
-                    completed_at=excluded.completed_at,
-                    fetched_at=excluded.fetched_at
-                """,
-                rows,
-            )
+            async with self.conn.cursor() as cur:
+                for row in rows:
+                    await cur.execute(
+                        """
+                        INSERT INTO inference_logs (
+                            id, cursor, vault_address, request_id, execution_key, tool, tool_args_json,
+                            strategy_id, status, inference_duration_ms, error, transaction_hash,
+                            created_at, completed_at, fetched_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT(id) DO UPDATE SET
+                            cursor=excluded.cursor,
+                            vault_address=excluded.vault_address,
+                            request_id=excluded.request_id,
+                            execution_key=excluded.execution_key,
+                            tool=excluded.tool,
+                            tool_args_json=excluded.tool_args_json,
+                            strategy_id=excluded.strategy_id,
+                            status=excluded.status,
+                            inference_duration_ms=excluded.inference_duration_ms,
+                            error=excluded.error,
+                            transaction_hash=excluded.transaction_hash,
+                            created_at=excluded.created_at,
+                            completed_at=excluded.completed_at,
+                            fetched_at=excluded.fetched_at
+                        """,
+                        row,
+                    )
             await self.commit()
 
     async def upsert_swaps(self, swaps: Iterable[dict[str, Any]]) -> None:
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         now = _now_iso()
         rows = []
         for swap in swaps:
@@ -399,7 +288,7 @@ class IngestDatabase:
                     swap.get("tokenName"),
                     swap.get("tokenSymbol"),
                     swap.get("vaultAddress"),
-                    _as_bool_int(swap.get("isReapTwap")),
+                    _as_bool(swap.get("isReapTwap")),
                     swap.get("side"),
                     swap.get("tokenAmount"),
                     swap.get("ethAmount"),
@@ -412,55 +301,59 @@ class IngestDatabase:
                 )
             )
         if rows:
-            await self.conn.executemany(
-                """
-                INSERT INTO swaps (
-                    transaction_hash, block_number, log_index, timestamp,
-                    pool_id, token_address, token_name, token_symbol, vault_address,
-                    is_reap_twap, side, token_amount, eth_amount, eth_price_usd,
-                    effective_price_eth, effective_price_usd, log_id, strategy_id,
-                    fetched_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(transaction_hash, log_index) DO UPDATE SET
-                    block_number=excluded.block_number,
-                    timestamp=excluded.timestamp,
-                    pool_id=excluded.pool_id,
-                    token_address=excluded.token_address,
-                    token_name=excluded.token_name,
-                    token_symbol=excluded.token_symbol,
-                    vault_address=excluded.vault_address,
-                    is_reap_twap=excluded.is_reap_twap,
-                    side=excluded.side,
-                    token_amount=excluded.token_amount,
-                    eth_amount=excluded.eth_amount,
-                    eth_price_usd=excluded.eth_price_usd,
-                    effective_price_eth=excluded.effective_price_eth,
-                    effective_price_usd=excluded.effective_price_usd,
-                    log_id=excluded.log_id,
-                    strategy_id=excluded.strategy_id,
-                    fetched_at=excluded.fetched_at
-                """,
-                rows,
-            )
+            async with self.conn.cursor() as cur:
+                for row in rows:
+                    await cur.execute(
+                        """
+                        INSERT INTO swaps (
+                            transaction_hash, block_number, log_index, timestamp,
+                            pool_id, token_address, token_name, token_symbol, vault_address,
+                            is_reap_twap, side, token_amount, eth_amount, eth_price_usd,
+                            effective_price_eth, effective_price_usd, log_id, strategy_id,
+                            fetched_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT(transaction_hash, log_index) DO UPDATE SET
+                            block_number=excluded.block_number,
+                            timestamp=excluded.timestamp,
+                            pool_id=excluded.pool_id,
+                            token_address=excluded.token_address,
+                            token_name=excluded.token_name,
+                            token_symbol=excluded.token_symbol,
+                            vault_address=excluded.vault_address,
+                            is_reap_twap=excluded.is_reap_twap,
+                            side=excluded.side,
+                            token_amount=excluded.token_amount,
+                            eth_amount=excluded.eth_amount,
+                            eth_price_usd=excluded.eth_price_usd,
+                            effective_price_eth=excluded.effective_price_eth,
+                            effective_price_usd=excluded.effective_price_usd,
+                            log_id=excluded.log_id,
+                            strategy_id=excluded.strategy_id,
+                            fetched_at=excluded.fetched_at
+                        """,
+                        row,
+                    )
             await self.commit()
 
     async def get_last_cursor(self, vault_address: str, resource: str) -> str | None:
         """Get the last saved cursor for a vault+resource (logs, swaps)."""
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         cursor = await self.conn.execute(
-            "SELECT last_cursor FROM ingest_cursors WHERE vault_address = ? AND resource = ?",
+            "SELECT last_cursor FROM ingest_cursors WHERE vault_address = %s AND resource = %s",
             (vault_address, resource),
         )
         row = await cursor.fetchone()
-        return row[0] if row else None
+        return row["last_cursor"] if row else None
 
     async def save_cursor(self, vault_address: str, resource: str, last_cursor: str) -> None:
         """Save the latest cursor for a vault+resource."""
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         await self.conn.execute(
             """
             INSERT INTO ingest_cursors (vault_address, resource, last_cursor, updated_at)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT(vault_address, resource) DO UPDATE SET
                 last_cursor=excluded.last_cursor,
                 updated_at=excluded.updated_at
@@ -470,32 +363,31 @@ class IngestDatabase:
         await self.commit()
 
     async def fetch_existing_full_log_ids(self, log_ids: list[int]) -> set[int]:
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         if not log_ids:
             return set()
-        placeholders = ",".join("?" for _ in log_ids)
         cursor = await self.conn.execute(
-            f"SELECT log_id FROM full_logs WHERE log_id IN ({placeholders})",
-            log_ids,
+            "SELECT log_id FROM full_logs WHERE log_id = ANY(%s)",
+            (log_ids,),
         )
         rows = await cursor.fetchall()
-        return {int(row[0]) for row in rows}
+        return {int(row["log_id"]) for row in rows}
 
     async def upsert_full_log(self, record: FullLogRecord) -> None:
-        assert self.conn is not None
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
         await self.conn.execute(
             """
             INSERT INTO full_logs (
-                log_id, vault_address, payload_path, payload_sha256, payload_size_bytes,
+                log_id, vault_address, raw_payload,
                 prompt_text, completion_text, reasoning_content, tool_calls_json,
                 llm_model, prompt_tokens, completion_tokens, reasoning_tokens, total_tokens,
                 parse_error, fetched_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(log_id) DO UPDATE SET
                 vault_address=excluded.vault_address,
-                payload_path=excluded.payload_path,
-                payload_sha256=excluded.payload_sha256,
-                payload_size_bytes=excluded.payload_size_bytes,
+                raw_payload=excluded.raw_payload,
                 prompt_text=excluded.prompt_text,
                 completion_text=excluded.completion_text,
                 reasoning_content=excluded.reasoning_content,
@@ -511,9 +403,7 @@ class IngestDatabase:
             (
                 record.log_id,
                 record.vault_address,
-                record.payload_meta.payload_path,
-                record.payload_meta.payload_sha256,
-                record.payload_meta.payload_size_bytes,
+                Jsonb(record.raw_payload) if record.raw_payload is not None else None,
                 record.parsed.prompt_text,
                 record.parsed.completion_text,
                 record.parsed.reasoning_content,

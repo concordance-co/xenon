@@ -3,13 +3,11 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Iterable
 
 from pipelines.ingest.api import RetryPolicy, TerminalApiError, TerminalMarketsApiClient
 from pipelines.ingest.db import FullLogRecord, IngestDatabase
 from pipelines.ingest.full_log_parser import parse_full_log
-from pipelines.ingest.payload_store import RawPayloadStore
 
 
 def _batched(items: list[Any], batch_size: int) -> Iterable[list[Any]]:
@@ -20,8 +18,6 @@ def _batched(items: list[Any], batch_size: int) -> Iterable[list[Any]]:
 @dataclass(slots=True)
 class BackfillConfig:
     base_url: str = "https://api.terminal.markets/api/v1"
-    db_path: Path = Path("data/terminal_ingest.db")
-    raw_payload_dir: Path = Path("data/full_logs")
     top_n: int = 3
     leaderboard_sort_by: str = "total_pnl_usd"
     request_limit: int = 50
@@ -51,8 +47,7 @@ class BackfillSummary:
 class TerminalBackfillIngestor:
     def __init__(self, config: BackfillConfig) -> None:
         self.config = config
-        self.db = IngestDatabase(config.db_path)
-        self.payload_store = RawPayloadStore(config.raw_payload_dir)
+        self.db = IngestDatabase()
         self.summary = BackfillSummary()
 
     async def run(self) -> BackfillSummary:
@@ -244,7 +239,7 @@ class TerminalBackfillIngestor:
                                 self.summary.full_logs_ingested += 1
                                 full_logs_seen += 1
 
-                next_cursor = items[-1].get("cursor")
+                next_cursor = items[-1].get("cursor") if items else None
                 if next_cursor:
                     await self.db.save_cursor(vault_address, "logs", next_cursor)
 
@@ -285,7 +280,7 @@ class TerminalBackfillIngestor:
                 swaps_seen += len(items)
                 self.summary.swaps_ingested += len(items)
 
-                next_cursor = items[-1].get("cursor")
+                next_cursor = items[-1].get("cursor") if items else None
                 if next_cursor:
                     await self.db.save_cursor(vault_address, "swaps", next_cursor)
 
@@ -303,14 +298,12 @@ class TerminalBackfillIngestor:
             return False
         log_id = int(log_id_raw)
         payload = await api.get_full_log(log_id)
-        # Offload synchronous gzip write to a thread so it doesn't block the event loop
-        payload_meta = await asyncio.to_thread(self.payload_store.write, log_id, payload)
         parsed = parse_full_log(payload, include_reasoning=self.config.include_reasoning)
         record = FullLogRecord(
             log_id=log_id,
             vault_address=log_item.get("vault_address"),
-            payload_meta=payload_meta,
             parsed=parsed,
+            raw_payload=payload,
         )
         await self.db.upsert_full_log(record)
         return True

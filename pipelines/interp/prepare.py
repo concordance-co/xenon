@@ -1,28 +1,19 @@
 from __future__ import annotations
 
 import argparse
-import gzip
 import json
 import logging
-import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
+
+from psycopg.rows import dict_row
 
 logger = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
-
-
-def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
-    row = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
-        [table_name],
-    ).fetchone()
-    return row is not None
 
 
 def _json_dumps(value: Any) -> str | None:
@@ -36,7 +27,7 @@ def _json_loads(value: Any) -> Any:
         return None
     try:
         return json.loads(value)
-    except Exception:
+    except (json.JSONDecodeError, ValueError, TypeError):
         return None
 
 
@@ -77,22 +68,6 @@ def _extract_first_text(messages: list[dict[str, Any]], role: str) -> str | None
         content = message.get("content")
         if isinstance(content, str) and content.strip():
             return content
-    return None
-
-
-def _load_payload(payload_path: str | None) -> dict[str, Any] | None:
-    if not payload_path:
-        return None
-    path = Path(payload_path)
-    if not path.exists():
-        return None
-    try:
-        with gzip.open(path, "rt", encoding="utf-8") as handle:
-            data = json.load(handle)
-        if isinstance(data, dict):
-            return data
-    except Exception:
-        return None
     return None
 
 
@@ -230,130 +205,6 @@ def _extract_decision(
     }
 
 
-def _extract_swap_row(conn: sqlite3.Connection, log_id: int, transaction_hash: str | None) -> dict[str, Any]:
-    if not _table_exists(conn, "swaps"):
-        return {}
-
-    row = conn.execute(
-        """
-        SELECT
-            transaction_hash,
-            side,
-            token_address,
-            token_symbol,
-            effective_price_usd
-        FROM swaps
-        WHERE log_id = ?
-        LIMIT 1
-        """,
-        [log_id],
-    ).fetchone()
-    if row is None and transaction_hash:
-        row = conn.execute(
-            """
-            SELECT
-                transaction_hash,
-                side,
-                token_address,
-                token_symbol,
-                effective_price_usd
-            FROM swaps
-            WHERE transaction_hash = ?
-            LIMIT 1
-            """,
-            [transaction_hash],
-        ).fetchone()
-    if row is None:
-        return {}
-    return dict(row)
-
-
-def _extract_trade_outcome(conn: sqlite3.Connection, log_id: int) -> dict[str, Any]:
-    if not _table_exists(conn, "trade_outcomes"):
-        return {}
-    row = conn.execute(
-        """
-        SELECT
-            pnl_1h_pct,
-            pnl_4h_pct,
-            pnl_1d_pct,
-            was_profitable_1h,
-            entry_price_eth,
-            entry_price_usd
-        FROM trade_outcomes
-        WHERE log_id = ?
-        LIMIT 1
-        """,
-        [log_id],
-    ).fetchone()
-    if row is None:
-        return {}
-    return dict(row)
-
-
-def _extract_vault_config(conn: sqlite3.Connection, vault_address: str) -> dict[str, Any]:
-    if not _table_exists(conn, "vaults"):
-        return {}
-    row = conn.execute(
-        """
-        SELECT
-            trade_size,
-            trading_activity,
-            holding_style,
-            diversification,
-            asset_risk_preference
-        FROM vaults
-        WHERE vault_address = ?
-        LIMIT 1
-        """,
-        [vault_address],
-    ).fetchone()
-    if row is None:
-        return {}
-    return dict(row)
-
-
-def _extract_strategy_fallback(
-    conn: sqlite3.Connection,
-    *,
-    vault_address: str,
-    strategy_id: str | None,
-) -> Any:
-    if not _table_exists(conn, "strategies"):
-        return None
-
-    rows = conn.execute(
-        """
-        SELECT
-            strategy_id,
-            content,
-            enabled,
-            strategy_priority,
-            expiry,
-            created_block,
-            updated_block
-        FROM strategies
-        WHERE vault_address = ?
-        ORDER BY enabled DESC, CAST(strategy_id AS INTEGER) DESC
-        """,
-        [vault_address],
-    ).fetchall()
-    if not rows:
-        return None
-    items = [dict(r) for r in rows]
-    matched = None
-    if strategy_id is not None:
-        for item in items:
-            if str(item.get("strategy_id")) == str(strategy_id):
-                matched = item
-                break
-    return {
-        "strategy_id_from_log": strategy_id,
-        "matched_strategy": matched,
-        "vault_strategies": items,
-    }
-
-
 def _missing_blocks(
     *,
     has_messages: bool,
@@ -382,99 +233,167 @@ def _missing_blocks(
     return missing
 
 
+# ---------------------------------------------------------------------------
+# Bulk prefetch helpers
+# ---------------------------------------------------------------------------
+
+def _prefetch_swaps(conn, log_ids: list[int], tx_hashes: list[str]):
+    by_log: dict[int, dict[str, Any]] = {}
+    if log_ids:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT ON (log_id)
+                log_id, transaction_hash, side, token_address, token_symbol, effective_price_usd
+            FROM swaps
+            WHERE log_id = ANY(%s)
+            ORDER BY log_id, timestamp DESC NULLS LAST, log_index DESC
+            """,
+            [log_ids],
+        ).fetchall()
+        by_log = {int(r["log_id"]): dict(r) for r in rows}
+
+    by_tx: dict[str, dict[str, Any]] = {}
+    if tx_hashes:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT ON (transaction_hash)
+                transaction_hash, side, token_address, token_symbol, effective_price_usd
+            FROM swaps
+            WHERE transaction_hash = ANY(%s)
+            ORDER BY transaction_hash, timestamp DESC NULLS LAST, log_index DESC
+            """,
+            [tx_hashes],
+        ).fetchall()
+        by_tx = {str(r["transaction_hash"]): dict(r) for r in rows}
+
+    return by_log, by_tx
+
+
+def _prefetch_outcomes(conn, log_ids: list[int]) -> dict[int, dict[str, Any]]:
+    if not log_ids:
+        return {}
+    rows = conn.execute(
+        """
+        SELECT DISTINCT ON (log_id)
+            log_id, pnl_1h_pct, pnl_4h_pct, pnl_1d_pct,
+            was_profitable_1h, entry_price_eth, entry_price_usd
+        FROM trade_outcomes
+        WHERE log_id = ANY(%s)
+        ORDER BY log_id
+        """,
+        [log_ids],
+    ).fetchall()
+    return {int(r["log_id"]): dict(r) for r in rows}
+
+
+def _prefetch_vault_configs(conn, vault_addresses: list[str]) -> dict[str, dict[str, Any]]:
+    if not vault_addresses:
+        return {}
+    rows = conn.execute(
+        """
+        SELECT
+            vault_address, trade_size, trading_activity, holding_style,
+            diversification, asset_risk_preference
+        FROM vaults
+        WHERE vault_address = ANY(%s)
+        """,
+        [vault_addresses],
+    ).fetchall()
+    return {str(r["vault_address"]): dict(r) for r in rows}
+
+
+def _prefetch_strategies(conn, vault_addresses: list[str]) -> dict[str, dict[str, Any]]:
+    """Return {vault_address: {strategy_id_from_log: None, matched_strategy: ..., vault_strategies: [...]}}."""
+    if not vault_addresses:
+        return {}
+    rows = conn.execute(
+        """
+        SELECT
+            vault_address, strategy_id, content, enabled,
+            strategy_priority, expiry, created_block, updated_block
+        FROM strategies
+        WHERE vault_address = ANY(%s)
+        ORDER BY vault_address, enabled DESC NULLS LAST,
+            CASE WHEN strategy_id ~ '^[0-9]+$' THEN strategy_id::INTEGER ELSE NULL END DESC NULLS LAST,
+            strategy_id DESC
+        """,
+        [vault_addresses],
+    ).fetchall()
+
+    by_vault: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        va = str(r["vault_address"])
+        by_vault.setdefault(va, []).append(dict(r))
+
+    return by_vault
+
+
+def _build_strategy_fallback(
+    strategy_map: dict[str, list[dict[str, Any]]],
+    vault_address: str,
+    strategy_id: str | None,
+) -> Any:
+    items = strategy_map.get(vault_address)
+    if not items:
+        return None
+    matched = None
+    if strategy_id is not None:
+        for item in items:
+            if str(item.get("strategy_id")) == str(strategy_id):
+                matched = item
+                break
+    return {
+        "strategy_id_from_log": strategy_id,
+        "matched_strategy": matched,
+        "vault_strategies": items,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
 @dataclass(slots=True)
 class PrepareConfig:
-    db_path: Path = Path("data/terminal_ingest.db")
     limit: int = 50_000
     only_focus_decisions: bool = True
-    trade_sample_size: int = 150
-    observation_sample_size: int = 150
-    paired_sample_size: int = 100
     transform_version: str = "interp_examples_v0.2"
-    export_jsonl: bool = False
-    export_parquet: bool = False
-    export_dir: Path = Path("data/interp_exports")
+    full_rebuild: bool = False
 
+
+# ---------------------------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------------------------
 
 def run_prepare(config: PrepareConfig) -> dict[str, int]:
-    if not config.db_path.exists():
-        raise FileNotFoundError(f"Database not found: {config.db_path}")
+    from pipelines.db import connect_neon, ensure_schema
 
-    conn = sqlite3.connect(config.db_path)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn = connect_neon(autocommit=False)
+    conn.row_factory = dict_row
+    ensure_schema(conn)
 
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS interp_examples_v0 (
-            example_id TEXT PRIMARY KEY,
-            log_id INTEGER NOT NULL,
-            vault_address TEXT NOT NULL,
-            created_at TEXT,
-            strategy_id TEXT,
-            transaction_hash TEXT,
-            is_trade INTEGER NOT NULL,
-            prompt_messages_json TEXT,
-            system_text TEXT,
-            user_text TEXT,
-            tools_available_json TEXT,
-            market_snapshot_json TEXT,
-            portfolio_snapshot_json TEXT,
-            strategy_snapshot_json TEXT,
-            config_snapshot_json TEXT,
-            memory_snapshot_json TEXT,
-            model_source TEXT,
-            assistant_content TEXT,
-            reasoning_content TEXT,
-            tool_calls_json TEXT,
-            action_name TEXT,
-            decision_type TEXT NOT NULL,
-            trade_side TEXT,
-            asset TEXT,
-            size TEXT,
-            observation_text TEXT,
-            joined_swap INTEGER NOT NULL,
-            swap_side TEXT,
-            swap_token_address TEXT,
-            swap_token_symbol TEXT,
-            swap_price_usd REAL,
-            pnl_1h_pct REAL,
-            pnl_4h_pct REAL,
-            pnl_1d_pct REAL,
-            was_profitable_1h INTEGER,
-            entry_price_usd REAL,
-            entry_price_eth REAL,
-            vault_trade_size INTEGER,
-            vault_trading_activity INTEGER,
-            vault_holding_style INTEGER,
-            vault_diversification INTEGER,
-            vault_risk_preference INTEGER,
-            parse_ok INTEGER NOT NULL,
-            parse_error TEXT,
-            has_messages INTEGER NOT NULL,
-            has_tools INTEGER NOT NULL,
-            has_market INTEGER NOT NULL,
-            has_portfolio INTEGER NOT NULL,
-            has_strategy INTEGER NOT NULL,
-            has_config INTEGER NOT NULL,
-            has_memory INTEGER NOT NULL,
-            context_complete INTEGER NOT NULL,
-            missing_blocks_json TEXT,
-            label_quality TEXT NOT NULL,
-            label_confidence TEXT NOT NULL,
-            ingest_version TEXT,
-            transform_version TEXT NOT NULL,
-            built_at TEXT NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_interp_examples_v0_decision
-        ON interp_examples_v0(decision_type, context_complete, parse_ok, created_at);
-        CREATE INDEX IF NOT EXISTS idx_interp_examples_v0_vault_log
-        ON interp_examples_v0(vault_address, log_id);
-        """
-    )
+    # ------------------------------------------------------------------
+    # Incremental mode: find high-water mark unless full rebuild
+    # ------------------------------------------------------------------
+    high_water_mark = 0
+    if config.full_rebuild:
+        conn.execute("TRUNCATE interp_examples_v0")
+        logger.info("Full rebuild: truncated interp_examples_v0")
+    else:
+        hwm_row = conn.execute(
+            "SELECT COALESCE(MAX(log_id), 0) AS hwm FROM interp_examples_v0"
+        ).fetchone()
+        high_water_mark = int(hwm_row["hwm"])
+        logger.info("Incremental mode: high_water_mark=%d", high_water_mark)
 
-    query = """
+    # ------------------------------------------------------------------
+    # Source query: read raw_payload directly from JSONB column
+    # ------------------------------------------------------------------
+    focus_filter = ""
+    if config.only_focus_decisions:
+        focus_filter = "AND l.tool IN ('buy_token', 'sell_token', 'record_observation')"
+
+    query = f"""
         SELECT
             l.id AS log_id,
             l.vault_address,
@@ -483,7 +402,7 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
             l.transaction_hash,
             l.tool,
             l.tool_args_json,
-            f.payload_path,
+            f.raw_payload,
             f.parse_error,
             f.completion_text,
             f.reasoning_content,
@@ -492,131 +411,84 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
             f.fetched_at
         FROM inference_logs l
         INNER JOIN full_logs f ON f.log_id = l.id
-        ORDER BY l.id DESC
-        LIMIT ?
+        WHERE f.raw_payload IS NOT NULL
+          AND l.id > %s
+          {focus_filter}
+        ORDER BY l.id ASC
+        LIMIT %s
     """
-    rows = conn.execute(query, [config.limit]).fetchall()
+    rows = conn.execute(query, [high_water_mark, config.limit]).fetchall()
 
-    _UPSERT_SQL = """
-            INSERT INTO interp_examples_v0 (
-                example_id, log_id, vault_address, created_at, strategy_id, transaction_hash, is_trade,
-                prompt_messages_json, system_text, user_text, tools_available_json,
-                market_snapshot_json, portfolio_snapshot_json, strategy_snapshot_json, config_snapshot_json,
-                memory_snapshot_json, model_source, assistant_content, reasoning_content, tool_calls_json,
-                action_name, decision_type, trade_side, asset, size, observation_text,
-                joined_swap, swap_side, swap_token_address, swap_token_symbol, swap_price_usd,
-                pnl_1h_pct, pnl_4h_pct, pnl_1d_pct, was_profitable_1h,
-                entry_price_usd, entry_price_eth,
-                vault_trade_size, vault_trading_activity, vault_holding_style, vault_diversification, vault_risk_preference,
-                parse_ok, parse_error, has_messages, has_tools, has_market, has_portfolio, has_strategy, has_config, has_memory,
-                context_complete, missing_blocks_json, label_quality, label_confidence,
-                ingest_version, transform_version, built_at
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?
-            )
-            ON CONFLICT(example_id) DO UPDATE SET
-                created_at=excluded.created_at,
-                strategy_id=excluded.strategy_id,
-                transaction_hash=excluded.transaction_hash,
-                is_trade=excluded.is_trade,
-                prompt_messages_json=excluded.prompt_messages_json,
-                system_text=excluded.system_text,
-                user_text=excluded.user_text,
-                tools_available_json=excluded.tools_available_json,
-                market_snapshot_json=excluded.market_snapshot_json,
-                portfolio_snapshot_json=excluded.portfolio_snapshot_json,
-                strategy_snapshot_json=excluded.strategy_snapshot_json,
-                config_snapshot_json=excluded.config_snapshot_json,
-                memory_snapshot_json=excluded.memory_snapshot_json,
-                model_source=excluded.model_source,
-                assistant_content=excluded.assistant_content,
-                reasoning_content=excluded.reasoning_content,
-                tool_calls_json=excluded.tool_calls_json,
-                action_name=excluded.action_name,
-                decision_type=excluded.decision_type,
-                trade_side=excluded.trade_side,
-                asset=excluded.asset,
-                size=excluded.size,
-                observation_text=excluded.observation_text,
-                joined_swap=excluded.joined_swap,
-                swap_side=excluded.swap_side,
-                swap_token_address=excluded.swap_token_address,
-                swap_token_symbol=excluded.swap_token_symbol,
-                swap_price_usd=excluded.swap_price_usd,
-                pnl_1h_pct=excluded.pnl_1h_pct,
-                pnl_4h_pct=excluded.pnl_4h_pct,
-                pnl_1d_pct=excluded.pnl_1d_pct,
-                was_profitable_1h=excluded.was_profitable_1h,
-                entry_price_usd=excluded.entry_price_usd,
-                entry_price_eth=excluded.entry_price_eth,
-                vault_trade_size=excluded.vault_trade_size,
-                vault_trading_activity=excluded.vault_trading_activity,
-                vault_holding_style=excluded.vault_holding_style,
-                vault_diversification=excluded.vault_diversification,
-                vault_risk_preference=excluded.vault_risk_preference,
-                parse_ok=excluded.parse_ok,
-                parse_error=excluded.parse_error,
-                has_messages=excluded.has_messages,
-                has_tools=excluded.has_tools,
-                has_market=excluded.has_market,
-                has_portfolio=excluded.has_portfolio,
-                has_strategy=excluded.has_strategy,
-                has_config=excluded.has_config,
-                has_memory=excluded.has_memory,
-                context_complete=excluded.context_complete,
-                missing_blocks_json=excluded.missing_blocks_json,
-                label_quality=excluded.label_quality,
-                label_confidence=excluded.label_confidence,
-                ingest_version=excluded.ingest_version,
-                transform_version=excluded.transform_version,
-                built_at=excluded.built_at
-            """
+    # ------------------------------------------------------------------
+    # Bulk prefetch enrichment data
+    # ------------------------------------------------------------------
+    log_ids = [int(row["log_id"]) for row in rows]
+    vault_addresses = sorted(
+        {str(row["vault_address"]) for row in rows if row.get("vault_address")}
+    )
+    tx_hashes = sorted(
+        {str(row["transaction_hash"]) for row in rows if row.get("transaction_hash")}
+    )
 
-    _BATCH_SIZE = 500
+    swap_by_log, swap_by_tx = _prefetch_swaps(conn, log_ids, tx_hashes)
+    outcomes_by_log = _prefetch_outcomes(conn, log_ids)
+    vault_configs = _prefetch_vault_configs(conn, vault_addresses)
+    strategy_map = _prefetch_strategies(conn, vault_addresses)
+
+    # ------------------------------------------------------------------
+    # Build rows for bulk upsert via COPY + temp table
+    # ------------------------------------------------------------------
+    _COLUMNS = (
+        "example_id", "log_id", "vault_address", "created_at", "strategy_id", "transaction_hash", "is_trade",
+        "prompt_messages_json", "system_text", "user_text", "tools_available_json",
+        "market_snapshot_json", "portfolio_snapshot_json", "strategy_snapshot_json", "config_snapshot_json",
+        "memory_snapshot_json", "model_source", "assistant_content", "reasoning_content", "tool_calls_json",
+        "action_name", "decision_type", "trade_side", "asset", "size", "observation_text",
+        "joined_swap", "swap_side", "swap_token_address", "swap_token_symbol", "swap_price_usd",
+        "pnl_1h_pct", "pnl_4h_pct", "pnl_1d_pct", "was_profitable_1h",
+        "entry_price_usd", "entry_price_eth",
+        "vault_trade_size", "vault_trading_activity", "vault_holding_style", "vault_diversification", "vault_risk_preference",
+        "parse_ok", "parse_error", "has_messages", "has_tools", "has_market", "has_portfolio", "has_strategy", "has_config", "has_memory",
+        "context_complete", "missing_blocks_json", "label_quality", "label_confidence",
+        "ingest_version", "transform_version", "built_at",
+    )
+    _SET_CLAUSE = ", ".join(f"{col}=EXCLUDED.{col}" for col in _COLUMNS if col not in ("example_id", "log_id", "vault_address"))
+
     inserted = 0
     focused = 0
     error_count = 0
-    insert_batch: list[tuple] = []
+    insert_rows: list[tuple] = []
 
-    def _flush_batch() -> None:
-        nonlocal inserted
-        if not insert_batch:
-            return
-        conn.executemany(_UPSERT_SQL, insert_batch)
-        inserted += len(insert_batch)
-        insert_batch.clear()
-
-    conn.execute("BEGIN TRANSACTION")
     try:
         for row in rows:
             log_id = row["log_id"]
             try:
-                payload = _load_payload(row["payload_path"])
+                # raw_payload is already a dict (psycopg auto-deserializes JSONB)
+                payload = row["raw_payload"]
                 context = _extract_context_blocks(payload)
+
                 if context["strategy"] is None:
-                    context["strategy"] = _extract_strategy_fallback(
-                        conn,
+                    context["strategy"] = _build_strategy_fallback(
+                        strategy_map,
                         vault_address=str(row["vault_address"]),
                         strategy_id=row["strategy_id"],
                     )
-                tool_calls = context["tool_calls"] if context["tool_calls"] is not None else _json_loads(row["tool_calls_json"])
+
+                tool_calls = (
+                    context["tool_calls"]
+                    if context["tool_calls"] is not None
+                    else _json_loads(row["tool_calls_json"])
+                )
                 decision = _extract_decision(
                     tool_calls=tool_calls,
                     tool_fallback=row["tool"],
                     tool_args_json=row["tool_args_json"],
                 )
-                if config.only_focus_decisions and decision["decision_type"] not in {"trade", "record_observation"}:
+
+                if config.only_focus_decisions and decision["decision_type"] not in {
+                    "trade",
+                    "record_observation",
+                }:
                     continue
                 focused += 1
 
@@ -629,7 +501,9 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                 has_config = context["config"] is not None
                 has_memory = context["memory"] is not None
                 parse_ok = not bool(row["parse_error"])
-                context_complete = has_messages and has_market and has_portfolio and has_strategy and has_config
+                context_complete = (
+                    has_messages and has_market and has_portfolio and has_strategy and has_config
+                )
                 missing = _missing_blocks(
                     has_messages=has_messages,
                     has_market=has_market,
@@ -641,26 +515,33 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                 )
                 if parse_ok and context_complete:
                     quality = "high"
-                elif parse_ok and len(missing) <= 2 and all(x in {"memory", "tools"} for x in missing):
+                elif parse_ok and len(missing) <= 2 and all(
+                    x in {"memory", "tools"} for x in missing
+                ):
                     quality = "medium"
                 else:
                     quality = "low"
 
-                swap = _extract_swap_row(conn, int(log_id), row["transaction_hash"])
+                # Look up enrichment from prefetched maps
+                lid = int(log_id)
+                swap = swap_by_log.get(lid) or {}
+                if not swap and row.get("transaction_hash"):
+                    swap = swap_by_tx.get(str(row["transaction_hash"])) or {}
                 joined_swap = bool(swap)
-                outcome = _extract_trade_outcome(conn, int(log_id))
-                vault_cfg = _extract_vault_config(conn, str(row["vault_address"]))
+                outcome = outcomes_by_log.get(lid) or {}
+                vault_cfg = vault_configs.get(str(row["vault_address"])) or {}
 
                 example_id = f"{row['vault_address']}:{log_id}"
                 ingest_version = row["fetched_at"]
-                insert_batch.append((
+
+                insert_rows.append((
                     example_id,
                     int(log_id),
                     row["vault_address"],
                     row["created_at"],
                     row["strategy_id"],
                     row["transaction_hash"],
-                    1 if decision["decision_type"] == "trade" else 0,
+                    True if decision["decision_type"] == "trade" else False,
                     _json_dumps(messages),
                     _extract_first_text(messages, "system"),
                     _extract_first_text(messages, "user"),
@@ -671,8 +552,12 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                     _json_dumps(context["config"]),
                     _json_dumps(context["memory"]),
                     context["model_source"] or row["llm_model"],
-                    context["assistant_content"] if context["assistant_content"] is not None else row["completion_text"],
-                    context["reasoning_content"] if context["reasoning_content"] is not None else row["reasoning_content"],
+                    context["assistant_content"]
+                    if context["assistant_content"] is not None
+                    else row["completion_text"],
+                    context["reasoning_content"]
+                    if context["reasoning_content"] is not None
+                    else row["reasoning_content"],
                     _json_dumps(tool_calls),
                     decision["action_name"],
                     decision["decision_type"],
@@ -680,7 +565,7 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                     decision["asset"],
                     None if decision["size"] is None else str(decision["size"]),
                     decision["observation_text"],
-                    1 if joined_swap else 0,
+                    joined_swap,
                     swap.get("side"),
                     swap.get("token_address"),
                     swap.get("token_symbol"),
@@ -688,7 +573,7 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                     outcome.get("pnl_1h_pct"),
                     outcome.get("pnl_4h_pct"),
                     outcome.get("pnl_1d_pct"),
-                    outcome.get("was_profitable_1h"),
+                    bool(outcome.get("was_profitable_1h")) if outcome.get("was_profitable_1h") is not None else None,
                     outcome.get("entry_price_usd"),
                     outcome.get("entry_price_eth"),
                     vault_cfg.get("trade_size"),
@@ -696,16 +581,16 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                     vault_cfg.get("holding_style"),
                     vault_cfg.get("diversification"),
                     vault_cfg.get("asset_risk_preference"),
-                    1 if parse_ok else 0,
+                    parse_ok,
                     row["parse_error"],
-                    1 if has_messages else 0,
-                    1 if has_tools else 0,
-                    1 if has_market else 0,
-                    1 if has_portfolio else 0,
-                    1 if has_strategy else 0,
-                    1 if has_config else 0,
-                    1 if has_memory else 0,
-                    1 if context_complete else 0,
+                    has_messages,
+                    has_tools,
+                    has_market,
+                    has_portfolio,
+                    has_strategy,
+                    has_config,
+                    has_memory,
+                    context_complete,
                     _json_dumps(missing),
                     quality,
                     quality,
@@ -714,151 +599,54 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
                     _now_iso(),
                 ))
 
-                if len(insert_batch) >= _BATCH_SIZE:
-                    _flush_batch()
-                    conn.commit()
-                    conn.execute("BEGIN TRANSACTION")
-
-            except Exception:
+            except Exception as exc:
                 error_count += 1
-                logger.error("Failed to process log_id=%s, skipping row", log_id, exc_info=True)
+                logger.error(
+                    "Failed to process log_id=%s, skipping row", log_id, exc_info=True
+                )
                 continue
 
-        # Flush any remaining rows in the final partial batch.
-        _flush_batch()
+        # ---------------------------------------------------------------
+        # Bulk upsert via COPY into temp table, then INSERT ... ON CONFLICT
+        # ---------------------------------------------------------------
+        if insert_rows:
+            col_list = ", ".join(_COLUMNS)
+            conn.execute(
+                "CREATE TEMP TABLE _prep_staging (LIKE interp_examples_v0 INCLUDING DEFAULTS) ON COMMIT DROP"
+            )
+            with conn.cursor().copy(
+                f"COPY _prep_staging ({col_list}) FROM STDIN"
+            ) as copy:
+                for tup in insert_rows:
+                    copy.write_row(tup)
+            result = conn.execute(f"""
+                INSERT INTO interp_examples_v0 ({col_list})
+                SELECT {col_list} FROM _prep_staging
+                ON CONFLICT (example_id) DO UPDATE SET {_SET_CLAUSE}
+            """)
+            inserted = result.rowcount if result.rowcount and result.rowcount >= 0 else len(insert_rows)
+
+            # Row count validation
+            expected = len(insert_rows)
+            if abs(inserted - expected) > 0:
+                logger.warning(
+                    "Row count mismatch: expected=%d, actual upserted=%d (delta=%d)",
+                    expected, inserted, inserted - expected,
+                )
+            else:
+                logger.info("Bulk upsert: %d rows written as expected", inserted)
+
         conn.commit()
     except Exception:
         conn.rollback()
-        logger.error("Fatal error during prepare insert loop, rolling back", exc_info=True)
+        logger.error(
+            "Fatal error during prepare insert loop, rolling back", exc_info=True
+        )
         raise
 
-    conn.executescript(
-        """
-        DROP TABLE IF EXISTS interp_context_gaps_v0;
-        CREATE TABLE interp_context_gaps_v0 AS
-        SELECT
-            example_id,
-            log_id,
-            vault_address,
-            created_at,
-            decision_type,
-            parse_ok,
-            context_complete,
-            missing_blocks_json,
-            parse_error,
-            label_quality
-        FROM interp_examples_v0
-        WHERE parse_ok = 0 OR context_complete = 0;
-
-        DROP TABLE IF EXISTS interp_sample_trade_v0;
-        CREATE TABLE interp_sample_trade_v0 AS
-        WITH ranked AS (
-            SELECT *
-            FROM interp_examples_v0
-            WHERE decision_type = 'trade'
-              AND label_quality = 'high'
-            ORDER BY created_at DESC, log_id DESC
-        )
-        SELECT * FROM ranked LIMIT 1;
-
-        DROP TABLE IF EXISTS interp_sample_observation_v0;
-        CREATE TABLE interp_sample_observation_v0 AS
-        WITH ranked AS (
-            SELECT *
-            FROM interp_examples_v0
-            WHERE decision_type = 'record_observation'
-              AND label_quality = 'high'
-            ORDER BY created_at DESC, log_id DESC
-        )
-        SELECT * FROM ranked LIMIT 1;
-
-        DROP TABLE IF EXISTS interp_sample_paired_v0;
-        CREATE TABLE interp_sample_paired_v0 AS
-        SELECT a.*
-        FROM interp_examples_v0 a
-        WHERE a.label_quality = 'high'
-          AND a.decision_type IN ('trade', 'record_observation')
-          AND EXISTS (
-              SELECT 1
-              FROM interp_examples_v0 b
-              WHERE b.vault_address = a.vault_address
-                AND b.decision_type != a.decision_type
-                AND abs(b.log_id - a.log_id) <= 10000
-          )
-        ORDER BY a.created_at DESC, a.log_id DESC
-        LIMIT 1;
-        """
-    )
-
-    # Resize sample tables to configured sizes.
-    conn.execute("DELETE FROM interp_sample_trade_v0")
-    conn.execute(
-        """
-        INSERT INTO interp_sample_trade_v0
-        SELECT * FROM (
-            SELECT *
-            FROM interp_examples_v0
-            WHERE decision_type = 'trade'
-              AND label_quality = 'high'
-              AND trade_side = 'buy'
-            ORDER BY created_at DESC, log_id DESC
-            LIMIT ?
-        )
-        UNION ALL
-        SELECT * FROM (
-            SELECT *
-            FROM interp_examples_v0
-            WHERE decision_type = 'trade'
-              AND label_quality = 'high'
-              AND trade_side = 'sell'
-            ORDER BY created_at DESC, log_id DESC
-            LIMIT ?
-        )
-        LIMIT ?
-        """,
-        [
-            max(1, config.trade_sample_size // 2),
-            max(1, config.trade_sample_size // 2),
-            config.trade_sample_size,
-        ],
-    )
-
-    conn.execute("DELETE FROM interp_sample_observation_v0")
-    conn.execute(
-        """
-        INSERT INTO interp_sample_observation_v0
-        SELECT *
-        FROM interp_examples_v0
-        WHERE decision_type = 'record_observation'
-          AND label_quality = 'high'
-        ORDER BY created_at DESC, log_id DESC
-        LIMIT ?
-        """,
-        [config.observation_sample_size],
-    )
-
-    conn.execute("DELETE FROM interp_sample_paired_v0")
-    conn.execute(
-        """
-        INSERT INTO interp_sample_paired_v0
-        SELECT a.*
-        FROM interp_examples_v0 a
-        WHERE a.label_quality = 'high'
-          AND a.decision_type IN ('trade', 'record_observation')
-          AND EXISTS (
-              SELECT 1
-              FROM interp_examples_v0 b
-              WHERE b.vault_address = a.vault_address
-                AND b.decision_type != a.decision_type
-                AND abs(b.log_id - a.log_id) <= 10000
-          )
-        ORDER BY a.created_at DESC, a.log_id DESC
-        LIMIT ?
-        """,
-        [config.paired_sample_size],
-    )
-    conn.commit()
-
+    # ------------------------------------------------------------------
+    # Summary stats (all via filtered queries on interp_examples_v0)
+    # ------------------------------------------------------------------
     totals = conn.execute(
         """
         SELECT
@@ -866,25 +654,18 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
             SUM(CASE WHEN decision_type='trade' THEN 1 ELSE 0 END) AS trade_count,
             SUM(CASE WHEN decision_type='record_observation' THEN 1 ELSE 0 END) AS observation_count,
             SUM(CASE WHEN label_quality='high' THEN 1 ELSE 0 END) AS high_quality_count,
-            SUM(CASE WHEN context_complete=1 THEN 1 ELSE 0 END) AS context_complete_count,
-            SUM(CASE WHEN parse_ok=1 THEN 1 ELSE 0 END) AS parse_ok_count
+            SUM(CASE WHEN context_complete THEN 1 ELSE 0 END) AS context_complete_count,
+            SUM(CASE WHEN parse_ok THEN 1 ELSE 0 END) AS parse_ok_count
         FROM interp_examples_v0
         """
     ).fetchone()
-    gap_count = conn.execute("SELECT COUNT(*) AS c FROM interp_context_gaps_v0").fetchone()["c"]
-    trade_sample = conn.execute("SELECT COUNT(*) AS c FROM interp_sample_trade_v0").fetchone()["c"]
-    obs_sample = conn.execute("SELECT COUNT(*) AS c FROM interp_sample_observation_v0").fetchone()["c"]
-    pair_sample = conn.execute("SELECT COUNT(*) AS c FROM interp_sample_paired_v0").fetchone()["c"]
-    export_count = 0
 
-    if config.export_jsonl:
-        export_count = _export_jsonl_tables(conn, config.export_dir)
-
-    parquet_count = 0
-    if config.export_parquet:
-        parquet_count = _export_parquet_tables(conn, config.export_dir)
+    gap_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM interp_examples_v0 WHERE NOT parse_ok OR NOT context_complete"
+    ).fetchone()["c"]
 
     conn.close()
+
     return {
         "rows_scanned": len(rows),
         "rows_focus_kept": focused,
@@ -897,144 +678,28 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         "context_complete_count": int(totals["context_complete_count"] or 0),
         "parse_ok_count": int(totals["parse_ok_count"] or 0),
         "gap_count": int(gap_count or 0),
-        "trade_sample_count": int(trade_sample or 0),
-        "observation_sample_count": int(obs_sample or 0),
-        "paired_sample_count": int(pair_sample or 0),
-        "export_files_written": int(export_count),
-        "parquet_files_written": int(parquet_count),
     }
 
 
-def _write_query_to_jsonl(conn: sqlite3.Connection, sql: str, out_path: Path) -> int:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    rows = conn.execute(sql).fetchall()
-    with out_path.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(dict(row), ensure_ascii=True, separators=(",", ":")))
-            handle.write("\n")
-    return len(rows)
-
-
-def _export_jsonl_tables(conn: sqlite3.Connection, export_dir: Path) -> int:
-    queries = {
-        "interp_examples_v0_high_quality.jsonl": """
-            SELECT *
-            FROM interp_examples_v0
-            WHERE label_quality = 'high'
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_sample_trade_v0.jsonl": """
-            SELECT *
-            FROM interp_sample_trade_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_sample_observation_v0.jsonl": """
-            SELECT *
-            FROM interp_sample_observation_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_sample_paired_v0.jsonl": """
-            SELECT *
-            FROM interp_sample_paired_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_context_gaps_v0.jsonl": """
-            SELECT *
-            FROM interp_context_gaps_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-    }
-    files_written = 0
-    for name, sql in queries.items():
-        out_path = export_dir / name
-        _ = _write_query_to_jsonl(conn, sql, out_path)
-        files_written += 1
-    return files_written
-
-
-def _export_parquet_tables(conn: sqlite3.Connection, export_dir: Path) -> int:
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    queries = {
-        "interp_examples_v0_high_quality.parquet": """
-            SELECT *
-            FROM interp_examples_v0
-            WHERE label_quality = 'high'
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_sample_trade_v0.parquet": """
-            SELECT *
-            FROM interp_sample_trade_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_sample_observation_v0.parquet": """
-            SELECT *
-            FROM interp_sample_observation_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_sample_paired_v0.parquet": """
-            SELECT *
-            FROM interp_sample_paired_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-        "interp_context_gaps_v0.parquet": """
-            SELECT *
-            FROM interp_context_gaps_v0
-            ORDER BY created_at DESC, log_id DESC
-        """,
-    }
-
-    export_dir.mkdir(parents=True, exist_ok=True)
-    files_written = 0
-
-    for name, sql in queries.items():
-        cursor = conn.execute(sql)
-        columns = [desc[0] for desc in cursor.description]
-        rows = cursor.fetchall()
-        if not rows:
-            continue
-
-        data = {col: [row[idx] for row in rows] for idx, col in enumerate(columns)}
-        table = pa.Table.from_pydict(data)
-        out_path = export_dir / name
-        pq.write_table(table, out_path, compression="snappy")
-        files_written += 1
-        print(f"  Wrote {len(rows)} rows to {out_path}")
-
-    return files_written
-
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Build context-complete interp dataset tables from Xenon full logs"
+        description="Build context-complete interp dataset tables from Xenon full logs (Neon Postgres)"
     )
-    parser.add_argument("--db-path", type=Path, default=Path("data/terminal_ingest.db"))
     parser.add_argument("--limit", type=int, default=50_000)
     parser.add_argument(
         "--include-all-decisions",
         action="store_true",
         help="Keep all decisions, not just trade + record_observation",
     )
-    parser.add_argument("--trade-sample-size", type=int, default=150)
-    parser.add_argument("--observation-sample-size", type=int, default=150)
-    parser.add_argument("--paired-sample-size", type=int, default=100)
     parser.add_argument("--transform-version", default="interp_examples_v0.2")
     parser.add_argument(
-        "--export-jsonl",
+        "--full-rebuild",
         action="store_true",
-        help="Export high-quality and sample tables to JSONL files",
-    )
-    parser.add_argument(
-        "--export-parquet",
-        action="store_true",
-        help="Export high-quality and sample tables to Parquet files",
-    )
-    parser.add_argument(
-        "--export-dir",
-        type=Path,
-        default=Path("data/interp_exports"),
-        help="Directory for exports when --export-jsonl or --export-parquet is enabled",
+        help="Truncate interp_examples_v0 and rebuild from scratch instead of incremental",
     )
     return parser
 
@@ -1042,16 +707,10 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     cfg = PrepareConfig(
-        db_path=args.db_path,
         limit=max(1, int(args.limit)),
         only_focus_decisions=not bool(args.include_all_decisions),
-        trade_sample_size=max(1, int(args.trade_sample_size)),
-        observation_sample_size=max(1, int(args.observation_sample_size)),
-        paired_sample_size=max(1, int(args.paired_sample_size)),
         transform_version=str(args.transform_version),
-        export_jsonl=bool(args.export_jsonl),
-        export_parquet=bool(args.export_parquet),
-        export_dir=args.export_dir,
+        full_rebuild=bool(args.full_rebuild),
     )
     stats = run_prepare(cfg)
     print("Interp dataset prep complete")

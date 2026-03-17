@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function AnalysisView({ onRun, refreshKey }: Props) {
-  const { data, loading, refetch } = useFetch<AnalysisData>('/api/analysis')
+  const { data, loading, error, refetch } = useFetch<AnalysisData>('/api/analysis')
   const { config, update } = useConfig()
   const c = config.analysis
   const [probeData, setProbeData] = useState<ProbeRow[] | null>(null)
@@ -81,6 +81,7 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
     }
   }
 
+  if (error) return <div className={s.empty}>Failed to load data: {error}</div>
   if (loading || !data) return <div className={s.empty}>Loading...</div>
 
   return (

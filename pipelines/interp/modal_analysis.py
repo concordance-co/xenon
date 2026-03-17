@@ -18,11 +18,13 @@ app = modal.App("xenon-analysis")
 
 volume = modal.Volume.from_name("xenon-data", create_if_missing=True)
 
+neon_secret = modal.Secret.from_name("xenon-neon")
+
 image = (
     modal.Image.debian_slim(python_version="3.13")
     .pip_install(
         "torch", "safetensors", "scikit-learn", "matplotlib",
-        "numpy", "pyarrow",
+        "numpy", "pyarrow", "psycopg[binary]",
     )
     .add_local_python_source("pipelines")
 )
@@ -33,6 +35,7 @@ image = (
     image=image,
     timeout=1800,
     cpu=4,
+    secrets=[neon_secret],
 )
 def run_analysis(
     mode: str,
@@ -55,7 +58,6 @@ def run_analysis(
 
     config = AnalysisConfig(
         activations_dir=Path("/data/activations"),
-        labels_path=Path("/data/interp_exports/interp_examples_v0_high_quality.parquet"),
         output_dir=Path("/data/analysis_results"),
         mode=mode,
         target=target,
@@ -82,40 +84,7 @@ def main(
     n_folds: int = 5,
     seed: int = 42,
     limit: int = 0,
-    upload_labels: bool = True,
 ):
-    from pathlib import Path
-
-    import subprocess
-
-    # Upload labels parquet to volume (labels are local-only, from prep phase)
-    if upload_labels:
-        local_labels = Path("data/interp_exports/interp_examples_v0_high_quality.parquet")
-        if local_labels.exists():
-            import hashlib
-
-            local_hash = hashlib.sha256(local_labels.read_bytes()).hexdigest()
-            hash_path = Path("data/interp_exports/.labels_upload_hash")
-            remote_path = "interp_exports/interp_examples_v0_high_quality.parquet"
-
-            prev_hash = hash_path.read_text().strip() if hash_path.exists() else None
-
-            if prev_hash == local_hash:
-                print(f"Labels unchanged (sha256={local_hash[:12]}...), skipping upload")
-            else:
-                reason = "changed" if prev_hash else "first upload"
-                print(f"Uploading labels to volume ({reason}, sha256={local_hash[:12]}...)")
-                subprocess.run(
-                    ["modal", "volume", "put", "xenon-data", str(local_labels),
-                     remote_path, "--force"],
-                    check=True,
-                )
-                hash_path.write_text(local_hash + "\n")
-        else:
-            print(f"Warning: labels not found at {local_labels}, assuming already on volume")
-
-    # metadata.parquet is written to the volume by capture — no upload needed
-
     results = run_analysis.remote(
         mode=mode,
         target=target,

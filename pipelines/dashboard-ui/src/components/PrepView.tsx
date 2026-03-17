@@ -9,12 +9,13 @@ interface Props {
 }
 
 export function PrepView({ onRun }: Props) {
-  const { data, loading } = useFetch<PrepData>('/api/prep')
+  const { data, loading, error } = useFetch<PrepData>('/api/prep')
   const { config, update } = useConfig()
   const c = config.prep
 
   const cmd = buildPrepCmd(c)
 
+  if (error) return <div className={s.empty}>Failed to load data: {error}</div>
   if (loading || !data) return <div className={s.empty}>Loading...</div>
 
   const total = data.high_quality + data.medium_quality + data.low_quality
@@ -24,12 +25,11 @@ export function PrepView({ onRun }: Props) {
     <div>
       <p className={s.phaseDesc}>
         Transforms raw ingested data into labeled examples for interpretability
-        research on Modal cloud. Parses each inference log to extract the LLM's
-        decision (trade vs. observe), trade side (buy/sell), asset, risk
-        tolerance, and profitability outcomes. Assigns quality tiers based on
-        completeness. Samples balanced subsets of trades, observations, and
-        paired examples from the same vault. Exports to parquet on the Modal
-        volume for downstream capture.
+        research. Reads full-log JSONB payloads from Neon Postgres, parses each
+        inference log to extract the LLM's decision (trade vs. observe), trade
+        side (buy/sell), asset, risk tolerance, and profitability outcomes.
+        Assigns quality tiers based on completeness. Writes the denormalized
+        <code> interp_examples_v0</code> table back to Neon.
       </p>
 
       <div className={s.statsRow}>
@@ -72,29 +72,6 @@ export function PrepView({ onRun }: Props) {
               </div>
             </div>
           )}
-
-          <div className={s.panel}>
-            <div className={s.panelHead}>
-              <span className={s.panelTitle}>Export Files</span>
-            </div>
-            <div className={s.panelBody}>
-              {data.export_files.length > 0 ? (
-                <table className={s.table}>
-                  <thead><tr><th>File</th><th style={{ textAlign: 'right' }}>Size</th></tr></thead>
-                  <tbody>
-                    {data.export_files.map(f => (
-                      <tr key={f.name}>
-                        <td className="mono">{f.name}</td>
-                        <td className="mono" style={{ textAlign: 'right' }}>{f.size}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className={s.empty}>No exports yet. Run data prep with export enabled.</div>
-              )}
-            </div>
-          </div>
         </div>
 
         <div className={s.panel}>
@@ -105,68 +82,16 @@ export function PrepView({ onRun }: Props) {
             <div className={s.configForm}>
               <div className={s.field}>
                 <label className={s.fieldLabel}>
-                  Trade Sample
-                  <Tip text="Max trade examples to include. Controls dataset balance — too many trades relative to observations skews probes. Set to 0 for all." />
+                  Limit
+                  <Tip text="Max number of full logs to process. 0 = default (50,000)." />
                 </label>
                 <input
                   type="number"
                   className={s.fieldInput}
-                  value={c.tradeSampleSize}
+                  value={c.limit}
                   min={0}
-                  onChange={e => update('prep', { tradeSampleSize: Number(e.target.value) || 0 })}
+                  onChange={e => update('prep', { limit: Number(e.target.value) || 0 })}
                 />
-              </div>
-              <div className={s.field}>
-                <label className={s.fieldLabel}>
-                  Observation Sample
-                  <Tip text="Max observation (non-trade) examples. Balance this with trade sample size for clean binary classification in probes." />
-                </label>
-                <input
-                  type="number"
-                  className={s.fieldInput}
-                  value={c.observationSampleSize}
-                  min={0}
-                  onChange={e => update('prep', { observationSampleSize: Number(e.target.value) || 0 })}
-                />
-              </div>
-              <div className={s.field}>
-                <label className={s.fieldLabel}>
-                  Paired Sample
-                  <Tip text="Max paired examples — trade + observation from the same vault, enabling controlled comparisons where context is held constant." />
-                </label>
-                <input
-                  type="number"
-                  className={s.fieldInput}
-                  value={c.pairedSampleSize}
-                  min={0}
-                  onChange={e => update('prep', { pairedSampleSize: Number(e.target.value) || 0 })}
-                />
-              </div>
-              <div className={s.field}>
-                <label className={s.fieldLabel}>
-                  Export Parquet
-                  <Tip text="Write labeled examples as a parquet file. Required for the capture phase — this is the input format it reads." />
-                </label>
-                <label className={s.toggle}>
-                  <span
-                    className={c.exportParquet ? s.toggleTrackOn : s.toggleTrack}
-                    onClick={() => update('prep', { exportParquet: !c.exportParquet })}
-                  />
-                  <span>{c.exportParquet ? 'Yes' : 'No'}</span>
-                </label>
-              </div>
-              <div className={s.field}>
-                <label className={s.fieldLabel}>
-                  Export JSONL
-                  <Tip text="Also write examples as JSONL. Useful for manual inspection or loading into other tools. Not required for the pipeline." />
-                </label>
-                <label className={s.toggle}>
-                  <span
-                    className={c.exportJsonl ? s.toggleTrackOn : s.toggleTrack}
-                    onClick={() => update('prep', { exportJsonl: !c.exportJsonl })}
-                  />
-                  <span>{c.exportJsonl ? 'Yes' : 'No'}</span>
-                </label>
               </div>
               <div className={s.field}>
                 <label className={s.fieldLabel}>

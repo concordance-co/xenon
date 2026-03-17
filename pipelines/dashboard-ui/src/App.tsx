@@ -19,7 +19,11 @@ type TopView = 'pipeline' | 'explorer'
 interface RunnerState {
   command?: string
   jobId?: string
+  modalAppId?: string
+  modalAppName?: string
 }
+
+const noop = () => {}
 
 export default function App() {
   const [view, setView] = useState<TopView>('pipeline')
@@ -48,6 +52,11 @@ export default function App() {
 
   const handleReconnect = useCallback((jobId: string) => {
     setRunner({ jobId })
+    setCmdMinimized(false)
+  }, [])
+
+  const handleViewModalLogs = useCallback((appId: string, appName: string) => {
+    setRunner({ modalAppId: appId, modalAppName: appName })
     setCmdMinimized(false)
   }, [])
 
@@ -114,7 +123,7 @@ export default function App() {
               {activePhase === 'analysis' && <AnalysisView onRun={handleRun} refreshKey={refreshKey} />}
             </main>
 
-            <JobList onReconnect={handleReconnect} />
+            <JobList onReconnect={handleReconnect} onViewModalLogs={handleViewModalLogs} />
           </>
         )}
 
@@ -126,13 +135,16 @@ export default function App() {
 
         {runner && (
           <CommandRunner
+            key={runner.modalAppId ?? runner.jobId ?? runner.command ?? ''}
             command={runner.command}
             jobId={runner.jobId}
+            modalAppId={runner.modalAppId}
+            modalAppName={runner.modalAppName}
             minimized={cmdMinimized}
             onMinimize={() => setCmdMinimized(true)}
             onRestore={() => setCmdMinimized(false)}
             onClose={handleRunDone}
-            onJobId={() => {}}
+            onJobId={noop}
           />
         )}
       </div>

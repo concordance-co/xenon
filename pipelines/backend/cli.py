@@ -7,7 +7,7 @@ Usage:
     uv run -m pipelines.backend tables
     uv run -m pipelines.backend sample inference_logs 5
     uv run -m pipelines.backend parquet-list
-    uv run -m pipelines.backend parquet-info interp_examples_v0_high_quality.parquet
+    uv run -m pipelines.backend parquet-info probe_decision_type_router.parquet
     uv run -m pipelines.backend parquet-sample interp_sample_trade_v0.parquet 10
     uv run -m pipelines.backend activations
 """

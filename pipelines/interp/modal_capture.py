@@ -72,6 +72,7 @@ class CaptureWorker:
     def capture_batch(
         self,
         rows: list[dict],
+        batch_idx: int = 0,
         layers: list[int] | None = None,
         capture_router: bool = True,
         capture_residual: bool = True,
@@ -84,13 +85,15 @@ class CaptureWorker:
         from datetime import UTC, datetime
         from pathlib import Path
 
+        import numpy as np
+        import torch
+        from safetensors.numpy import save_file
+
         from pipelines.interp.capture import (
             CaptureConfig,
             _apply_pooling,
             _capture_one,
             _parse_messages,
-            _save_activations,
-            _save_router,
         )
 
         output_dir = Path("/data/activations")
@@ -105,13 +108,16 @@ class CaptureWorker:
             router_dtype=router_dtype,
         )
 
-        residual_dir = output_dir / "residual_stream"
-        router_dir = output_dir / "router_logits"
-        if capture_residual:
-            residual_dir.mkdir(parents=True, exist_ok=True)
-        if capture_router:
-            router_dir.mkdir(parents=True, exist_ok=True)
+        num_model_layers = len(self.model.model.layers)
+        captured_layers_list = sorted(layers) if layers is not None else list(range(num_model_layers))
+        layer_to_idx = {layer: idx for idx, layer in enumerate(captured_layers_list)}
+        pooling = pool_on_capture or "last_token"
 
+        # Accumulators: per-layer lists of vectors
+        residual_acc: dict[int, list[np.ndarray]] = {l: [] for l in captured_layers_list}
+        router_acc: dict[int, list[np.ndarray]] = {l: [] for l in captured_layers_list}
+        router_idx_acc: dict[int, list[np.ndarray]] = {l: [] for l in captured_layers_list}
+        log_ids: list[int] = []
         metadata_rows: list[dict] = []
 
         for row in rows:
@@ -139,24 +145,43 @@ class CaptureWorker:
                         residual, router_logits, router_indices, pool_on_capture
                     )
 
+                # Pool to single vector per layer and accumulate
+                log_ids.append(int(log_id))
+                for layer in captured_layers_list:
+                    tidx = layer_to_idx[layer]
+                    if residual is not None:
+                        layer_data = residual[tidx].cpu().float().numpy()
+                        if layer_data.ndim > 1:
+                            vec = layer_data[-1] if pooling == "last_token" else layer_data.mean(axis=0)
+                        else:
+                            vec = layer_data
+                        residual_acc[layer].append(vec)
+
+                    if router_logits is not None:
+                        rl_data = router_logits[tidx].cpu().float().numpy()
+                        if rl_data.ndim > 1:
+                            vec = rl_data[-1] if pooling == "last_token" else rl_data.mean(axis=0)
+                        else:
+                            vec = rl_data
+                        router_acc[layer].append(vec)
+
+                    if router_indices is not None:
+                        ri_data = router_indices[tidx].cpu().numpy()
+                        if ri_data.ndim > 1:
+                            ri_vec = ri_data[-1] if pooling == "last_token" else ri_data.reshape(-1)
+                        else:
+                            ri_vec = ri_data
+                        router_idx_acc[layer].append(ri_vec)
+
                 file_size = 0
                 if residual is not None:
-                    file_size += _save_activations(
-                        residual, residual_dir / f"{log_id}.safetensors"
-                    )
-                if router_logits is not None and router_indices is not None:
-                    file_size += _save_router(
-                        router_logits, router_indices,
-                        router_dir / f"{log_id}.safetensors",
-                        router_dtype=router_dtype,
-                    )
+                    file_size += residual.nelement() * residual.element_size()
+                if router_logits is not None:
+                    file_size += router_logits.nelement() * router_logits.element_size()
 
                 prompt_hash = hashlib.sha256(
                     input_ids.cpu().numpy().tobytes()
                 ).hexdigest()
-
-                num_model_layers = len(self.model.model.layers)
-                captured_layers_list = sorted(layers) if layers is not None else list(range(num_model_layers))
 
                 meta_row = {
                     "log_id": int(log_id),
@@ -167,7 +192,7 @@ class CaptureWorker:
                     "elapsed_s": round(elapsed, 2),
                     "has_router": router_logits is not None,
                     "captured_layers": json.dumps(captured_layers_list),
-                    "pooling": pool_on_capture or "none",
+                    "pooling": pooling,
                 }
                 if residual is not None:
                     meta_row["num_layers_captured"] = int(residual.shape[0])
@@ -185,6 +210,33 @@ class CaptureWorker:
                 import traceback
                 print(f"  ERROR {log_id}: {exc}")
                 traceback.print_exc()
+
+        # Write consolidated batch files in compact format
+        if log_ids:
+            compact_dir = output_dir / "compact"
+            compact_dir.mkdir(parents=True, exist_ok=True)
+            log_id_arr = np.array(log_ids, dtype=np.int64)
+
+            for layer in captured_layers_list:
+                if residual_acc[layer]:
+                    out_path = compact_dir / f"residual_{pooling}_layer{layer}_batch{batch_idx}.safetensors"
+                    tensors: dict[str, np.ndarray] = {
+                        "features": np.stack(residual_acc[layer]).astype(np.float32),
+                        "log_ids": log_id_arr,
+                    }
+                    save_file(tensors, str(out_path))
+
+                if router_acc[layer]:
+                    out_path = compact_dir / f"router_{pooling}_layer{layer}_batch{batch_idx}.safetensors"
+                    tensors = {
+                        "features": np.stack(router_acc[layer]).astype(np.float32),
+                        "log_ids": log_id_arr,
+                    }
+                    if router_idx_acc[layer]:
+                        tensors["router_indices"] = np.stack(router_idx_acc[layer]).astype(np.int64)
+                    save_file(tensors, str(out_path))
+
+            print(f"  Wrote batch {batch_idx} compact files ({len(log_ids)} examples, {len(captured_layers_list)} layers)")
 
         volume.commit()
         return metadata_rows
@@ -239,6 +291,68 @@ def inspect_volume(log_id: str = ""):
         print("  router_logits: not found")
 
 
+@app.function(volumes={"/data": volume}, image=image, timeout=600)
+def merge_compact_batches(num_batches: int) -> int:
+    """Merge per-batch compact files into final per-layer compact files."""
+    import re
+    from pathlib import Path
+
+    import numpy as np
+    from safetensors import safe_open
+    from safetensors.numpy import save_file
+
+    compact_dir = Path("/data/activations/compact")
+    if not compact_dir.exists():
+        print("No compact dir found")
+        return 0
+
+    # Discover batch files and group by (source, pooling, layer)
+    batch_pattern = re.compile(r"^(.+)_batch(\d+)\.safetensors$")
+    groups: dict[str, list[Path]] = {}
+
+    for f in sorted(compact_dir.iterdir()):
+        m = batch_pattern.match(f.name)
+        if m:
+            key = m.group(1)  # e.g. "residual_last_token_layer16"
+            groups.setdefault(key, []).append(f)
+
+    merged = 0
+    for key, batch_files in sorted(groups.items()):
+        all_features = []
+        all_log_ids = []
+        all_ri = []
+
+        for bf in sorted(batch_files):
+            with safe_open(str(bf), framework="numpy") as f:
+                all_features.append(f.get_tensor("features"))
+                all_log_ids.append(f.get_tensor("log_ids"))
+                if "router_indices" in f.keys():
+                    all_ri.append(f.get_tensor("router_indices"))
+
+        out_path = compact_dir / f"{key}.safetensors"
+        tensors: dict[str, np.ndarray] = {
+            "features": np.concatenate(all_features, axis=0),
+            "log_ids": np.concatenate(all_log_ids, axis=0),
+        }
+        if all_ri:
+            tensors["router_indices"] = np.concatenate(all_ri, axis=0)
+
+        save_file(tensors, str(out_path))
+        size_mb = out_path.stat().st_size / 1024 / 1024
+        n = tensors["log_ids"].shape[0]
+        print(f"  {key}: {n} examples, {size_mb:.1f} MB")
+
+        # Remove batch files
+        for bf in batch_files:
+            bf.unlink()
+
+        merged += 1
+
+    volume.commit()
+    print(f"Merged {merged} layer files from {num_batches} batches")
+    return merged
+
+
 @app.function(
     volumes={"/data": volume},
     image=image,
@@ -261,7 +375,6 @@ def write_metadata_to_volume(metadata_rows: list[dict]) -> int:
 
 @app.local_entrypoint()
 def main(
-    parquet_path: str = "data/interp_exports/interp_examples_v0_high_quality.parquet",
     limit: int = 0,
     layers: str = "",
     capture_router: bool = True,
@@ -274,19 +387,9 @@ def main(
     import json
     from pathlib import Path
 
-    import pyarrow.parquet as pq
+    from pipelines.interp.capture import _load_examples_from_neon
 
-    parquet = Path(parquet_path)
-    if not parquet.exists():
-        raise FileNotFoundError(f"Parquet not found: {parquet}")
-
-    table = pq.read_table(parquet)
-    rows = table.to_pylist()
-    print(f"Loaded {len(rows)} examples from {parquet}")
-
-    if limit > 0:
-        rows = rows[:limit]
-        print(f"  Limited to {len(rows)} examples")
+    rows = _load_examples_from_neon(limit=limit if limit > 0 else None)
 
     parsed_layers: list[int] | None = None
     if layers:
@@ -294,6 +397,7 @@ def main(
 
     # Partition into batches
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
+    batch_indices = list(range(len(batches)))
     print(f"  {len(batches)} batches of up to {batch_size}")
 
     worker = CaptureWorker(model_id=model_id)
@@ -301,6 +405,7 @@ def main(
     all_metadata: list[dict] = []
     for batch_meta in worker.capture_batch.map(
         batches,
+        batch_indices,
         kwargs=dict(
             layers=parsed_layers,
             capture_router=capture_router,
@@ -312,16 +417,9 @@ def main(
         all_metadata.extend(batch_meta)
 
     if all_metadata:
-        import pyarrow as pa
-
-        meta_table = pa.Table.from_pylist(all_metadata)
-        # Write metadata locally
-        meta_path = Path("data/activations/metadata.parquet")
-        meta_path.parent.mkdir(parents=True, exist_ok=True)
-        pq.write_table(meta_table, meta_path, compression="snappy")
-        print(f"\nWrote metadata locally: {meta_path} ({len(all_metadata)} rows)")
-
-        # Write metadata to volume so analysis can find it
+        # Write metadata to volume
         write_metadata_to_volume.remote(all_metadata)
+        # Merge batch compact files into final compact files
+        merge_compact_batches.remote(len(batches))
 
     print(f"\nDone: {len(all_metadata)} examples captured")

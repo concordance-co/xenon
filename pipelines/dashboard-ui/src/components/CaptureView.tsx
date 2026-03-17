@@ -9,12 +9,13 @@ interface Props {
 }
 
 export function CaptureView({ onRun }: Props) {
-  const { data, loading } = useFetch<CaptureData>('/api/capture')
+  const { data, loading, error } = useFetch<CaptureData>('/api/capture')
   const { config, update } = useConfig()
   const c = config.capture
 
   const cmd = buildCaptureCmd(c)
 
+  if (error) return <div className={s.empty}>Failed to load data: {error}</div>
   if (loading || !data) return <div className={s.empty}>Loading...</div>
 
   return (

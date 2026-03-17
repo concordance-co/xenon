@@ -435,7 +435,6 @@ def get_completed_log_ids(
 
 @app.local_entrypoint()
 def main(
-    parquet_path: str = "data/interp_exports/interp_examples_v0_high_quality.parquet",
     limit: int = 0,
     layers: str = "",
     capture_router: bool = True,
@@ -449,22 +448,12 @@ def main(
     router_top_k: int = 8,
     router_dtype: str = "float16",
 ):
-    """Local entrypoint: reads parquet locally, dispatches batches to Modal workers."""
+    """Local entrypoint: loads examples from Neon, dispatches batches to Modal workers."""
     from pathlib import Path
 
-    import pyarrow.parquet as pq
+    from pipelines.interp.capture import _load_examples_from_neon
 
-    parquet = Path(parquet_path)
-    if not parquet.exists():
-        raise FileNotFoundError(f"Parquet not found: {parquet}")
-
-    table = pq.read_table(parquet)
-    rows = table.to_pylist()
-    print(f"Loaded {len(rows)} examples from {parquet}")
-
-    if limit > 0:
-        rows = rows[:limit]
-        print(f"  Limited to {len(rows)} examples")
+    rows = _load_examples_from_neon(limit=limit if limit > 0 else None)
 
     parsed_layers: list[int] | None = None
     if layers:
@@ -522,15 +511,6 @@ def main(
             write_metadata_to_volume.remote(all_metadata)
 
     if all_metadata:
-        import pyarrow as pa
-
-        meta_table = pa.Table.from_pylist(all_metadata)
-        # Write metadata locally
-        meta_path = Path("data/activations/metadata.parquet")
-        meta_path.parent.mkdir(parents=True, exist_ok=True)
-        pq.write_table(meta_table, meta_path, compression="snappy")
-        print(f"\nWrote metadata locally: {meta_path} ({len(all_metadata)} rows)")
-
         # Final merge metadata into volume
         write_metadata_to_volume.remote(all_metadata)
 

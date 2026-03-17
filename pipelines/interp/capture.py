@@ -15,9 +15,6 @@ import pyarrow.parquet as pq
 
 @dataclass(slots=True)
 class CaptureConfig:
-    parquet_path: Path = field(
-        default_factory=lambda: Path("data/interp_exports/interp_examples_v0_high_quality.parquet")
-    )
     output_dir: Path = field(default_factory=lambda: Path("data/activations"))
     model_id: str = "Qwen/Qwen3-8B"
     device: str = "mps"
@@ -58,14 +55,29 @@ def _load_existing_metadata(output_dir: Path) -> list[dict[str, Any]]:
         return []
 
 
-def _load_examples(config: CaptureConfig) -> list[dict[str, Any]]:
-    table = pq.read_table(config.parquet_path)
-    rows = table.to_pylist()
-    print(f"Loaded {len(rows)} examples from {config.parquet_path}")
-    if config.limit is not None:
-        rows = rows[: config.limit]
-        print(f"  Limited to {len(rows)} examples")
-    return rows
+def _load_examples_from_neon(*, limit: int | None = None) -> list[dict[str, Any]]:
+    """Load high-quality interp examples directly from Neon Postgres."""
+    import psycopg
+    from psycopg.rows import dict_row
+    from pipelines.db import require_neon_dsn
+
+    query = """
+        SELECT log_id, prompt_messages_json
+        FROM interp_examples_v0
+        WHERE label_quality IN ('high', 'medium')
+          AND prompt_messages_json IS NOT NULL
+        ORDER BY log_id
+    """
+    params: list[Any] = []
+    if limit is not None:
+        query += " LIMIT %s"
+        params.append(limit)
+
+    with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    print(f"Loaded {len(rows)} examples from Neon (interp_examples_v0)")
+    return [dict(r) for r in rows]
 
 
 def _parse_messages(row: dict[str, Any]) -> list[dict[str, str]]:
@@ -367,10 +379,7 @@ def _save_router(
 def run_capture(config: CaptureConfig) -> dict[str, Any]:
     import torch
 
-    if not config.parquet_path.exists():
-        raise FileNotFoundError(f"Parquet not found: {config.parquet_path}")
-
-    examples = _load_examples(config)
+    examples = _load_examples_from_neon(limit=config.limit)
     if not examples:
         print("No examples to process.")
         return {"processed": 0, "skipped": 0, "errors": 0}
@@ -524,11 +533,6 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Capture activations (residual stream and/or MoE router logits) for interp examples"
     )
     parser.add_argument(
-        "--parquet-path",
-        type=Path,
-        default=Path("data/interp_exports/interp_examples_v0_high_quality.parquet"),
-    )
-    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("data/activations"),
@@ -596,7 +600,6 @@ def main(argv: list[str] | None = None) -> int:
         layers = [int(x.strip()) for x in args.layers.split(",")]
 
     cfg = CaptureConfig(
-        parquet_path=args.parquet_path,
         output_dir=args.output_dir,
         model_id=args.model_id,
         device=args.device,

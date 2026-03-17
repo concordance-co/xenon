@@ -70,7 +70,8 @@ class TerminalMarketsApiClient:
             self.session = None
 
     async def request_json(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any] | list[Any]:
-        assert self.session is not None
+        if self.session is None:
+            raise RuntimeError("API client not initialized — use as async context manager")
         url = f"{self.base_url}{path}"
         delay = self.retry_policy.initial_backoff_s
 

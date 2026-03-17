@@ -40,11 +40,6 @@ export interface IngestData {
   tables: TableInfo[]
 }
 
-export interface ExportFile {
-  name: string
-  size: string
-}
-
 export interface LabelDistRow {
   decision_type: string | null
   count: number
@@ -59,8 +54,6 @@ export interface PrepData {
   low_quality: number
   trade_count: number
   observation_count: number
-  parquet_exported: boolean
-  export_files: ExportFile[]
   label_distribution: LabelDistRow[]
 }
 

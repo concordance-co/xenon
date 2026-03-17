@@ -15,7 +15,6 @@ Usage::
     from pipelines.interp.vllm_capture import VLLMCaptureConfig, run_vllm_capture
 
     cfg = VLLMCaptureConfig(
-        parquet_path=Path("data/interp_exports/interp_examples_v0_high_quality.parquet"),
         output_dir=Path("data/activations"),
         model_id="Qwen/Qwen3-30B-A3B",
     )
@@ -34,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.parquet as pq
+import pyarrow.parquet as pq  # used for metadata.parquet I/O
 
 
 # ---------------------------------------------------------------------------
@@ -45,11 +44,6 @@ import pyarrow.parquet as pq
 class VLLMCaptureConfig:
     """Configuration for the vLLM-based capture pipeline."""
 
-    parquet_path: Path = field(
-        default_factory=lambda: Path(
-            "data/interp_exports/interp_examples_v0_high_quality.parquet"
-        )
-    )
     output_dir: Path = field(default_factory=lambda: Path("data/activations"))
     model_id: str = "Qwen/Qwen3-30B-A3B"
     limit: int | None = None
@@ -78,20 +72,11 @@ class VLLMCaptureConfig:
 # Helpers reused from capture.py
 # ---------------------------------------------------------------------------
 
-def _load_examples(config: VLLMCaptureConfig) -> list[dict[str, Any]]:
-    table = pq.read_table(config.parquet_path)
-    rows = table.to_pylist()
-    print(f"Loaded {len(rows)} examples from {config.parquet_path}")
-    if config.limit is not None:
-        rows = rows[: config.limit]
-        print(f"  Limited to {len(rows)} examples")
-    return rows
-
-
 # Re-export helpers from the HF capture module so everything needed is
 # importable from this module too.
 from pipelines.interp.capture import (  # noqa: E402
     _apply_pooling,
+    _load_examples_from_neon,
     _parse_messages,
     _save_activations,
     _save_router,
@@ -391,10 +376,7 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
     import torch
     from transformers import AutoTokenizer
 
-    if not config.parquet_path.exists():
-        raise FileNotFoundError(f"Parquet not found: {config.parquet_path}")
-
-    examples = _load_examples(config)
+    examples = _load_examples_from_neon(limit=config.limit)
     if not examples:
         print("No examples to process.")
         return {"processed": 0, "skipped": 0, "errors": 0}
@@ -597,13 +579,6 @@ def _build_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument(
-        "--parquet-path",
-        type=Path,
-        default=Path(
-            "data/interp_exports/interp_examples_v0_high_quality.parquet"
-        ),
-    )
-    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("data/activations"),
@@ -696,7 +671,6 @@ def main(argv: list[str] | None = None) -> int:
         layers = [int(x.strip()) for x in args.layers.split(",")]
 
     cfg = VLLMCaptureConfig(
-        parquet_path=args.parquet_path,
         output_dir=args.output_dir,
         model_id=args.model_id,
         limit=args.limit,

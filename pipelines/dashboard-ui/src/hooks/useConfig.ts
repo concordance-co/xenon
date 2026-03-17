@@ -8,11 +8,7 @@ export interface IngestConfig {
 }
 
 export interface PrepConfig {
-  exportParquet: boolean
-  exportJsonl: boolean
-  tradeSampleSize: number
-  observationSampleSize: number
-  pairedSampleSize: number
+  limit: number
   includeAllDecisions: boolean
 }
 
@@ -58,11 +54,7 @@ export const DEFAULT_CONFIG: PipelineConfig = {
     excludeReasoning: false,
   },
   prep: {
-    exportParquet: true,
-    exportJsonl: false,
-    tradeSampleSize: 150,
-    observationSampleSize: 150,
-    pairedSampleSize: 100,
+    limit: 0,
     includeAllDecisions: false,
   },
   outcomes: {
@@ -125,11 +117,7 @@ export function buildIngestCmd(c: IngestConfig): string {
 
 export function buildPrepCmd(c: PrepConfig): string {
   let cmd = './scripts/modal_capture.sh modal-prep'
-  if (c.exportParquet) cmd += ' --export-parquet'
-  if (c.exportJsonl) cmd += ' --export-jsonl'
-  if (c.tradeSampleSize !== 150) cmd += ` --trade-sample-size ${c.tradeSampleSize}`
-  if (c.observationSampleSize !== 150) cmd += ` --observation-sample-size ${c.observationSampleSize}`
-  if (c.pairedSampleSize !== 100) cmd += ` --paired-sample-size ${c.pairedSampleSize}`
+  if (c.limit > 0) cmd += ` --limit ${c.limit}`
   if (c.includeAllDecisions) cmd += ' --include-all-decisions'
   return cmd
 }

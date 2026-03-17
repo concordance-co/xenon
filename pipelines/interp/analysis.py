@@ -29,7 +29,6 @@ import pyarrow.parquet as pq
 @dataclass
 class AnalysisConfig:
     activations_dir: Path = Path("data/activations")
-    labels_path: Path = Path("data/interp_exports/interp_examples_v0_high_quality.parquet")
     output_dir: Path = Path("data/analysis_results")
     mode: str = "probe"  # probe | experts | pca | all
     target: str = "decision_type"
@@ -114,15 +113,31 @@ def _encode_labels(
 # ---------------------------------------------------------------------------
 
 class AnalysisDataset:
-    """Loads safetensors activations and joins with labels parquet."""
+    """Loads safetensors activations and joins with labels from Neon."""
 
     def __init__(self, config: AnalysisConfig) -> None:
         self.config = config
         self._load_and_join()
 
-    def _load_and_join(self) -> None:
-        import pyarrow as pa
+    @staticmethod
+    def _load_labels_from_neon() -> list[dict]:
+        """Load label columns from Neon for analysis joins."""
+        import psycopg
+        from psycopg.rows import dict_row
+        from pipelines.db import require_neon_dsn
 
+        query = """
+            SELECT log_id, decision_type, trade_side, was_profitable_1h,
+                   vault_risk_preference, asset, label_quality
+            FROM interp_examples_v0
+            WHERE label_quality IN ('high', 'medium')
+            ORDER BY log_id
+        """
+        with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
+            rows = conn.execute(query).fetchall()
+        return [dict(r) for r in rows]
+
+    def _load_and_join(self) -> None:
         # Load metadata (written during capture)
         meta_path = self.config.activations_dir / "metadata.parquet"
         meta_table = pq.read_table(meta_path)
@@ -135,15 +150,13 @@ class AnalysisDataset:
                 meta_by_id[int(lid)] = r
         print(f"  Metadata: {len(meta_by_id)} examples from {meta_path}")
 
-        # Load labels
-        labels_table = pq.read_table(self.config.labels_path)
-        label_rows = labels_table.to_pylist()
-        print(f"  Labels: {len(label_rows)} rows from {self.config.labels_path}")
+        # Load labels from Neon
+        label_rows = self._load_labels_from_neon()
+        print(f"  Labels: {len(label_rows)} rows from Neon (interp_examples_v0)")
 
         # Inner join on log_id (normalize to int)
         joined = []
         missed_id = 0
-        missed_quality = 0
         for lr in label_rows:
             lid = lr.get("log_id")
             if lid is None:
@@ -153,15 +166,10 @@ class AnalysisDataset:
                 missed_id += 1
                 continue
             merged = {**lr, **meta_by_id[lid_int]}
-            # Only keep high/medium quality
-            quality = merged.get("label_quality", "low")
-            if quality not in ("high", "medium"):
-                missed_quality += 1
-                continue
             joined.append(merged)
 
         print(f"  Joined: {len(joined)} examples "
-              f"(missed: {missed_id} no activation, {missed_quality} low quality)")
+              f"(missed: {missed_id} no activation)")
 
         # Check for activation files using a single directory listing
         # instead of N individual stat() calls (much faster on NAS).
@@ -976,8 +984,6 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Analyze captured MoE activations",
     )
     p.add_argument("--activations-dir", type=Path, default=Path("data/activations"))
-    p.add_argument("--labels-path", type=Path,
-                   default=Path("data/interp_exports/interp_examples_v0_high_quality.parquet"))
     p.add_argument("--output-dir", type=Path, default=Path("data/analysis_results"))
     p.add_argument("--mode", choices=["probe", "experts", "pca", "all", "compact"], default="probe")
     p.add_argument("--target", default="decision_type",
@@ -1002,7 +1008,6 @@ def main(argv: list[str] | None = None) -> None:
 
     config = AnalysisConfig(
         activations_dir=args.activations_dir,
-        labels_path=args.labels_path,
         output_dir=args.output_dir,
         mode=args.mode,
         target=args.target,

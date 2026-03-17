@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function IngestView({ onRun }: Props) {
-  const { data, loading } = useFetch<IngestData>('/api/ingest')
+  const { data, loading, error } = useFetch<IngestData>('/api/ingest')
   const { data: outcomesData } = useFetch<OutcomesData>('/api/outcomes')
   const { config, update } = useConfig()
   const c = config.ingest
@@ -18,6 +18,7 @@ export function IngestView({ onRun }: Props) {
   const cmd = buildIngestCmd(c)
   const outcomesCmd = buildOutcomesCmd(oc)
 
+  if (error) return <div className={s.empty}>Failed to load data: {error}</div>
   if (loading || !data) return <div className={s.empty}>Loading...</div>
 
   const fmtPct = (v: number | null) => v != null ? `${v.toFixed(2)}%` : '\u2014'
@@ -29,9 +30,9 @@ export function IngestView({ onRun }: Props) {
         Pulls trading agent data from the Terminal Markets API on Modal cloud.
         Discovers vaults from the leaderboard — either the top performers by
         PnL or a random sample for diversity — then fetches their strategies,
-        inference logs (the LLM's decision-making records), and on-chain swap
-        history. Upload your local DB first to continue from existing data, or
-        start fresh on Modal.
+        inference logs (the LLM's decision-making records), full-log payloads
+        (stored as JSONB), and on-chain swap history. All data goes directly
+        to Neon Postgres.
       </p>
 
       <div className={s.statsRow}>
@@ -234,12 +235,6 @@ export function IngestView({ onRun }: Props) {
                 onClick={() => onRun(cmd)}
               >
                 Run Ingest
-              </button>
-              <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh upload-db')}>
-                Upload DB
-              </button>
-              <button className={s.btn} onClick={() => onRun('./scripts/modal_capture.sh download-db')}>
-                Download DB
               </button>
             </div>
           </div>

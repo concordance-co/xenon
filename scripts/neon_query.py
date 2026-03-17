@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from pipelines.neon_sync import require_neon_dsn, load_dotenv_if_present
+from pipelines.db import require_neon_dsn, load_dotenv_if_present
 
 # ---------------------------------------------------------------------------
 # Read-only validation (mirrors pipelines/backend/app.py)

@@ -9,10 +9,7 @@ import pytest
 from pipelines.backend.app import (
     _activation_coverage,
     _build_label_expression,
-    _load_prep_targets,
-    _save_prep_targets_atomic,
     _split_viability,
-    _upsert_prep_target,
     _validate_read_only_sql,
     _validate_sql_fragment,
 )
@@ -96,47 +93,3 @@ def test_activation_coverage_uses_metadata_parquet(tmp_path: Path) -> None:
     assert coverage["eligible_labeled"] == 2
     assert coverage["matched"] == 1
     assert coverage["coverage"] == 0.5
-
-
-def test_prep_target_store_upsert_and_delete_flow(tmp_path: Path) -> None:
-    path = tmp_path / "prep_target_specs.json"
-
-    specs = _load_prep_targets(path)
-    assert specs == []
-
-    specs, created = _upsert_prep_target(
-        specs,
-        {
-            "name": "PnL buckets",
-            "source": {"mode": "table", "table": "interp_examples_v0"},
-            "label": {"mode": "bucket", "expression_sql": "pnl_1h_pct", "buckets": [{"name": "neg", "max": 0}]},
-            "split": {"mode": "random_stratified", "train_pct": 70, "val_pct": 15, "test_pct": 15},
-        },
-        "2026-03-12T00:00:00+00:00",
-    )
-    _save_prep_targets_atomic(path, specs)
-
-    loaded = _load_prep_targets(path)
-    assert len(loaded) == 1
-    assert loaded[0]["name"] == "PnL buckets"
-    created_id = loaded[0]["id"]
-
-    loaded, updated = _upsert_prep_target(
-        loaded,
-        {
-            "id": created_id,
-            "name": "PnL buckets v2",
-            "source": {"mode": "table", "table": "interp_examples_v0"},
-            "label": {"mode": "direct", "expression_sql": "decision_type"},
-            "split": {"mode": "random_stratified", "train_pct": 70, "val_pct": 15, "test_pct": 15},
-        },
-        "2026-03-12T00:05:00+00:00",
-    )
-    _save_prep_targets_atomic(path, loaded)
-
-    assert updated["id"] == created_id
-    assert updated["name"] == "PnL buckets v2"
-
-    kept = [spec for spec in loaded if spec.get("id") != created_id]
-    _save_prep_targets_atomic(path, kept)
-    assert _load_prep_targets(path) == []
