@@ -31,6 +31,7 @@ class BackfillConfig:
     retry_max_attempts: int = 6
     selection: str = "top"  # "top" or "random"
     random_seed: int | None = None
+    retry_deferred: bool = True
 
 
 @dataclass(slots=True)
@@ -55,7 +56,6 @@ class TerminalBackfillIngestor:
         await self.db.init_schema()
 
         retry_policy = RetryPolicy(max_attempts=self.config.retry_max_attempts)
-        vault_sem = asyncio.Semaphore(self.config.request_concurrency)
 
         try:
             async with TerminalMarketsApiClient(
@@ -85,12 +85,11 @@ class TerminalBackfillIngestor:
 
                 async def _ingest_vault_meta(index: int, item: dict[str, Any]) -> None:
                     vault_address = item["vaultAddress"]
-                    async with vault_sem:
-                        print(f"[{index}/{len(leaderboard_items)}] Fetching vault + strategies: {vault_address}")
-                        vault_config, strategies = await asyncio.gather(
-                            api.get_vault(vault_address),
-                            api.get_strategies(vault_address),
-                        )
+                    print(f"[{index}/{len(leaderboard_items)}] Fetching vault + strategies: {vault_address}")
+                    vault_config, strategies = await asyncio.gather(
+                        api.get_vault(vault_address),
+                        api.get_strategies(vault_address),
+                    )
                     # DB writes are serialised through the batch context
                     async with self.db.batch():
                         await self.db.upsert_vault(item, vault_config)
@@ -102,50 +101,69 @@ class TerminalBackfillIngestor:
                     *[_ingest_vault_meta(idx, item) for idx, item in new_items]
                 )
 
-                # --- Phase 2: log backfill (parallel across vaults) ---
-                deferred_ids = await self.db.get_deferred_log_ids()
+                # --- Phase 2: log backfill ---
+                async with self.db.batch():
+                    deferred_ids = await self.db.get_deferred_log_ids()
                 if deferred_ids:
                     print(f"Skipping {len(deferred_ids)} previously deferred logs")
 
+                # Process vaults in bounded groups so each vault completes
+                # all pages before we move on. This keeps cursors advancing
+                # and gives visible progress. A small number of vaults run
+                # concurrently so API calls overlap while DB writes stay fast.
+                vault_concurrency = min(self.config.request_concurrency, len(valid_items))
+                vault_sem = asyncio.Semaphore(vault_concurrency)
+                log_progress = {"done": 0}
+
                 async def _backfill_logs_task(index: int, item: dict[str, Any]) -> None:
-                    vault_address = item["vaultAddress"]
                     async with vault_sem:
-                        print(f"[{index}/{len(leaderboard_items)}] Backfilling logs: {vault_address}")
+                        vault_address = item["vaultAddress"]
                         await self._backfill_vault_logs(api, vault_address, deferred_ids)
+                        log_progress["done"] += 1
+                        if log_progress["done"] % 25 == 0 or log_progress["done"] == len(valid_items):
+                            print(f"  Log backfill progress: {log_progress['done']}/{len(valid_items)} vaults complete")
 
                 await asyncio.gather(
                     *[_backfill_logs_task(idx, item) for idx, item in valid_items]
                 )
 
-                # --- Phase 3: swap backfill (parallel across vaults) ---
+                # --- Phase 3: swap backfill ---
+                swap_progress = {"done": 0}
+
                 async def _backfill_swaps_task(index: int, item: dict[str, Any]) -> None:
-                    vault_address = item["vaultAddress"]
                     async with vault_sem:
-                        print(f"[{index}/{len(leaderboard_items)}] Backfilling swaps: {vault_address}")
+                        vault_address = item["vaultAddress"]
                         await self._backfill_vault_swaps(api, vault_address)
+                        swap_progress["done"] += 1
+                        if swap_progress["done"] % 25 == 0 or swap_progress["done"] == len(valid_items):
+                            print(f"  Swap backfill progress: {swap_progress['done']}/{len(valid_items)} vaults complete")
 
                 await asyncio.gather(
                     *[_backfill_swaps_task(idx, item) for idx, item in valid_items]
                 )
 
                 # --- Phase 4: retry deferred logs (one attempt each) ---
-                deferred_ids_final = await self.db.get_deferred_log_ids()
+                if not self.config.retry_deferred:
+                    print("Skipping deferred log retry (disabled)")
+                deferred_ids_final = await self.db.get_deferred_log_ids() if self.config.retry_deferred else set()
                 if deferred_ids_final:
                     print(f"\nRetrying {len(deferred_ids_final)} deferred logs...")
                     recovered = 0
                     for batch in _batched(list(deferred_ids_final), self.config.request_concurrency):
                         items_to_retry = [{"id": lid, "vault_address": None} for lid in batch]
-                        results = await asyncio.gather(
-                            *[self._fetch_and_store_full_log(api, item) for item in items_to_retry],
+                        fetched = await asyncio.gather(
+                            *[self._fetch_full_log(api, item) for item in items_to_retry],
                             return_exceptions=True,
                         )
-                        for lid, result in zip(batch, results):
-                            if isinstance(result, Exception):
-                                pass  # stays deferred
-                            elif result:
-                                await self.db.remove_deferred_log(lid)
-                                recovered += 1
-                                self.summary.full_logs_ingested += 1
+                        async with self.db.batch():
+                            for lid, result in zip(batch, fetched):
+                                if isinstance(result, Exception):
+                                    pass  # stays deferred
+                                elif result is not None:
+                                    await self.db.upsert_full_log(result)
+                                    await self.db.remove_deferred_log(lid)
+                                    recovered += 1
+                                    self.summary.full_logs_ingested += 1
                     print(f"  Recovered {recovered}/{len(deferred_ids_final)} deferred logs")
         finally:
             await self.db.close()
@@ -214,12 +232,16 @@ class TerminalBackfillIngestor:
     async def _backfill_vault_logs(
         self, api: TerminalMarketsApiClient, vault_address: str, deferred_ids: set[int] | None = None,
     ) -> None:
-        cursor: str | None = await self.db.get_last_cursor(vault_address, "logs")
+        async with self.db.batch():
+            cursor = await self.db.get_last_cursor(vault_address, "logs")
         if cursor:
             print(f"  Resuming logs from cursor {cursor[:20]}...")
         logs_seen = 0
         full_logs_seen = 0
         _deferred = deferred_ids or set()
+
+        short_addr = vault_address[:8]
+        page_num = 0
 
         while True:
             if self.config.max_logs_per_vault is not None and logs_seen >= self.config.max_logs_per_vault:
@@ -227,6 +249,7 @@ class TerminalBackfillIngestor:
             if self.config.max_full_logs_per_vault is not None and full_logs_seen >= self.config.max_full_logs_per_vault:
                 break
 
+            page_num += 1
             page = await api.get_logs_page(
                 vault_address,
                 limit=self.config.request_limit,
@@ -243,59 +266,82 @@ class TerminalBackfillIngestor:
                     break
                 items = items[:remaining_logs]
 
-            # Batch all DB writes for this page into one transaction
+            next_cursor = items[-1].get("cursor") if items else None
+            hit_full_log_limit = False
+
+            # Step 1: upsert inference logs (brief lock)
             async with self.db.batch():
                 await self.db.upsert_inference_logs(items)
                 logs_seen += len(items)
                 self.summary.logs_ingested += len(items)
 
-                page_ids = [int(item["id"]) for item in items if item.get("id") is not None]
+            # Step 1b: check which full logs we already have (separate txn so we
+            # see commits from other coroutines)
+            page_ids = [int(item["id"]) for item in items if item.get("id") is not None]
+            async with self.db.batch():
                 existing_ids = await self.db.fetch_existing_full_log_ids(page_ids)
-                missing_items = [
-                    item for item in items
-                    if item.get("id") is not None
-                    and int(item["id"]) not in existing_ids
-                    and int(item["id"]) not in _deferred
-                ]
 
-                if self.config.max_full_logs_per_vault is not None:
-                    remaining_full = self.config.max_full_logs_per_vault - full_logs_seen
-                    if remaining_full <= 0:
-                        break
+            missing_items = [
+                item for item in items
+                if item.get("id") is not None
+                and int(item["id"]) not in existing_ids
+                and int(item["id"]) not in _deferred
+            ]
+
+            if self.config.max_full_logs_per_vault is not None:
+                remaining_full = self.config.max_full_logs_per_vault - full_logs_seen
+                if remaining_full <= 0:
+                    hit_full_log_limit = True
+                else:
                     missing_items = missing_items[:remaining_full]
 
-                if missing_items:
-                    for batch in _batched(missing_items, self.config.request_concurrency):
-                        results = await asyncio.gather(
-                            *[self._fetch_and_store_full_log(api, item) for item in batch],
-                            return_exceptions=True,
-                        )
-                        for item_result, item in zip(results, batch):
-                            if isinstance(item_result, TerminalApiDeferrable):
+            if missing_items:
+                print(f"  [{short_addr}] page {page_num}: {len(items)} logs, {len(missing_items)} new full-logs to fetch")
+            elif page_num == 1:
+                print(f"  [{short_addr}] page {page_num}: {len(items)} logs, all full-logs already in DB")
+
+            # Step 2: fetch full logs from API (NO lock held — parallel with other vaults)
+            if not hit_full_log_limit and missing_items:
+                for batch in _batched(missing_items, self.config.request_concurrency):
+                    # Fetch from API (no DB lock)
+                    fetched = await asyncio.gather(
+                        *[self._fetch_full_log(api, item) for item in batch],
+                        return_exceptions=True,
+                    )
+                    # Step 3: write results to DB (brief lock)
+                    async with self.db.batch():
+                        for fetch_result, item in zip(fetched, batch):
+                            if isinstance(fetch_result, TerminalApiDeferrable):
                                 log_id = int(item["id"])
-                                await self.db.defer_log(log_id, vault_address, item_result.status)
+                                await self.db.defer_log(log_id, vault_address, fetch_result.status)
                                 _deferred.add(log_id)
                                 self.summary.full_log_failures += 1
-                                print(f"  Deferred log {log_id} (status={item_result.status})")
-                            elif isinstance(item_result, Exception):
+                                print(f"  [{short_addr}] deferred log {log_id} (status={fetch_result.status})")
+                            elif isinstance(fetch_result, Exception):
                                 self.summary.full_log_failures += 1
-                                print(f"Failed full-log fetch: {item_result}")
-                            elif item_result:
+                                print(f"  [{short_addr}] failed full-log fetch: {fetch_result}")
+                            elif fetch_result is not None:
+                                await self.db.upsert_full_log(fetch_result)
                                 self.summary.full_logs_ingested += 1
                                 full_logs_seen += 1
 
-                next_cursor = items[-1].get("cursor") if items else None
-                if next_cursor:
+            # Step 4: save cursor (brief lock)
+            if next_cursor:
+                async with self.db.batch():
                     await self.db.save_cursor(vault_address, "logs", next_cursor)
 
-            if not page.get("hasMoreItems"):
+            if hit_full_log_limit or not page.get("hasMoreItems"):
                 break
             if not next_cursor:
                 break
             cursor = next_cursor
 
+        if page_num > 1:
+            print(f"  [{short_addr}] done: {page_num} pages, {logs_seen} logs, {full_logs_seen} new full-logs")
+
     async def _backfill_vault_swaps(self, api: TerminalMarketsApiClient, vault_address: str) -> None:
-        cursor: str | None = await self.db.get_last_cursor(vault_address, "swaps")
+        async with self.db.batch():
+            cursor = await self.db.get_last_cursor(vault_address, "swaps")
         if cursor:
             print(f"  Resuming swaps from cursor {cursor[:20]}...")
         swaps_seen = 0
@@ -320,12 +366,14 @@ class TerminalBackfillIngestor:
                     break
                 items = items[:remaining]
 
+            next_cursor = items[-1].get("cursor") if items else None
+
             async with self.db.batch():
                 await self.db.upsert_swaps(items)
                 swaps_seen += len(items)
                 self.summary.swaps_ingested += len(items)
 
-                next_cursor = items[-1].get("cursor") if items else None
+                # Cursor save inside the batch — committed with the batch
                 if next_cursor:
                     await self.db.save_cursor(vault_address, "swaps", next_cursor)
 
@@ -335,23 +383,22 @@ class TerminalBackfillIngestor:
                 break
             cursor = next_cursor
 
-    async def _fetch_and_store_full_log(
+    async def _fetch_full_log(
         self, api: TerminalMarketsApiClient, log_item: dict[str, Any]
-    ) -> bool:
+    ) -> FullLogRecord | None:
+        """Fetch a full log from the API. Returns the record (no DB write)."""
         log_id_raw = log_item.get("id")
         if log_id_raw is None:
-            return False
+            return None
         log_id = int(log_id_raw)
         payload = await api.get_full_log(log_id)
         parsed = parse_full_log(payload, include_reasoning=self.config.include_reasoning)
-        record = FullLogRecord(
+        return FullLogRecord(
             log_id=log_id,
             vault_address=log_item.get("vault_address"),
             parsed=parsed,
             raw_payload=payload,
         )
-        await self.db.upsert_full_log(record)
-        return True
 
 
 async def run_backfill(config: BackfillConfig) -> BackfillSummary:

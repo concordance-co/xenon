@@ -4,7 +4,9 @@ export interface IngestConfig {
   topN: number
   selection: 'top' | 'random'
   concurrency: number
+  rps: number
   excludeReasoning: boolean
+  skipDeferred: boolean
 }
 
 export interface PrepConfig {
@@ -51,7 +53,9 @@ export const DEFAULT_CONFIG: PipelineConfig = {
     topN: 3,
     selection: 'top',
     concurrency: 20,
+    rps: 6,
     excludeReasoning: false,
+    skipDeferred: false,
   },
   prep: {
     limit: 0,
@@ -111,7 +115,9 @@ export function buildIngestCmd(c: IngestConfig): string {
   let cmd = `./scripts/modal_capture.sh modal-ingest --top-n ${c.topN}`
   if (c.selection !== 'top') cmd += ` --selection ${c.selection}`
   if (c.concurrency !== 20) cmd += ` --concurrency ${c.concurrency}`
+  if (c.rps !== 6) cmd += ` --rps ${c.rps}`
   if (c.excludeReasoning) cmd += ' --exclude-reasoning'
+  if (c.skipDeferred) cmd += ' --skip-deferred'
   return cmd
 }
 

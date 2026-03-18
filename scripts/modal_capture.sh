@@ -85,6 +85,10 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Deprecated — use 'migrate-to-neon' instead."
     exit 1
     ;;
+  reset-cursors)
+    echo "Resetting ingest cursors (next run re-paginates from start)..."
+    uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode reset-cursors "$@"
+    ;;
   modal-snapshot)
     echo "Writing stats snapshot on Modal..."
     uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode snapshot "$@"
@@ -110,6 +114,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  modal-ingest         Run ingest on Modal (fetches from Terminal API → Neon)"
     echo "  modal-prep           Run data prep on Modal (Neon → Neon)"
     echo "  modal-outcomes       Compute trade outcomes (PnL) on Modal"
+    echo "  reset-cursors        Wipe ingest_cursors (next run re-paginates from start)"
     echo "  migrate-to-neon      Migrate SQLite DB → Neon Postgres (one-time)"
     echo "  backfill-payloads    Migrate gz file payloads → Neon JSONB (one-time)"
     echo "  modal-snapshot       Write & download stats snapshot"

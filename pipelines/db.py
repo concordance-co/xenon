@@ -464,6 +464,21 @@ def cleanup_stale_cursors(conn: psycopg.Connection) -> int:
     return count
 
 
+def reset_cursors(conn: psycopg.Connection) -> int:
+    """Wipe all ingest_cursors.
+
+    Safe because ingest upserts handle duplicates and full_log fetches
+    skip logs already in the DB via fetch_existing_full_log_ids.
+    """
+    row = conn.execute("DELETE FROM ingest_cursors RETURNING vault_address").fetchall()
+    count = len(row)
+    if count:
+        print(f"Cleared {count} ingest cursor(s) — next run will re-paginate from start")
+    else:
+        print("No ingest cursors to clear")
+    return count
+
+
 def ensure_schema(conn: psycopg.Connection) -> None:
     """Create all tables and indexes if they do not already exist.
 
@@ -480,3 +495,4 @@ def ensure_schema(conn: psycopg.Connection) -> None:
         conn.commit()
 
     _migrate_existing_schema(conn)
+

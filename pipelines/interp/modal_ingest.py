@@ -38,8 +38,10 @@ def run_ingest(
     selection: str = "top",
     random_seed: int = -1,
     concurrency: int = 5,
+    requests_per_second: float = 6.0,
     leaderboard_sort_by: str = "total_pnl_usd",
     exclude_reasoning: bool = False,
+    retry_deferred: bool = True,
     max_logs_per_vault: int = -1,
     max_full_logs_per_vault: int = -1,
     max_swaps_per_vault: int = -1,
@@ -55,7 +57,9 @@ def run_ingest(
         random_seed=random_seed if random_seed >= 0 else None,
         leaderboard_sort_by=leaderboard_sort_by,
         request_concurrency=concurrency,
+        requests_per_second=requests_per_second,
         include_reasoning=not exclude_reasoning,
+        retry_deferred=retry_deferred,
         max_logs_per_vault=max_logs_per_vault if max_logs_per_vault >= 0 else None,
         max_full_logs_per_vault=max_full_logs_per_vault if max_full_logs_per_vault >= 0 else None,
         max_swaps_per_vault=max_swaps_per_vault if max_swaps_per_vault >= 0 else None,
@@ -167,6 +171,22 @@ def run_outcomes(
 
 
 @app.function(
+    image=image,
+    timeout=300,
+    cpu=1,
+    secrets=[neon_secret],
+)
+def reset_cursors() -> int:
+    """Wipe all ingest_cursors so next run re-paginates from start."""
+    from pipelines.db import connect_neon, reset_cursors as _reset
+
+    conn = connect_neon()
+    count = _reset(conn)
+    conn.close()
+    return count
+
+
+@app.function(
     volumes={"/data": volume},
     image=image,
     timeout=600,
@@ -225,7 +245,9 @@ def main(
     selection: str = "top",
     random_seed: int = -1,
     concurrency: int = 5,
+    rps: float = 6.0,
     exclude_reasoning: bool = False,
+    skip_deferred: bool = False,
     max_logs_per_vault: int = -1,
     max_full_logs_per_vault: int = -1,
     max_swaps_per_vault: int = -1,
@@ -244,7 +266,9 @@ def main(
             selection=selection,
             random_seed=random_seed,
             concurrency=concurrency,
+            requests_per_second=rps,
             exclude_reasoning=exclude_reasoning,
+            retry_deferred=not skip_deferred,
             max_logs_per_vault=max_logs_per_vault,
             max_full_logs_per_vault=max_full_logs_per_vault,
             max_swaps_per_vault=max_swaps_per_vault,
@@ -271,5 +295,9 @@ def main(
     elif mode == "snapshot":
         write_stats_snapshot.remote()
 
+    elif mode == "reset-cursors":
+        count = reset_cursors.remote()
+        print(f"\nReset {count} cursor(s)")
+
     else:
-        print(f"Unknown mode: {mode}. Use 'ingest', 'prep', 'outcomes', or 'snapshot'.")
+        print(f"Unknown mode: {mode}. Use 'ingest', 'prep', 'outcomes', 'snapshot', or 'reset-cursors'.")

@@ -214,6 +214,21 @@ export function IngestView({ onRun }: Props) {
               </div>
               <div className={s.field}>
                 <label className={s.fieldLabel}>
+                  Requests/sec
+                  <Tip text="API rate limit in requests per second. Higher = faster ingest but risks 429s. 502s are automatically deferred and retried later." />
+                </label>
+                <input
+                  type="number"
+                  className={s.fieldInput}
+                  value={c.rps}
+                  min={1}
+                  max={50}
+                  step={1}
+                  onChange={e => update('ingest', { rps: Number(e.target.value) || 6 })}
+                />
+              </div>
+              <div className={s.field}>
+                <label className={s.fieldLabel}>
                   Exclude Reasoning
                   <Tip text="Skip storing the LLM's chain-of-thought reasoning from full logs. Reduces DB size but loses the model's internal reasoning trace." />
                 </label>
@@ -223,6 +238,19 @@ export function IngestView({ onRun }: Props) {
                     onClick={() => update('ingest', { excludeReasoning: !c.excludeReasoning })}
                   />
                   <span>{c.excludeReasoning ? 'Yes' : 'No'}</span>
+                </label>
+              </div>
+              <div className={s.field}>
+                <label className={s.fieldLabel}>
+                  Skip Deferred
+                  <Tip text="Skip retrying previously deferred logs (502s) at the end of the run. Useful for faster runs when you don't need to recover failed fetches." />
+                </label>
+                <label className={s.toggle}>
+                  <span
+                    className={c.skipDeferred ? s.toggleTrackOn : s.toggleTrack}
+                    onClick={() => update('ingest', { skipDeferred: !c.skipDeferred })}
+                  />
+                  <span>{c.skipDeferred ? 'Yes' : 'No'}</span>
                 </label>
               </div>
             </div>
