@@ -796,10 +796,10 @@ refreshAll();
 # Backend store
 # ---------------------------------------------------------------------------
 
-class _ModalStatsCache:
-    """Cache for Modal DB stats. Downloads a small JSON from the volume."""
+class _NeonStatsCache:
+    """Cache for stats queried directly from Neon Postgres."""
 
-    def __init__(self, ttl_s: float = 300) -> None:
+    def __init__(self, ttl_s: float = 60) -> None:
         self.ttl_s = ttl_s
         self._data: dict[str, Any] | None = None
         self._fetched_at: float = 0
@@ -809,88 +809,46 @@ class _ModalStatsCache:
     def get(self) -> dict[str, Any] | None:
         if self._data and (time.monotonic() - self._fetched_at) < self.ttl_s:
             return self._data
-        # Try local file first (already downloaded)
-        self._try_load_local()
-        # Trigger background download from volume
         self._start_fetch()
         return self._data
 
     def invalidate(self) -> None:
-        """Force re-fetch on next get()."""
         self._fetched_at = 0
 
-    def force_refresh(self, timeout_s: float = 45.0) -> dict[str, Any] | None:
-        """Refresh stats synchronously for explicit UI refresh actions."""
+    def force_refresh(self, timeout_s: float = 30.0) -> dict[str, Any] | None:
         self.invalidate()
-
-        # If another request is already fetching, wait briefly for it.
-        deadline = time.monotonic() + timeout_s
-        while True:
-            with self._lock:
-                fetching = self._fetching
-                if not fetching:
-                    self._fetching = True
-                    break
-            if time.monotonic() >= deadline:
-                self._try_load_local()
-                return self._data
-            time.sleep(0.05)
-
-        try:
-            # Explicit refresh should recompute snapshot on Modal first.
-            self._fetch_once(recompute=True)
-        finally:
-            with self._lock:
-                self._fetching = False
+        self._query_neon()
         return self._data
-
-    def _try_load_local(self) -> None:
-        try:
-            stats_path = Path("data/dashboard_stats.json")
-            if stats_path.exists():
-                self._data = json.loads(stats_path.read_text())
-                if self._fetched_at == 0:
-                    self._fetched_at = time.monotonic()
-        except Exception:
-            pass
 
     def _start_fetch(self) -> None:
         with self._lock:
             if self._fetching:
                 return
             self._fetching = True
-        t = threading.Thread(target=self._fetch, daemon=True)
+        t = threading.Thread(target=self._fetch_bg, daemon=True)
         t.start()
 
-    def _fetch(self) -> None:
+    def _fetch_bg(self) -> None:
         try:
-            # Background refresh only downloads the latest existing snapshot.
-            self._fetch_once(recompute=False)
+            self._query_neon()
         finally:
             with self._lock:
                 self._fetching = False
 
-    def _fetch_once(self, recompute: bool) -> None:
+    def _query_neon(self) -> None:
         try:
-            cmd = ["./scripts/modal_capture.sh", "modal-snapshot"] if recompute else [
-                "./scripts/modal_capture.sh",
-                "modal-stats",
-            ]
-            subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60 if recompute else 30,
-            )
-            stats_path = Path("data/dashboard_stats.json")
-            if stats_path.exists():
-                self._data = json.loads(stats_path.read_text())
-                self._fetched_at = time.monotonic()
+            from pipelines.db import connect_neon
+            from pipelines.stats import compute_stats
+
+            conn = connect_neon()
+            self._data = compute_stats(conn, approximate_counts=True)
+            conn.close()
+            self._fetched_at = time.monotonic()
         except Exception as exc:
-            print(f"[modal-stats] fetch failed: {exc}")
+            print(f"[neon-stats] query failed: {exc}")
 
 
-_modal_stats = _ModalStatsCache()
+_neon_stats = _NeonStatsCache()
 
 
 class DashboardStore:
@@ -902,7 +860,7 @@ class DashboardStore:
     # --- Status ---
 
     def get_status(self) -> dict[str, Any]:
-        modal = _modal_stats.get()
+        modal = _neon_stats.get()
 
         # Ingest
         ingest = {"log_count": 0, "status": "empty"}
@@ -963,7 +921,7 @@ class DashboardStore:
             "parse_error_count": 0, "tables": [],
         }
 
-        modal = _modal_stats.get()
+        modal = _neon_stats.get()
         if modal and modal.get("ingest"):
             return modal["ingest"]
 
@@ -978,7 +936,7 @@ class DashboardStore:
             "export_files": [], "label_distribution": [],
         }
 
-        modal = _modal_stats.get()
+        modal = _neon_stats.get()
         if modal and modal.get("prep"):
             return modal["prep"]
 
@@ -993,7 +951,7 @@ class DashboardStore:
             "win_rate_1h": None, "risk_breakdown": [],
         }
 
-        modal = _modal_stats.get()
+        modal = _neon_stats.get()
         if modal and modal.get("outcomes"):
             return modal["outcomes"]
 
@@ -1428,7 +1386,7 @@ def _stream_job(handler: BaseHTTPRequestHandler, job: _Job, from_line: int) -> N
 
             if done:
                 # Invalidate modal stats cache so next request fetches fresh data
-                _modal_stats.invalidate()
+                _neon_stats.invalidate()
                 break
 
             time.sleep(0.1)
@@ -1581,7 +1539,7 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
             if path == "/api/status":
                 refresh = (query.get("refresh", ["0"])[0] or "").lower() in {"1", "true", "yes"}
                 if refresh:
-                    _modal_stats.force_refresh()
+                    _neon_stats.force_refresh()
                 self._json(store.get_status())
             elif path == "/api/ingest":
                 self._json(store.get_ingest())
@@ -1662,7 +1620,7 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                 result = _cancel_modal_app(app_id)
                 self._json(result)
             elif parsed.path == "/api/status/refresh":
-                _modal_stats.force_refresh()
+                _neon_stats.force_refresh()
                 self._json(store.get_status())
             else:
                 self._not_found()

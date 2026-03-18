@@ -380,7 +380,7 @@ class IngestDatabase:
         if not log_ids:
             return set()
         cursor = await self.conn.execute(
-            "SELECT log_id FROM full_logs WHERE log_id = ANY(%s)",
+            "SELECT log_id FROM full_logs WHERE log_id = ANY(%s) AND raw_payload IS NOT NULL",
             (log_ids,),
         )
         rows = await cursor.fetchall()
