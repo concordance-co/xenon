@@ -294,6 +294,7 @@
 /* Mode toggle (local / modal) */
 .modeToggle {
   display: inline-flex;
+  flex-direction: column;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   overflow: hidden;

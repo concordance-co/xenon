@@ -299,6 +299,84 @@
   color: var(--text-3);
 }
 
+/* ─── Payload Explorer ─── */
+
+.payloadRoot {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.payloadStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-sm);
+}
+
+.payloadGrid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+.payloadGrid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.payloadChart {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: var(--space-md) var(--space-lg);
+  overflow: hidden;
+}
+
+.miniChartWrap {
+  width: 100%;
+  height: 200px;
+}
+
+/* Heatmap */
+
+.heatmap {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmapCorner {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  text-align: left;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.heatmapHead {
+  text-align: center;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.heatmapLabel {
+  text-align: right;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.heatmapCell {
+  text-align: center;
+  padding: var(--space-sm);
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 44px;
+}
+
 @media (max-width: 1020px) {
   .queryLayout,
   .queryResultGrid,
@@ -308,6 +386,11 @@
   }
 
   .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .payloadGrid2,
+  .payloadGrid3 {
     grid-template-columns: 1fr;
   }
 }

@@ -77,6 +77,7 @@ def run_ingest(
     from pipelines.db import cleanup_stale_cursors, connect_neon
     conn = connect_neon()
     cleanup_stale_cursors(conn)
+    _refresh_payload_stats(conn)
     conn.close()
 
     _write_stats_snapshot()
@@ -197,6 +198,19 @@ def write_stats_snapshot() -> None:
     """Remote-callable wrapper for _write_stats_snapshot."""
     _write_stats_snapshot()
     volume.commit()
+
+
+def _refresh_payload_stats(conn) -> None:
+    """Refresh the payload_stats materialized view if it exists."""
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM pg_matviews WHERE matviewname = 'payload_stats'"
+        ).fetchone()
+        if row:
+            conn.execute("REFRESH MATERIALIZED VIEW payload_stats")
+            print("Refreshed payload_stats materialized view")
+    except Exception as e:
+        print(f"Warning: could not refresh payload_stats: {e}")
 
 
 def _write_stats_snapshot() -> None:

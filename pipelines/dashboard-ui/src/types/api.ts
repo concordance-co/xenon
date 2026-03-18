@@ -319,3 +319,32 @@ export interface BackendLabelPreviewResponse {
 export interface BackendPrepTargetsResponse {
   specs: PrepTargetSpec[]
 }
+
+// --- Payload Explorer ---
+
+export interface DistRow {
+  [key: string]: string | number | null
+}
+
+export interface PayloadStatsResponse {
+  total_logs: number
+  unique_vaults?: number
+  tool_distribution?: DistRow[]
+  model_distribution?: DistRow[]
+  slider_trade_size?: DistRow[]
+  slider_trading_activity?: DistRow[]
+  slider_holding_style?: DistRow[]
+  slider_diversification?: DistRow[]
+  slider_asset_risk_preference?: DistRow[]
+  eth_balance_buckets?: DistRow[]
+  portfolio_token_count?: DistRow[]
+  strategy_count_dist?: DistRow[]
+  memory_depth?: DistRow[]
+  token_usage?: Record<string, number | null>
+  inference_duration?: Record<string, number | null>
+  allowed_tools_combos?: DistRow[]
+  risk_activity_heatmap?: DistRow[]
+  trade_token_dist?: DistRow[]
+  held_token_dist?: DistRow[]
+  market_token_dist?: DistRow[]
+}

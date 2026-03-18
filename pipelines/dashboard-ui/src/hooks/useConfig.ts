@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 
 export interface IngestConfig {
   topN: number
-  selection: 'top' | 'random'
+  selection: 'top' | 'random' | 'existing' | 'backfill'
   concurrency: number
   rps: number
   excludeReasoning: boolean

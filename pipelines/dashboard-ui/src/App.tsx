@@ -67,10 +67,6 @@ export default function App() {
     refetch('/api/status?refresh=1')
   }, [refetch])
 
-  const handleRefresh = useCallback(() => {
-    refetch('/api/status?refresh=1')
-  }, [refetch])
-
   return (
     <ConfigContext.Provider value={{ config, update: updateConfig }}>
       <div className={styles.layout}>
@@ -97,11 +93,6 @@ export default function App() {
               Explorer
             </button>
           </div>
-          {view === 'pipeline' && (
-            <button className={styles.refreshBtn} onClick={handleRefresh}>
-              Refresh
-            </button>
-          )}
         </header>
 
         {view === 'pipeline' && (

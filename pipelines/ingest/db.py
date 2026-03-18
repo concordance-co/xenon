@@ -419,6 +419,37 @@ class IngestDatabase:
         await self.conn.execute("DELETE FROM deferred_logs WHERE log_id = %s", (log_id,))
         await self.commit()
 
+    async def get_log_ids_missing_full_log(self, limit: int = 0) -> list[dict[str, Any]]:
+        """Return inference log IDs that have no full_log row at all."""
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
+        sql = (
+            "SELECT il.id, il.vault_address "
+            "FROM inference_logs il "
+            "LEFT JOIN full_logs fl ON fl.log_id = il.id "
+            "WHERE fl.log_id IS NULL "
+            "ORDER BY il.id"
+        )
+        if limit > 0:
+            sql += f" LIMIT {limit}"
+        cursor = await self.conn.execute(sql)
+        return [{"id": row["id"], "vault_address": row["vault_address"]} for row in await cursor.fetchall()]
+
+    async def get_log_ids_with_null_payload(self, limit: int = 0) -> list[dict[str, Any]]:
+        """Return full_log rows where raw_payload IS NULL."""
+        if self.conn is None:
+            raise RuntimeError("IngestDatabase not connected — call connect() first")
+        sql = (
+            "SELECT fl.log_id AS id, fl.vault_address "
+            "FROM full_logs fl "
+            "WHERE fl.raw_payload IS NULL "
+            "ORDER BY fl.log_id"
+        )
+        if limit > 0:
+            sql += f" LIMIT {limit}"
+        cursor = await self.conn.execute(sql)
+        return [{"id": row["id"], "vault_address": row["vault_address"]} for row in await cursor.fetchall()]
+
     async def upsert_full_log(self, record: FullLogRecord) -> None:
         if self.conn is None:
             raise RuntimeError("IngestDatabase not connected — call connect() first")

@@ -165,7 +165,7 @@ export function IngestView({ onRun }: Props) {
               <div className={s.field}>
                 <label className={s.fieldLabel}>
                   Selection Mode
-                  <Tip text="'Top' picks the highest-ranked vaults by PnL. 'Random' pages through all vaults on the leaderboard and randomly samples N of them — useful for getting a diverse cross-section of traders instead of just the top performers." />
+                  <Tip text="'Top' picks the highest-ranked vaults by PnL. 'Random' pages through all vaults on the leaderboard and randomly samples N of them. 'Existing' skips the leaderboard and only processes vaults already in the database. 'Backfill' fills in missing full logs and null payloads for existing data, then runs swaps." />
                 </label>
                 <div className={s.modeToggle}>
                   <button
@@ -179,6 +179,18 @@ export function IngestView({ onRun }: Props) {
                     onClick={() => update('ingest', { selection: 'random' })}
                   >
                     Random
+                  </button>
+                  <button
+                    className={c.selection === 'existing' ? s.modeBtnActive : s.modeBtn}
+                    onClick={() => update('ingest', { selection: 'existing' })}
+                  >
+                    Existing
+                  </button>
+                  <button
+                    className={c.selection === 'backfill' ? s.modeBtnActive : s.modeBtn}
+                    onClick={() => update('ingest', { selection: 'backfill' })}
+                  >
+                    Backfill
                   </button>
                 </div>
               </div>

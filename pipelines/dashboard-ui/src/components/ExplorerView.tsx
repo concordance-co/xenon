@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,12 +18,14 @@ import type {
   BackendSampleResponse,
   BackendSchemaResponse,
   BackendTableInfo,
+  DistRow,
+  PayloadStatsResponse,
   PrepTargetSpec,
 } from '../types/api'
 import s from './shared.module.css'
 import x from './ExplorerView.module.css'
 
-type ExplorerWorkspace = 'query' | 'label' | 'probe'
+type ExplorerWorkspace = 'query' | 'label' | 'probe' | 'payload'
 
 const QUERY_HISTORY_KEY = 'xenon-explorer-query-history'
 
@@ -399,6 +402,12 @@ export function ExplorerView() {
           onClick={() => setWorkspace('probe')}
         >
           Probe Prep
+        </button>
+        <button
+          className={workspace === 'payload' ? x.workspaceTabActive : x.workspaceTab}
+          onClick={() => setWorkspace('payload')}
+        >
+          Payload Explorer
         </button>
       </div>
 
@@ -912,6 +921,10 @@ export function ExplorerView() {
           </div>
         </div>
       )}
+
+      {workspace === 'payload' && (
+        <PayloadExplorer backendFetch={backendFetch} />
+      )}
     </div>
   )
 }
@@ -957,6 +970,278 @@ function DataGrid({ columns, rows }: { columns: string[]; rows: Record<string, u
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+/* ────────────────────────── Payload Explorer ────────────────────────── */
+
+const ACCENT_COLORS = [
+  'var(--accent)',
+  'oklch(72% 0.15 160)',
+  'oklch(72% 0.15 280)',
+  'oklch(72% 0.15 40)',
+  'oklch(72% 0.15 200)',
+  'oklch(65% 0.14 100)',
+]
+
+function MiniBar({
+  title,
+  data,
+  dataKey = 'count',
+  nameKey = 'name',
+  color = 'var(--accent)',
+}: {
+  title: string
+  data: DistRow[] | undefined
+  dataKey?: string
+  nameKey?: string
+  color?: string
+}) {
+  if (!data || data.length === 0) return null
+  const chartData = data.map(row => {
+    const keys = Object.keys(row)
+    const name = String(row[nameKey] ?? row[keys.find(k => k !== dataKey) ?? keys[0]] ?? '')
+    return { name, value: Number(row[dataKey] ?? row[keys.find(k => typeof row[k] === 'number') ?? dataKey] ?? 0) }
+  })
+
+  return (
+    <div className={x.payloadChart}>
+      <div className={x.subhead}>{title}</div>
+      <div className={x.miniChartWrap}>
+        <ResponsiveContainer>
+          <BarChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 28 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis
+              dataKey="name"
+              angle={-30}
+              textAnchor="end"
+              height={48}
+              tick={{ fontSize: 10, fill: 'var(--text-3)' }}
+              interval={0}
+            />
+            <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} width={48} />
+            <Tooltip
+              contentStyle={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                fontSize: '0.75rem',
+              }}
+            />
+            <Bar dataKey="value" fill={color} radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+function SliderChart({
+  title,
+  data,
+}: {
+  title: string
+  data: DistRow[] | undefined
+}) {
+  if (!data || data.length === 0) return null
+  const chartData = data.map(row => ({
+    name: String(row.value ?? ''),
+    value: Number(row.count ?? 0),
+  }))
+
+  return (
+    <div className={x.payloadChart}>
+      <div className={x.subhead}>{title}</div>
+      <div className={x.miniChartWrap}>
+        <ResponsiveContainer>
+          <BarChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-3)' }} />
+            <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} width={48} />
+            <Tooltip
+              contentStyle={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                fontSize: '0.75rem',
+              }}
+            />
+            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+              {chartData.map((_, i) => (
+                <Cell key={i} fill={ACCENT_COLORS[i % ACCENT_COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+function HeatmapTable({
+  title,
+  data,
+}: {
+  title: string
+  data: DistRow[] | undefined
+}) {
+  if (!data || data.length === 0) return null
+
+  const riskVals = [...new Set(data.map(r => Number(r.risk)))].sort((a, b) => a - b)
+  const actVals = [...new Set(data.map(r => Number(r.activity)))].sort((a, b) => a - b)
+  const lookup = new Map(data.map(r => [`${r.risk}-${r.activity}`, Number(r.count)]))
+  const maxCount = Math.max(...data.map(r => Number(r.count)), 1)
+
+  return (
+    <div className={x.payloadChart}>
+      <div className={x.subhead}>{title}</div>
+      <table className={x.heatmap}>
+        <thead>
+          <tr>
+            <th className={x.heatmapCorner}>Risk \ TA</th>
+            {actVals.map(a => <th key={a} className={x.heatmapHead}>{a}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {riskVals.map(r => (
+            <tr key={r}>
+              <td className={x.heatmapLabel}>{r}</td>
+              {actVals.map(a => {
+                const v = lookup.get(`${r}-${a}`) ?? 0
+                const intensity = v / maxCount
+                return (
+                  <td
+                    key={a}
+                    className={x.heatmapCell}
+                    style={{
+                      background: v > 0
+                        ? `oklch(${65 - intensity * 30}% ${0.08 + intensity * 0.12} 250 / ${0.15 + intensity * 0.85})`
+                        : 'var(--bg-sub)',
+                    }}
+                  >
+                    {v > 0 ? v.toLocaleString() : ''}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className={x.metricCard}>
+      <div className={x.metricLabel}>{label}</div>
+      <div className="mono" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </div>
+      {sub && <div className={x.metricLabel} style={{ marginTop: 2 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function PayloadExplorer({
+  backendFetch,
+}: {
+  backendFetch: <T>(path: string) => Promise<T>
+}) {
+  const [stats, setStats] = useState<PayloadStatsResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await backendFetch<PayloadStatsResponse>('/payload-stats')
+      setStats(result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load payload stats')
+    } finally {
+      setLoading(false)
+    }
+  }, [backendFetch])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading) return <div className={s.empty}>Loading payload distributions...</div>
+  if (error) return <div className={x.errorBanner}>{error}</div>
+  if (!stats || stats.total_logs === 0) {
+    return <div className={s.empty}>No full logs with raw_payload found. Run ingest first.</div>
+  }
+
+  const fmtMs = (v: number | null | undefined) => v != null ? `${(v / 1000).toFixed(1)}s` : '\u2014'
+  const fmtTok = (v: number | null | undefined) => v != null ? Math.round(v).toLocaleString() : '\u2014'
+
+  return (
+    <div className={x.payloadRoot}>
+      <p className={s.phaseDesc}>
+        Distribution analysis of <strong>{stats.total_logs.toLocaleString()}</strong> full log payloads.
+        Explores the structure and diversity of agent decisions, market contexts,
+        and LLM behavior across the dataset.
+      </p>
+
+      {/* Top-level stats */}
+      <div className={x.payloadStats}>
+        <StatCard label="Full Logs" value={stats.total_logs} />
+        <StatCard label="Unique Vaults" value={stats.unique_vaults ?? '\u2014'} />
+        <StatCard
+          label="Avg Prompt"
+          value={fmtTok(stats.token_usage?.avg_prompt)}
+          sub={`p50: ${fmtTok(stats.token_usage?.p50_prompt)} / p95: ${fmtTok(stats.token_usage?.p95_prompt)}`}
+        />
+        <StatCard
+          label="Avg Completion"
+          value={fmtTok(stats.token_usage?.avg_completion)}
+          sub={`p50: ${fmtTok(stats.token_usage?.p50_completion)} / p95: ${fmtTok(stats.token_usage?.p95_completion)}`}
+        />
+        <StatCard
+          label="Avg Reasoning"
+          value={fmtTok(stats.token_usage?.avg_reasoning)}
+        />
+        <StatCard
+          label="Inference Time"
+          value={fmtMs(stats.inference_duration?.avg_ms)}
+          sub={`p50: ${fmtMs(stats.inference_duration?.p50_ms)} / p95: ${fmtMs(stats.inference_duration?.p95_ms)}`}
+        />
+      </div>
+
+      {/* Decision distribution */}
+      <div className={s.sectionLabel}>Decision Distribution</div>
+      <div className={x.payloadGrid2}>
+        <MiniBar title="Tool Calls" data={stats.tool_distribution} nameKey="tool" />
+        <MiniBar title="LLM Models" data={stats.model_distribution} nameKey="model" color="oklch(72% 0.15 160)" />
+      </div>
+
+      {/* Agent configuration */}
+      <div className={s.sectionLabel}>Agent Configuration Space</div>
+      <div className={x.payloadGrid3}>
+        <SliderChart title="Trading Activity" data={stats.slider_trading_activity} />
+        <SliderChart title="Risk Preference" data={stats.slider_asset_risk_preference} />
+        <SliderChart title="Trade Size" data={stats.slider_trade_size} />
+        <SliderChart title="Holding Style" data={stats.slider_holding_style} />
+        <SliderChart title="Diversification" data={stats.slider_diversification} />
+        <HeatmapTable title="Risk x Activity" data={stats.risk_activity_heatmap} />
+      </div>
+
+      {/* Token universe */}
+      <div className={s.sectionLabel}>Token Universe</div>
+      <div className={x.payloadGrid2}>
+        <MiniBar title="Most Traded" data={stats.trade_token_dist} nameKey="token" color="oklch(72% 0.16 30)" />
+        <MiniBar title="ETH Balance" data={stats.eth_balance_buckets} nameKey="bucket" color="oklch(72% 0.15 280)" />
+      </div>
+
+      {/* Context richness */}
+      <div className={s.sectionLabel}>Context & Portfolio</div>
+      <div className={x.payloadGrid3}>
+        <MiniBar title="Portfolio Tokens Held" data={stats.portfolio_token_count} nameKey="token_count" color="oklch(72% 0.15 40)" />
+        <MiniBar title="Active Strategies" data={stats.strategy_count_dist} nameKey="strategy_count" color="oklch(72% 0.15 200)" />
+        <MiniBar title="Memory Depth" data={stats.memory_depth} nameKey="bucket" color="oklch(65% 0.14 100)" />
+      </div>
     </div>
   )
 }

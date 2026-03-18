@@ -69,6 +69,10 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Running ingest on Modal (detached, writes to Neon Postgres)..."
     uv run --extra interp --extra modal modal run --detach pipelines/interp/modal_ingest.py --mode ingest "$@"
     ;;
+  modal-backfill)
+    echo "Backfilling missing full logs and null payloads (detached)..."
+    uv run --extra interp --extra modal modal run --detach pipelines/interp/modal_ingest.py --mode ingest --selection backfill "$@"
+    ;;
   modal-prep)
     echo "Running data prep on Modal (detached, reads/writes Neon Postgres)..."
     uv run --extra interp --extra modal modal run --detach pipelines/interp/modal_ingest.py --mode prep "$@"
@@ -80,10 +84,6 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
   migrate-to-neon)
     echo "Migrating SQLite → Neon Postgres (one-time)..."
     uv run --extra interp --extra modal modal run scripts/migrate_sqlite_to_neon.py "$@"
-    ;;
-  backfill-payloads)
-    echo "Deprecated — use 'migrate-to-neon' instead."
-    exit 1
     ;;
   reset-cursors)
     echo "Resetting ingest cursors (next run re-paginates from start)..."
@@ -101,7 +101,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     modal volume get xenon-data dashboard_stats.json ./data/dashboard_stats.json --force 2>/dev/null
     ;;
   *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|modal-ingest|modal-prep|modal-outcomes|modal-snapshot|modal-stats|backfill-payloads|download-activations|download-results} [extra flags]"
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|modal-ingest|modal-backfill|modal-prep|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results} [extra flags]"
     echo ""
     echo "  download             Cache model weights to volume (one-time)"
     echo "  smoke                Single example, single layer (sanity check)"
@@ -116,7 +116,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  modal-outcomes       Compute trade outcomes (PnL) on Modal"
     echo "  reset-cursors        Wipe ingest_cursors (next run re-paginates from start)"
     echo "  migrate-to-neon      Migrate SQLite DB → Neon Postgres (one-time)"
-    echo "  backfill-payloads    Migrate gz file payloads → Neon JSONB (one-time)"
+    echo "  modal-backfill       Fill missing full logs + null payloads, then run swaps"
     echo "  modal-snapshot       Write & download stats snapshot"
     echo "  modal-stats          Download cached stats snapshot (no Modal run)"
     echo "  download-activations Download activations from Modal volume"

@@ -924,6 +924,135 @@ def web_app():
         except psycopg.Error as e:
             raise HTTPException(status_code=503, detail=f"Database error: {e}")
 
+    _PAYLOAD_STATS_SQL = """
+    SELECT json_build_object(
+      'total_logs', (SELECT COUNT(*) FROM payload_stats),
+      'unique_vaults', (SELECT COUNT(DISTINCT vault_address) FROM payload_stats),
+
+      'tool_distribution', (
+        SELECT COALESCE(json_agg(r ORDER BY r.count DESC), '[]')
+        FROM (SELECT tool, COUNT(*) AS count FROM payload_stats GROUP BY 1) r
+      ),
+      'model_distribution', (
+        SELECT COALESCE(json_agg(r ORDER BY r.count DESC), '[]')
+        FROM (SELECT llm_model AS model, COUNT(*) AS count FROM payload_stats WHERE llm_model IS NOT NULL GROUP BY 1) r
+      ),
+
+      'slider_trade_size', (
+        SELECT COALESCE(json_agg(r ORDER BY r.value), '[]')
+        FROM (SELECT trade_size AS value, COUNT(*) AS count FROM payload_stats WHERE trade_size IS NOT NULL GROUP BY 1) r
+      ),
+      'slider_trading_activity', (
+        SELECT COALESCE(json_agg(r ORDER BY r.value), '[]')
+        FROM (SELECT trading_activity AS value, COUNT(*) AS count FROM payload_stats WHERE trading_activity IS NOT NULL GROUP BY 1) r
+      ),
+      'slider_holding_style', (
+        SELECT COALESCE(json_agg(r ORDER BY r.value), '[]')
+        FROM (SELECT holding_style AS value, COUNT(*) AS count FROM payload_stats WHERE holding_style IS NOT NULL GROUP BY 1) r
+      ),
+      'slider_diversification', (
+        SELECT COALESCE(json_agg(r ORDER BY r.value), '[]')
+        FROM (SELECT diversification AS value, COUNT(*) AS count FROM payload_stats WHERE diversification IS NOT NULL GROUP BY 1) r
+      ),
+      'slider_asset_risk_preference', (
+        SELECT COALESCE(json_agg(r ORDER BY r.value), '[]')
+        FROM (SELECT risk_preference AS value, COUNT(*) AS count FROM payload_stats WHERE risk_preference IS NOT NULL GROUP BY 1) r
+      ),
+
+      'eth_balance_buckets', (
+        SELECT COALESCE(json_agg(r ORDER BY r.ord), '[]')
+        FROM (
+          SELECT CASE
+            WHEN eth_balance = 0 THEN '0'
+            WHEN eth_balance < 0.001 THEN '0-0.001'
+            WHEN eth_balance < 0.01 THEN '0.001-0.01'
+            WHEN eth_balance < 0.1 THEN '0.01-0.1'
+            WHEN eth_balance < 1 THEN '0.1-1'
+            ELSE '1+' END AS bucket,
+            COUNT(*) AS count, MIN(eth_balance) AS ord
+          FROM payload_stats WHERE eth_balance IS NOT NULL GROUP BY 1
+        ) r
+      ),
+      'portfolio_token_count', (
+        SELECT COALESCE(json_agg(r ORDER BY r.token_count), '[]')
+        FROM (SELECT portfolio_token_count AS token_count, COUNT(*) AS count FROM payload_stats GROUP BY 1) r
+      ),
+      'strategy_count_dist', (
+        SELECT COALESCE(json_agg(r ORDER BY r.strategy_count), '[]')
+        FROM (SELECT strategy_count, COUNT(*) AS count FROM payload_stats GROUP BY 1) r
+      ),
+      'memory_depth', (
+        SELECT COALESCE(json_agg(r ORDER BY r.ord), '[]')
+        FROM (
+          SELECT CASE
+            WHEN memory_depth = 0 THEN '0'
+            WHEN memory_depth <= 5 THEN '1-5'
+            WHEN memory_depth <= 10 THEN '6-10'
+            WHEN memory_depth <= 20 THEN '11-20'
+            ELSE '20+' END AS bucket,
+            COUNT(*) AS count, MIN(memory_depth) AS ord
+          FROM payload_stats GROUP BY 1
+        ) r
+      ),
+
+      'token_usage', (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            ROUND(AVG(prompt_tokens)::numeric, 1) AS avg_prompt,
+            ROUND(AVG(completion_tokens)::numeric, 1) AS avg_completion,
+            ROUND(AVG(reasoning_tokens)::numeric, 1) AS avg_reasoning,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY prompt_tokens)::numeric, 1) AS p50_prompt,
+            ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY prompt_tokens)::numeric, 1) AS p95_prompt,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY completion_tokens)::numeric, 1) AS p50_completion,
+            ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY completion_tokens)::numeric, 1) AS p95_completion
+          FROM payload_stats WHERE prompt_tokens IS NOT NULL
+        ) r
+      ),
+      'inference_duration', (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            ROUND(AVG(inference_duration_ms)::numeric, 1) AS avg_ms,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY inference_duration_ms)::numeric, 1) AS p50_ms,
+            ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY inference_duration_ms)::numeric, 1) AS p95_ms
+          FROM payload_stats WHERE inference_duration_ms IS NOT NULL
+        ) r
+      ),
+
+      'risk_activity_heatmap', (
+        SELECT COALESCE(json_agg(r ORDER BY r.risk, r.activity), '[]')
+        FROM (
+          SELECT risk_preference AS risk, trading_activity AS activity, COUNT(*) AS count
+          FROM payload_stats WHERE risk_preference IS NOT NULL AND trading_activity IS NOT NULL
+          GROUP BY 1, 2
+        ) r
+      ),
+      'trade_token_dist', (
+        SELECT COALESCE(json_agg(r ORDER BY r.count DESC), '[]')
+        FROM (
+          SELECT trade_token AS token, tool, COUNT(*) AS count
+          FROM payload_stats WHERE trade_token IS NOT NULL AND tool IN ('buy_token', 'sell_token')
+          GROUP BY 1, 2 LIMIT 30
+        ) r
+      )
+    ) AS result
+    """
+
+    @api.get("/payload-stats")
+    def payload_stats():
+        """Aggregate stats from payload_stats matview in a single round trip."""
+        try:
+            with pool.connection() as conn:
+                exists = conn.execute(
+                    "SELECT 1 FROM pg_matviews WHERE matviewname = 'payload_stats'"
+                ).fetchone()
+                if not exists:
+                    return {"total_logs": 0, "error": "payload_stats materialized view not found. Create it first."}
+
+                row = conn.execute(_PAYLOAD_STATS_SQL).fetchone()
+                return row["result"]
+        except psycopg.Error as e:
+            raise HTTPException(status_code=503, detail=f"Database error: {e}")
+
     @api.post("/reload")
     def reload():
         volume.reload()
