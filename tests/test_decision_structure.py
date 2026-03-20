@@ -13,15 +13,26 @@ from pipelines.interp.decision_structure import (
 
 
 class DummyTokenizer:
-    def apply_chat_template(self, messages, add_generation_prompt=False, return_tensors=None):
+    def apply_chat_template(self, messages, add_generation_prompt=False, return_tensors=None, tokenize=True):
         rendered = "".join(
             f"<{m['role']}>{m['content']}</{m['role']}>"
             for m in messages
         )
+        if not tokenize:
+            return rendered
         return [ord(ch) for ch in rendered]
 
     def encode(self, text, add_special_tokens=False):
         return [ord(ch) for ch in text]
+
+    def __call__(self, text, add_special_tokens=False, return_offsets_mapping=False, return_tensors=None):
+        input_ids = [ord(ch) for ch in text]
+        if return_offsets_mapping:
+            return {
+                "input_ids": input_ids,
+                "offset_mapping": [(idx, idx + 1) for idx in range(len(text))],
+            }
+        return {"input_ids": input_ids}
 
 
 def test_pool_decision_residual_extracts_row_and_section_states():

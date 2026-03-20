@@ -195,34 +195,72 @@ def _tokenize_text(tokenizer: Any, text: str) -> list[int]:
     return list(encoded)
 
 
-def _chat_template_ids(tokenizer: Any, system_text: str, user_text: str) -> list[int]:
+def _chat_messages(system_text: str, user_text: str) -> list[dict[str, str]]:
     messages = []
     if system_text:
         messages.append({"role": "system", "content": system_text})
     messages.append({"role": "user", "content": user_text})
-    return list(tokenizer.apply_chat_template(
-        messages,
+    return messages
+
+
+def _render_chat_text(tokenizer: Any, system_text: str, user_text: str) -> str:
+    rendered = tokenizer.apply_chat_template(
+        _chat_messages(system_text, user_text),
         add_generation_prompt=False,
-        return_tensors=None,
-    ))
+        tokenize=False,
+    )
+    if not isinstance(rendered, str):
+        raise TypeError("Tokenizer did not return rendered chat text")
+    return rendered
 
 
-def _find_subsequence(
-    haystack: list[int],
-    needle: list[int],
+def _token_offsets_for_rendered(tokenizer: Any, rendered_text: str) -> tuple[list[int], list[tuple[int, int]]]:
+    encoded = tokenizer(
+        rendered_text,
+        add_special_tokens=False,
+        return_offsets_mapping=True,
+    )
+    input_ids = getattr(encoded, "input_ids", None)
+    if input_ids is None and isinstance(encoded, dict):
+        input_ids = encoded.get("input_ids")
+    offset_mapping = getattr(encoded, "offset_mapping", None)
+    if offset_mapping is None and isinstance(encoded, dict):
+        offset_mapping = encoded.get("offset_mapping")
+    if input_ids is None or offset_mapping is None:
+        raise ValueError("Tokenizer did not return input_ids and offset_mapping")
+
+    if hasattr(input_ids, "tolist"):
+        input_ids = input_ids.tolist()
+    if hasattr(offset_mapping, "tolist"):
+        offset_mapping = offset_mapping.tolist()
+    if input_ids and isinstance(input_ids[0], list):
+        input_ids = input_ids[0]
+    if offset_mapping and isinstance(offset_mapping[0], list) and offset_mapping[0] and isinstance(offset_mapping[0][0], list):
+        offset_mapping = offset_mapping[0]
+
+    input_ids = [int(tok) for tok in input_ids]
+    offsets = [(int(start), int(end)) for start, end in offset_mapping]
+    return input_ids, offsets
+
+
+def _char_to_token_span(
+    offsets: list[tuple[int, int]],
     *,
-    start: int = 0,
-    end: int | None = None,
-) -> int:
-    if not needle:
-        return start
-    stop = len(haystack) if end is None else min(end, len(haystack))
-    width = len(needle)
-    limit = stop - width + 1
-    for idx in range(max(0, start), max(0, limit)):
-        if haystack[idx : idx + width] == needle:
-            return idx
-    return -1
+    start_char: int,
+    end_char: int,
+) -> tuple[int, int] | None:
+    token_start: int | None = None
+    token_end: int | None = None
+    for idx, (tok_start, tok_end) in enumerate(offsets):
+        if token_start is None and tok_end > start_char:
+            token_start = idx
+        if tok_start < end_char:
+            token_end = idx + 1
+        elif token_start is not None:
+            break
+    if token_start is None or token_end is None or token_start >= token_end:
+        return None
+    return token_start, token_end
 
 
 def find_real_section_boundaries(
@@ -232,30 +270,31 @@ def find_real_section_boundaries(
 ) -> dict[str, tuple[int, int]]:
     from pipelines.interp.counterfactual import DOWNSTREAM_SECTIONS, MARKET_HEADER
 
-    full_ids = _chat_template_ids(tokenizer, system_text, user_text)
+    rendered = _render_chat_text(tokenizer, system_text, user_text)
+    full_ids, offsets = _token_offsets_for_rendered(tokenizer, rendered)
     ordered_headers = [("market", MARKET_HEADER), *DOWNSTREAM_SECTIONS]
 
-    starts: list[tuple[str, int]] = []
-    search_start = 0
+    starts: list[tuple[str, int, int]] = []
+    search_char = 0
     for name, header in ordered_headers:
-        if header not in user_text:
+        idx = rendered.find(header, search_char)
+        if idx < 0:
             continue
-        header_ids = _tokenize_text(tokenizer, header)
-        start = _find_subsequence(full_ids, header_ids, start=search_start)
-        if start < 0:
+        token_span = _char_to_token_span(offsets, start_char=idx, end_char=idx + len(header))
+        if token_span is None:
             continue
-        starts.append((name, start))
-        search_start = start + max(1, len(header_ids))
+        starts.append((name, token_span[0], idx))
+        search_char = idx + len(header)
 
     if not starts:
         return {}
 
     boundaries: dict[str, tuple[int, int]] = {}
-    for idx, (name, start) in enumerate(starts):
+    for idx, (name, start_tok, _) in enumerate(starts):
         end = starts[idx + 1][1] if idx + 1 < len(starts) else len(full_ids)
-        boundaries[name] = (start, end)
+        boundaries[name] = (start_tok, end)
 
-    market_start = next((start for name, start in starts if name == "market"), None)
+    market_start = next((start_tok for name, start_tok, _ in starts if name == "market"), None)
     if market_start is not None and market_start > 0:
         boundaries["preamble"] = (0, market_start)
     return boundaries
@@ -267,32 +306,36 @@ def find_real_row_boundaries(
     user_text: str,
     market_rows: list[Any],
 ) -> list[dict[str, Any]]:
-    full_ids = _chat_template_ids(tokenizer, system_text, user_text)
-    section_boundaries = find_real_section_boundaries(tokenizer, system_text, user_text)
-    market_start = section_boundaries.get("market", (0, len(full_ids)))[0]
-    search_start = market_start
+    rendered = _render_chat_text(tokenizer, system_text, user_text)
+    _, offsets = _token_offsets_for_rendered(tokenizer, rendered)
+    market_char = rendered.find("## MARKET SNAPSHOT")
+    search_char = market_char if market_char >= 0 else 0
 
     row_bounds: list[dict[str, Any]] = []
     for i, market_row in enumerate(market_rows):
         row_text = market_row.text_block
-        row_ids = _tokenize_text(tokenizer, row_text)
-        row_start = _find_subsequence(full_ids, row_ids, start=search_start)
-        if row_start < 0:
+        row_char = rendered.find(row_text, search_char)
+        if row_char < 0:
             print(f"WARNING: could not locate token span for row {market_row.symbol}")
             continue
-
-        row_end = row_start + len(row_ids)
+        row_span = _char_to_token_span(offsets, start_char=row_char, end_char=row_char + len(row_text))
+        if row_span is None:
+            print(f"WARNING: could not map token span for row {market_row.symbol}")
+            continue
+        row_start, row_end = row_span
         pipe_pos = row_text.find("|")
         content_start = row_start
         if pipe_pos >= 0:
             content_text = row_text[pipe_pos:]
-            content_ids = _tokenize_text(tokenizer, content_text)
-            matched = _find_subsequence(full_ids, content_ids, start=row_start, end=row_end)
-            if matched >= 0:
-                content_start = matched
-            else:
-                prefix_ids = _tokenize_text(tokenizer, row_text[:pipe_pos])
-                content_start = min(row_end, row_start + len(prefix_ids))
+            content_char = rendered.find(content_text, row_char, row_char + len(row_text))
+            if content_char >= 0:
+                content_span = _char_to_token_span(
+                    offsets,
+                    start_char=content_char,
+                    end_char=content_char + len(content_text),
+                )
+                if content_span is not None:
+                    content_start = content_span[0]
 
         row_bounds.append({
             "row_index": i,
@@ -304,7 +347,7 @@ def find_real_row_boundaries(
             "content_start": content_start,
             "content_end": row_end,
         })
-        search_start = row_end
+        search_char = row_char + len(row_text)
 
     return row_bounds
 
