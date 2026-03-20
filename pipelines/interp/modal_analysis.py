@@ -12,6 +12,9 @@ Or directly:
         --mode probe --target decision_type
 """
 
+import asyncio
+import inspect
+
 import modal
 
 app = modal.App("xenon-analysis")
@@ -29,6 +32,13 @@ image = (
     )
     .add_local_python_source("pipelines")
 )
+
+
+def _resolve_blocking_result(value):
+    """Handle APIs that may return either a ready value or an awaitable."""
+    if inspect.isawaitable(value):
+        return asyncio.run(value)
+    return value
 
 
 @app.function(
@@ -279,7 +289,6 @@ def run_decision_structure_pooling_parallel(
     num_shards: int = 10,
 ) -> dict:
     """Pool full-sequence decision captures across multiple Modal containers, then merge shard outputs."""
-    import asyncio
     from pathlib import Path
 
     from modal.functions import FunctionCall
@@ -325,7 +334,7 @@ def run_decision_structure_pooling_parallel(
         )
         for shard_index in range(num_shards)
     ]
-    shard_results = asyncio.run(FunctionCall.gather(*calls))
+    shard_results = _resolve_blocking_result(FunctionCall.gather(*calls))
     volume.reload()
     merge = merge_decision_structure_shards(
         output_dir,
