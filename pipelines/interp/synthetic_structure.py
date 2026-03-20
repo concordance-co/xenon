@@ -38,6 +38,8 @@ class SyntheticStructureConfig:
     cohort_view: str | None = "synthetic_market_phase1_capture_v0"
     order_mode: str = "selection_rank_asc"
     num_workers: int = 8
+    shard_index: int = 0
+    num_shards: int = 1
 
 
 def _load_examples_from_neon(
@@ -66,6 +68,108 @@ def _load_examples_from_neon(
         return [dict(row) for row in rows]
     finally:
         conn.close()
+
+
+def select_examples_for_shard(
+    examples: list[dict[str, Any]],
+    *,
+    shard_index: int,
+    num_shards: int,
+) -> list[dict[str, Any]]:
+    if num_shards <= 1:
+        return list(examples)
+    if shard_index < 0 or shard_index >= num_shards:
+        raise ValueError(f"Invalid shard_index={shard_index} for num_shards={num_shards}")
+    return [row for idx, row in enumerate(examples) if idx % num_shards == shard_index]
+
+
+def shard_output_paths(output_dir: Path, shard_index: int) -> tuple[Path, Path, Path]:
+    shard_dir = output_dir / "shards"
+    return (
+        shard_dir / f"metadata_shard_{shard_index:02d}.parquet",
+        shard_dir / f"tick_labels_shard_{shard_index:02d}.parquet",
+        shard_dir / f"asset_labels_shard_{shard_index:02d}.parquet",
+    )
+
+
+def clear_synthetic_structure_shards(
+    output_dir: Path,
+    *,
+    num_shards: int,
+    clear_canonical: bool = True,
+) -> dict[str, int]:
+    removed = 0
+    missing = 0
+
+    for shard_index in range(max(0, int(num_shards))):
+        for path in shard_output_paths(output_dir, shard_index):
+            if path.exists():
+                path.unlink()
+                removed += 1
+            else:
+                missing += 1
+
+    if clear_canonical:
+        for path in (
+            output_dir / "metadata.parquet",
+            output_dir / "tick_labels.parquet",
+            output_dir / "asset_labels.parquet",
+        ):
+            if path.exists():
+                path.unlink()
+                removed += 1
+            else:
+                missing += 1
+
+    return {"removed": removed, "missing": missing}
+
+
+def merge_synthetic_structure_shards(
+    output_dir: Path,
+    *,
+    num_shards: int,
+) -> dict[str, Any]:
+    if num_shards <= 1:
+        raise ValueError("Shard merge requires num_shards > 1")
+
+    all_meta: list[dict[str, Any]] = []
+    all_tick: list[dict[str, Any]] = []
+    all_asset: list[dict[str, Any]] = []
+    seen_shards = 0
+
+    for shard_index in range(num_shards):
+        meta_path, tick_path, asset_path = shard_output_paths(output_dir, shard_index)
+        if not meta_path.exists() or not tick_path.exists() or not asset_path.exists():
+            continue
+        seen_shards += 1
+        all_meta.extend(_load_existing_rows(meta_path))
+        all_tick.extend(_load_existing_rows(tick_path))
+        all_asset.extend(_load_existing_rows(asset_path))
+
+    dedup_meta = {(int(row["log_id"]), str(row["phase_name"])): row for row in all_meta}
+    dedup_tick = {(int(row["log_id"]), str(row["phase_name"])): row for row in all_tick}
+    dedup_asset = {
+        (int(row["log_id"]), int(row["row_index"]), str(row["symbol"])): row
+        for row in all_asset
+    }
+
+    meta_rows = sorted(dedup_meta.values(), key=lambda row: (int(row["log_id"]), str(row["phase_name"])))
+    tick_rows = sorted(dedup_tick.values(), key=lambda row: (int(row["log_id"]), str(row["phase_name"])))
+    asset_rows = sorted(
+        dedup_asset.values(),
+        key=lambda row: (int(row["log_id"]), int(row["row_index"]), str(row["symbol"])),
+    )
+
+    _flush_table(output_dir / "metadata.parquet", meta_rows)
+    _flush_table(output_dir / "tick_labels.parquet", tick_rows)
+    _flush_table(output_dir / "asset_labels.parquet", asset_rows)
+
+    return {
+        "seen_shards": seen_shards,
+        "metadata_rows": len(meta_rows),
+        "tick_rows": len(tick_rows),
+        "asset_rows": len(asset_rows),
+    }
 
 
 def _load_asset_rows(log_ids: list[int], *, phase_name: str) -> dict[int, list[dict[str, Any]]]:
@@ -270,19 +374,40 @@ def run_synthetic_structure_pooling(config: SyntheticStructureConfig) -> dict[st
         cohort_view=config.cohort_view,
         order_mode=config.order_mode,
     )
-    print(f"Loaded {len(examples)} synthetic examples from Neon")
+    if config.num_shards > 1:
+        examples = select_examples_for_shard(
+            examples,
+            shard_index=config.shard_index,
+            num_shards=config.num_shards,
+        )
+        print(
+            f"Loaded shard {config.shard_index + 1}/{config.num_shards} "
+            f"with {len(examples)} synthetic examples from Neon",
+        )
+    else:
+        print(f"Loaded {len(examples)} synthetic examples from Neon")
 
     if not examples:
-        return {"processed": 0, "skipped": 0, "errors": 0, "output_dir": str(config.output_dir)}
+        return {
+            "processed": 0,
+            "skipped": 0,
+            "errors": 0,
+            "output_dir": str(config.output_dir),
+            "shard_index": config.shard_index,
+            "num_shards": config.num_shards,
+        }
 
     phase_name = str(examples[0]["phase_name"])
     asset_rows_by_log = _load_asset_rows([int(row["log_id"]) for row in examples], phase_name=phase_name)
 
     residual_in_dir = config.activations_dir / "residual_stream"
     residual_out_dir = config.output_dir / "residual"
-    meta_path = config.output_dir / "metadata.parquet"
-    tick_path = config.output_dir / "tick_labels.parquet"
-    asset_path = config.output_dir / "asset_labels.parquet"
+    if config.num_shards > 1:
+        meta_path, tick_path, asset_path = shard_output_paths(config.output_dir, config.shard_index)
+    else:
+        meta_path = config.output_dir / "metadata.parquet"
+        tick_path = config.output_dir / "tick_labels.parquet"
+        asset_path = config.output_dir / "asset_labels.parquet"
 
     metadata_rows = _load_existing_rows(meta_path)
     tick_rows = _load_existing_rows(tick_path)
@@ -349,6 +474,8 @@ def run_synthetic_structure_pooling(config: SyntheticStructureConfig) -> dict[st
         "skipped": skipped,
         "errors": errors,
         "output_dir": str(config.output_dir),
+        "shard_index": config.shard_index,
+        "num_shards": config.num_shards,
     }
 
 
@@ -362,6 +489,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--metadata-flush-interval", type=int, default=25)
     parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--cohort-view", default="synthetic_market_phase1_capture_v0")
+    parser.add_argument("--num-shards", type=int, default=1)
+    parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument(
         "--order-mode",
         default="selection_rank_asc",
@@ -382,6 +511,8 @@ def main(argv: list[str] | None = None) -> None:
         cohort_view=args.cohort_view,
         order_mode=args.order_mode,
         num_workers=args.num_workers,
+        num_shards=args.num_shards,
+        shard_index=args.shard_index,
     )
     print(json.dumps(run_synthetic_structure_pooling(config), indent=2, default=str))
 
