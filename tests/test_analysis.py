@@ -192,6 +192,18 @@ class TestEncodeLabels:
         assert list(y) == [0, 1, 2]
         assert names == ["bearish", "neutral", "bullish"]
 
+    def test_forced_observe_encodes_binary_labels(self):
+        rows = [
+            {"forced_observe": False},
+            {"forced_observe": True},
+            {"forced_observe": 0},
+            {"forced_observe": 1},
+        ]
+        filtered, y, names = _encode_labels(rows, "forced_observe")
+        assert len(filtered) == 4
+        assert list(y) == [0, 1, 0, 1]
+        assert names == ["not_forced_observe", "forced_observe"]
+
     def test_risk_tolerance_bins(self):
         rows = [
             {"vault_risk_preference": 1},
@@ -215,6 +227,17 @@ class TestEncodeLabels:
         assert len(filtered) == 4
         assert y[0] == y[2]  # Both ETH
         assert len(names) == 3
+
+    def test_asset_falls_back_to_target_asset(self):
+        rows = [
+            {"target_asset": "HOTDOGZ"},
+            {"target_asset": "POOPCOIN"},
+            {"target_asset": "HOTDOGZ"},
+        ]
+        filtered, y, names = _encode_labels(rows, "asset")
+        assert len(filtered) == 3
+        assert list(y) == [0, 1, 0]
+        assert names == ["HOTDOGZ", "POOPCOIN"]
 
     def test_unknown_target_raises(self):
         with pytest.raises(ValueError, match="Unknown target"):
@@ -517,7 +540,7 @@ class TestCLI:
 
         args = _build_parser().parse_args([
             "--mode", "all",
-            "--target", "risk_tolerance",
+            "--target", "forced_observe",
             "--data-source", "residual",
             "--pooling", "mean_pool",
             "--layers", "0,10,20",
@@ -526,7 +549,7 @@ class TestCLI:
             "--seed", "123",
         ])
         assert args.mode == "all"
-        assert args.target == "risk_tolerance"
+        assert args.target == "forced_observe"
         assert args.data_source == "residual"
         assert args.pooling == "mean_pool"
         assert args.layers == "0,10,20"

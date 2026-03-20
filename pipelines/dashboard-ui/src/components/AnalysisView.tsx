@@ -115,7 +115,7 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
               <div className={s.field}>
                 <label className={s.fieldLabel}>
                   Target
-                  <Tip text="What to predict from activations. decision_type: trade vs. observe. trade_side: buy vs. sell (trades only). executed_valence: sell=bearish, observe=neutral, buy=bullish. risk_tolerance: low/mid/high (3-class). asset: which token was traded (multi-class)." />
+                  <Tip text="What to predict from activations. decision_type: trade vs. observe. trade_side: buy vs. sell (trades only). executed_valence: sell=bearish, observe=neutral, buy=bullish. forced_observe: observation caused by no legal buy/sell path. risk_tolerance: low/mid/high (3-class). asset: which token was targeted or traded (multi-class)." />
                 </label>
                 <select
                   className={s.fieldSelect}
@@ -126,6 +126,7 @@ export function AnalysisView({ onRun, refreshKey }: Props) {
                   <option value="trade_side">Trade Side</option>
                   <option value="was_profitable_1h">Profitability (1h)</option>
                   <option value="executed_valence">Executed Valence</option>
+                  <option value="forced_observe">Forced Observe</option>
                   <option value="risk_tolerance">Risk Tolerance</option>
                   <option value="asset">Asset</option>
                 </select>

@@ -29,7 +29,7 @@ export interface CaptureConfig {
 }
 
 export interface AnalysisConfig {
-  target: 'decision_type' | 'trade_side' | 'was_profitable_1h' | 'executed_valence' | 'risk_tolerance' | 'asset'
+  target: 'decision_type' | 'trade_side' | 'was_profitable_1h' | 'executed_valence' | 'forced_observe' | 'risk_tolerance' | 'asset'
   runProbe: boolean
   runExperts: boolean
   runPca: boolean

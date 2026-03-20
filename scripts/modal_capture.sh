@@ -50,6 +50,10 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Compacting activations on Modal (detached)..."
     uv run --extra analysis --extra modal modal run --detach pipelines/interp/modal_analysis.py --mode compact "$@"
     ;;
+  analyze-local)
+    echo "Running analysis locally..."
+    uv run --extra analysis -m pipelines.interp.analysis "$@"
+    ;;
   analyze)
     echo "Running analysis on Modal (detached)..."
     uv run --extra analysis --extra modal modal run --detach pipelines/interp/modal_analysis.py "$@"
@@ -124,7 +128,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     modal volume get xenon-data analysis_results/counterfactual/ ./data/analysis_results/counterfactual/ --force
     ;;
   *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|modal-ingest|modal-backfill|modal-prep|manifold-export|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results} [extra flags]"
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze-local|analyze|modal-ingest|modal-backfill|modal-prep|manifold-export|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results} [extra flags]"
     echo ""
     echo "  download             Cache model weights to volume (one-time)"
     echo "  smoke                Single example, single layer (sanity check)"
@@ -133,6 +137,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  inspect              List/inspect safetensors on Modal volume"
     echo "  meta                 Show local metadata.parquet summary"
     echo "  compact              Consolidate per-example files into per-layer matrices"
+    echo "  analyze-local        Run analysis locally against local activations/labels"
     echo "  analyze              Run analysis on Modal (probe/experts/pca)"
     echo "  modal-ingest         Run ingest on Modal (fetches from Terminal API → Neon)"
     echo "  modal-prep           Run data prep on Modal (Neon → Neon)"
@@ -153,6 +158,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  $0 router --limit 10"
     echo "  $0 full --limit 50 --pool last_token"
     echo "  $0 inspect --log-id 463208"
+    echo "  $0 analyze-local --target executed_valence --labels-path data/interp_exports/manifolds/tick_records.parquet"
     echo "  $0 analyze --mode probe --target decision_type"
     echo "  $0 modal-ingest --top-n 10 --selection random"
     echo "  $0 modal-prep"

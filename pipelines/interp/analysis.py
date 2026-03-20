@@ -109,6 +109,15 @@ def _encode_labels(
                 labels.append(2)
         class_names = ["bearish", "neutral", "bullish"]
 
+    elif target == "forced_observe":
+        for r in rows:
+            val = r.get("forced_observe")
+            if val is None:
+                continue
+            filtered.append(r)
+            labels.append(1 if bool(val) else 0)
+        class_names = ["not_forced_observe", "forced_observe"]
+
     elif target == "risk_tolerance":
         for r in rows:
             risk = r.get("vault_risk_preference")
@@ -121,7 +130,7 @@ def _encode_labels(
         # Collect unique assets, assign integer labels
         asset_set: dict[str, int] = {}
         for r in rows:
-            asset = r.get("asset")
+            asset = r.get("asset") or r.get("target_asset")
             if asset is not None:
                 if asset not in asset_set:
                     asset_set[asset] = len(asset_set)
@@ -1039,7 +1048,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mode", choices=["probe", "experts", "pca", "all", "compact"], default="probe")
     p.add_argument("--target", default="decision_type",
                    choices=["decision_type", "trade_side", "was_profitable_1h",
-                            "executed_valence", "risk_tolerance", "asset"])
+                            "executed_valence", "forced_observe",
+                            "risk_tolerance", "asset"])
     p.add_argument("--data-source", choices=["router", "residual"], default="router")
     p.add_argument("--pooling", choices=["last_token", "mean_pool"], default="last_token")
     p.add_argument("--n-folds", type=int, default=5)

@@ -50,6 +50,17 @@ This writes:
 - `asset_records.parquet`
 - `pairwise_records.parquet`
 
+`tick_records.parquet` can be used directly as an analysis label source:
+
+```bash
+uv run -m pipelines.interp.analysis \
+  --activations-dir data/activations \
+  --labels-path data/interp_exports/manifolds/tick_records.parquet \
+  --target executed_valence
+```
+
+Useful downstream targets on that export include `executed_valence`, `forced_observe`, `decision_type`, `trade_side`, and `asset` (which falls back to `target_asset` when needed).
+
 ### Phase 2b: Trade outcomes (API → Neon)
 
 Enriches swaps with forward-looking PnL by fetching candle data from the Terminal Markets API.
