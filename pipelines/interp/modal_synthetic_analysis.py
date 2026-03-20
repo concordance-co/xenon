@@ -76,6 +76,8 @@ def run_synthetic_structure_pooling_modal(
 def run_synthetic_manifold_analysis_modal(
     phase_name: str = "phase1",
     context_variant: str = "market_only",
+    family_allowlist: str = "",
+    scalar_family_name: str = "scalar_sweep",
     layers: str = "",
     num_workers: int = 8,
 ) -> dict:
@@ -92,6 +94,8 @@ def run_synthetic_manifold_analysis_modal(
         output_dir=Path(f"/data/analysis_results/synthetic_manifold/{phase_name}"),
         phase_name=phase_name,
         context_variant=context_variant,
+        family_allowlist=tuple(token.strip() for token in family_allowlist.split(",") if token.strip()),
+        scalar_family_name=scalar_family_name,
         layers=parsed_layers,
         num_workers=num_workers,
     )
@@ -112,6 +116,8 @@ def main(
     num_workers: int = 8,
     layers: str = "",
     context_variant: str = "market_only",
+    family_allowlist: str = "",
+    scalar_family_name: str = "scalar_sweep",
 ):
     if mode == "synthetic-structure":
         result = run_synthetic_structure_pooling_modal.remote(
@@ -128,6 +134,8 @@ def main(
         result = run_synthetic_manifold_analysis_modal.remote(
             phase_name=phase_name,
             context_variant=context_variant,
+            family_allowlist=family_allowlist,
+            scalar_family_name=scalar_family_name,
             layers=layers,
             num_workers=num_workers,
         )

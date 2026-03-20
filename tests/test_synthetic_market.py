@@ -33,6 +33,35 @@ def test_generate_dataset_expected_family_counts() -> None:
     assert contexts == {"market_only", "low_risk", "high_risk"}
 
 
+def test_generate_phase2_geometry_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase2_geometry",
+        scalar_steps=5,
+        scalar_background_variants=2,
+        minimal_scalar_templates=1,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == 45
+    families = {example.family for example in examples}
+    assert families == {"scalar_sweep_dense", "scalar_sweep_minimal"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase2_geometry",
+            scalar_steps=3,
+            scalar_background_variants=1,
+            minimal_scalar_templates=1,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_100_000_000
+
+
 def test_prompts_use_neutral_asset_symbols() -> None:
     config = SyntheticMarketConfig(
         scalar_steps=3,

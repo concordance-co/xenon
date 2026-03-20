@@ -66,6 +66,10 @@ class SyntheticMarketConfig:
     pairwise_variants: int = 5
     archetype_variants: int = 4
     include_settings_variants: bool = True
+    dataset_preset: str = "phase1"
+    scalar_background_variants: int = 1
+    minimal_scalar_templates: int = 0
+    log_id_base: int | None = None
     output_dir: Path = Path("data/interp_exports/synthetic_market")
 
 
@@ -151,6 +155,49 @@ ARCHETYPES: dict[str, dict[str, Any]] = {
         "age_bucket": "mature",
     },
 }
+
+
+SCALAR_ANCHOR_ARCHETYPES = {
+    "pct_5m": "momentum_burst",
+    "net_flow_5m": "flow_backed_continuation",
+    "top20_holder_pct": "crowded_risk",
+}
+
+
+SCALAR_BACKGROUND_ROSTERS: list[tuple[str, str, str]] = [
+    ("stable_winner", "flow_backed_continuation", "crowded_risk"),
+    ("stable_winner", "mean_reverter", "illiquid_spike"),
+    ("flow_backed_continuation", "stable_winner", "fading_leader"),
+    ("crowded_risk", "mean_reverter", "stable_winner"),
+    ("illiquid_spike", "stable_winner", "flow_backed_continuation"),
+    ("mean_reverter", "crowded_risk", "stable_winner"),
+]
+
+
+MINIMAL_TEMPLATES: list[dict[str, Any]] = [
+    {
+        "archetype": "flat_neutral",
+        "pct_5m": 0.6,
+        "pct_1h": 1.1,
+        "net_flow_5m": 0.05,
+        "vol_5m": 2.4,
+        "vol_1h": 9.6,
+        "unique_traders_5m": 9,
+        "top20_holder_pct": 31.0,
+        "age_bucket": "mid",
+    },
+    {
+        "archetype": "flat_cautious",
+        "pct_5m": -0.4,
+        "pct_1h": 0.5,
+        "net_flow_5m": -0.02,
+        "vol_5m": 2.1,
+        "vol_1h": 8.3,
+        "unique_traders_5m": 8,
+        "top20_holder_pct": 33.5,
+        "age_bucket": "mature",
+    },
+]
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
@@ -325,6 +372,36 @@ def _make_asset(symbol: str, archetype: str, jitter_index: int = 0) -> Synthetic
     )
 
 
+def _override_metric(asset: SyntheticAsset, metric_name: str, value: float) -> SyntheticAsset:
+    payload = asdict(asset)
+    if metric_name == "pct_5m":
+        payload["pct_5m"] = round(value, 2)
+    elif metric_name == "net_flow_5m":
+        payload["net_flow_5m"] = round(value, 3)
+    elif metric_name == "top20_holder_pct":
+        payload["top20_holder_pct"] = round(value, 2)
+    else:
+        raise ValueError(f"Unsupported metric_name: {metric_name}")
+    return SyntheticAsset(**payload)
+
+
+def _make_minimal_asset(symbol: str, template_index: int, jitter_index: int = 0) -> SyntheticAsset:
+    template = MINIMAL_TEMPLATES[template_index % len(MINIMAL_TEMPLATES)]
+    delta = 0.08 * math.sin(jitter_index + len(symbol))
+    return SyntheticAsset(
+        symbol=symbol,
+        archetype=str(template["archetype"]),
+        pct_5m=round(float(template["pct_5m"]) + delta, 2),
+        pct_1h=round(float(template["pct_1h"]) + 1.2 * delta, 2),
+        net_flow_5m=round(float(template["net_flow_5m"]) + 0.04 * delta, 3),
+        vol_5m=round(_clamp(float(template["vol_5m"]) + 0.12 * delta, 0.5, 12.0), 3),
+        vol_1h=round(_clamp(float(template["vol_1h"]) + 0.25 * delta, 1.0, 45.0), 3),
+        unique_traders_5m=max(1, int(round(float(template["unique_traders_5m"]) + 0.4 * delta))),
+        top20_holder_pct=round(_clamp(float(template["top20_holder_pct"]) + 0.25 * delta, 15.0, 85.0), 2),
+        age_bucket=str(template["age_bucket"]),
+    )
+
+
 def _apply_context_variants(
     example_id: str,
     family: str,
@@ -397,6 +474,97 @@ def generate_scalar_sweeps(config: SyntheticMarketConfig) -> list[SyntheticMarke
                     include_settings_variants=config.include_settings_variants,
                 )
             )
+    return examples
+
+
+def generate_dense_scalar_sweeps(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    steps = max(5, config.scalar_steps)
+    background_variants = max(1, config.scalar_background_variants)
+    base_steps = [(-1.0 + 2.0 * i / (steps - 1)) for i in range(steps)]
+    families = (
+        ("pct_5m", -10.0, 12.0),
+        ("net_flow_5m", -2.8, 3.2),
+        ("top20_holder_pct", 18.0, 78.0),
+    )
+    examples: list[SyntheticMarketExample] = []
+
+    for metric_name, lower, upper in families:
+        anchor_archetype = SCALAR_ANCHOR_ARCHETYPES[metric_name]
+        for roster_index in range(background_variants):
+            distractor_roster = SCALAR_BACKGROUND_ROSTERS[roster_index % len(SCALAR_BACKGROUND_ROSTERS)]
+            for step_idx, alpha in enumerate(base_steps):
+                value = lower + (upper - lower) * ((alpha + 1.0) / 2.0)
+                anchor = _make_asset(
+                    "A",
+                    anchor_archetype,
+                    jitter_index=10_000 + 100 * roster_index + step_idx,
+                )
+                anchor = _override_metric(anchor, metric_name, value)
+                base_assets = [anchor]
+                for offset, distractor in enumerate(distractor_roster, start=1):
+                    base_assets.append(
+                        _make_asset(
+                            chr(ord("A") + offset),
+                            distractor,
+                            jitter_index=10_000 + 100 * roster_index + 11 * offset + step_idx,
+                        )
+                    )
+
+                example_id = f"dense_{metric_name}_r{roster_index:02d}_s{step_idx:02d}"
+                examples.extend(
+                    _apply_context_variants(
+                        example_id,
+                        family="scalar_sweep_dense",
+                        family_variant=metric_name,
+                        base_assets=base_assets,
+                        include_settings_variants=config.include_settings_variants,
+                    )
+                )
+    return examples
+
+
+def generate_minimal_scalar_sweeps(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    steps = max(5, config.scalar_steps)
+    template_count = max(1, config.minimal_scalar_templates)
+    base_steps = [(-1.0 + 2.0 * i / (steps - 1)) for i in range(steps)]
+    families = (
+        ("pct_5m", -10.0, 12.0),
+        ("net_flow_5m", -2.8, 3.2),
+        ("top20_holder_pct", 18.0, 78.0),
+    )
+    examples: list[SyntheticMarketExample] = []
+
+    for metric_name, lower, upper in families:
+        anchor_archetype = SCALAR_ANCHOR_ARCHETYPES[metric_name]
+        for template_index in range(template_count):
+            for step_idx, alpha in enumerate(base_steps):
+                value = lower + (upper - lower) * ((alpha + 1.0) / 2.0)
+                anchor = _make_asset(
+                    "A",
+                    anchor_archetype,
+                    jitter_index=20_000 + 100 * template_index + step_idx,
+                )
+                anchor = _override_metric(anchor, metric_name, value)
+                base_assets = [anchor]
+                for offset in range(1, 4):
+                    base_assets.append(
+                        _make_minimal_asset(
+                            chr(ord("A") + offset),
+                            template_index=template_index,
+                            jitter_index=20_000 + 100 * template_index + 17 * offset + step_idx,
+                        )
+                    )
+
+                example_id = f"minimal_{metric_name}_t{template_index:02d}_s{step_idx:02d}"
+                examples.extend(
+                    _apply_context_variants(
+                        example_id,
+                        family="scalar_sweep_minimal",
+                        family_variant=metric_name,
+                        base_assets=base_assets,
+                        include_settings_variants=config.include_settings_variants,
+                    )
+                )
     return examples
 
 
@@ -544,6 +712,12 @@ def generate_archetype_families(config: SyntheticMarketConfig) -> list[Synthetic
 
 
 def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    if config.dataset_preset == "phase2_geometry":
+        examples = []
+        examples.extend(generate_dense_scalar_sweeps(config))
+        examples.extend(generate_minimal_scalar_sweeps(config))
+        return examples
+
     examples = []
     examples.extend(generate_scalar_sweeps(config))
     examples.extend(generate_pairwise_tradeoff_grids(config))
@@ -551,8 +725,20 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
     return examples
 
 
-def _assign_log_ids(examples: list[SyntheticMarketExample]) -> list[SyntheticMarketExample]:
-    base_log_id = 2_000_000_000
+def _default_log_id_base(dataset_preset: str) -> int:
+    return {
+        "phase1": 2_000_000_000,
+        "phase2_geometry": 2_100_000_000,
+    }.get(dataset_preset, 2_200_000_000)
+
+
+def _assign_log_ids(
+    examples: list[SyntheticMarketExample],
+    *,
+    dataset_preset: str,
+    base_log_id: int | None = None,
+) -> list[SyntheticMarketExample]:
+    base_log_id = int(base_log_id if base_log_id is not None else _default_log_id_base(dataset_preset))
     ordered = sorted(
         examples,
         key=lambda ex: (
@@ -659,7 +845,11 @@ def write_dataset(examples: list[SyntheticMarketExample], output_dir: Path) -> d
 
 
 def build_synthetic_market_dataset(config: SyntheticMarketConfig) -> dict[str, Any]:
-    examples = _assign_log_ids(generate_dataset(config))
+    examples = _assign_log_ids(
+        generate_dataset(config),
+        dataset_preset=config.dataset_preset,
+        base_log_id=config.log_id_base,
+    )
     return write_dataset(examples, config.output_dir)
 
 

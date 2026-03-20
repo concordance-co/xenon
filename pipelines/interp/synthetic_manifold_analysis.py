@@ -132,6 +132,8 @@ class SyntheticManifoldAnalysisConfig:
     output_dir: Path = Path("data/analysis_results/synthetic_manifold/phase1")
     phase_name: str = "phase1"
     context_variant: str = "market_only"
+    family_allowlist: tuple[str, ...] = ()
+    scalar_family_name: str = "scalar_sweep"
     row_keys: tuple[str, ...] = ("row_mean", "row_eos")
     layers: list[int] | None = None
     seed: int = 42
@@ -506,6 +508,12 @@ def run_synthetic_manifold_analysis(config: SyntheticManifoldAnalysisConfig) -> 
         row for row in tick_rows
         if str(row.get("context_variant")) == config.context_variant
     ]
+    if config.family_allowlist:
+        allowed = set(config.family_allowlist)
+        market_tick_rows = [
+            row for row in market_tick_rows
+            if str(row.get("family")) in allowed
+        ]
     market_log_ids = sorted({int(row["log_id"]) for row in market_tick_rows})
     if not market_log_ids:
         return {"error": f"no_ticks_for_context_{config.context_variant}"}
@@ -565,6 +573,9 @@ def run_synthetic_manifold_analysis(config: SyntheticManifoldAnalysisConfig) -> 
         context_variant=config.context_variant,
         log_ids=market_log_ids,
     )
+    if config.family_allowlist:
+        allowed = set(config.family_allowlist)
+        pairwise_rows = [row for row in pairwise_rows if str(row.get("family")) in allowed]
     train_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in train_ids and str(row["family"]) == "pairwise_tradeoff"]
     test_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in test_ids and str(row["family"]) == "pairwise_tradeoff"]
 
@@ -661,7 +672,7 @@ def run_synthetic_manifold_analysis(config: SyntheticManifoldAnalysisConfig) -> 
     print("=== Synthetic scalar geometry ===", flush=True)
     scalar_rows = [
         row for row in asset_rows
-        if str(row.get("family")) == "scalar_sweep" and int(row.get("row_index", -1)) == 0
+        if str(row.get("family")) == config.scalar_family_name and int(row.get("row_index", -1)) == 0
     ]
     for family in config.scalar_families:
         family_rows = sorted(
@@ -711,6 +722,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", type=Path, default=Path("data/analysis_results/synthetic_manifold/phase1"))
     parser.add_argument("--phase-name", default="phase1")
     parser.add_argument("--context-variant", default="market_only")
+    parser.add_argument("--family-allowlist", default="")
+    parser.add_argument("--scalar-family-name", default="scalar_sweep")
     parser.add_argument("--layers", default="")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--test-fraction", type=float, default=0.2)
@@ -726,6 +739,8 @@ def main(argv: list[str] | None = None) -> None:
         output_dir=args.output_dir,
         phase_name=args.phase_name,
         context_variant=args.context_variant,
+        family_allowlist=tuple(token.strip() for token in args.family_allowlist.split(",") if token.strip()),
+        scalar_family_name=args.scalar_family_name,
         layers=layers,
         seed=args.seed,
         test_fraction=args.test_fraction,

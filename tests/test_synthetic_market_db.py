@@ -5,6 +5,8 @@ import pyarrow.parquet as pq
 
 from pipelines.interp.synthetic_market_db import (
     build_synthetic_example_query,
+    capture_view_name,
+    context_ladder_view_name,
     prepare_rows_for_upload,
 )
 
@@ -120,3 +122,8 @@ def test_build_synthetic_example_query_defaults_to_phase1_view() -> None:
     assert "FROM synthetic_market_phase1_capture_v0" in query
     assert "ORDER BY selection_rank ASC NULLS LAST, log_id" in query
     assert params == [10]
+
+
+def test_phase_view_names_are_sanitized() -> None:
+    assert capture_view_name("Phase 2 Geometry") == "synthetic_market_phase_2_geometry_capture_v0"
+    assert context_ladder_view_name("Phase 2 Geometry") == "synthetic_market_phase_2_geometry_context_ladder_v0"

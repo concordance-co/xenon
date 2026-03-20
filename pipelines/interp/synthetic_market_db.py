@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -18,10 +19,27 @@ SCHEMA_SQL_PATH = Path(__file__).resolve().parents[2] / "sql" / "synthetic_marke
 
 def _family_priority(family: str) -> float:
     return {
+        "scalar_sweep_minimal": 360.0,
+        "scalar_sweep_dense": 340.0,
         "pairwise_tradeoff": 300.0,
         "scalar_sweep": 200.0,
         "archetype_family": 100.0,
     }.get(family, 0.0)
+
+
+def _normalize_phase_tag(phase_name: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9]+", "_", phase_name.strip()).strip("_").lower()
+    if not normalized:
+        raise ValueError("phase_name must contain at least one alphanumeric character")
+    return normalized
+
+
+def capture_view_name(phase_name: str) -> str:
+    return f"synthetic_market_{_normalize_phase_tag(phase_name)}_capture_v0"
+
+
+def context_ladder_view_name(phase_name: str) -> str:
+    return f"synthetic_market_{_normalize_phase_tag(phase_name)}_context_ladder_v0"
 
 
 def _load_rows(input_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
@@ -81,6 +99,68 @@ def apply_schema() -> None:
         conn.close()
 
 
+def create_phase_views(phase_name: str) -> dict[str, str]:
+    from psycopg import sql
+
+    capture_view = capture_view_name(phase_name)
+    context_view = context_ladder_view_name(phase_name)
+    conn = connect_neon()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    """
+                CREATE OR REPLACE VIEW {capture_view} AS
+                SELECT
+                    log_id,
+                    prompt_messages_json,
+                    phase_name,
+                    example_id,
+                    family,
+                    family_variant,
+                    context_variant,
+                    selection_rank,
+                    capture_priority,
+                    created_at
+                FROM synthetic_market_examples_v0
+                WHERE phase_name = {phase_name}
+                  AND context_variant = 'market_only'
+                  AND capture_enabled = TRUE
+                """
+                ).format(
+                    capture_view=sql.Identifier(capture_view),
+                    phase_name=sql.Literal(phase_name),
+                )
+            )
+            cur.execute(
+                sql.SQL(
+                    """
+                CREATE OR REPLACE VIEW {context_view} AS
+                SELECT
+                    log_id,
+                    prompt_messages_json,
+                    phase_name,
+                    example_id,
+                    family,
+                    family_variant,
+                    context_variant,
+                    selection_rank,
+                    capture_priority,
+                    created_at
+                FROM synthetic_market_examples_v0
+                WHERE phase_name = {phase_name}
+                  AND capture_enabled = TRUE
+                """
+                ).format(
+                    context_view=sql.Identifier(context_view),
+                    phase_name=sql.Literal(phase_name),
+                )
+            )
+    finally:
+        conn.close()
+    return {"capture_view": capture_view, "context_view": context_view}
+
+
 def upload_dataset(
     input_dir: Path,
     *,
@@ -92,6 +172,7 @@ def upload_dataset(
         phase_name=phase_name,
     )
     apply_schema()
+    views = create_phase_views(phase_name)
 
     conn = connect_neon()
     try:
@@ -182,7 +263,7 @@ def upload_dataset(
     finally:
         conn.close()
 
-    return counts
+    return {**counts, **views}
 
 
 def _synthetic_order_sql(mode: str) -> str:
