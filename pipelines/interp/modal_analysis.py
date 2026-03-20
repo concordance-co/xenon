@@ -232,6 +232,7 @@ def run_decision_structure_pooling(
     skip_existing: bool = True,
     cohort_view: str = "",
     order_mode: str = "log_id",
+    num_workers: int = 8,
 ) -> dict:
     """Pool full-sequence real-decision captures into row/section structure states."""
     from pathlib import Path
@@ -247,6 +248,7 @@ def run_decision_structure_pooling(
         model_id=f"/models/{model_id}",
         limit=limit if limit > 0 else None,
         skip_existing=skip_existing,
+        num_workers=num_workers,
         cohort_view=cohort_view or None,
         order_mode=order_mode,
     )
@@ -267,6 +269,7 @@ def run_decision_structure_analysis_modal(
     layers_csv: str = "",
     seed: int = 42,
     test_fraction: float = 0.2,
+    num_workers: int = 8,
 ) -> dict:
     """Analyze pooled real-decision structure activations on Modal."""
     from pathlib import Path
@@ -287,6 +290,7 @@ def run_decision_structure_analysis_modal(
         layers=parsed_layers,
         seed=seed,
         test_fraction=test_fraction,
+        num_workers=num_workers,
     )
     results = run_decision_structure_analysis(config)
     volume.commit()
@@ -314,6 +318,7 @@ def main(
     model_id: str = "Qwen/Qwen3-30B-A3B",
     skip_existing: bool = True,
     test_fraction: float = 0.2,
+    num_workers: int = 8,
     cohort_view: str = "",
     order_mode: str = "log_id",
 ):
@@ -342,6 +347,7 @@ def main(
             model_id=model_id,
             limit=limit,
             skip_existing=skip_existing,
+            num_workers=num_workers,
             cohort_view=cohort_view,
             order_mode=order_mode,
         )
@@ -352,6 +358,7 @@ def main(
             layers_csv=layers,
             seed=seed,
             test_fraction=test_fraction,
+            num_workers=num_workers,
         )
         print(f"\nDecision structure analysis complete. Results keys: {list(results.keys())}")
     else:

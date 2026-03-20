@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ class DecisionStructureAnalysisConfig:
     layers: list[int] | None = None
     seed: int = 42
     test_fraction: float = 0.2
+    num_workers: int = 8
     targets: tuple[str, ...] = field(default_factory=lambda: (
         "is_target_asset",
         "is_buy_target",
@@ -91,6 +93,32 @@ def _load_pooled_residual(structure_dir: Path, log_id: int) -> dict[str, np.ndar
     return load_file(str(path))
 
 
+def _preload_pooled_residuals(
+    structure_dir: Path,
+    log_ids: list[int],
+    *,
+    max_workers: int,
+) -> dict[int, dict[str, np.ndarray]]:
+    from safetensors.numpy import load_file
+
+    residual_dir = structure_dir / "residual"
+
+    def _load_one(log_id: int) -> tuple[int, dict[str, np.ndarray] | None]:
+        path = residual_dir / f"{log_id}.safetensors"
+        if not path.exists():
+            return log_id, None
+        return log_id, load_file(str(path))
+
+    cache: dict[int, dict[str, np.ndarray]] = {}
+    with ThreadPoolExecutor(max_workers=max(1, max_workers)) as pool:
+        futures = {pool.submit(_load_one, log_id): log_id for log_id in log_ids}
+        for fut in as_completed(futures):
+            log_id, data = fut.result()
+            if data is not None:
+                cache[log_id] = data
+    return cache
+
+
 def collect_pre_groups(
     *,
     log_ids: set[int],
@@ -99,13 +127,14 @@ def collect_pre_groups(
     target: str,
     layer: int,
     row_key: str,
+    activation_cache: dict[int, dict[str, np.ndarray]] | None = None,
 ) -> list[dict[str, Any]]:
     groups: list[dict[str, Any]] = []
     for log_id in sorted(log_ids):
         rows = asset_by_log.get(log_id)
         if not rows or not _target_row_filter(target, rows):
             continue
-        acts = _load_pooled_residual(structure_dir, log_id)
+        acts = activation_cache.get(log_id, {}) if activation_cache is not None else _load_pooled_residual(structure_dir, log_id)
         if not acts:
             continue
         X_rows: list[np.ndarray] = []
@@ -136,13 +165,14 @@ def collect_concat_groups(
     layer: int,
     row_key: str,
     position_key: str,
+    activation_cache: dict[int, dict[str, np.ndarray]] | None = None,
 ) -> list[dict[str, Any]]:
     groups: list[dict[str, Any]] = []
     for log_id in sorted(log_ids):
         rows = asset_by_log.get(log_id)
         if not rows or not _target_row_filter(target, rows):
             continue
-        acts = _load_pooled_residual(structure_dir, log_id)
+        acts = activation_cache.get(log_id, {}) if activation_cache is not None else _load_pooled_residual(structure_dir, log_id)
         if not acts or position_key not in acts:
             continue
         pos = acts[position_key][layer].astype(np.float32)
@@ -248,6 +278,12 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
     if not sample_acts or "last_token" not in sample_acts:
         return {"error": "missing_pooled_residuals"}
 
+    activation_cache = _preload_pooled_residuals(
+        config.structure_dir,
+        log_ids,
+        max_workers=config.num_workers,
+    )
+
     num_layers = int(sample_acts["last_token"].shape[0])
     layers = config.layers or list(range(num_layers))
 
@@ -270,6 +306,7 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
                     target=target,
                     layer=layer,
                     row_key=row_key,
+                    activation_cache=activation_cache,
                 )
                 test_groups = collect_pre_groups(
                     log_ids=test_ids,
@@ -278,6 +315,7 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
                     target=target,
                     layer=layer,
                     row_key=row_key,
+                    activation_cache=activation_cache,
                 )
                 layer_result = _evaluate_target_groups(train_groups, test_groups, seed=config.seed)
                 layer_result["layer"] = layer
@@ -296,6 +334,7 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
                     layer=layer,
                     row_key=config.row_key,
                     position_key=position_key,
+                    activation_cache=activation_cache,
                 )
                 test_groups = collect_concat_groups(
                     log_ids=test_ids,
@@ -305,6 +344,7 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
                     layer=layer,
                     row_key=config.row_key,
                     position_key=position_key,
+                    activation_cache=activation_cache,
                 )
                 layer_result = _evaluate_target_groups(train_groups, test_groups, seed=config.seed)
                 layer_result["layer"] = layer
@@ -329,6 +369,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--layers", type=str, default="")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--test-fraction", type=float, default=0.2)
+    p.add_argument("--num-workers", type=int, default=8)
     return p
 
 
@@ -344,6 +385,7 @@ def main(argv: list[str] | None = None) -> None:
         layers=parsed_layers,
         seed=args.seed,
         test_fraction=args.test_fraction,
+        num_workers=args.num_workers,
     )
     results = run_decision_structure_analysis(config)
     print(json.dumps(results, indent=2, default=str))

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +38,7 @@ class DecisionStructureConfig:
     metadata_flush_interval: int = 25
     cohort_view: str | None = None
     order_mode: str = "log_id"
+    num_workers: int = 8
 
 
 def _load_examples_from_neon(
@@ -429,15 +431,89 @@ def _flush_table(path: Path, rows: list[dict[str, Any]]) -> None:
     pq.write_table(pa.Table.from_pylist(rows), path, compression="snappy")
 
 
-def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str, Any]:
+def _process_pooling_example(
+    row: dict[str, Any],
+    *,
+    tokenizer: Any,
+    residual_in_dir: Path,
+    residual_out_dir: Path,
+) -> dict[str, Any]:
     from safetensors.numpy import load_file
-    from transformers import AutoTokenizer
 
     from pipelines.interp.counterfactual import (
         build_market_rows,
         compute_labels,
         parse_market_section,
     )
+
+    log_id = int(row["log_id"])
+    residual_path = residual_in_dir / f"{log_id}.safetensors"
+    if not residual_path.exists():
+        return {"status": "skipped", "log_id": log_id, "reason": "missing_residual"}
+
+    messages = _parse_messages(row["prompt_messages_json"])
+    system_user = _extract_system_user(messages)
+    market_json = _safe_market_json(row["market_snapshot_json"])
+    if system_user is None or market_json is None:
+        return {"status": "skipped", "log_id": log_id, "reason": "missing_prompt_or_market"}
+    system_text, user_text = system_user
+
+    _, row_texts = parse_market_section(user_text)
+    market_rows = build_market_rows(market_json, row_texts)
+    labels = compute_labels(market_rows)
+
+    section_boundaries = find_real_section_boundaries(tokenizer, system_text, user_text)
+    row_boundaries = find_real_row_boundaries(tokenizer, system_text, user_text, market_rows)
+
+    tensors = load_file(str(residual_path))
+    residual = tensors.get("residual_stream")
+    if residual is None:
+        return {"status": "skipped", "log_id": log_id, "reason": "missing_residual_tensor"}
+    if residual.ndim != 3:
+        return {"status": "skipped", "log_id": log_id, "reason": "already_pooled"}
+
+    pooled = pool_decision_residual(residual, row_boundaries, section_boundaries)
+    file_size = _save_pooled(pooled, residual_out_dir / f"{log_id}.safetensors")
+
+    metadata_row = {
+        "log_id": log_id,
+        "capture_timestamp": datetime.now(UTC).isoformat(),
+        "seq_len": int(residual.shape[1]),
+        "num_layers_captured": int(residual.shape[0]),
+        "hidden_dim": int(residual.shape[2]),
+        "n_rows": len(market_rows),
+        "n_residual_keys": len(pooled),
+        "file_size_bytes": file_size,
+    }
+    tick_row = build_tick_label_row(
+        log_id=log_id,
+        decision_type=row.get("decision_type"),
+        trade_side=row.get("trade_side"),
+        target_asset=row.get("asset"),
+        n_rows=len(market_rows),
+        user_text=user_text,
+    )
+    asset_label_rows = build_asset_label_rows(
+        log_id=log_id,
+        market_rows=market_rows,
+        computed_labels=labels,
+        decision_type=row.get("decision_type"),
+        trade_side=row.get("trade_side"),
+        target_asset=row.get("asset"),
+    )
+    return {
+        "status": "processed",
+        "log_id": log_id,
+        "metadata_row": metadata_row,
+        "tick_row": tick_row,
+        "asset_rows": asset_label_rows,
+        "n_rows": len(market_rows),
+        "n_pooled": len(pooled),
+    }
+
+
+def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str, Any]:
+    from transformers import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_id)
     examples = _load_examples_from_neon(
@@ -462,84 +538,59 @@ def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str,
     skipped = 0
     errors = 0
 
-    for idx, row in enumerate(examples):
+    pending_examples: list[dict[str, Any]] = []
+    for row in examples:
         log_id = int(row["log_id"])
         if config.skip_existing and log_id in existing_ids:
             skipped += 1
             continue
+        pending_examples.append(row)
 
-        residual_path = residual_in_dir / f"{log_id}.safetensors"
-        if not residual_path.exists():
-            skipped += 1
-            continue
-
-        try:
-            messages = _parse_messages(row["prompt_messages_json"])
-            system_user = _extract_system_user(messages)
-            market_json = _safe_market_json(row["market_snapshot_json"])
-            if system_user is None or market_json is None:
-                skipped += 1
-                continue
-            system_text, user_text = system_user
-
-            _, row_texts = parse_market_section(user_text)
-            market_rows = build_market_rows(market_json, row_texts)
-            labels = compute_labels(market_rows)
-
-            section_boundaries = find_real_section_boundaries(tokenizer, system_text, user_text)
-            row_boundaries = find_real_row_boundaries(tokenizer, system_text, user_text, market_rows)
-
-            tensors = load_file(str(residual_path))
-            residual = tensors.get("residual_stream")
-            if residual is None:
-                skipped += 1
-                continue
-            if residual.ndim != 3:
-                # Already pooled captures are not usable for structure pooling.
-                skipped += 1
+    max_workers = max(1, int(config.num_workers))
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {
+            pool.submit(
+                _process_pooling_example,
+                row,
+                tokenizer=tokenizer,
+                residual_in_dir=residual_in_dir,
+                residual_out_dir=residual_out_dir,
+            ): int(row["log_id"])
+            for row in pending_examples
+        }
+        completed_count = 0
+        for fut in as_completed(futures):
+            log_id = futures[fut]
+            completed_count += 1
+            try:
+                result = fut.result()
+            except Exception as exc:
+                print(f"  [{completed_count}/{len(pending_examples)}] ERROR {log_id}: {exc}")
+                errors += 1
                 continue
 
-            pooled = pool_decision_residual(residual, row_boundaries, section_boundaries)
-            file_size = _save_pooled(pooled, residual_out_dir / f"{log_id}.safetensors")
+            status = result.get("status")
+            if status == "processed":
+                metadata_rows.append(result["metadata_row"])
+                tick_rows.append(result["tick_row"])
+                asset_rows.extend(result["asset_rows"])
+                existing_ids.add(log_id)
+                processed += 1
 
-            metadata_rows.append({
-                "log_id": log_id,
-                "capture_timestamp": datetime.now(UTC).isoformat(),
-                "seq_len": int(residual.shape[1]),
-                "num_layers_captured": int(residual.shape[0]),
-                "hidden_dim": int(residual.shape[2]),
-                "n_rows": len(market_rows),
-                "n_residual_keys": len(pooled),
-                "file_size_bytes": file_size,
-            })
-            tick_rows.append(build_tick_label_row(
-                log_id=log_id,
-                decision_type=row.get("decision_type"),
-                trade_side=row.get("trade_side"),
-                target_asset=row.get("asset"),
-                n_rows=len(market_rows),
-                user_text=user_text,
-            ))
-            asset_rows.extend(build_asset_label_rows(
-                log_id=log_id,
-                market_rows=market_rows,
-                computed_labels=labels,
-                decision_type=row.get("decision_type"),
-                trade_side=row.get("trade_side"),
-                target_asset=row.get("asset"),
-            ))
-            existing_ids.add(log_id)
-            processed += 1
+                if processed % config.metadata_flush_interval == 0:
+                    _flush_table(meta_path, metadata_rows)
+                    _flush_table(tick_path, tick_rows)
+                    _flush_table(asset_path, asset_rows)
 
-            if processed % config.metadata_flush_interval == 0:
-                _flush_table(meta_path, metadata_rows)
-                _flush_table(tick_path, tick_rows)
-                _flush_table(asset_path, asset_rows)
-
-            print(f"  [{idx + 1}/{len(examples)}] {log_id}: {len(market_rows)} rows, {len(pooled)} keys")
-        except Exception as exc:
-            print(f"  [{idx + 1}/{len(examples)}] ERROR {log_id}: {exc}")
-            errors += 1
+                print(
+                    f"  [{completed_count}/{len(pending_examples)}] {log_id}: "
+                    f"{result['n_rows']} rows, {result['n_pooled']} keys"
+                )
+            elif status == "skipped":
+                skipped += 1
+            else:
+                print(f"  [{completed_count}/{len(pending_examples)}] ERROR {log_id}: unknown_status")
+                errors += 1
 
     _flush_table(meta_path, metadata_rows)
     _flush_table(tick_path, tick_rows)
@@ -561,6 +612,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--skip-existing", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--metadata-flush-interval", type=int, default=25)
+    p.add_argument("--num-workers", type=int, default=8)
     p.add_argument("--cohort-view", default=None)
     p.add_argument(
         "--order-mode",
@@ -579,6 +631,7 @@ def main(argv: list[str] | None = None) -> None:
         limit=args.limit if args.limit > 0 else None,
         skip_existing=args.skip_existing,
         metadata_flush_interval=args.metadata_flush_interval,
+        num_workers=args.num_workers,
         cohort_view=args.cohort_view,
         order_mode=args.order_mode,
     )
