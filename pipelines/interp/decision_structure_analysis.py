@@ -112,10 +112,15 @@ def _preload_pooled_residuals(
     cache: dict[int, dict[str, np.ndarray]] = {}
     with ThreadPoolExecutor(max_workers=max(1, max_workers)) as pool:
         futures = {pool.submit(_load_one, log_id): log_id for log_id in log_ids}
+        loaded = 0
+        total = len(futures)
         for fut in as_completed(futures):
             log_id, data = fut.result()
+            loaded += 1
             if data is not None:
                 cache[log_id] = data
+            if loaded % 50 == 0 or loaded == total:
+                print(f"Preloaded pooled residuals: {loaded}/{total}", flush=True)
     return cache
 
 
@@ -267,25 +272,43 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
     log_ids = sorted({int(r["log_id"]) for r in meta_rows if int(r["log_id"]) in asset_by_log})
     if not log_ids:
         return {"error": "no_pooled_decision_structure"}
+    print(
+        f"Loaded decision structure labels: {len(meta_rows)} metadata rows, "
+        f"{len(asset_by_log)} asset-grouped ticks",
+        flush=True,
+    )
 
     train_ids, test_ids = _split_log_ids(
         log_ids,
         seed=config.seed,
         test_fraction=config.test_fraction,
     )
+    print(
+        f"Split log_ids into train/test: train={len(train_ids)} test={len(test_ids)}",
+        flush=True,
+    )
 
     sample_acts = _load_pooled_residual(config.structure_dir, log_ids[0])
     if not sample_acts or "last_token" not in sample_acts:
         return {"error": "missing_pooled_residuals"}
+    print(
+        f"Sample pooled residual keys: {len(sample_acts)}; last_token layers={sample_acts['last_token'].shape[0]}",
+        flush=True,
+    )
 
     activation_cache = _preload_pooled_residuals(
         config.structure_dir,
         log_ids,
         max_workers=config.num_workers,
     )
+    print(
+        f"Activation preload complete: cached {len(activation_cache)}/{len(log_ids)} pooled residual files",
+        flush=True,
+    )
 
     num_layers = int(sample_acts["last_token"].shape[0])
     layers = config.layers or list(range(num_layers))
+    print(f"Evaluating layers: {layers[0]}..{layers[-1]} ({len(layers)} total)", flush=True)
 
     results: dict[str, Any] = {
         "layers": layers,
@@ -294,9 +317,11 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
     }
 
     for target in config.targets:
+        print(f"=== Target: {target} ===", flush=True)
         target_results: dict[str, list[dict[str, Any]]] = {}
 
         for row_key in ("row_mean", "row_eos"):
+            print(f"Running pre representation: {row_key}", flush=True)
             per_layer: list[dict[str, Any]] = []
             for layer in layers:
                 train_groups = collect_pre_groups(
@@ -320,10 +345,16 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
                 layer_result = _evaluate_target_groups(train_groups, test_groups, seed=config.seed)
                 layer_result["layer"] = layer
                 per_layer.append(layer_result)
+                if (layer + 1) % 8 == 0 or layer == layers[-1]:
+                    print(
+                        f"  {target} {row_key} layer {layer}: auroc={layer_result.get('auroc')}",
+                        flush=True,
+                    )
             target_results[row_key] = per_layer
 
         for position_key in config.downstream_positions:
             rep_key = f"{config.row_key}+{position_key}"
+            print(f"Running post representation: {rep_key}", flush=True)
             per_layer = []
             for layer in layers:
                 train_groups = collect_concat_groups(
@@ -349,15 +380,23 @@ def run_decision_structure_analysis(config: DecisionStructureAnalysisConfig) -> 
                 layer_result = _evaluate_target_groups(train_groups, test_groups, seed=config.seed)
                 layer_result["layer"] = layer
                 per_layer.append(layer_result)
+                if (layer + 1) % 8 == 0 or layer == layers[-1]:
+                    print(
+                        f"  {target} {rep_key} layer {layer}: auroc={layer_result.get('auroc')}",
+                        flush=True,
+                    )
             target_results[rep_key] = per_layer
 
         results["targets"][target] = target_results
+        print(f"Completed target: {target}", flush=True)
 
     results["summary"] = summarize_probe_results(results)
+    print("Summary computed for decision structure analysis", flush=True)
 
     config.output_dir.mkdir(parents=True, exist_ok=True)
     out_path = config.output_dir / "decision_structure_results.json"
     out_path.write_text(json.dumps(results, indent=2, default=str))
+    print(f"Wrote decision structure results to {out_path}", flush=True)
     return results
 
 
