@@ -77,6 +77,10 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Running data prep on Modal (detached, reads/writes Neon Postgres)..."
     uv run --extra interp --extra modal modal run --detach pipelines/interp/modal_ingest.py --mode prep "$@"
     ;;
+  manifold-export)
+    echo "Exporting market manifold tables from Neon full_logs.raw_payload..."
+    uv run python -m pipelines.interp.manifold_dataset "$@"
+    ;;
   modal-outcomes)
     echo "Computing trade outcomes on Modal (detached)..."
     uv run --extra interp --extra modal modal run --detach pipelines/interp/modal_ingest.py --mode outcomes "$@"
@@ -120,7 +124,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     modal volume get xenon-data analysis_results/counterfactual/ ./data/analysis_results/counterfactual/ --force
     ;;
   *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|modal-ingest|modal-backfill|modal-prep|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results} [extra flags]"
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|modal-ingest|modal-backfill|modal-prep|manifold-export|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results} [extra flags]"
     echo ""
     echo "  download             Cache model weights to volume (one-time)"
     echo "  smoke                Single example, single layer (sanity check)"
@@ -132,6 +136,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  analyze              Run analysis on Modal (probe/experts/pca)"
     echo "  modal-ingest         Run ingest on Modal (fetches from Terminal API → Neon)"
     echo "  modal-prep           Run data prep on Modal (Neon → Neon)"
+    echo "  manifold-export      Export tick/asset/pairwise manifold tables from Neon"
     echo "  modal-outcomes       Compute trade outcomes (PnL) on Modal"
     echo "  reset-cursors        Wipe ingest_cursors (next run re-paginates from start)"
     echo "  migrate-to-neon      Migrate SQLite DB → Neon Postgres (one-time)"
@@ -151,6 +156,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  $0 analyze --mode probe --target decision_type"
     echo "  $0 modal-ingest --top-n 10 --selection random"
     echo "  $0 modal-prep"
+    echo "  $0 manifold-export --output-dir data/interp_exports/manifolds --limit 1000"
     echo "  $0 counterfactual-analyze --questions all"
     ;;
 esac

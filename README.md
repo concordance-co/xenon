@@ -38,6 +38,18 @@ Output: a clean `interp_examples_v0` table in Neon filtered to high-quality rows
 ./scripts/modal_capture.sh modal-prep
 ```
 
+For market-manifold work, you can also export structured research tables directly from `full_logs.raw_payload`:
+
+```bash
+./scripts/modal_capture.sh manifold-export --output-dir data/interp_exports/manifolds --limit 1000
+```
+
+This writes:
+
+- `tick_records.parquet`
+- `asset_records.parquet`
+- `pairwise_records.parquet`
+
 ### Phase 2b: Trade outcomes (API → Neon)
 
 Enriches swaps with forward-looking PnL by fetching candle data from the Terminal Markets API.
