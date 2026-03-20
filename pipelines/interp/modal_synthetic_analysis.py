@@ -166,6 +166,7 @@ def run_synthetic_manifold_analysis_modal(
     context_variant: str = "market_only",
     family_allowlist: str = "",
     scalar_family_name: str = "scalar_sweep",
+    analysis_tag: str = "",
     layers: str = "",
     num_workers: int = 8,
 ) -> dict:
@@ -179,7 +180,11 @@ def run_synthetic_manifold_analysis_modal(
     parsed_layers = [int(token) for token in layers.split(",") if token.strip()] or None
     config = SyntheticManifoldAnalysisConfig(
         structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
-        output_dir=Path(f"/data/analysis_results/synthetic_manifold/{phase_name}"),
+        output_dir=(
+            Path(f"/data/analysis_results/synthetic_manifold/{phase_name}") / analysis_tag
+            if analysis_tag
+            else Path(f"/data/analysis_results/synthetic_manifold/{phase_name}")
+        ),
         phase_name=phase_name,
         context_variant=context_variant,
         family_allowlist=tuple(token.strip() for token in family_allowlist.split(",") if token.strip()),
@@ -207,6 +212,7 @@ def main(
     context_variant: str = "market_only",
     family_allowlist: str = "",
     scalar_family_name: str = "scalar_sweep",
+    analysis_tag: str = "",
 ):
     if mode == "synthetic-structure":
         if num_shards > 1:
@@ -239,6 +245,7 @@ def main(
             context_variant=context_variant,
             family_allowlist=family_allowlist,
             scalar_family_name=scalar_family_name,
+            analysis_tag=analysis_tag,
             layers=layers,
             num_workers=num_workers,
         )
