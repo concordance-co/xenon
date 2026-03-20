@@ -181,6 +181,17 @@ class TestEncodeLabels:
         assert len(filtered) == 2
         assert list(y) == [1, 0]
 
+    def test_executed_valence_derives_three_way_labels(self):
+        rows = [
+            {"decision_type": "trade", "trade_side": "sell"},
+            {"decision_type": "record_observation", "trade_side": None},
+            {"decision_type": "trade", "trade_side": "buy"},
+        ]
+        filtered, y, names = _encode_labels(rows, "executed_valence")
+        assert len(filtered) == 3
+        assert list(y) == [0, 1, 2]
+        assert names == ["bearish", "neutral", "bullish"]
+
     def test_risk_tolerance_bins(self):
         rows = [
             {"vault_risk_preference": 1},

@@ -29,6 +29,7 @@ import pyarrow.parquet as pq
 @dataclass
 class AnalysisConfig:
     activations_dir: Path = Path("data/activations")
+    labels_path: Path | None = None
     output_dir: Path = Path("data/analysis_results")
     mode: str = "probe"  # probe | experts | pca | all
     target: str = "decision_type"
@@ -37,6 +38,7 @@ class AnalysisConfig:
     n_folds: int = 5
     layers: list[int] | None = None
     limit: int | None = None
+    run_subdir: bool = False
 
     def run_dir(self) -> Path:
         """Per-run output directory: output_dir / YYYYMMDD_HHMMSS_{target}_{mode}"""
@@ -88,6 +90,24 @@ def _encode_labels(
                 filtered.append(r)
                 labels.append(int(val))
         class_names = ["unprofitable", "profitable"]
+
+    elif target == "executed_valence":
+        for r in rows:
+            dt = r.get("decision_type")
+            if dt == "record_observation":
+                filtered.append(r)
+                labels.append(1)
+                continue
+            if dt != "trade":
+                continue
+            side = r.get("trade_side")
+            if side == "sell":
+                filtered.append(r)
+                labels.append(0)
+            elif side == "buy":
+                filtered.append(r)
+                labels.append(2)
+        class_names = ["bearish", "neutral", "bullish"]
 
     elif target == "risk_tolerance":
         for r in rows:
@@ -144,6 +164,28 @@ class AnalysisDataset:
             rows = conn.execute(query).fetchall()
         return [dict(r) for r in rows]
 
+    @staticmethod
+    def _load_labels_from_parquet(path: Path) -> list[dict]:
+        """Load label columns from a local parquet export."""
+        table = pq.read_table(path)
+        rows = table.to_pylist()
+        filtered = []
+        for row in rows:
+            quality = row.get("label_quality")
+            if quality in ("high", "medium"):
+                filtered.append(dict(row))
+        return filtered
+
+    def _load_label_rows(self) -> tuple[list[dict], str]:
+        """Load labels from the configured source."""
+        if self.config.labels_path is not None:
+            label_rows = self._load_labels_from_parquet(self.config.labels_path)
+            source_desc = str(self.config.labels_path)
+        else:
+            label_rows = self._load_labels_from_neon()
+            source_desc = "Neon (interp_examples_v0)"
+        return label_rows, source_desc
+
     def _load_and_join(self) -> None:
         # Load metadata (written during capture)
         meta_path = self.config.activations_dir / "metadata.parquet"
@@ -157,9 +199,9 @@ class AnalysisDataset:
                 meta_by_id[int(lid)] = r
         print(f"  Metadata: {len(meta_by_id)} examples from {meta_path}")
 
-        # Load labels from Neon
-        label_rows = self._load_labels_from_neon()
-        print(f"  Labels: {len(label_rows)} rows from Neon (interp_examples_v0)")
+        # Load labels from the configured source
+        label_rows, label_source = self._load_label_rows()
+        print(f"  Labels: {len(label_rows)} rows from {label_source}")
 
         # Inner join on log_id (normalize to int)
         joined = []
@@ -991,11 +1033,13 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Analyze captured MoE activations",
     )
     p.add_argument("--activations-dir", type=Path, default=Path("data/activations"))
+    p.add_argument("--labels-path", type=Path, default=None,
+                   help="Optional local parquet of labels. Defaults to loading labels from Neon.")
     p.add_argument("--output-dir", type=Path, default=Path("data/analysis_results"))
     p.add_argument("--mode", choices=["probe", "experts", "pca", "all", "compact"], default="probe")
     p.add_argument("--target", default="decision_type",
                    choices=["decision_type", "trade_side", "was_profitable_1h",
-                            "risk_tolerance", "asset"])
+                            "executed_valence", "risk_tolerance", "asset"])
     p.add_argument("--data-source", choices=["router", "residual"], default="router")
     p.add_argument("--pooling", choices=["last_token", "mean_pool"], default="last_token")
     p.add_argument("--n-folds", type=int, default=5)
@@ -1003,6 +1047,8 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Comma-separated layer indices (default: all)")
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--run-subdir", action="store_true",
+                   help="Write analysis outputs into a timestamped subdirectory under output-dir.")
     return p
 
 
@@ -1015,6 +1061,7 @@ def main(argv: list[str] | None = None) -> None:
 
     config = AnalysisConfig(
         activations_dir=args.activations_dir,
+        labels_path=args.labels_path,
         output_dir=args.output_dir,
         mode=args.mode,
         target=args.target,
@@ -1023,6 +1070,7 @@ def main(argv: list[str] | None = None) -> None:
         n_folds=args.n_folds,
         layers=parsed_layers,
         limit=args.limit if args.limit > 0 else None,
+        run_subdir=args.run_subdir,
         seed=args.seed,
     )
 
@@ -1044,7 +1092,7 @@ def _needs_compact(config: AnalysisConfig) -> bool:
 def dispatch(config: AnalysisConfig) -> dict:
     """Run analysis based on config.mode. Returns results dict."""
     # Compact writes to the base output_dir; everything else gets a per-run subdir
-    if config.mode != "compact":
+    if config.mode != "compact" and config.run_subdir:
         config.output_dir = config.run_dir()
         print(f"Output directory: {config.output_dir}")
 
