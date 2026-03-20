@@ -154,9 +154,37 @@ class SyntheticManifoldAnalysisConfig:
 
 
 def _load_structure_tables(structure_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-    meta_rows = pq.read_table(structure_dir / "metadata.parquet").to_pylist()
-    tick_rows = pq.read_table(structure_dir / "tick_labels.parquet").to_pylist()
-    asset_rows = pq.read_table(structure_dir / "asset_labels.parquet").to_pylist()
+    raw_meta_rows = pq.read_table(structure_dir / "metadata.parquet").to_pylist()
+    raw_tick_rows = pq.read_table(structure_dir / "tick_labels.parquet").to_pylist()
+    raw_asset_rows = pq.read_table(structure_dir / "asset_labels.parquet").to_pylist()
+
+    meta_rows: list[dict[str, Any]] = []
+    seen_meta: set[int] = set()
+    for row in raw_meta_rows:
+        log_id = int(row["log_id"])
+        if log_id in seen_meta:
+            continue
+        seen_meta.add(log_id)
+        meta_rows.append(row)
+
+    tick_rows: list[dict[str, Any]] = []
+    seen_tick: set[int] = set()
+    for row in raw_tick_rows:
+        log_id = int(row["log_id"])
+        if log_id in seen_tick:
+            continue
+        seen_tick.add(log_id)
+        tick_rows.append(row)
+
+    asset_rows: list[dict[str, Any]] = []
+    seen_asset: set[tuple[int, int, str]] = set()
+    for row in raw_asset_rows:
+        key = (int(row["log_id"]), int(row["row_index"]), str(row["symbol"]))
+        if key in seen_asset:
+            continue
+        seen_asset.add(key)
+        asset_rows.append(row)
+
     return meta_rows, tick_rows, asset_rows
 
 
