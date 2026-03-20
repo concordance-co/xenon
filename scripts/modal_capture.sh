@@ -127,8 +127,15 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Downloading counterfactual results..."
     modal volume get xenon-data analysis_results/counterfactual/ ./data/analysis_results/counterfactual/ --force
     ;;
+  counterfactual-structure)
+    echo "Running counterfactual structure analysis on Modal (detached)..."
+    uv run --extra analysis --extra modal modal run --detach pipelines/interp/modal_analysis.py --mode counterfactual-structure "$@"
+    echo ""
+    echo "Downloading counterfactual structure results..."
+    modal volume get xenon-data analysis_results/counterfactual_structure/ ./data/analysis_results/counterfactual_structure/ --force
+    ;;
   *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze-local|analyze|modal-ingest|modal-backfill|modal-prep|manifold-export|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results} [extra flags]"
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze-local|analyze|modal-ingest|modal-backfill|modal-prep|manifold-export|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results|counterfactual-build|counterfactual-capture|counterfactual-analyze|counterfactual-structure} [extra flags]"
     echo ""
     echo "  download             Cache model weights to volume (one-time)"
     echo "  smoke                Single example, single layer (sanity check)"
@@ -151,6 +158,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  counterfactual-build    Build counterfactual datasets (Dataset A + B)"
     echo "  counterfactual-capture  Run counterfactual captures on Modal A100"
     echo "  counterfactual-analyze  Run three-question analysis on Modal"
+    echo "  counterfactual-structure  Run pre/post structure analysis on Modal"
     echo "  download-activations Download activations from Modal volume"
     echo "  download-results     Download analysis results from Modal volume"
     echo ""
@@ -164,5 +172,6 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  $0 modal-prep"
     echo "  $0 manifold-export --output-dir data/interp_exports/manifolds --limit 1000"
     echo "  $0 counterfactual-analyze --questions all"
+    echo "  $0 counterfactual-structure --experiment-id init --layers 16,24,32"
     ;;
 esac

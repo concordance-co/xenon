@@ -61,6 +61,18 @@ uv run -m pipelines.interp.analysis \
 
 Useful downstream targets on that export include `executed_valence`, `forced_observe`, `decision_type`, `trade_side`, and `asset` (which falls back to `target_asset` when needed).
 
+For pre/post settings structure on counterfactual captures:
+
+```bash
+./scripts/modal_capture.sh counterfactual-structure --experiment-id init --layers 16,24,32
+```
+
+This writes a `structure_results.json` summary under `data/analysis_results/counterfactual_structure/<experiment_id>/` with:
+
+- position-wise probe retention from `row_mean` / `row_eos` into downstream sections
+- market-subspace retention for `settings_eos`, `portfolio_eos`, `constraints_eos`, `prev_decisions_eos`, and `last_token`
+- settings-shift decomposition into parallel-vs-orthogonal movement relative to the market subspace
+
 ### Phase 2b: Trade outcomes (API → Neon)
 
 Enriches swaps with forward-looking PnL by fetching candle data from the Terminal Markets API.

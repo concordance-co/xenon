@@ -171,6 +171,52 @@ def run_counterfactual_analysis(
     return results
 
 
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=7200,
+    cpu=8,
+    memory=24 * 1024,
+    secrets=[neon_secret],
+)
+def run_counterfactual_structure_analysis(
+    experiment_id: str = "default",
+    seed: int = 42,
+    layers_csv: str = "",
+    train_variant: str = "settings_all1",
+    compare_variant: str = "settings_all5",
+    row_key: str = "row_mean",
+    variance_threshold: float = 0.9,
+) -> dict:
+    """Run pre/post counterfactual structure analysis on Modal."""
+    from pathlib import Path
+
+    from pipelines.interp.counterfactual_structure import (
+        CounterfactualStructureConfig,
+        run_counterfactual_structure,
+    )
+
+    parsed_layers: list[int] | None = None
+    if layers_csv:
+        parsed_layers = [int(x.strip()) for x in layers_csv.split(",")]
+
+    config = CounterfactualStructureConfig(
+        activations_dir=Path("/data/activations/counterfactual"),
+        experiment_id=experiment_id,
+        output_dir=Path("/data/analysis_results/counterfactual_structure"),
+        train_variant=train_variant,
+        compare_variant=compare_variant,
+        row_key=row_key,
+        variance_threshold=variance_threshold,
+        layers=parsed_layers,
+        seed=seed,
+    )
+
+    results = run_counterfactual_structure(config)
+    volume.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "probe",
@@ -185,6 +231,10 @@ def main(
     experiment_id: str = "default",
     n_bootstrap: int = 1000,
     questions: str = "a",
+    train_variant: str = "settings_all1",
+    compare_variant: str = "settings_all5",
+    row_key: str = "row_mean",
+    variance_threshold: float = 0.9,
 ):
     if mode == "counterfactual":
         results = run_counterfactual_analysis.remote(
@@ -195,6 +245,17 @@ def main(
             questions=questions,
         )
         print(f"\nCounterfactual analysis complete. Results keys: {list(results.keys())}")
+    elif mode == "counterfactual-structure":
+        results = run_counterfactual_structure_analysis.remote(
+            experiment_id=experiment_id,
+            seed=seed,
+            layers_csv=layers,
+            train_variant=train_variant,
+            compare_variant=compare_variant,
+            row_key=row_key,
+            variance_threshold=variance_threshold,
+        )
+        print(f"\nCounterfactual structure analysis complete. Results keys: {list(results.keys())}")
     else:
         results = run_analysis.remote(
             mode=mode,
