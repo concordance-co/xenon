@@ -61,6 +61,13 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Downloading analysis results..."
     modal volume get xenon-data analysis_results/ ./data/ --force
     ;;
+  decision-structure-pool)
+    echo "Pooling real-decision structure activations on Modal (detached)..."
+    uv run --extra analysis --extra modal modal run --detach pipelines/interp/modal_analysis.py --mode decision-structure "$@"
+    echo ""
+    echo "Downloading decision structure activations..."
+    modal volume get xenon-data activations/decision_structure/ ./data/activations/decision_structure/ --force
+    ;;
   download-activations)
     echo "Downloading activations from Modal volume..."
     modal volume get xenon-data activations/ ./data/activations/ --force
@@ -135,7 +142,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     modal volume get xenon-data analysis_results/counterfactual_structure/ ./data/analysis_results/counterfactual_structure/ --force
     ;;
   *)
-    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze-local|analyze|modal-ingest|modal-backfill|modal-prep|manifold-export|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results|counterfactual-build|counterfactual-capture|counterfactual-analyze|counterfactual-structure} [extra flags]"
+    echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze-local|analyze|decision-structure-pool|modal-ingest|modal-backfill|modal-prep|manifold-export|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results|counterfactual-build|counterfactual-capture|counterfactual-analyze|counterfactual-structure} [extra flags]"
     echo ""
     echo "  download             Cache model weights to volume (one-time)"
     echo "  smoke                Single example, single layer (sanity check)"
@@ -146,6 +153,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  compact              Consolidate per-example files into per-layer matrices"
     echo "  analyze-local        Run analysis locally against local activations/labels"
     echo "  analyze              Run analysis on Modal (probe/experts/pca)"
+    echo "  decision-structure-pool  Pool real-decision captures into row/section states"
     echo "  modal-ingest         Run ingest on Modal (fetches from Terminal API → Neon)"
     echo "  modal-prep           Run data prep on Modal (Neon → Neon)"
     echo "  manifold-export      Export tick/asset/pairwise manifold tables from Neon"
@@ -168,6 +176,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  $0 inspect --log-id 463208"
     echo "  $0 analyze-local --target executed_valence --labels-path data/interp_exports/manifolds/tick_records.parquet"
     echo "  $0 analyze --mode probe --target decision_type"
+    echo "  $0 decision-structure-pool --limit 500"
     echo "  $0 modal-ingest --top-n 10 --selection random"
     echo "  $0 modal-prep"
     echo "  $0 manifold-export --output-dir data/interp_exports/manifolds --limit 1000"

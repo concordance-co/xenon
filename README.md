@@ -61,6 +61,18 @@ uv run -m pipelines.interp.analysis \
 
 Useful downstream targets on that export include `executed_valence`, `forced_observe`, `decision_type`, `trade_side`, and `asset` (which falls back to `target_asset` when needed).
 
+For real-decision section/row timing on full-sequence captures:
+
+```bash
+./scripts/modal_capture.sh decision-structure-pool --limit 500
+```
+
+This pools full residual captures into `data/activations/decision_structure/` and writes:
+
+- `residual/{log_id}.safetensors` with `row_mean_i`, `row_eos_i`, `market_*`, `active_settings_*`, `portfolio_*`, `constraints_*`, `prev_decisions_*`, and `last_token`
+- `tick_labels.parquet` with decision-level targets like `executed_valence`
+- `asset_labels.parquet` with per-row targets like `is_buy_target`, `is_sell_target`, and `asset_executed_valence`
+
 For pre/post settings structure on counterfactual captures:
 
 ```bash

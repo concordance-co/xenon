@@ -217,6 +217,39 @@ def run_counterfactual_structure_analysis(
     return results
 
 
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=7200,
+    cpu=8,
+    memory=24 * 1024,
+    secrets=[neon_secret],
+)
+def run_decision_structure_pooling(
+    model_id: str = "Qwen/Qwen3-30B-A3B",
+    limit: int = 0,
+    skip_existing: bool = True,
+) -> dict:
+    """Pool full-sequence real-decision captures into row/section structure states."""
+    from pathlib import Path
+
+    from pipelines.interp.decision_structure import (
+        DecisionStructureConfig,
+        run_decision_structure_pooling as _run_pooling,
+    )
+
+    config = DecisionStructureConfig(
+        activations_dir=Path("/data/activations"),
+        output_dir=Path("/data/activations/decision_structure"),
+        model_id=model_id,
+        limit=limit if limit > 0 else None,
+        skip_existing=skip_existing,
+    )
+    results = _run_pooling(config)
+    volume.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "probe",
@@ -235,6 +268,8 @@ def main(
     compare_variant: str = "settings_all5",
     row_key: str = "row_mean",
     variance_threshold: float = 0.9,
+    model_id: str = "Qwen/Qwen3-30B-A3B",
+    skip_existing: bool = True,
 ):
     if mode == "counterfactual":
         results = run_counterfactual_analysis.remote(
@@ -256,6 +291,13 @@ def main(
             variance_threshold=variance_threshold,
         )
         print(f"\nCounterfactual structure analysis complete. Results keys: {list(results.keys())}")
+    elif mode == "decision-structure":
+        results = run_decision_structure_pooling.remote(
+            model_id=model_id,
+            limit=limit,
+            skip_existing=skip_existing,
+        )
+        print(f"\nDecision structure pooling complete. Results: {results}")
     else:
         results = run_analysis.remote(
             mode=mode,
