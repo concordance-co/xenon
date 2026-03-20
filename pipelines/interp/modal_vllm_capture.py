@@ -365,6 +365,29 @@ def inspect_volume(log_id: str = ""):
         print("  router_logits: not found")
 
 
+def _residual_path_has_full_sequence_shape(path) -> bool:
+    """Return True when a safetensors residual file stores [layer, seq, dim]."""
+    from safetensors import safe_open
+
+    with safe_open(str(path), framework="numpy") as f:
+        if "residual_stream" not in f.keys():
+            return False
+        shape = tuple(f.get_slice("residual_stream").get_shape())
+    return len(shape) == 3
+
+
+def _limit_uncaptured_rows(
+    rows: list[dict],
+    completed: set[int],
+    *,
+    limit: int,
+) -> list[dict]:
+    filtered = [row for row in rows if row.get("log_id") not in completed]
+    if limit > 0:
+        return filtered[:limit]
+    return filtered
+
+
 @app.function(volumes={"/data": volume}, image=image, timeout=300)
 def write_metadata_to_volume(metadata_rows: list[dict]) -> int:
     """Merge new metadata rows into metadata.parquet on the volume."""
@@ -428,7 +451,10 @@ def get_completed_log_ids(
             if not (router_dir / f"{log_id}.safetensors").exists():
                 continue
         if capture_residual:
-            if not (residual_dir / f"{log_id}.safetensors").exists():
+            residual_path = residual_dir / f"{log_id}.safetensors"
+            if not residual_path.exists():
+                continue
+            if expected_pooling == "none" and not _residual_path_has_full_sequence_shape(residual_path):
                 continue
         completed.add(log_id)
 
@@ -458,7 +484,7 @@ def run_vllm_capture(
     """Orchestrator: load examples from Neon, fan out to GPU workers, write metadata."""
     from pipelines.interp.capture import _load_examples_from_neon
 
-    rows = _load_examples_from_neon(limit=limit if limit > 0 else None)
+    rows = _load_examples_from_neon(limit=None)
     if not rows:
         return "No examples to capture"
 
@@ -475,16 +501,22 @@ def run_vllm_capture(
         capture_residual=capture_residual,
         pool_on_capture=pool_val,
     )
-    before = len(rows)
-    rows = [r for r in rows if r.get("log_id") not in completed]
-    skipped = before - len(rows)
-    if skipped > 0:
-        print(f"  Skipping {skipped} already-captured examples ({len(rows)} remaining)")
+    total_rows = len(rows)
+    uncaptured = [r for r in rows if r.get("log_id") not in completed]
+    already_captured = total_rows - len(uncaptured)
+    rows = _limit_uncaptured_rows(rows, completed, limit=limit)
+    if already_captured > 0:
+        print(
+            f"  Skipping {already_captured} already-captured examples "
+            f"({len(uncaptured)} uncaptured available)"
+        )
     else:
-        print(f"  No existing captures found, processing all {len(rows)} examples")
+        print(f"  No existing captures found, {len(uncaptured)} uncaptured examples available")
+    if limit > 0 and len(uncaptured) > limit:
+        print(f"  Limiting run to first {len(rows)} uncaptured examples")
 
     if not rows:
-        return f"All {before} examples already captured. Nothing to do."
+        return f"All {total_rows} examples already captured. Nothing to do."
 
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
     print(f"  {len(batches)} batches of up to {batch_size}")

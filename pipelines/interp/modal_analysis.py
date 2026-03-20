@@ -17,13 +17,14 @@ import modal
 app = modal.App("xenon-analysis")
 
 volume = modal.Volume.from_name("xenon-data", create_if_missing=True)
+model_volume = modal.Volume.from_name("xenon-models", create_if_missing=True)
 
 neon_secret = modal.Secret.from_name("xenon-neon")
 
 image = (
     modal.Image.debian_slim(python_version="3.13")
     .pip_install(
-        "torch", "safetensors", "scikit-learn", "matplotlib",
+        "torch", "transformers", "safetensors", "scikit-learn", "matplotlib",
         "numpy", "pyarrow", "psycopg[binary]",
     )
     .add_local_python_source("pipelines")
@@ -172,7 +173,7 @@ def run_counterfactual_analysis(
 
 
 @app.function(
-    volumes={"/data": volume},
+    volumes={"/data": volume, "/models": model_volume},
     image=image,
     timeout=7200,
     cpu=8,
@@ -218,7 +219,7 @@ def run_counterfactual_structure_analysis(
 
 
 @app.function(
-    volumes={"/data": volume},
+    volumes={"/data": volume, "/models": model_volume},
     image=image,
     timeout=7200,
     cpu=8,
@@ -241,7 +242,7 @@ def run_decision_structure_pooling(
     config = DecisionStructureConfig(
         activations_dir=Path("/data/activations"),
         output_dir=Path("/data/activations/decision_structure"),
-        model_id=model_id,
+        model_id=f"/models/{model_id}",
         limit=limit if limit > 0 else None,
         skip_existing=skip_existing,
     )
