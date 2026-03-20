@@ -103,6 +103,38 @@ def shard_output_paths(output_dir: Path, shard_index: int) -> tuple[Path, Path, 
     )
 
 
+def clear_decision_structure_shards(
+    output_dir: Path,
+    *,
+    num_shards: int,
+    clear_canonical: bool = True,
+) -> dict[str, int]:
+    removed = 0
+    missing = 0
+
+    for shard_index in range(max(0, int(num_shards))):
+        for path in shard_output_paths(output_dir, shard_index):
+            if path.exists():
+                path.unlink()
+                removed += 1
+            else:
+                missing += 1
+
+    if clear_canonical:
+        for path in (
+            output_dir / "metadata.parquet",
+            output_dir / "tick_labels.parquet",
+            output_dir / "asset_labels.parquet",
+        ):
+            if path.exists():
+                path.unlink()
+                removed += 1
+            else:
+                missing += 1
+
+    return {"removed": removed, "missing": missing}
+
+
 def _parse_messages(raw: Any) -> list[dict[str, str]]:
     if not raw:
         return []

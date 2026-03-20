@@ -8,6 +8,7 @@ from pipelines.interp.counterfactual import MarketRow
 from pipelines.interp.decision_structure import (
     build_asset_label_rows,
     build_tick_label_row,
+    clear_decision_structure_shards,
     find_real_row_boundaries,
     find_real_section_boundaries,
     merge_decision_structure_shards,
@@ -246,3 +247,29 @@ def test_merge_decision_structure_shards_builds_canonical_tables(tmp_path):
     assert [row["log_id"] for row in merged_meta] == [10, 20]
     assert [row["log_id"] for row in merged_tick] == [10, 20]
     assert [(row["log_id"], row["row_index"]) for row in merged_asset] == [(10, 0), (10, 1), (20, 0)]
+
+
+def test_clear_decision_structure_shards_removes_shard_and_canonical_tables(tmp_path):
+    out_dir = tmp_path / "decision_structure"
+    meta0, tick0, asset0 = shard_output_paths(out_dir, 0)
+    meta0.parent.mkdir(parents=True, exist_ok=True)
+
+    for path in (
+        meta0,
+        tick0,
+        asset0,
+        out_dir / "metadata.parquet",
+        out_dir / "tick_labels.parquet",
+        out_dir / "asset_labels.parquet",
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("x")
+
+    cleared = clear_decision_structure_shards(out_dir, num_shards=1, clear_canonical=True)
+
+    assert cleared["removed"] == 6
+    assert cleared["missing"] == 0
+    assert not meta0.exists()
+    assert not tick0.exists()
+    assert not asset0.exists()
+    assert not (out_dir / "metadata.parquet").exists()

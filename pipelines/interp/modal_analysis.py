@@ -284,7 +284,10 @@ def run_decision_structure_pooling_parallel(
 
     from modal.functions import FunctionCall
 
-    from pipelines.interp.decision_structure import merge_decision_structure_shards
+    from pipelines.interp.decision_structure import (
+        clear_decision_structure_shards,
+        merge_decision_structure_shards,
+    )
 
     if num_shards <= 1:
         return run_decision_structure_pooling.remote(
@@ -298,11 +301,22 @@ def run_decision_structure_pooling_parallel(
             shard_index=0,
         )
 
+    output_dir = Path("/data/activations/decision_structure")
+    if not skip_existing:
+        cleared = clear_decision_structure_shards(output_dir, num_shards=num_shards, clear_canonical=True)
+        print(
+            "Cleared decision-structure shard checkpoints before fresh sharded run: "
+            f"removed={cleared['removed']} missing={cleared['missing']}",
+        )
+        volume.commit()
+
+    shard_skip_existing = True
+
     calls = [
         run_decision_structure_pooling.spawn(
             model_id=model_id,
             limit=limit,
-            skip_existing=skip_existing,
+            skip_existing=shard_skip_existing,
             cohort_view=cohort_view,
             order_mode=order_mode,
             num_workers=num_workers,
@@ -314,7 +328,7 @@ def run_decision_structure_pooling_parallel(
     shard_results = asyncio.run(FunctionCall.gather(*calls))
     volume.reload()
     merge = merge_decision_structure_shards(
-        Path("/data/activations/decision_structure"),
+        output_dir,
         num_shards=num_shards,
     )
     volume.commit()
