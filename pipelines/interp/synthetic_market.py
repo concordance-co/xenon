@@ -1,0 +1,673 @@
+"""Synthetic market dataset generator for manifold-oriented interp work.
+
+This module builds small, controlled market snapshots with neutral asset
+identities and labels by construction. The goal is to isolate clean latent
+variables such as attractiveness, pairwise preference, and risk-adjusted
+acceptability before returning to noisy DX-style prompts.
+"""
+from __future__ import annotations
+
+import json
+import math
+import random
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+
+SYSTEM_PROMPT = (
+    "You are an autonomous trading agent. On each tick, choose exactly one action: "
+    "buy, sell, or observe. Only buy when the expected edge clearly justifies fees. "
+    "When no asset has enough edge, observe."
+)
+
+RISK_SETTING_TEXT = {
+    "market_only": "No explicit settings are provided.",
+    "low_risk": "Asset Risk Preference: 1 / 5. Prefer lower-risk, more stable assets.",
+    "high_risk": "Asset Risk Preference: 5 / 5. High-volatility and fresh setups are acceptable.",
+}
+
+
+@dataclass(frozen=True)
+class SyntheticAsset:
+    symbol: str
+    archetype: str
+    pct_5m: float
+    pct_1h: float
+    net_flow_5m: float
+    vol_5m: float
+    vol_1h: float
+    unique_traders_5m: int
+    top20_holder_pct: float
+    age_bucket: str
+
+
+@dataclass(frozen=True)
+class SyntheticMarketExample:
+    log_id: int
+    example_id: str
+    family: str
+    family_variant: str
+    context_variant: str
+    system_prompt: str
+    user_prompt: str
+    prompt_messages: tuple[dict[str, str], ...]
+    labels: dict[str, Any]
+    assets: tuple[SyntheticAsset, ...]
+
+
+@dataclass
+class SyntheticMarketConfig:
+    seed: int = 42
+    scalar_steps: int = 9
+    pairwise_variants: int = 5
+    archetype_variants: int = 4
+    include_settings_variants: bool = True
+    output_dir: Path = Path("data/interp_exports/synthetic_market")
+
+
+ARCHETYPES: dict[str, dict[str, Any]] = {
+    "stable_winner": {
+        "pct_5m": 3.0,
+        "pct_1h": 10.0,
+        "net_flow_5m": 1.8,
+        "vol_5m": 5.5,
+        "vol_1h": 28.0,
+        "unique_traders_5m": 18,
+        "top20_holder_pct": 28.0,
+        "age_bucket": "mature",
+    },
+    "momentum_burst": {
+        "pct_5m": 8.5,
+        "pct_1h": 18.0,
+        "net_flow_5m": 1.2,
+        "vol_5m": 6.0,
+        "vol_1h": 22.0,
+        "unique_traders_5m": 21,
+        "top20_holder_pct": 36.0,
+        "age_bucket": "mid",
+    },
+    "flow_backed_continuation": {
+        "pct_5m": 4.0,
+        "pct_1h": 12.0,
+        "net_flow_5m": 3.0,
+        "vol_5m": 5.2,
+        "vol_1h": 24.0,
+        "unique_traders_5m": 20,
+        "top20_holder_pct": 31.0,
+        "age_bucket": "mid",
+    },
+    "noisy_pump": {
+        "pct_5m": 10.0,
+        "pct_1h": 6.0,
+        "net_flow_5m": 0.4,
+        "vol_5m": 8.0,
+        "vol_1h": 14.0,
+        "unique_traders_5m": 24,
+        "top20_holder_pct": 49.0,
+        "age_bucket": "fresh",
+    },
+    "fading_leader": {
+        "pct_5m": -3.5,
+        "pct_1h": 8.0,
+        "net_flow_5m": -1.4,
+        "vol_5m": 4.6,
+        "vol_1h": 18.0,
+        "unique_traders_5m": 13,
+        "top20_holder_pct": 39.0,
+        "age_bucket": "mid",
+    },
+    "illiquid_spike": {
+        "pct_5m": 7.0,
+        "pct_1h": 4.0,
+        "net_flow_5m": 0.3,
+        "vol_5m": 1.4,
+        "vol_1h": 4.2,
+        "unique_traders_5m": 4,
+        "top20_holder_pct": 58.0,
+        "age_bucket": "fresh",
+    },
+    "crowded_risk": {
+        "pct_5m": 2.5,
+        "pct_1h": 7.0,
+        "net_flow_5m": 0.8,
+        "vol_5m": 3.8,
+        "vol_1h": 16.0,
+        "unique_traders_5m": 11,
+        "top20_holder_pct": 67.0,
+        "age_bucket": "mid",
+    },
+    "mean_reverter": {
+        "pct_5m": -4.5,
+        "pct_1h": -9.0,
+        "net_flow_5m": 1.1,
+        "vol_5m": 4.4,
+        "vol_1h": 15.0,
+        "unique_traders_5m": 14,
+        "top20_holder_pct": 33.0,
+        "age_bucket": "mature",
+    },
+}
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, value))
+
+
+def _age_score(age_bucket: str) -> float:
+    return {"fresh": -0.45, "mid": 0.0, "mature": 0.25}[age_bucket]
+
+
+def _age_risk_penalty(age_bucket: str) -> float:
+    return {"fresh": 1.0, "mid": 0.45, "mature": 0.1}[age_bucket]
+
+
+def _risk_multiplier(context_variant: str) -> float:
+    if context_variant == "low_risk":
+        return 1.0
+    if context_variant == "high_risk":
+        return 0.15
+    return 0.55
+
+
+def _score_asset(asset: SyntheticAsset, context_variant: str) -> dict[str, float]:
+    momentum = 0.55 * asset.pct_5m + 0.45 * asset.pct_1h
+    participation = 0.18 * asset.vol_5m + 0.06 * asset.vol_1h + 0.22 * asset.unique_traders_5m
+    flow = 1.6 * asset.net_flow_5m
+    concentration_penalty = 0.12 * max(0.0, asset.top20_holder_pct - 35.0)
+    freshness = _age_score(asset.age_bucket)
+    riskiness = (
+        0.06 * abs(asset.pct_5m)
+        + 0.03 * abs(asset.pct_1h)
+        + 0.02 * max(0.0, asset.top20_holder_pct - 30.0)
+        + _age_risk_penalty(asset.age_bucket)
+    )
+    attractiveness = 0.08 * momentum + 0.05 * participation + flow + freshness - concentration_penalty
+    risk_adjusted = attractiveness - _risk_multiplier(context_variant) * riskiness
+    edge_after_fee = risk_adjusted - 0.55
+    return {
+        "momentum_score": momentum,
+        "participation_score": participation,
+        "flow_score": flow,
+        "concentration_penalty": concentration_penalty,
+        "riskiness_score": riskiness,
+        "attractiveness_score": attractiveness,
+        "risk_adjusted_score": risk_adjusted,
+        "edge_after_fee_score": edge_after_fee,
+        "edge_gt_fee": float(edge_after_fee > 0.0),
+    }
+
+
+def _ordinal_ranks(values: list[float], reverse: bool = True) -> list[int]:
+    ordered = sorted(range(len(values)), key=lambda idx: values[idx], reverse=reverse)
+    ranks = [0] * len(values)
+    for rank, idx in enumerate(ordered, start=1):
+        ranks[idx] = rank
+    return ranks
+
+
+def _compute_labels(example_id: str, family: str, family_variant: str, context_variant: str, assets: list[SyntheticAsset]) -> dict[str, Any]:
+    per_asset = [_score_asset(asset, context_variant) for asset in assets]
+    attractiveness = [row["attractiveness_score"] for row in per_asset]
+    risk_adjusted = [row["risk_adjusted_score"] for row in per_asset]
+    edge_after_fee = [row["edge_after_fee_score"] for row in per_asset]
+    best_idx = max(range(len(assets)), key=lambda idx: edge_after_fee[idx])
+    buy_any = edge_after_fee[best_idx] > 0.0
+    asset_labels: list[dict[str, Any]] = []
+    pairwise_rows: list[dict[str, Any]] = []
+
+    attractiveness_ranks = _ordinal_ranks(attractiveness)
+    risk_ranks = _ordinal_ranks(risk_adjusted)
+    for idx, asset in enumerate(assets):
+        row = {
+            "example_id": example_id,
+            "family": family,
+            "family_variant": family_variant,
+            "context_variant": context_variant,
+            "row_index": idx,
+            "symbol": asset.symbol,
+            "archetype": asset.archetype,
+            **asdict(asset),
+            **per_asset[idx],
+            "attractiveness_rank": attractiveness_ranks[idx],
+            "risk_adjusted_rank": risk_ranks[idx],
+            "is_best_asset": int(idx == best_idx and buy_any),
+            "buyable_if_unconstrained": int(per_asset[idx]["edge_after_fee_score"] > 0.0),
+            "acceptable_under_risk_setting": int(per_asset[idx]["risk_adjusted_score"] > 0.0),
+        }
+        asset_labels.append(row)
+
+    for i, asset_i in enumerate(assets):
+        for j, asset_j in enumerate(assets):
+            if i == j:
+                continue
+            pairwise_rows.append({
+                "example_id": example_id,
+                "family": family,
+                "family_variant": family_variant,
+                "context_variant": context_variant,
+                "asset_a": asset_i.symbol,
+                "asset_b": asset_j.symbol,
+                "a_beats_b_on_attractiveness": int(attractiveness[i] > attractiveness[j]),
+                "a_beats_b_on_risk_adjusted": int(risk_adjusted[i] > risk_adjusted[j]),
+                "delta_pct_5m": asset_i.pct_5m - asset_j.pct_5m,
+                "delta_pct_1h": asset_i.pct_1h - asset_j.pct_1h,
+                "delta_net_flow_5m": asset_i.net_flow_5m - asset_j.net_flow_5m,
+                "delta_vol_5m": asset_i.vol_5m - asset_j.vol_5m,
+                "delta_unique_traders_5m": asset_i.unique_traders_5m - asset_j.unique_traders_5m,
+                "delta_top20_holder_pct": asset_i.top20_holder_pct - asset_j.top20_holder_pct,
+            })
+
+    return {
+        "example_id": example_id,
+        "family": family,
+        "family_variant": family_variant,
+        "context_variant": context_variant,
+        "best_asset": assets[best_idx].symbol if buy_any else None,
+        "buy_any": int(buy_any),
+        "observe_vs_act": "act" if buy_any else "observe",
+        "market_only_best_asset": None,
+        "settings_adjusted_best_asset": assets[best_idx].symbol if context_variant != "market_only" and buy_any else None,
+        "asset_rows": asset_labels,
+        "pairwise_rows": pairwise_rows,
+    }
+
+
+def _render_user_prompt(example_id: str, context_variant: str, assets: list[SyntheticAsset]) -> str:
+    lines = [
+        f"## SYNTHETIC MARKET SCENARIO {example_id}",
+        "",
+        "These assets are neutral synthetic placeholders, not real tickers.",
+        "",
+        "## ACTIVE SETTINGS",
+        f"- {RISK_SETTING_TEXT[context_variant]}",
+        "",
+        "## MARKET SNAPSHOT",
+    ]
+    for asset in assets:
+        lines.extend([
+            f"- Asset {asset.symbol}",
+            f"  - Archetype: {asset.archetype}",
+            f"  - 5m change: {asset.pct_5m:+.1f}%",
+            f"  - 1h change: {asset.pct_1h:+.1f}%",
+            f"  - Net flow 5m: {asset.net_flow_5m:+.2f}",
+            f"  - Volume 5m: {asset.vol_5m:.2f}",
+            f"  - Volume 1h: {asset.vol_1h:.2f}",
+            f"  - Unique traders 5m: {asset.unique_traders_5m}",
+            f"  - Top 20 holder pct: {asset.top20_holder_pct:.1f}%",
+            f"  - Age bucket: {asset.age_bucket}",
+        ])
+    lines.extend([
+        "",
+        "Respond with the single best action for this tick: buy, sell, or observe.",
+    ])
+    return "\n".join(lines)
+
+
+def _make_asset(symbol: str, archetype: str, jitter_index: int = 0) -> SyntheticAsset:
+    base = ARCHETYPES[archetype]
+    # Small deterministic perturbation keeps archetype families from collapsing to a single point.
+    delta = 0.35 * math.sin(jitter_index + len(symbol))
+    return SyntheticAsset(
+        symbol=symbol,
+        archetype=archetype,
+        pct_5m=round(base["pct_5m"] + delta, 2),
+        pct_1h=round(base["pct_1h"] + 1.7 * delta, 2),
+        net_flow_5m=round(base["net_flow_5m"] + 0.15 * delta, 3),
+        vol_5m=round(_clamp(base["vol_5m"] + 0.35 * delta, 0.4, 12.0), 3),
+        vol_1h=round(_clamp(base["vol_1h"] + 0.9 * delta, 1.0, 45.0), 3),
+        unique_traders_5m=max(1, int(round(base["unique_traders_5m"] + 1.2 * delta))),
+        top20_holder_pct=round(_clamp(base["top20_holder_pct"] + 0.7 * delta, 15.0, 85.0), 2),
+        age_bucket=base["age_bucket"],
+    )
+
+
+def _apply_context_variants(
+    example_id: str,
+    family: str,
+    family_variant: str,
+    base_assets: list[SyntheticAsset],
+    include_settings_variants: bool,
+) -> list[SyntheticMarketExample]:
+    variants = ["market_only"]
+    if include_settings_variants:
+        variants.extend(["low_risk", "high_risk"])
+
+    examples: list[SyntheticMarketExample] = []
+    for context_variant in variants:
+        labels = _compute_labels(example_id, family, family_variant, context_variant, base_assets)
+        user_prompt = _render_user_prompt(example_id, context_variant, base_assets)
+        examples.append(
+            SyntheticMarketExample(
+                log_id=-1,
+                example_id=example_id,
+                family=family,
+                family_variant=family_variant,
+                context_variant=context_variant,
+                system_prompt=SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                prompt_messages=(
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ),
+                labels=labels,
+                assets=tuple(base_assets),
+            )
+        )
+    return examples
+
+
+def generate_scalar_sweeps(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    steps = max(3, config.scalar_steps)
+    base_steps = [(-1.0 + 2.0 * i / (steps - 1)) for i in range(steps)]
+    examples: list[SyntheticMarketExample] = []
+
+    families = (
+        ("pct_5m", -9.0, 11.0),
+        ("net_flow_5m", -2.4, 2.8),
+        ("top20_holder_pct", 20.0, 76.0),
+    )
+    for metric_name, lower, upper in families:
+        for step_idx, alpha in enumerate(base_steps):
+            a = _make_asset("A", "momentum_burst", jitter_index=step_idx)
+            value = lower + (upper - lower) * ((alpha + 1.0) / 2.0)
+            if metric_name == "pct_5m":
+                a = SyntheticAsset(**{**asdict(a), "pct_5m": round(value, 2)})
+            elif metric_name == "net_flow_5m":
+                a = SyntheticAsset(**{**asdict(a), "net_flow_5m": round(value, 3)})
+            else:
+                a = SyntheticAsset(**{**asdict(a), "top20_holder_pct": round(value, 2)})
+
+            base_assets = [
+                a,
+                _make_asset("B", "stable_winner", jitter_index=step_idx + 10),
+                _make_asset("C", "flow_backed_continuation", jitter_index=step_idx + 20),
+                _make_asset("D", "crowded_risk", jitter_index=step_idx + 30),
+            ]
+            example_id = f"scalar_{metric_name}_{step_idx:02d}"
+            examples.extend(
+                _apply_context_variants(
+                    example_id,
+                    family="scalar_sweep",
+                    family_variant=metric_name,
+                    base_assets=base_assets,
+                    include_settings_variants=config.include_settings_variants,
+                )
+            )
+    return examples
+
+
+def generate_pairwise_tradeoff_grids(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+
+    def _alpha(step_idx: int) -> float:
+        steps = max(3, config.pairwise_variants)
+        return -1.0 + (2.0 * step_idx / (steps - 1))
+
+    steps = max(3, config.pairwise_variants)
+    for step_idx in range(steps):
+        alpha = _alpha(step_idx)
+
+        scenarios = [
+            (
+                f"momentum_vs_flow_s{step_idx:02d}",
+                [
+                    SyntheticAsset(
+                        "A",
+                        "momentum_burst",
+                        round(8.0 + 2.8 * alpha, 2),
+                        round(15.0 + 3.2 * alpha, 2),
+                        round(0.45 - 0.25 * alpha, 3),
+                        round(6.4 + 0.4 * alpha, 3),
+                        round(21.0 + 0.8 * alpha, 3),
+                        max(3, int(round(22 + alpha))),
+                        round(39.0 + 1.5 * alpha, 2),
+                        "mid",
+                    ),
+                    SyntheticAsset(
+                        "B",
+                        "flow_backed_continuation",
+                        round(3.2 - 1.1 * alpha, 2),
+                        round(9.5 - 1.4 * alpha, 2),
+                        round(2.4 + 0.9 * alpha, 3),
+                        round(5.1 + 0.2 * alpha, 3),
+                        round(23.5 + 0.6 * alpha, 3),
+                        max(3, int(round(17 + 1.3 * alpha))),
+                        round(29.0 - 0.7 * alpha, 2),
+                        "mid",
+                    ),
+                    _make_asset("C", "stable_winner", step_idx + 1),
+                    _make_asset("D", "fading_leader", step_idx + 2),
+                ],
+            ),
+            (
+                f"participation_vs_concentration_s{step_idx:02d}",
+                [
+                    SyntheticAsset(
+                        "A",
+                        "crowded_risk",
+                        round(4.5 + 0.9 * alpha, 2),
+                        round(8.8 + 1.4 * alpha, 2),
+                        round(1.1 + 0.15 * alpha, 3),
+                        round(5.8 + 0.8 * alpha, 3),
+                        round(24.0 + 1.4 * alpha, 3),
+                        max(3, int(round(24 + 2.0 * alpha))),
+                        round(71.0 - 6.0 * alpha, 2),
+                        "mid",
+                    ),
+                    SyntheticAsset(
+                        "B",
+                        "stable_winner",
+                        round(3.7 - 0.4 * alpha, 2),
+                        round(8.1 - 0.7 * alpha, 2),
+                        round(1.0 - 0.1 * alpha, 3),
+                        round(4.9 - 0.3 * alpha, 3),
+                        round(21.5 - 0.9 * alpha, 3),
+                        max(3, int(round(17 - 1.0 * alpha))),
+                        round(27.0 + 2.0 * alpha, 2),
+                        "mature",
+                    ),
+                    _make_asset("C", "illiquid_spike", step_idx + 3),
+                    _make_asset("D", "mean_reverter", step_idx + 4),
+                ],
+            ),
+            (
+                f"fresh_vs_mature_s{step_idx:02d}",
+                [
+                    SyntheticAsset(
+                        "A",
+                        "noisy_pump",
+                        round(7.2 + 1.8 * alpha, 2),
+                        round(12.4 + 2.1 * alpha, 2),
+                        round(1.2 + 0.5 * alpha, 3),
+                        round(6.9 + 0.7 * alpha, 3),
+                        round(17.0 + 0.6 * alpha, 3),
+                        max(3, int(round(22 + 1.5 * alpha))),
+                        round(46.0 - 2.5 * alpha, 2),
+                        "fresh",
+                    ),
+                    SyntheticAsset(
+                        "B",
+                        "stable_winner",
+                        round(4.0 - 0.5 * alpha, 2),
+                        round(9.1 - 0.7 * alpha, 2),
+                        round(1.35 - 0.15 * alpha, 3),
+                        round(5.4 - 0.2 * alpha, 3),
+                        round(21.0 - 0.6 * alpha, 3),
+                        max(3, int(round(16 - 0.7 * alpha))),
+                        round(27.5 + 1.0 * alpha, 2),
+                        "mature",
+                    ),
+                    _make_asset("C", "flow_backed_continuation", step_idx + 5),
+                    _make_asset("D", "crowded_risk", step_idx + 6),
+                ],
+            ),
+        ]
+
+        for scenario_idx, (variant, assets) in enumerate(scenarios):
+            example_id = f"pairwise_{scenario_idx:02d}_{step_idx:02d}"
+            examples.extend(
+                _apply_context_variants(
+                    example_id,
+                    family="pairwise_tradeoff",
+                    family_variant=variant,
+                    base_assets=assets,
+                    include_settings_variants=config.include_settings_variants,
+                )
+            )
+    return examples
+
+
+def generate_archetype_families(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    distractors = ["stable_winner", "flow_backed_continuation", "crowded_risk"]
+    for archetype_idx, archetype in enumerate(ARCHETYPES):
+        for variant_idx in range(config.archetype_variants):
+            symbols = ["A", "B", "C", "D"]
+            assets = [_make_asset(symbols[0], archetype, jitter_index=variant_idx + archetype_idx)]
+            for offset, distractor in enumerate(distractors, start=1):
+                assets.append(_make_asset(symbols[offset], distractor, jitter_index=variant_idx + 10 * offset + archetype_idx))
+            example_id = f"archetype_{archetype}_{variant_idx:02d}"
+            examples.extend(
+                _apply_context_variants(
+                    example_id,
+                    family="archetype_family",
+                    family_variant=archetype,
+                    base_assets=assets,
+                    include_settings_variants=config.include_settings_variants,
+                )
+            )
+    return examples
+
+
+def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples = []
+    examples.extend(generate_scalar_sweeps(config))
+    examples.extend(generate_pairwise_tradeoff_grids(config))
+    examples.extend(generate_archetype_families(config))
+    return examples
+
+
+def _assign_log_ids(examples: list[SyntheticMarketExample]) -> list[SyntheticMarketExample]:
+    base_log_id = 2_000_000_000
+    ordered = sorted(
+        examples,
+        key=lambda ex: (
+            ex.family,
+            ex.family_variant,
+            ex.example_id,
+            ex.context_variant,
+        ),
+    )
+    assigned: list[SyntheticMarketExample] = []
+    for offset, example in enumerate(ordered):
+        assigned.append(
+            SyntheticMarketExample(
+                log_id=base_log_id + offset,
+                example_id=example.example_id,
+                family=example.family,
+                family_variant=example.family_variant,
+                context_variant=example.context_variant,
+                system_prompt=example.system_prompt,
+                user_prompt=example.user_prompt,
+                prompt_messages=example.prompt_messages,
+                labels=example.labels,
+                assets=example.assets,
+            )
+        )
+    return assigned
+
+
+def write_dataset(examples: list[SyntheticMarketExample], output_dir: Path) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    jsonl_path = output_dir / "synthetic_market_prompts.jsonl"
+    tick_path = output_dir / "synthetic_market_tick_records.parquet"
+    asset_path = output_dir / "synthetic_market_asset_records.parquet"
+    pairwise_path = output_dir / "synthetic_market_pairwise_records.parquet"
+    summary_path = output_dir / "synthetic_market_summary.json"
+
+    tick_rows: list[dict[str, Any]] = []
+    asset_rows: list[dict[str, Any]] = []
+    pairwise_rows: list[dict[str, Any]] = []
+
+    with jsonl_path.open("w", encoding="utf-8") as f:
+        for example in examples:
+            prompt_messages_json = json.dumps(list(example.prompt_messages))
+            payload = {
+                "log_id": example.log_id,
+                "example_id": example.example_id,
+                "family": example.family,
+                "family_variant": example.family_variant,
+                "context_variant": example.context_variant,
+                "system_prompt": example.system_prompt,
+                "user_prompt": example.user_prompt,
+                "prompt_messages_json": json.loads(prompt_messages_json),
+                "labels": {
+                    k: v for k, v in example.labels.items()
+                    if k not in {"asset_rows", "pairwise_rows"}
+                },
+            }
+            f.write(json.dumps(payload) + "\n")
+            tick_rows.append({
+                "log_id": example.log_id,
+                "example_id": example.example_id,
+                "family": example.family,
+                "family_variant": example.family_variant,
+                "context_variant": example.context_variant,
+                "system_prompt": example.system_prompt,
+                "user_prompt": example.user_prompt,
+                "prompt_messages_json": prompt_messages_json,
+                "labels_json": json.dumps({
+                    k: v for k, v in example.labels.items()
+                    if k not in {"asset_rows", "pairwise_rows"}
+                }),
+                "best_asset": example.labels["best_asset"],
+                "buy_any": example.labels["buy_any"],
+                "observe_vs_act": example.labels["observe_vs_act"],
+                "num_assets": len(example.assets),
+            })
+            for asset_row in example.labels["asset_rows"]:
+                asset_rows.append({"log_id": example.log_id, **asset_row})
+            for pairwise_row in example.labels["pairwise_rows"]:
+                pairwise_rows.append({"log_id": example.log_id, **pairwise_row})
+
+    pq.write_table(pa.Table.from_pylist(tick_rows), tick_path)
+    pq.write_table(pa.Table.from_pylist(asset_rows), asset_path)
+    pq.write_table(pa.Table.from_pylist(pairwise_rows), pairwise_path)
+
+    summary = {
+        "n_examples": len(examples),
+        "n_tick_rows": len(tick_rows),
+        "n_asset_rows": len(asset_rows),
+        "n_pairwise_rows": len(pairwise_rows),
+        "families": sorted({example.family for example in examples}),
+        "context_variants": sorted({example.context_variant for example in examples}),
+    }
+    summary_path.write_text(json.dumps(summary, indent=2))
+    return {
+        "jsonl_path": str(jsonl_path),
+        "tick_path": str(tick_path),
+        "asset_path": str(asset_path),
+        "pairwise_path": str(pairwise_path),
+        "summary_path": str(summary_path),
+        "summary": summary,
+    }
+
+
+def build_synthetic_market_dataset(config: SyntheticMarketConfig) -> dict[str, Any]:
+    examples = _assign_log_ids(generate_dataset(config))
+    return write_dataset(examples, config.output_dir)
+
+
+def main(argv: list[str] | None = None) -> None:
+    _ = argv
+    result = build_synthetic_market_dataset(SyntheticMarketConfig())
+    print(json.dumps(result["summary"], indent=2))
+
+
+if __name__ == "__main__":
+    main()
