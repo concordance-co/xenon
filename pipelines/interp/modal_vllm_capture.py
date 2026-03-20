@@ -480,6 +480,8 @@ def run_vllm_capture(
     max_model_len: int = 0,
     router_top_k: int = 8,
     router_dtype: str = "float16",
+    gpu: str = "A100-80GB",
+    max_containers: int = 0,
     cohort_view: str = "",
     order_mode: str = "log_id",
 ) -> str:
@@ -527,7 +529,12 @@ def run_vllm_capture(
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
     print(f"  {len(batches)} batches of up to {batch_size}")
 
-    worker = VLLMCaptureWorker(
+    worker_kwargs: dict = {"gpu": gpu}
+    if max_containers > 0:
+        worker_kwargs["max_containers"] = max_containers
+
+    WorkerCls = VLLMCaptureWorker.with_options(**worker_kwargs)
+    worker = WorkerCls(
         model_id=model_id,
         tensor_parallel_size=tensor_parallel_size,
         gpu_memory_utilization=str(gpu_memory_utilization),
@@ -1002,6 +1009,7 @@ def main(
     experiment_id: str = "default",
     dataset: str = "both",
     gpu: str = "H200",
+    max_containers: int = 0,
     cohort_view: str = "",
     order_mode: str = "log_id",
 ):
@@ -1019,6 +1027,8 @@ def main(
             max_model_len=max_model_len,
             router_top_k=router_top_k,
             router_dtype=router_dtype,
+            gpu=gpu,
+            max_containers=max_containers,
             cohort_view=cohort_view,
             order_mode=order_mode,
         )
