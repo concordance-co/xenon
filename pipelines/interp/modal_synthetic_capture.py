@@ -1,7 +1,5 @@
 """Modal deployment for synthetic market activation capture on a dedicated volume."""
 
-from __future__ import annotations
-
 import modal
 
 app = modal.App("xenon-synthetic-vllm-capture")
