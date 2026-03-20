@@ -3,31 +3,88 @@
   margin: (x: 0.75in, y: 0.8in),
 )
 
-#set par(justify: false, leading: 0.6em)
-#set text(size: 10pt)
+#set par(justify: false, leading: 0.58em)
+#set text(font: "Libertinus Serif", size: 10pt, fill: rgb("#16202A"))
 
-#show heading.where(level: 1): it => block(above: 1.1em, below: 0.5em, text(15pt, weight: "bold")[#it.body])
-#show heading.where(level: 2): it => block(above: 0.9em, below: 0.4em, text(12pt, weight: "bold")[#it.body])
+#let ink = rgb("#16202A")
+#let muted = rgb("#5A6B7D")
+#let navy = rgb("#16324F")
+#let teal = rgb("#2D6A6A")
+#let sand = rgb("#F4EEE2")
+#let mist = rgb("#EEF4F6")
+#let rose = rgb("#F8E7E7")
+#let line = rgb("#D6DEE3")
 
-= Market Decision-Structure Findings
+#let card(title, tone, body) = block(
+  fill: tone,
+  stroke: (paint: line, thickness: 0.6pt),
+  radius: 10pt,
+  inset: 12pt,
+  width: 100%,
+)[
+  #text(size: 8pt, weight: "bold", fill: muted)[#smallcaps[#title]]
+  #v(5pt)
+  #body
+]
 
-_Date:_ March 19, 2026
+#let stat(value, note) = [
+  #text(size: 19pt, weight: "bold", fill: navy)[#value]
+  #v(2pt)
+  #text(size: 9pt, fill: muted)[#note]
+]
 
-_Primary references at repo root:_
+#show figure.caption: set text(size: 8.5pt, fill: muted)
 
-- `MARKET_MANIFOLD_RESEARCH_PLAN.md`
-- `MARKET_MANIFOLD_IMPLEMENTATION_PLAN.md`
+#show heading.where(level: 1): it => block(
+  above: 1.2em,
+  below: 0.45em,
+  text(15pt, weight: "bold", fill: navy)[#it.body],
+)
+#show heading.where(level: 2): it => block(
+  above: 0.95em,
+  below: 0.35em,
+  text(12pt, weight: "bold", fill: teal)[#it.body],
+)
+
+#block(
+  fill: navy,
+  inset: 18pt,
+  radius: 14pt,
+  width: 100%,
+)[
+  #text(size: 21pt, weight: "bold", fill: white)[Market Decision-Structure Findings]
+  #v(6pt)
+  #text(size: 10pt, fill: luma(245))[First end-to-end asset-binding readout from real full-sequence decision captures]
+  #v(10pt)
+  #text(size: 8.5pt, fill: luma(235))[
+    March 19, 2026 \
+    Research anchors: `MARKET_MANIFOLD_RESEARCH_PLAN.md` and `MARKET_MANIFOLD_IMPLEMENTATION_PLAN.md`
+  ]
+]
 
 This report summarizes the first end-to-end execution of the decision-structure and asset-valence work described in the research and implementation plans. The focus of this pass was narrow: determine whether target-asset and buy/sell asset binding are already visible in the market-row manifold, or whether they only become decodable after downstream sections such as `ACTIVE SETTINGS`, `PORTFOLIO CONTEXT`, `CONSTRAINTS`, and `PREVIOUS DECISIONS` are integrated.
 
 == Executive Summary
 
-- The full-sequence capture, pooling, and probe pipeline now works end-to-end on real prompts.
-- We captured and analyzed `101` pooled decision examples with usable row and downstream section states.
-- On this sample, the best target-asset and buy-target probes are already present in pre-settings market-row representations.
-- Downstream sections do not outperform the best pre-row states on the current sample.
-- The evidence currently supports an "early asset binding" interpretation: the model appears to form asset-conditioned preference while reading the market, with later sections acting more like overlay, gating, or preservation than initial construction.
-- This result is useful but not final. The current sample is observation-heavy and strongly imbalanced on sells.
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  gutter: 10pt,
+
+  card([Pipeline Status], mist, stat([Working], [Full-sequence capture, real-prompt pooling, and pre/post probe analysis now run end-to-end.])),
+  card([Current Sample], sand, stat([101 ticks], [54 observations, 38 buys, 9 sells. Enough for a first read, not enough for a final verdict.])),
+  card([Top Takeaway], rose, stat([Early binding], [Best target-asset and buy-target signals are already strongest in pre-settings row states.])),
+)
+
+#v(8pt)
+
+#block(
+  fill: rgb("#F8FBFC"),
+  stroke: (paint: line, thickness: 0.6pt),
+  radius: 10pt,
+  inset: 12pt,
+)[
+  *Summary interpretation:* On the current sample, the model appears to form asset-conditioned preference while reading the market rows. Later sections such as settings, portfolio, constraints, and previous decisions seem to preserve, gate, or slightly reshape that signal rather than creating a stronger one from scratch.
+]
 
 == What We Accomplished
 
@@ -66,6 +123,11 @@ Interpretation of the dataset:
 - The sell-target probe is underpowered and should be treated as provisional.
 - The current sample is still not appropriate for any strong claim about settings-induced reinterpretation under balanced action regimes.
 
+#figure(
+  image("data/report_assets/decision_structure/dataset_composition.png", width: 100%),
+  caption: [Current sample composition. The first decision-structure pass is observation-heavy and strongly skewed toward `POOPCOIN` among positive target-asset rows, which is why the buy-side read is cleaner than the sell-side read.]
+)
+
 == Main Quantitative Findings
 
 #table(
@@ -73,6 +135,7 @@ Interpretation of the dataset:
   align: (left, left, center, left, center, center),
   inset: 5pt,
   stroke: 0.4pt,
+  fill: (x, y) => if y == 0 { rgb("#DDEBF0") } else if calc.odd(y) { rgb("#F8FBFC") } else { white },
 
   [*Target*], [*Best pre state*], [*AUROC*], [*Best post state*], [*AUROC*], [*Post - Pre*],
 
@@ -94,6 +157,27 @@ Additional readout from the same result file:
 - `is_sell_target`
   - best pre and post AUROC were equal on this sample
   - because only `9` sells are present, this should not be overinterpreted
+
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 12pt,
+
+  figure(
+    image("data/report_assets/decision_structure/best_pre_post.png", width: 100%),
+    caption: [Best pre-row vs. best post-section AUROC for each target. None of the downstream section combinations beat the best pre-row representation in this run.]
+  ),
+  figure(
+    image("data/report_assets/decision_structure/representation_heatmap.png", width: 100%),
+    caption: [Max AUROC by representation and target. The strongest cells remain concentrated in `row_mean` and `row_eos`, with downstream combinations competitive but not dominant.]
+  ),
+)
+
+#v(8pt)
+
+#figure(
+  image("data/report_assets/decision_structure/layerwise_auroc.png", width: 100%),
+  caption: [Layerwise AUROC curves for `row_mean`, `row_eos`, and the best post representation per target. The buy-target signal is especially early, peaking in `row_eos` at layer `1`, while target-asset and sell-target remain strongly decodable in pre-row states.]
+)
 
 == Interpretation
 

@@ -60,7 +60,7 @@ def connect():
     import psycopg
     from psycopg.rows import dict_row
 
-    load_dotenv_if_present(REPO_ROOT / ".env")
+    load_dotenv_if_present()
     dsn = require_neon_dsn()
     return psycopg.connect(dsn, autocommit=True, row_factory=dict_row)
 

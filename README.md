@@ -85,6 +85,40 @@ This writes `data/analysis_results/decision_structure/decision_structure_results
 - comparisons between pre-market row states and row+downstream representations
 - a summary of the best pre vs best post AUROC for each target
 
+To make capture selection cohort-aware instead of pulling the earliest generic slice, install the decision cohort views in Neon:
+
+```bash
+uv run python scripts/apply_decision_cohort_views.py apply
+uv run python scripts/apply_decision_cohort_views.py stats
+uv run python scripts/apply_decision_cohort_views.py refresh
+```
+
+This creates:
+
+- `decision_capture_base_v1`
+- `decision_trade_candidates_v1`
+- `decision_sell_candidates_v1`
+- `decision_blocked_observe_candidates_v1`
+- `decision_policy_tension_candidates_v1`
+- `decision_capture_priority_v1`
+
+`apply` rebuilds the materialized base/priority relations. `refresh` is cheaper and is the right thing to run after backfill ingest adds more logs.
+
+You can then drive capture or pooling from a specific cohort:
+
+```bash
+uv run --extra interp --extra modal modal run pipelines/interp/modal_vllm_capture.py \
+  --mode capture \
+  --cohort-view decision_capture_priority_v1 \
+  --order-mode capture_priority_desc \
+  --limit 500
+
+./scripts/modal_capture.sh decision-structure-pool \
+  --cohort-view decision_capture_priority_v1 \
+  --order-mode capture_priority_desc \
+  --limit 500
+```
+
 For pre/post settings structure on counterfactual captures:
 
 ```bash

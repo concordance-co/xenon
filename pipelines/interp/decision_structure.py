@@ -24,6 +24,8 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from pipelines.interp.cohort_selection import build_interp_example_query
+
 
 @dataclass(slots=True)
 class DecisionStructureConfig:
@@ -33,32 +35,36 @@ class DecisionStructureConfig:
     limit: int | None = None
     skip_existing: bool = True
     metadata_flush_interval: int = 25
+    cohort_view: str | None = None
+    order_mode: str = "log_id"
 
 
-def _load_examples_from_neon(limit: int | None = None) -> list[dict[str, Any]]:
+def _load_examples_from_neon(
+    limit: int | None = None,
+    *,
+    cohort_view: str | None = None,
+    order_mode: str = "log_id",
+) -> list[dict[str, Any]]:
     import psycopg
     from psycopg.rows import dict_row
 
     from pipelines.db import require_neon_dsn
 
-    query = """
-        SELECT log_id,
-               prompt_messages_json,
-               market_snapshot_json,
-               decision_type,
-               trade_side,
-               asset,
-               label_quality
-        FROM interp_examples_v0
-        WHERE label_quality IN ('high', 'medium')
-          AND prompt_messages_json IS NOT NULL
-          AND market_snapshot_json IS NOT NULL
-        ORDER BY log_id
-    """
-    params: list[Any] = []
-    if limit is not None:
-        query += " LIMIT %s"
-        params.append(limit)
+    query, params = build_interp_example_query(
+        select_columns=[
+            "ie.log_id",
+            "ie.prompt_messages_json",
+            "ie.market_snapshot_json",
+            "ie.decision_type",
+            "ie.trade_side",
+            "ie.asset",
+            "ie.label_quality",
+        ],
+        require_market_snapshot=True,
+        cohort_view=cohort_view,
+        order_mode=order_mode,
+        limit=limit,
+    )
 
     with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
         rows = conn.execute(query, params).fetchall()
@@ -434,7 +440,11 @@ def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_id)
-    examples = _load_examples_from_neon(limit=config.limit)
+    examples = _load_examples_from_neon(
+        config.limit,
+        cohort_view=config.cohort_view,
+        order_mode=config.order_mode,
+    )
     print(f"Loaded {len(examples)} examples from Neon")
 
     residual_in_dir = config.activations_dir / "residual_stream"
@@ -551,6 +561,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--skip-existing", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--metadata-flush-interval", type=int, default=25)
+    p.add_argument("--cohort-view", default=None)
+    p.add_argument(
+        "--order-mode",
+        default="log_id",
+        choices=["log_id", "created_at_desc", "capture_priority_desc", "hash"],
+    )
     return p
 
 
@@ -563,6 +579,8 @@ def main(argv: list[str] | None = None) -> None:
         limit=args.limit if args.limit > 0 else None,
         skip_existing=args.skip_existing,
         metadata_flush_interval=args.metadata_flush_interval,
+        cohort_view=args.cohort_view,
+        order_mode=args.order_mode,
     )
     result = run_decision_structure_pooling(config)
     print(json.dumps(result, indent=2, default=str))

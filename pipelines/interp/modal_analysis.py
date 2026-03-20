@@ -230,6 +230,8 @@ def run_decision_structure_pooling(
     model_id: str = "Qwen/Qwen3-30B-A3B",
     limit: int = 0,
     skip_existing: bool = True,
+    cohort_view: str = "",
+    order_mode: str = "log_id",
 ) -> dict:
     """Pool full-sequence real-decision captures into row/section structure states."""
     from pathlib import Path
@@ -245,6 +247,8 @@ def run_decision_structure_pooling(
         model_id=f"/models/{model_id}",
         limit=limit if limit > 0 else None,
         skip_existing=skip_existing,
+        cohort_view=cohort_view or None,
+        order_mode=order_mode,
     )
     results = _run_pooling(config)
     volume.commit()
@@ -310,6 +314,8 @@ def main(
     model_id: str = "Qwen/Qwen3-30B-A3B",
     skip_existing: bool = True,
     test_fraction: float = 0.2,
+    cohort_view: str = "",
+    order_mode: str = "log_id",
 ):
     if mode == "counterfactual":
         results = run_counterfactual_analysis.remote(
@@ -336,6 +342,8 @@ def main(
             model_id=model_id,
             limit=limit,
             skip_existing=skip_existing,
+            cohort_view=cohort_view,
+            order_mode=order_mode,
         )
         print(f"\nDecision structure pooling complete. Results: {results}")
     elif mode == "decision-structure-analysis":

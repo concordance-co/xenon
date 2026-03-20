@@ -12,6 +12,8 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from pipelines.interp.cohort_selection import build_interp_example_query
+
 
 @dataclass(slots=True)
 class CaptureConfig:
@@ -28,6 +30,8 @@ class CaptureConfig:
     pool_on_capture: str | None = None  # None = full sequence, "last_token", "mean_pool"
     router_dtype: str = "float16"  # "float16" or "float32" for router logits storage
     metadata_flush_interval: int = 10  # write metadata.parquet every N examples
+    cohort_view: str | None = None
+    order_mode: str = "log_id"
 
 
 def _flush_metadata(metadata_rows: list[dict[str, Any]], output_dir: Path) -> None:
@@ -55,28 +59,30 @@ def _load_existing_metadata(output_dir: Path) -> list[dict[str, Any]]:
         return []
 
 
-def _load_examples_from_neon(*, limit: int | None = None) -> list[dict[str, Any]]:
+def _load_examples_from_neon(
+    *,
+    limit: int | None = None,
+    cohort_view: str | None = None,
+    order_mode: str = "log_id",
+) -> list[dict[str, Any]]:
     """Load high-quality interp examples directly from Neon Postgres."""
     import psycopg
     from psycopg.rows import dict_row
     from pipelines.db import require_neon_dsn
 
-    query = """
-        SELECT log_id, prompt_messages_json
-        FROM interp_examples_v0
-        WHERE label_quality IN ('high', 'medium')
-          AND prompt_messages_json IS NOT NULL
-        ORDER BY log_id
-    """
-    params: list[Any] = []
-    if limit is not None:
-        query += " LIMIT %s"
-        params.append(limit)
+    query, params = build_interp_example_query(
+        select_columns=["ie.log_id", "ie.prompt_messages_json"],
+        require_market_snapshot=False,
+        cohort_view=cohort_view,
+        order_mode=order_mode,
+        limit=limit,
+    )
 
     with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
         rows = conn.execute(query, params).fetchall()
 
-    print(f"Loaded {len(rows)} examples from Neon (interp_examples_v0)")
+    source = f"interp_examples_v0 joined to {cohort_view}" if cohort_view else "interp_examples_v0"
+    print(f"Loaded {len(rows)} examples from Neon ({source})")
     return [dict(r) for r in rows]
 
 
@@ -379,7 +385,11 @@ def _save_router(
 def run_capture(config: CaptureConfig) -> dict[str, Any]:
     import torch
 
-    examples = _load_examples_from_neon(limit=config.limit)
+    examples = _load_examples_from_neon(
+        limit=config.limit,
+        cohort_view=config.cohort_view,
+        order_mode=config.order_mode,
+    )
     if not examples:
         print("No examples to process.")
         return {"processed": 0, "skipped": 0, "errors": 0}
@@ -540,6 +550,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-id", default="Qwen/Qwen3-8B")
     parser.add_argument("--device", default="mps")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--cohort-view", default=None)
+    parser.add_argument(
+        "--order-mode",
+        default="log_id",
+        choices=["log_id", "created_at_desc", "capture_priority_desc", "hash"],
+    )
     parser.add_argument(
         "--layers",
         type=str,
@@ -613,6 +629,8 @@ def main(argv: list[str] | None = None) -> int:
         pool_on_capture=args.pool_on_capture,
         router_dtype=args.router_dtype,
         metadata_flush_interval=args.metadata_flush_interval,
+        cohort_view=args.cohort_view,
+        order_mode=args.order_mode,
     )
     run_capture(cfg)
     return 0

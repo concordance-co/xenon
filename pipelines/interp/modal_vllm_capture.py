@@ -480,11 +480,17 @@ def run_vllm_capture(
     max_model_len: int = 0,
     router_top_k: int = 8,
     router_dtype: str = "float16",
+    cohort_view: str = "",
+    order_mode: str = "log_id",
 ) -> str:
     """Orchestrator: load examples from Neon, fan out to GPU workers, write metadata."""
     from pipelines.interp.capture import _load_examples_from_neon
 
-    rows = _load_examples_from_neon(limit=None)
+    rows = _load_examples_from_neon(
+        limit=None,
+        cohort_view=cohort_view or None,
+        order_mode=order_mode,
+    )
     if not rows:
         return "No examples to capture"
 
@@ -996,6 +1002,8 @@ def main(
     experiment_id: str = "default",
     dataset: str = "both",
     gpu: str = "H200",
+    cohort_view: str = "",
+    order_mode: str = "log_id",
 ):
     if mode == "capture":
         result = run_vllm_capture.remote(
@@ -1011,6 +1019,8 @@ def main(
             max_model_len=max_model_len,
             router_top_k=router_top_k,
             router_dtype=router_dtype,
+            cohort_view=cohort_view,
+            order_mode=order_mode,
         )
         print(result)
     elif mode == "counterfactual":
