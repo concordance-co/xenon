@@ -250,6 +250,44 @@ def run_decision_structure_pooling(
     return results
 
 
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=7200,
+    cpu=8,
+    memory=24 * 1024,
+)
+def run_decision_structure_analysis_modal(
+    row_key: str = "row_mean",
+    layers_csv: str = "",
+    seed: int = 42,
+    test_fraction: float = 0.2,
+) -> dict:
+    """Analyze pooled real-decision structure activations on Modal."""
+    from pathlib import Path
+
+    from pipelines.interp.decision_structure_analysis import (
+        DecisionStructureAnalysisConfig,
+        run_decision_structure_analysis,
+    )
+
+    parsed_layers: list[int] | None = None
+    if layers_csv:
+        parsed_layers = [int(x.strip()) for x in layers_csv.split(",")]
+
+    config = DecisionStructureAnalysisConfig(
+        structure_dir=Path("/data/activations/decision_structure"),
+        output_dir=Path("/data/analysis_results/decision_structure"),
+        row_key=row_key,
+        layers=parsed_layers,
+        seed=seed,
+        test_fraction=test_fraction,
+    )
+    results = run_decision_structure_analysis(config)
+    volume.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "probe",
@@ -270,6 +308,7 @@ def main(
     variance_threshold: float = 0.9,
     model_id: str = "Qwen/Qwen3-30B-A3B",
     skip_existing: bool = True,
+    test_fraction: float = 0.2,
 ):
     if mode == "counterfactual":
         results = run_counterfactual_analysis.remote(
@@ -298,6 +337,14 @@ def main(
             skip_existing=skip_existing,
         )
         print(f"\nDecision structure pooling complete. Results: {results}")
+    elif mode == "decision-structure-analysis":
+        results = run_decision_structure_analysis_modal.remote(
+            row_key=row_key,
+            layers_csv=layers,
+            seed=seed,
+            test_fraction=test_fraction,
+        )
+        print(f"\nDecision structure analysis complete. Results keys: {list(results.keys())}")
     else:
         results = run_analysis.remote(
             mode=mode,

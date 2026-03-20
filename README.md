@@ -73,6 +73,18 @@ This pools full residual captures into `data/activations/decision_structure/` an
 - `tick_labels.parquet` with decision-level targets like `executed_valence`
 - `asset_labels.parquet` with per-row targets like `is_buy_target`, `is_sell_target`, and `asset_executed_valence`
 
+To probe when the model binds a buy/sell action to an asset:
+
+```bash
+./scripts/modal_capture.sh decision-structure-analyze --layers 16,24,32
+```
+
+This writes `data/analysis_results/decision_structure/decision_structure_results.json` with:
+
+- per-layer decodability for `is_target_asset`, `is_buy_target`, and `is_sell_target`
+- comparisons between pre-market row states and row+downstream representations
+- a summary of the best pre vs best post AUROC for each target
+
 For pre/post settings structure on counterfactual captures:
 
 ```bash
