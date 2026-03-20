@@ -85,6 +85,10 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "Migrating SQLite → Neon Postgres (one-time)..."
     uv run --extra interp --extra modal modal run scripts/migrate_sqlite_to_neon.py "$@"
     ;;
+  migrate-metadata)
+    echo "Migrating capture metadata from Modal volume → Neon..."
+    uv run --extra interp --extra modal modal run scripts/migrate_metadata_to_neon.py "$@"
+    ;;
   reset-cursors)
     echo "Resetting ingest cursors (next run re-paginates from start)..."
     uv run --extra interp --extra modal modal run pipelines/interp/modal_ingest.py --mode reset-cursors "$@"
@@ -99,6 +103,21 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
   modal-stats)
     mkdir -p data
     modal volume get xenon-data dashboard_stats.json ./data/dashboard_stats.json --force 2>/dev/null
+    ;;
+  counterfactual-build)
+    echo "Building counterfactual datasets (local → Neon DB)..."
+    uv run python -m pipelines.interp.counterfactual "$@"
+    ;;
+  counterfactual-capture)
+    echo "Running counterfactual capture on Modal (vLLM, H200, detached)..."
+    uv run --extra interp --extra modal modal run --detach pipelines/interp/modal_vllm_capture.py --mode counterfactual "$@"
+    ;;
+  counterfactual-analyze)
+    echo "Running counterfactual analysis on Modal (detached)..."
+    uv run --extra analysis --extra modal modal run --detach pipelines/interp/modal_analysis.py --mode counterfactual "$@"
+    echo ""
+    echo "Downloading counterfactual results..."
+    modal volume get xenon-data analysis_results/counterfactual/ ./data/analysis_results/counterfactual/ --force
     ;;
   *)
     echo "Usage: $0 {download|smoke|router|full|inspect|meta|compact|analyze|modal-ingest|modal-backfill|modal-prep|modal-outcomes|modal-snapshot|modal-stats|download-activations|download-results} [extra flags]"
@@ -119,6 +138,9 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  modal-backfill       Fill missing full logs + null payloads, then run swaps"
     echo "  modal-snapshot       Write & download stats snapshot"
     echo "  modal-stats          Download cached stats snapshot (no Modal run)"
+    echo "  counterfactual-build    Build counterfactual datasets (Dataset A + B)"
+    echo "  counterfactual-capture  Run counterfactual captures on Modal A100"
+    echo "  counterfactual-analyze  Run three-question analysis on Modal"
     echo "  download-activations Download activations from Modal volume"
     echo "  download-results     Download analysis results from Modal volume"
     echo ""
@@ -129,5 +151,6 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  $0 analyze --mode probe --target decision_type"
     echo "  $0 modal-ingest --top-n 10 --selection random"
     echo "  $0 modal-prep"
+    echo "  $0 counterfactual-analyze --questions all"
     ;;
 esac

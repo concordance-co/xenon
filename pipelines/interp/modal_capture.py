@@ -452,8 +452,215 @@ def run_capture(
     return summary
 
 
+@app.function(
+    image=image,
+    secrets=[neon_secret],
+    volumes={"/data": volume},
+    timeout=600,
+)
+def build_counterfactual_dataset(
+    n_snapshots: int = 120,
+    seed: int = 42,
+) -> str:
+    """Build Dataset A for counterfactual experiment and save to volume."""
+    from pathlib import Path
+
+    from pipelines.interp.counterfactual import build_dataset_a, save_dataset_a, _connect_neon
+
+    conn = _connect_neon()
+    spec = build_dataset_a(conn, n_snapshots=n_snapshots, seed=seed)
+    conn.close()
+
+    output_dir = Path("/data/counterfactual/dataset_a")
+    save_dataset_a(spec, output_dir)
+    volume.commit()
+    return f"Built Dataset A: {len(spec.prompts)} prompts from {len(spec.snapshots)} snapshots"
+
+
+@app.cls(
+    gpu="A100-80GB",
+    volumes={"/data": volume, "/models": model_volume},
+    image=image,
+    timeout=7200,
+    scaledown_window=300,
+)
+class CounterfactualCaptureWorker:
+    """GPU worker for counterfactual captures with per-row activation pooling."""
+    model_id: str = modal.parameter(default="Qwen/Qwen3-30B-A3B")
+
+    @modal.enter()
+    def load_model(self):
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        local_path = f"/models/{self.model_id}"
+        print(f"Loading tokenizer from {local_path}...")
+        self.tokenizer = AutoTokenizer.from_pretrained(local_path)
+
+        print(f"Loading model from {local_path} (float16 -> cuda)...")
+        self.model = AutoModelForCausalLM.from_pretrained(
+            local_path,
+            dtype=torch.float16,
+        ).to("cuda").eval()
+
+        num_layers = len(self.model.model.layers)
+        hidden_dim = self.model.config.hidden_size
+        print(f"  {num_layers} layers, hidden_dim={hidden_dim}")
+
+    @modal.method()
+    def capture_batch(
+        self,
+        prompts: list[dict],
+    ) -> list[dict]:
+        """Capture a batch of counterfactual prompts with per-row pooling."""
+        import time
+        from datetime import UTC, datetime
+        from pathlib import Path
+
+        from pipelines.interp.counterfactual_capture import (
+            CounterfactualCaptureConfig,
+            capture_one_counterfactual,
+            _save_pooled,
+        )
+
+        config = CounterfactualCaptureConfig(
+            output_dir=Path("/data/activations/counterfactual"),
+            model_id=self.model_id,
+            device="cuda",
+        )
+
+        residual_dir = config.run_dir / "residual"
+        router_dir = config.run_dir / "router"
+        residual_dir.mkdir(parents=True, exist_ok=True)
+        router_dir.mkdir(parents=True, exist_ok=True)
+
+        metadata_rows: list[dict] = []
+
+        for idx, prompt in enumerate(prompts):
+            capture_id = prompt["capture_id"]
+            try:
+                t0 = time.monotonic()
+                residual_pooled, router_pooled, seq_len = capture_one_counterfactual(
+                    model=self.model,
+                    tokenizer=self.tokenizer,
+                    system_text=prompt["system_text"],
+                    user_text=prompt["user_text"],
+                    row_boundaries=prompt["row_boundaries"],
+                    section_boundaries=prompt["section_boundaries"],
+                    config=config,
+                )
+                elapsed = time.monotonic() - t0
+
+                file_size = 0
+                if residual_pooled:
+                    file_size += _save_pooled(
+                        residual_pooled,
+                        residual_dir / f"{capture_id}.safetensors",
+                    )
+                if router_pooled:
+                    file_size += _save_pooled(
+                        router_pooled,
+                        router_dir / f"{capture_id}.safetensors",
+                    )
+
+                meta_row = {
+                    "capture_id": capture_id,
+                    "snapshot_id": prompt["snapshot_id"],
+                    "variant": prompt["variant"],
+                    "seq_len": seq_len,
+                    "n_rows": len(prompt["row_boundaries"]),
+                    "n_residual_keys": len(residual_pooled),
+                    "n_router_keys": len(router_pooled),
+                    "file_size_bytes": file_size,
+                    "elapsed_s": round(elapsed, 2),
+                    "capture_timestamp": datetime.now(UTC).isoformat(),
+                }
+                metadata_rows.append(meta_row)
+                print(
+                    f"  [{idx + 1}/{len(prompts)}] {capture_id}: "
+                    f"seq_len={seq_len}, {len(residual_pooled)} keys, "
+                    f"{file_size / 1024:.0f}KB, {elapsed:.1f}s"
+                )
+
+            except Exception as exc:
+                import traceback
+                print(f"  ERROR {capture_id}: {exc}")
+                traceback.print_exc()
+
+        volume.commit()
+        return metadata_rows
+
+
+@app.function(
+    image=image,
+    secrets=[neon_secret],
+    volumes={"/data": volume, "/models": model_volume},
+    timeout=14400,
+)
+def run_counterfactual_capture(
+    experiment_id: str = "default",
+    batch_size: int = 10,
+    model_id: str = "Qwen/Qwen3-30B-A3B",
+    dataset: str = "both",
+) -> str:
+    """Orchestrator for counterfactual capture: load from DB, compute boundaries, fan out.
+
+    Datasets are pre-built in Neon (counterfactual_prompts, counterfactual_snapshots).
+    This function loads them, computes token boundaries + padded variants using the
+    tokenizer, then fans out to GPU workers for forward passes.
+
+    Args:
+        experiment_id: Name for this capture run
+        batch_size: Prompts per GPU worker batch
+        model_id: HuggingFace model ID
+        dataset: 'a', 'b', or 'both'
+    """
+    from pathlib import Path
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq_
+
+    from pipelines.interp.counterfactual_capture import load_prompts_from_db
+    from transformers import AutoTokenizer
+
+    # Step 1: Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(f"/models/{model_id}")
+
+    # Step 2: Load prompts from DB + compute boundaries + generate padded variants
+    capture_prompts = load_prompts_from_db(
+        dataset=dataset,
+        include_padded=True,
+        tokenizer=tokenizer,
+    )
+
+    # Step 3: Fan out to GPU workers
+    batches = [
+        capture_prompts[i:i + batch_size]
+        for i in range(0, len(capture_prompts), batch_size)
+    ]
+
+    worker = CounterfactualCaptureWorker(model_id=model_id)
+    all_metadata: list[dict] = []
+
+    for batch_meta in worker.capture_batch.map(batches):
+        all_metadata.extend(batch_meta)
+
+    # Step 4: Write metadata
+    if all_metadata:
+        meta_path = Path(f"/data/activations/counterfactual/{experiment_id}/metadata.parquet")
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        table = pa.Table.from_pylist(all_metadata)
+        pq_.write_table(table, meta_path, compression="snappy")
+
+    volume.commit()
+    summary = f"Counterfactual capture complete: {len(all_metadata)} of {len(capture_prompts)} prompts"
+    print(f"\n{summary}")
+    return summary
+
+
 @app.local_entrypoint()
 def main(
+    mode: str = "capture",
     limit: int = 0,
     layers: str = "",
     capture_router: bool = True,
@@ -462,15 +669,29 @@ def main(
     model_id: str = "Qwen/Qwen3-30B-A3B",
     pool: str = "",
     router_dtype: str = "float16",
+    # Counterfactual args
+    experiment_id: str = "default",
+    dataset: str = "both",
 ):
-    result = run_capture.remote(
-        limit=limit,
-        layers_str=layers,
-        capture_router=capture_router,
-        capture_residual=capture_residual,
-        batch_size=batch_size,
-        model_id=model_id,
-        pool=pool,
-        router_dtype=router_dtype,
-    )
-    print(result)
+    if mode == "capture":
+        result = run_capture.remote(
+            limit=limit,
+            layers_str=layers,
+            capture_router=capture_router,
+            capture_residual=capture_residual,
+            batch_size=batch_size,
+            model_id=model_id,
+            pool=pool,
+            router_dtype=router_dtype,
+        )
+        print(result)
+    elif mode == "counterfactual":
+        result = run_counterfactual_capture.remote(
+            experiment_id=experiment_id,
+            batch_size=batch_size,
+            model_id=model_id,
+            dataset=dataset,
+        )
+        print(result)
+    else:
+        print(f"Unknown mode: {mode}. Use 'capture' or 'counterfactual'.")

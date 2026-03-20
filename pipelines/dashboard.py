@@ -851,6 +851,69 @@ class _NeonStatsCache:
 _neon_stats = _NeonStatsCache()
 
 
+def _summarize_question(question: str, full_results: dict) -> dict[str, Any]:
+    """Extract a compact summary from full question results."""
+    if question == "question_a":
+        label_results = full_results.get("label_results", {})
+        summary_labels: dict[str, Any] = {}
+        for label_name, lr in label_results.items():
+            per_layer = lr.get("per_layer", [])
+            ckas = [d.get("cka") for d in per_layer if d.get("cka") is not None]
+            gaps = [d.get("transfer_gap", {}).get("auroc", 0) for d in per_layer if "error" not in d]
+            summary_labels[label_name] = {
+                "n_layers": len(per_layer),
+                "mean_cka": round(sum(ckas) / len(ckas), 4) if ckas else None,
+                "mean_auroc_gap": round(sum(gaps) / len(gaps), 4) if gaps else None,
+                "per_layer": [
+                    {
+                        "layer": d["layer"],
+                        "cka": round(d["cka"], 4) if d.get("cka") is not None else None,
+                        "transfer_gap_auroc": round(d.get("transfer_gap", {}).get("auroc", 0), 4),
+                        "within_auroc": round(d["within_auroc_mean"], 4) if d.get("within_auroc_mean") is not None else None,
+                        "transfer_auroc": round(d["transfer_auroc_mean"], 4) if d.get("transfer_auroc_mean") is not None else None,
+                    }
+                    for d in per_layer if "error" not in d
+                ],
+            }
+        return {"labels": summary_labels, "n_labels": len(summary_labels)}
+
+    elif question == "question_b":
+        delta = full_results.get("delta_consistency", {})
+        delta_summary: dict[str, Any] = {}
+        for pos_key, layer_list in delta.items():
+            cos_values = [d.get("mean_pairwise_cosine") for d in layer_list if "mean_pairwise_cosine" in d]
+            delta_summary[pos_key] = {
+                "mean_cos": round(sum(cos_values) / len(cos_values), 4) if cos_values else None,
+                "per_layer": [
+                    {"layer": d["layer"], "cos": round(d["mean_pairwise_cosine"], 4)}
+                    for d in layer_list if "mean_pairwise_cosine" in d
+                ],
+            }
+        return {"delta_consistency": delta_summary}
+
+    elif question == "question_c":
+        positions = full_results.get("positions", {})
+        pos_summary: dict[str, Any] = {}
+        for pos_key, layer_list in positions.items():
+            cos_values = [d.get("mean_pairwise_cosine") for d in layer_list if "mean_pairwise_cosine" in d]
+            cka_values = [d.get("cka") for d in layer_list if d.get("cka") is not None]
+            pos_summary[pos_key] = {
+                "mean_cos": round(sum(cos_values) / len(cos_values), 4) if cos_values else None,
+                "mean_cka": round(sum(cka_values) / len(cka_values), 4) if cka_values else None,
+                "per_layer": [
+                    {
+                        "layer": d["layer"],
+                        "cos": round(d["mean_pairwise_cosine"], 4) if d.get("mean_pairwise_cosine") is not None else None,
+                        "cka": round(d.get("cka"), 4) if d.get("cka") is not None else None,
+                    }
+                    for d in layer_list if "error" not in d
+                ],
+            }
+        return {"positions": pos_summary}
+
+    return full_results
+
+
 class DashboardStore:
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
@@ -877,26 +940,42 @@ class DashboardStore:
             if tc > 0:
                 prep["status"] = "ready"
 
-        # Capture
+        # Capture — prefer Neon DB, fall back to local parquet/files
         capture = {"total_files": 0, "status": "empty"}
-        meta = self.activations_dir / "metadata.parquet"
-        if meta.exists():
+        try:
+            from pipelines.db import connect_neon
+            cap_conn = connect_neon()
             try:
-                import pyarrow.parquet as pq
-                t = pq.read_table(meta)
-                capture["total_files"] = t.num_rows
-                capture["status"] = "ready" if t.num_rows > 0 else "empty"
+                cap_row = cap_conn.execute("""
+                    SELECT COUNT(*) AS n FROM capture_metadata
+                """).fetchone()
+                if cap_row and cap_row["n"] > 0:
+                    capture["total_files"] = cap_row["n"]
+                    capture["status"] = "ready"
             except Exception:
                 pass
-        else:
-            # Count safetensors files directly
-            res_dir = self.activations_dir / "residual_stream"
-            rtr_dir = self.activations_dir / "router_logits"
-            rc = len(list(res_dir.glob("*.safetensors"))) if res_dir.exists() else 0
-            rtc = len(list(rtr_dir.glob("*.safetensors"))) if rtr_dir.exists() else 0
-            capture["total_files"] = rc + rtc
-            if rc + rtc > 0:
-                capture["status"] = "partial"
+            finally:
+                cap_conn.close()
+        except Exception:
+            pass
+        if capture["total_files"] == 0:
+            meta = self.activations_dir / "metadata.parquet"
+            if meta.exists():
+                try:
+                    import pyarrow.parquet as pq
+                    t = pq.read_table(meta)
+                    capture["total_files"] = t.num_rows
+                    capture["status"] = "ready" if t.num_rows > 0 else "empty"
+                except Exception:
+                    pass
+            else:
+                res_dir = self.activations_dir / "residual_stream"
+                rtr_dir = self.activations_dir / "router_logits"
+                rc = len(list(res_dir.glob("*.safetensors"))) if res_dir.exists() else 0
+                rtc = len(list(rtr_dir.glob("*.safetensors"))) if rtr_dir.exists() else 0
+                capture["total_files"] = rc + rtc
+                if rc + rtc > 0:
+                    capture["status"] = "partial"
 
         # Analysis
         analysis = {"total_results": 0, "status": "empty"}
@@ -905,11 +984,26 @@ class DashboardStore:
             analysis["total_results"] = len(files)
             analysis["status"] = "ready" if files else "empty"
 
+        # Counterfactual
+        counterfactual = {"total_files": 0, "status": "empty"}
+        cf_act_dir = self.data_dir / "activations" / "counterfactual"
+        if cf_act_dir.exists():
+            for exp_dir in cf_act_dir.iterdir():
+                res_d = exp_dir / "residual"
+                if res_d.exists():
+                    counterfactual["total_files"] += len(list(res_d.glob("*.safetensors")))
+            if counterfactual["total_files"] > 0:
+                counterfactual["status"] = "ready"
+        cf_results_dir = self.results_dir / "counterfactual" if self.results_dir.exists() else None
+        if cf_results_dir and cf_results_dir.exists() and any(cf_results_dir.iterdir()):
+            counterfactual["status"] = "ready"
+
         return {
             "ingest": ingest,
             "prep": prep,
             "capture": capture,
             "analysis": analysis,
+            "counterfactual": counterfactual,
         }
 
     # --- Ingest detail ---
@@ -1086,6 +1180,134 @@ class DashboardStore:
         if not path.exists() or path.suffix != ".png":
             return None
         return path.read_bytes()
+
+    def get_counterfactual(self) -> dict[str, Any]:
+        """Get counterfactual experiment status and results."""
+        cf_results_dir = self.results_dir / "counterfactual" if self.results_dir.exists() else None
+        cf_activations_dir = self.data_dir / "activations" / "counterfactual"
+
+        result: dict[str, Any] = {
+            "dataset_a": {"status": "empty", "n_snapshots": 0, "n_prompts": 0},
+            "dataset_b": {"status": "empty", "n_prompts": 0},
+            "capture": {"status": "empty", "total_files": 0, "total_size_mb": 0},
+            "analysis": {
+                "status": "empty",
+                "decision": None,
+                "question_a": None,
+                "question_b": None,
+                "question_c": None,
+            },
+        }
+
+        # Dataset + capture status from DB tables
+        try:
+            from pipelines.db import connect_neon
+            conn = connect_neon()
+            try:
+                # Dataset A
+                row = conn.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE dataset = 'a') AS a_prompts,
+                        COUNT(*) FILTER (WHERE dataset = 'b') AS b_prompts
+                    FROM counterfactual_prompts
+                """).fetchone()
+                snap_row = conn.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE split = 'train') AS n_train,
+                        COUNT(*) FILTER (WHERE split = 'test') AS n_test,
+                        COUNT(*) FILTER (WHERE split IN ('train', 'test')) AS n_snapshots
+                    FROM counterfactual_snapshots
+                """).fetchone()
+                roster_row = conn.execute("""
+                    SELECT value FROM counterfactual_templates WHERE key = 'roster'
+                """).fetchone()
+
+                if row["a_prompts"] > 0:
+                    result["dataset_a"] = {
+                        "status": "ready",
+                        "n_snapshots": snap_row["n_snapshots"],
+                        "n_prompts": row["a_prompts"],
+                        "n_train": snap_row["n_train"],
+                        "n_test": snap_row["n_test"],
+                    }
+                    if roster_row:
+                        result["dataset_a"]["roster"] = json.loads(roster_row["value"])
+
+                if row["b_prompts"] > 0:
+                    result["dataset_b"] = {
+                        "status": "ready",
+                        "n_prompts": row["b_prompts"],
+                    }
+                    cfg_rows = conn.execute("""
+                        SELECT config_tag, COUNT(*) AS cnt
+                        FROM counterfactual_prompts
+                        WHERE dataset = 'b' AND variant = 'original'
+                        GROUP BY config_tag ORDER BY config_tag
+                    """).fetchall()
+                    result["dataset_b"]["configs"] = {
+                        r["config_tag"]: r["cnt"] for r in cfg_rows
+                    }
+
+                # Capture status from counterfactual_captures table
+                try:
+                    cap_row = conn.execute("""
+                        SELECT
+                            COUNT(*) AS total_files,
+                            COALESCE(SUM(file_size_bytes), 0) AS total_bytes,
+                            COUNT(DISTINCT experiment_id) AS n_experiments
+                        FROM counterfactual_captures
+                    """).fetchone()
+                    if cap_row and cap_row["total_files"] > 0:
+                        result["capture"]["total_files"] = cap_row["total_files"]
+                        result["capture"]["total_size_mb"] = round(cap_row["total_bytes"] / 1024 / 1024, 1)
+                        result["capture"]["status"] = "ready"
+
+                    recent_rows = conn.execute("""
+                        SELECT capture_id, experiment_id, snapshot_id, variant,
+                               seq_len, n_rows, n_residual_keys, n_router_keys,
+                               file_size_bytes, elapsed_s, capture_timestamp
+                        FROM counterfactual_captures
+                        ORDER BY capture_timestamp DESC
+                        LIMIT 20
+                    """).fetchall()
+                    if recent_rows:
+                        result["capture"]["recent"] = [dict(r) for r in recent_rows]
+                except Exception as exc:
+                    print(f"[counterfactual] capture query error: {exc}")
+            except Exception as exc:
+                print(f"[counterfactual] DB query error: {exc}")
+            finally:
+                conn.close()
+        except Exception as exc:
+            print(f"[counterfactual] DB connect error: {exc}")
+
+        # Analysis results
+        if cf_results_dir and cf_results_dir.exists():
+            exp_dirs = [d for d in cf_results_dir.iterdir() if d.is_dir()]
+            for exp_dir in sorted(exp_dirs, key=lambda p: p.stat().st_mtime, reverse=True)[:1]:
+                # Load decision
+                decision_file = exp_dir / "decision.json"
+                if decision_file.exists():
+                    try:
+                        result["analysis"]["decision"] = json.loads(decision_file.read_text())
+                        result["analysis"]["status"] = "ready"
+                    except Exception:
+                        pass
+
+                # Load per-question summaries
+                for q in ["question_a", "question_b", "question_c"]:
+                    q_file = exp_dir / f"{q}_results.json"
+                    if q_file.exists():
+                        try:
+                            full = json.loads(q_file.read_text())
+                            # Extract summary (not the full per-layer data)
+                            result["analysis"][q] = _summarize_question(q, full)
+                            if result["analysis"]["status"] == "empty":
+                                result["analysis"]["status"] = "partial"
+                        except Exception:
+                            pass
+
+        return result
 
 
 # ---------------------------------------------------------------------------
@@ -1551,6 +1773,8 @@ def _make_handler(store: DashboardStore) -> type[BaseHTTPRequestHandler]:
                 self._json(store.get_capture())
             elif path == "/api/analysis":
                 self._json(store.get_analysis())
+            elif path == "/api/counterfactual":
+                self._json(store.get_counterfactual())
             elif path == "/api/analysis/probe-data":
                 filename = query.get("file", [""])[0]
                 self._json(store.get_probe_data(filename))

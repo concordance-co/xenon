@@ -58,6 +58,7 @@ class VLLMCaptureConfig:
     tensor_parallel_size: int = 1
     gpu_memory_utilization: float = 0.90
     max_model_len: int | None = None
+    max_num_seqs: int = 1  # >1 enables batched prefill (router capture requires 1)
     max_tokens_buffer: int = 8192  # pre-allocated router buffer size
 
     # Router capture knobs
@@ -171,7 +172,7 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
     kwargs: dict[str, Any] = {
         "model": config.model_id,
         "enforce_eager": True,
-        "max_num_seqs": 1,
+        "max_num_seqs": config.max_num_seqs,
         "enable_chunked_prefill": False,
         "tensor_parallel_size": config.tensor_parallel_size,
         "gpu_memory_utilization": config.gpu_memory_utilization,
@@ -209,11 +210,11 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
             },
         }
         print(f"Creating vLLM engine: {config.model_id}")
-        print(f"  enforce_eager=True, max_num_seqs=1, enable_chunked_prefill=False")
+        print(f"  enforce_eager=True, max_num_seqs={config.max_num_seqs}, enable_chunked_prefill=False")
         print(f"  Residual capture: {len(layer_ids)} layers -> {storage_path}")
     else:
         print(f"Creating vLLM engine: {config.model_id}")
-        print(f"  enforce_eager=True, max_num_seqs=1, enable_chunked_prefill=False")
+        print(f"  enforce_eager=True, max_num_seqs={config.max_num_seqs}, enable_chunked_prefill=False")
         print(f"  Residual capture: disabled")
 
     llm = LLM(**kwargs)
@@ -231,6 +232,7 @@ def _capture_one_vllm(
     messages: list[dict[str, str]],
     config: VLLMCaptureConfig,
     log_id: str | int,
+    skip_residual_save: bool = False,
 ) -> tuple[Any, Any, Any, Any]:
     """Run a single prompt through vLLM and capture activations.
 
@@ -292,15 +294,22 @@ def _capture_one_vllm(
 
             tensors = load_file(str(connector_file))
             # The connector saves with key "hidden_states" and "token_ids".
-            # Shape: (num_layers, seq_len, hidden_dim).
+            # ExampleHiddenStatesConnector outputs (seq_len, num_layers, hidden_dim)
+            # but our pipeline expects (num_layers, seq_len, hidden_dim).
             hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
+            if hs.dim() == 3:
+                hs = hs.permute(1, 0, 2)  # (seq, layers, dim) -> (layers, seq, dim)
             residual = hs.to(torch.float16)
 
-            # Re-save in our canonical format with the "residual_stream" key
-            # and rename from vLLM's req_id to our log_id.
-            _save_activations(residual, target_file)
-            if connector_file != target_file:
+            if skip_residual_save:
+                # Just load into memory, delete connector file, don't re-save
                 connector_file.unlink(missing_ok=True)
+            else:
+                # Re-save in our canonical format with the "residual_stream" key
+                # and rename from vLLM's req_id to our log_id.
+                _save_activations(residual, target_file)
+                if connector_file != target_file:
+                    connector_file.unlink(missing_ok=True)
         else:
             print(
                 f"  WARNING: Residual file not found for request. "
@@ -332,6 +341,84 @@ def _capture_one_vllm(
             router_indices_tensor = topk_indices.to(torch.int16)
 
     return residual, router_logits_tensor, router_indices_tensor, input_ids
+
+
+# ---------------------------------------------------------------------------
+# Batched capture (residual only — router requires max_num_seqs=1)
+# ---------------------------------------------------------------------------
+
+def _capture_batch_vllm(
+    *,
+    llm: Any,
+    tokenizer: Any,
+    prompts: list[dict[str, Any]],
+    config: VLLMCaptureConfig,
+) -> list[tuple[Any, list[int], str]]:
+    """Run multiple prompts through vLLM in a single generate() call.
+
+    Each prompt dict must have "messages" (list of role/content dicts) and "id".
+
+    Returns list of (residual_tensor, input_ids, prompt_id) in the same order
+    as the input prompts.  Router capture is NOT supported in batch mode.
+    """
+    import torch
+    from safetensors.torch import load_file
+    from vllm import SamplingParams
+
+    # Pre-tokenize all prompts
+    all_inputs: list[dict[str, Any]] = []
+    id_order: list[str] = []
+    input_ids_map: dict[str, list[int]] = {}
+
+    for p in prompts:
+        input_ids = tokenizer.apply_chat_template(
+            p["messages"],
+            tokenize=True,
+            add_generation_prompt=config.add_generation_prompt,
+        )
+        if not isinstance(input_ids, list):
+            if hasattr(input_ids, "tolist"):
+                input_ids = input_ids.squeeze().tolist()
+        pid = str(p["id"])
+        all_inputs.append({"prompt_token_ids": input_ids})
+        id_order.append(pid)
+        input_ids_map[pid] = input_ids
+
+    # Single batched generate — vLLM schedules concurrently up to max_num_seqs
+    sampling_params = SamplingParams(max_tokens=1)
+    outputs = llm.generate(all_inputs, sampling_params)
+
+    # Map outputs back by request_id → our prompt order
+    # vLLM returns outputs in the same order as inputs
+    results: list[tuple[Any, list[int], str]] = []
+    storage_path = str(config.output_dir / "residual_stream")
+
+    for i, output in enumerate(outputs):
+        pid = id_order[i]
+        residual = None
+
+        if config.capture_residual:
+            hidden_states_path = None
+            if hasattr(output, "kv_transfer_params") and output.kv_transfer_params:
+                hidden_states_path = output.kv_transfer_params.get("hidden_states_path")
+
+            if hidden_states_path and Path(hidden_states_path).exists():
+                connector_file = Path(hidden_states_path)
+                tensors = load_file(str(connector_file))
+                hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
+                if hs.dim() == 3:
+                    hs = hs.permute(1, 0, 2)  # (seq, layers, dim) -> (layers, seq, dim)
+                residual = hs.to(torch.float16)
+                connector_file.unlink(missing_ok=True)
+            else:
+                print(
+                    f"  WARNING: Residual file not found for {pid}. "
+                    f"kv_transfer_params={getattr(output, 'kv_transfer_params', None)}"
+                )
+
+        results.append((residual, input_ids_map[pid], pid))
+
+    return results
 
 
 # ---------------------------------------------------------------------------

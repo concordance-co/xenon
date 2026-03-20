@@ -7,6 +7,7 @@ import { IngestView } from './components/IngestView'
 import { PrepView } from './components/PrepView'
 import { CaptureView } from './components/CaptureView'
 import { AnalysisView } from './components/AnalysisView'
+import { CounterfactualView } from './components/CounterfactualView'
 import { ExplorerView } from './components/ExplorerView'
 import { CommandRunner } from './components/CommandRunner'
 import { JobList } from './components/JobList'
@@ -14,7 +15,7 @@ import { PipelineFlow } from './components/PipelineFlow'
 import styles from './App.module.css'
 
 export type Phase = 'ingest' | 'prep' | 'capture' | 'analysis'
-type TopView = 'pipeline' | 'explorer'
+type TopView = 'pipeline' | 'explorer' | 'counterfactual'
 
 interface RunnerState {
   command?: string
@@ -76,7 +77,7 @@ export default function App() {
               <span className={styles.titleAccent}>Xe</span>non
             </h1>
             <span className={styles.subtitle}>
-              {view === 'pipeline' ? 'Pipeline Control' : 'Data Explorer'}
+              {view === 'pipeline' ? 'Pipeline Control' : view === 'explorer' ? 'Data Explorer' : 'Counterfactual Experiment'}
             </span>
           </div>
           <div className={styles.headerNav}>
@@ -91,6 +92,12 @@ export default function App() {
               onClick={() => setView('explorer')}
             >
               Explorer
+            </button>
+            <button
+              className={view === 'counterfactual' ? styles.navActive : styles.navBtn}
+              onClick={() => setView('counterfactual')}
+            >
+              Counterfactual
             </button>
           </div>
         </header>
@@ -122,6 +129,15 @@ export default function App() {
           <main className={styles.main}>
             <ExplorerView />
           </main>
+        )}
+
+        {view === 'counterfactual' && (
+          <>
+            <main className={styles.main}>
+              <CounterfactualView onRun={handleRun} refreshKey={refreshKey} />
+            </main>
+            <JobList onReconnect={handleReconnect} onViewModalLogs={handleViewModalLogs} />
+          </>
         )}
 
         {runner && (

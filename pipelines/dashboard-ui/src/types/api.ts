@@ -18,6 +18,10 @@ export interface AnalysisStatus extends PhaseStatus {
   total_results: number
 }
 
+export interface CounterfactualStatus extends PhaseStatus {
+  total_files: number
+}
+
 export interface PipelineStatus {
   ingest: IngestStatus
   prep: PrepStatus
@@ -347,4 +351,74 @@ export interface PayloadStatsResponse {
   trade_token_dist?: DistRow[]
   held_token_dist?: DistRow[]
   market_token_dist?: DistRow[]
+}
+
+// --- Counterfactual Experiment ---
+
+export interface CounterfactualLayerRow {
+  layer: number
+  cka: number | null
+  transfer_gap_auroc: number
+  within_auroc: number | null
+  transfer_auroc: number | null
+}
+
+export interface CounterfactualLabelSummary {
+  n_layers: number
+  mean_cka: number | null
+  mean_auroc_gap: number | null
+  per_layer: CounterfactualLayerRow[]
+}
+
+export interface DeltaLayerRow {
+  layer: number
+  cos: number | null
+  cka?: number | null
+}
+
+export interface DeltaPositionSummary {
+  mean_cos: number | null
+  mean_cka?: number | null
+  per_layer: DeltaLayerRow[]
+}
+
+export interface CounterfactualDecision {
+  decision: string
+  reasoning: string
+  metrics: Record<string, unknown>
+}
+
+export interface CounterfactualData {
+  dataset_a: {
+    status: string
+    n_snapshots: number
+    n_prompts: number
+    n_train?: number
+    n_test?: number
+    dir?: string
+  }
+  dataset_b: {
+    status: string
+    n_prompts: number
+  }
+  capture: {
+    status: string
+    total_files: number
+    total_size_mb: number
+    recent?: Record<string, unknown>[]
+  }
+  analysis: {
+    status: string
+    decision: CounterfactualDecision | null
+    question_a: {
+      labels: Record<string, CounterfactualLabelSummary>
+      n_labels: number
+    } | null
+    question_b: {
+      delta_consistency: Record<string, DeltaPositionSummary>
+    } | null
+    question_c: {
+      positions: Record<string, DeltaPositionSummary>
+    } | null
+  }
 }

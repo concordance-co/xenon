@@ -11,6 +11,26 @@ from psycopg.rows import dict_row
 
 logger = logging.getLogger(__name__)
 
+_INTERP_COLUMNS = (
+    "example_id", "log_id", "vault_address", "created_at", "strategy_id", "transaction_hash", "is_trade",
+    "prompt_messages_json", "system_text", "user_text", "tools_available_json",
+    "market_snapshot_json", "portfolio_snapshot_json", "strategy_snapshot_json", "config_snapshot_json",
+    "memory_snapshot_json", "model_source", "assistant_content", "reasoning_content", "tool_calls_json",
+    "action_name", "decision_type", "trade_side", "asset", "size", "observation_text",
+    "joined_swap", "swap_side", "swap_token_address", "swap_token_symbol", "swap_price_usd",
+    "pnl_1h_pct", "pnl_4h_pct", "pnl_1d_pct", "was_profitable_1h",
+    "entry_price_usd", "entry_price_eth",
+    "vault_trade_size", "vault_trading_activity", "vault_holding_style", "vault_diversification", "vault_risk_preference",
+    "parse_ok", "parse_error", "has_messages", "has_tools", "has_market", "has_portfolio", "has_strategy", "has_config", "has_memory",
+    "context_complete", "missing_blocks_json", "label_quality", "label_confidence",
+    "ingest_version", "transform_version", "built_at",
+)
+
+_INTERP_SECONDARY_INDEXES = (
+    "idx_interp_examples_v0_decision",
+    "idx_interp_examples_v0_vault_log",
+)
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
@@ -349,6 +369,423 @@ def _build_strategy_fallback(
     }
 
 
+def _focus_filter_sql(only_focus_decisions: bool) -> str:
+    if not only_focus_decisions:
+        return ""
+    return "AND l.tool IN ('buy_token', 'sell_token', 'record_observation')"
+
+
+def _collect_prepare_stats(
+    conn,
+    *,
+    rows_scanned: int,
+    rows_focus_kept: int,
+    rows_written: int,
+    row_errors: int,
+) -> dict[str, int]:
+    totals = conn.execute(
+        """
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN decision_type='trade' THEN 1 ELSE 0 END) AS trade_count,
+            SUM(CASE WHEN decision_type='record_observation' THEN 1 ELSE 0 END) AS observation_count,
+            SUM(CASE WHEN label_quality='high' THEN 1 ELSE 0 END) AS high_quality_count,
+            SUM(CASE WHEN context_complete THEN 1 ELSE 0 END) AS context_complete_count,
+            SUM(CASE WHEN parse_ok THEN 1 ELSE 0 END) AS parse_ok_count
+        FROM interp_examples_v0
+        """
+    ).fetchone()
+
+    gap_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM interp_examples_v0 WHERE NOT parse_ok OR NOT context_complete"
+    ).fetchone()["c"]
+
+    return {
+        "rows_scanned": rows_scanned,
+        "rows_focus_kept": rows_focus_kept,
+        "rows_written": rows_written,
+        "row_errors": row_errors,
+        "total_examples": int(totals["total"] or 0),
+        "trade_count": int(totals["trade_count"] or 0),
+        "observation_count": int(totals["observation_count"] or 0),
+        "high_quality_count": int(totals["high_quality_count"] or 0),
+        "context_complete_count": int(totals["context_complete_count"] or 0),
+        "parse_ok_count": int(totals["parse_ok_count"] or 0),
+        "gap_count": int(gap_count or 0),
+    }
+
+
+def _run_prepare_full_rebuild_sql(conn, config: "PrepareConfig") -> dict[str, int]:
+    """Rebuild interp_examples_v0 with a single set-based SQL statement.
+
+    This path is intentionally less faithful than the Python transform in a few
+    places for speed:
+    - prompt_messages_json stores the raw message array JSON without normalization
+    - decision labels come from inference_logs.tool + tool_args_json
+    - assistant/model/tool_calls use the already-extracted full_logs columns
+    """
+    from pipelines.db import DDL_INTERP_EXAMPLES_INDEXES
+
+    logger.info("Full rebuild: using set-based SQL path")
+    if config.limit != 50_000:
+        logger.warning(
+            "Ignoring limit=%d in full_rebuild SQL mode; rebuilding the full qualifying source set",
+            config.limit,
+        )
+
+    focus_filter = _focus_filter_sql(config.only_focus_decisions)
+    source_count = conn.execute(
+        f"""
+        SELECT COUNT(*) AS c
+        FROM inference_logs l
+        JOIN full_logs f ON f.log_id = l.id
+        WHERE f.raw_payload IS NOT NULL
+          {focus_filter}
+        """
+    ).fetchone()["c"]
+
+    conn.execute("SET LOCAL synchronous_commit = off")
+    conn.execute("SET LOCAL work_mem = '256MB'")
+    conn.execute("SET LOCAL jit = off")
+
+    for index_name in _INTERP_SECONDARY_INDEXES:
+        conn.execute(f"DROP INDEX IF EXISTS {index_name}")
+
+    conn.execute("TRUNCATE interp_examples_v0")
+    logger.info("Full rebuild: truncated interp_examples_v0")
+
+    insert_sql = f"""
+        INSERT INTO interp_examples_v0 (
+          {", ".join(_INTERP_COLUMNS)}
+        )
+        WITH best_swap_by_log AS MATERIALIZED (
+          SELECT DISTINCT ON (s.log_id)
+            s.log_id,
+            s.side,
+            s.token_address,
+            s.token_symbol,
+            s.effective_price_usd
+          FROM swaps s
+          WHERE s.log_id IS NOT NULL
+          ORDER BY s.log_id, s.timestamp DESC NULLS LAST, s.log_index DESC
+        ),
+        best_swap_by_tx AS MATERIALIZED (
+          SELECT DISTINCT ON (s.transaction_hash)
+            s.transaction_hash,
+            s.side,
+            s.token_address,
+            s.token_symbol,
+            s.effective_price_usd
+          FROM swaps s
+          WHERE s.transaction_hash IS NOT NULL
+          ORDER BY s.transaction_hash, s.timestamp DESC NULLS LAST, s.log_index DESC
+        ),
+        strategy_bank AS MATERIALIZED (
+          SELECT
+            s.vault_address,
+            jsonb_agg(
+              jsonb_build_object(
+                'vault_address', s.vault_address,
+                'strategy_id', s.strategy_id,
+                'content', s.content,
+                'enabled', s.enabled,
+                'strategy_priority', s.strategy_priority,
+                'expiry', s.expiry,
+                'created_block', s.created_block,
+                'updated_block', s.updated_block
+              )
+              ORDER BY
+                s.enabled DESC NULLS LAST,
+                CASE
+                  WHEN s.strategy_id ~ '^[0-9]+$' THEN s.strategy_id::int
+                  ELSE NULL
+                END DESC NULLS LAST,
+                s.strategy_id DESC
+            ) AS vault_strategies
+          FROM strategies s
+          GROUP BY s.vault_address
+        ),
+        src AS (
+          SELECT
+            l.id AS log_id,
+            l.vault_address,
+            l.created_at,
+            l.strategy_id,
+            l.transaction_hash,
+            l.tool,
+            l.tool_args_json,
+            f.parse_error,
+            f.completion_text,
+            f.reasoning_content,
+            f.tool_calls_json,
+            f.llm_model,
+            f.fetched_at,
+
+            COALESCE(
+              f.raw_payload #> '{{llm_request_payload,llm_input,messages}}',
+              f.raw_payload #> '{{llm_request_payload,messages}}'
+            ) AS raw_messages,
+
+            COALESCE(
+              f.raw_payload #> '{{llm_request_payload,llm_input,tools}}',
+              f.raw_payload #> '{{llm_request_payload,tools}}'
+            ) AS tools_json,
+
+            COALESCE(
+              f.raw_payload #> '{{snapshot,Market}}',
+              f.raw_payload #> '{{llm_request_payload,llm_input,snapshot,Market}}'
+            ) AS market_json,
+
+            COALESCE(
+              f.raw_payload #> '{{snapshot,Portfolio}}',
+              f.raw_payload #> '{{snapshot,Vault}}',
+              f.raw_payload #> '{{llm_request_payload,llm_input,snapshot,Portfolio}}'
+            ) AS portfolio_json,
+
+            COALESCE(
+              f.raw_payload #> '{{snapshot,Strategies}}',
+              f.raw_payload #> '{{llm_request_payload,llm_input,strategies}}'
+            ) AS strategy_direct_json,
+
+            COALESCE(
+              f.raw_payload #> '{{snapshot,Config}}',
+              f.raw_payload #> '{{snapshot,VaultConfig}}',
+              f.raw_payload #> '{{snapshot,Agent,Options}}',
+              f.raw_payload -> 'options'
+            ) AS config_json,
+
+            COALESCE(
+              f.raw_payload #> '{{snapshot,Memories}}',
+              f.raw_payload #> '{{llm_request_payload,llm_input,memories}}'
+            ) AS memory_json,
+
+            sb.vault_strategies,
+
+            CASE
+              WHEN l.tool_args_json IS NOT NULL
+               AND pg_input_is_valid(l.tool_args_json, 'jsonb')
+              THEN l.tool_args_json::jsonb
+              ELSE '{{}}'::jsonb
+            END AS action_args
+          FROM inference_logs l
+          JOIN full_logs f
+            ON f.log_id = l.id
+          LEFT JOIN strategy_bank sb
+            ON sb.vault_address = l.vault_address
+          WHERE f.raw_payload IS NOT NULL
+            {focus_filter}
+        ),
+        shaped AS (
+          SELECT
+            s.*,
+            COALESCE(
+              s.strategy_direct_json,
+              CASE
+                WHEN s.vault_strategies IS NOT NULL THEN jsonb_build_object(
+                  'strategy_id_from_log', to_jsonb(s.strategy_id),
+                  'vault_strategies', s.vault_strategies
+                )
+              END
+            ) AS strategy_json,
+            (COALESCE(s.parse_error, '') = '') AS parse_ok,
+            (
+              s.raw_messages IS NOT NULL
+              AND jsonb_typeof(s.raw_messages) = 'array'
+              AND jsonb_array_length(s.raw_messages) > 0
+            ) AS has_messages,
+            (s.tools_json IS NOT NULL) AS has_tools,
+            (s.market_json IS NOT NULL) AS has_market,
+            (s.portfolio_json IS NOT NULL) AS has_portfolio,
+            (s.config_json IS NOT NULL) AS has_config,
+            (s.memory_json IS NOT NULL) AS has_memory
+          FROM src s
+        ),
+        scored AS (
+          SELECT
+            s.*,
+            (s.strategy_json IS NOT NULL) AS has_strategy,
+            (
+              s.has_messages
+              AND s.has_market
+              AND s.has_portfolio
+              AND (s.strategy_json IS NOT NULL)
+              AND s.has_config
+            ) AS context_complete,
+            array_remove(ARRAY[
+              CASE WHEN NOT s.has_messages THEN 'messages'::text END,
+              CASE WHEN NOT s.has_market THEN 'market'::text END,
+              CASE WHEN NOT s.has_portfolio THEN 'portfolio'::text END,
+              CASE WHEN NOT (s.strategy_json IS NOT NULL) THEN 'strategy'::text END,
+              CASE WHEN NOT s.has_config THEN 'config'::text END,
+              CASE WHEN NOT s.has_memory THEN 'memory'::text END,
+              CASE WHEN NOT s.has_tools THEN 'tools'::text END
+            ], NULL) AS missing_blocks
+          FROM shaped s
+        )
+        SELECT
+          (s.vault_address || ':' || s.log_id::text) AS example_id,
+          s.log_id,
+          s.vault_address,
+          s.created_at,
+          s.strategy_id,
+          s.transaction_hash,
+          (s.tool IN ('buy_token', 'sell_token')) AS is_trade,
+
+          s.raw_messages::text AS prompt_messages_json,
+          NULL AS system_text,
+          NULL AS user_text,
+          s.tools_json::text AS tools_available_json,
+          s.market_json::text AS market_snapshot_json,
+          s.portfolio_json::text AS portfolio_snapshot_json,
+          s.strategy_json::text AS strategy_snapshot_json,
+          s.config_json::text AS config_snapshot_json,
+          s.memory_json::text AS memory_snapshot_json,
+
+          s.llm_model AS model_source,
+          s.completion_text AS assistant_content,
+          s.reasoning_content,
+          s.tool_calls_json,
+
+          s.tool AS action_name,
+          CASE
+            WHEN s.tool IN ('buy_token', 'sell_token') THEN 'trade'
+            WHEN s.tool = 'record_observation' THEN 'record_observation'
+            ELSE 'other'
+          END AS decision_type,
+          CASE
+            WHEN s.tool = 'buy_token' THEN 'buy'
+            WHEN s.tool = 'sell_token' THEN 'sell'
+            ELSE NULL
+          END AS trade_side,
+
+          s.action_args ->> 'token' AS asset,
+          s.action_args ->> 'spend_pct' AS size,
+          s.action_args ->> 'content' AS observation_text,
+
+          ((sbl.log_id IS NOT NULL) OR (sbl.log_id IS NULL AND sbt.transaction_hash IS NOT NULL)) AS joined_swap,
+          COALESCE(sbl.side, sbt.side) AS swap_side,
+          COALESCE(sbl.token_address, sbt.token_address) AS swap_token_address,
+          COALESCE(sbl.token_symbol, sbt.token_symbol) AS swap_token_symbol,
+          COALESCE(
+            NULLIF(sbl.effective_price_usd, '')::double precision,
+            NULLIF(sbt.effective_price_usd, '')::double precision
+          ) AS swap_price_usd,
+
+          t.pnl_1h_pct,
+          t.pnl_4h_pct,
+          t.pnl_1d_pct,
+          t.was_profitable_1h,
+          t.entry_price_usd,
+          t.entry_price_eth,
+
+          v.trade_size AS vault_trade_size,
+          v.trading_activity AS vault_trading_activity,
+          v.holding_style AS vault_holding_style,
+          v.diversification AS vault_diversification,
+          v.asset_risk_preference AS vault_risk_preference,
+
+          s.parse_ok,
+          s.parse_error,
+          s.has_messages,
+          s.has_tools,
+          s.has_market,
+          s.has_portfolio,
+          s.has_strategy,
+          s.has_config,
+          s.has_memory,
+          s.context_complete,
+          to_jsonb(s.missing_blocks)::text AS missing_blocks_json,
+
+          CASE
+            WHEN s.parse_ok AND s.context_complete THEN 'high'
+            WHEN s.parse_ok
+             AND cardinality(s.missing_blocks) <= 2
+             AND s.missing_blocks <@ ARRAY['memory','tools']::text[]
+            THEN 'medium'
+            ELSE 'low'
+          END AS label_quality,
+
+          CASE
+            WHEN s.parse_ok AND s.context_complete THEN 'high'
+            WHEN s.parse_ok
+             AND cardinality(s.missing_blocks) <= 2
+             AND s.missing_blocks <@ ARRAY['memory','tools']::text[]
+            THEN 'medium'
+            ELSE 'low'
+          END AS label_confidence,
+
+          s.fetched_at AS ingest_version,
+          %s AS transform_version,
+          %s AS built_at
+
+        FROM scored s
+        LEFT JOIN best_swap_by_log sbl
+          ON sbl.log_id = s.log_id
+        LEFT JOIN best_swap_by_tx sbt
+          ON sbt.transaction_hash = s.transaction_hash
+        LEFT JOIN trade_outcomes t
+          ON t.log_id = s.log_id
+        LEFT JOIN vaults v
+          ON v.vault_address = s.vault_address
+    """
+    built_at = _now_iso()
+    inserted = conn.execute(
+        insert_sql,
+        [config.transform_version, built_at],
+    ).rowcount
+
+    update_text_sql = """
+        WITH text_rows AS (
+          SELECT
+            example_id,
+            (
+              SELECT elem->>'content'
+              FROM jsonb_array_elements(prompt_messages_json::jsonb) elem
+              WHERE elem->>'role' = 'system'
+                AND COALESCE(elem->>'content', '') <> ''
+              LIMIT 1
+            ) AS system_text,
+            (
+              SELECT elem->>'content'
+              FROM jsonb_array_elements(prompt_messages_json::jsonb) elem
+              WHERE elem->>'role' = 'user'
+                AND COALESCE(elem->>'content', '') <> ''
+              LIMIT 1
+            ) AS user_text
+          FROM interp_examples_v0
+          WHERE prompt_messages_json IS NOT NULL
+            AND jsonb_typeof(prompt_messages_json::jsonb) = 'array'
+        )
+        UPDATE interp_examples_v0 ie
+        SET
+          system_text = text_rows.system_text,
+          user_text = text_rows.user_text
+        FROM text_rows
+        WHERE ie.example_id = text_rows.example_id
+          AND (ie.system_text IS DISTINCT FROM text_rows.system_text
+            OR ie.user_text IS DISTINCT FROM text_rows.user_text)
+    """
+    conn.execute(update_text_sql)
+
+    for ddl in DDL_INTERP_EXAMPLES_INDEXES:
+        conn.execute(ddl)
+
+    conn.execute("ANALYZE interp_examples_v0")
+    conn.commit()
+
+    return _collect_prepare_stats(
+        conn,
+        rows_scanned=int(source_count or 0),
+        rows_focus_kept=int(source_count or 0),
+        rows_written=(
+            int(inserted)
+            if inserted is not None and inserted >= 0
+            else int(source_count or 0)
+        ),
+        row_errors=0,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -372,19 +809,27 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
     conn.row_factory = dict_row
     ensure_schema(conn)
 
+    if config.full_rebuild:
+        try:
+            stats = _run_prepare_full_rebuild_sql(conn, config)
+        except Exception:
+            conn.rollback()
+            logger.error(
+                "Fatal error during full rebuild SQL path, rolling back", exc_info=True
+            )
+            raise
+        finally:
+            conn.close()
+        return stats
+
     # ------------------------------------------------------------------
     # Incremental mode: find high-water mark unless full rebuild
     # ------------------------------------------------------------------
-    high_water_mark = 0
-    if config.full_rebuild:
-        conn.execute("TRUNCATE interp_examples_v0")
-        logger.info("Full rebuild: truncated interp_examples_v0")
-    else:
-        hwm_row = conn.execute(
-            "SELECT COALESCE(MAX(log_id), 0) AS hwm FROM interp_examples_v0"
-        ).fetchone()
-        high_water_mark = int(hwm_row["hwm"])
-        logger.info("Incremental mode: high_water_mark=%d", high_water_mark)
+    hwm_row = conn.execute(
+        "SELECT COALESCE(MAX(log_id), 0) AS hwm FROM interp_examples_v0"
+    ).fetchone()
+    high_water_mark = int(hwm_row["hwm"])
+    logger.info("Incremental mode: high_water_mark=%d", high_water_mark)
 
     # ------------------------------------------------------------------
     # Source query: read raw_payload directly from JSONB column
@@ -438,21 +883,11 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
     # ------------------------------------------------------------------
     # Build rows for bulk upsert via COPY + temp table
     # ------------------------------------------------------------------
-    _COLUMNS = (
-        "example_id", "log_id", "vault_address", "created_at", "strategy_id", "transaction_hash", "is_trade",
-        "prompt_messages_json", "system_text", "user_text", "tools_available_json",
-        "market_snapshot_json", "portfolio_snapshot_json", "strategy_snapshot_json", "config_snapshot_json",
-        "memory_snapshot_json", "model_source", "assistant_content", "reasoning_content", "tool_calls_json",
-        "action_name", "decision_type", "trade_side", "asset", "size", "observation_text",
-        "joined_swap", "swap_side", "swap_token_address", "swap_token_symbol", "swap_price_usd",
-        "pnl_1h_pct", "pnl_4h_pct", "pnl_1d_pct", "was_profitable_1h",
-        "entry_price_usd", "entry_price_eth",
-        "vault_trade_size", "vault_trading_activity", "vault_holding_style", "vault_diversification", "vault_risk_preference",
-        "parse_ok", "parse_error", "has_messages", "has_tools", "has_market", "has_portfolio", "has_strategy", "has_config", "has_memory",
-        "context_complete", "missing_blocks_json", "label_quality", "label_confidence",
-        "ingest_version", "transform_version", "built_at",
+    _SET_CLAUSE = ", ".join(
+        f"{col}=EXCLUDED.{col}"
+        for col in _INTERP_COLUMNS
+        if col not in ("example_id", "log_id", "vault_address")
     )
-    _SET_CLAUSE = ", ".join(f"{col}=EXCLUDED.{col}" for col in _COLUMNS if col not in ("example_id", "log_id", "vault_address"))
 
     inserted = 0
     focused = 0
@@ -610,7 +1045,7 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         # Bulk upsert via COPY into temp table, then INSERT ... ON CONFLICT
         # ---------------------------------------------------------------
         if insert_rows:
-            col_list = ", ".join(_COLUMNS)
+            col_list = ", ".join(_INTERP_COLUMNS)
             conn.execute(
                 "CREATE TEMP TABLE _prep_staging (LIKE interp_examples_v0 INCLUDING DEFAULTS) ON COMMIT DROP"
             )
@@ -644,41 +1079,16 @@ def run_prepare(config: PrepareConfig) -> dict[str, int]:
         )
         raise
 
-    # ------------------------------------------------------------------
-    # Summary stats (all via filtered queries on interp_examples_v0)
-    # ------------------------------------------------------------------
-    totals = conn.execute(
-        """
-        SELECT
-            COUNT(*) AS total,
-            SUM(CASE WHEN decision_type='trade' THEN 1 ELSE 0 END) AS trade_count,
-            SUM(CASE WHEN decision_type='record_observation' THEN 1 ELSE 0 END) AS observation_count,
-            SUM(CASE WHEN label_quality='high' THEN 1 ELSE 0 END) AS high_quality_count,
-            SUM(CASE WHEN context_complete THEN 1 ELSE 0 END) AS context_complete_count,
-            SUM(CASE WHEN parse_ok THEN 1 ELSE 0 END) AS parse_ok_count
-        FROM interp_examples_v0
-        """
-    ).fetchone()
-
-    gap_count = conn.execute(
-        "SELECT COUNT(*) AS c FROM interp_examples_v0 WHERE NOT parse_ok OR NOT context_complete"
-    ).fetchone()["c"]
-
-    conn.close()
-
-    return {
-        "rows_scanned": len(rows),
-        "rows_focus_kept": focused,
-        "rows_written": inserted,
-        "row_errors": error_count,
-        "total_examples": int(totals["total"] or 0),
-        "trade_count": int(totals["trade_count"] or 0),
-        "observation_count": int(totals["observation_count"] or 0),
-        "high_quality_count": int(totals["high_quality_count"] or 0),
-        "context_complete_count": int(totals["context_complete_count"] or 0),
-        "parse_ok_count": int(totals["parse_ok_count"] or 0),
-        "gap_count": int(gap_count or 0),
-    }
+    try:
+        return _collect_prepare_stats(
+            conn,
+            rows_scanned=len(rows),
+            rows_focus_kept=focused,
+            rows_written=inserted,
+            row_errors=error_count,
+        )
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------

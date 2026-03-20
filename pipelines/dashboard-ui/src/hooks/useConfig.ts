@@ -40,12 +40,24 @@ export interface AnalysisConfig {
   limit: number
 }
 
+export interface CounterfactualConfig {
+  experimentId: string
+  dataset: 'a' | 'b' | 'both'
+  batchSize: number
+  gpu: 'A100-80GB' | 'H200' | 'H100'
+  layers: string
+  questions: 'a' | 'b' | 'c' | 'all'
+  nBootstrap: number
+  seed: number
+}
+
 export interface PipelineConfig {
   ingest: IngestConfig
   prep: PrepConfig
   outcomes: OutcomesConfig
   capture: CaptureConfig
   analysis: AnalysisConfig
+  counterfactual: CounterfactualConfig
 }
 
 export const DEFAULT_CONFIG: PipelineConfig = {
@@ -84,6 +96,16 @@ export const DEFAULT_CONFIG: PipelineConfig = {
     nFolds: 5,
     limit: 0,
   },
+  counterfactual: {
+    experimentId: 'default',
+    dataset: 'both',
+    batchSize: 10,
+    gpu: 'H200',
+    layers: '',
+    questions: 'all',
+    nBootstrap: 1000,
+    seed: 42,
+  },
 }
 
 const STORAGE_KEY = 'xenon-pipeline-config'
@@ -99,6 +121,7 @@ export function loadConfig(): PipelineConfig {
       outcomes: { ...DEFAULT_CONFIG.outcomes, ...saved.outcomes },
       capture: { ...DEFAULT_CONFIG.capture, ...saved.capture },
       analysis: { ...DEFAULT_CONFIG.analysis, ...saved.analysis },
+      counterfactual: { ...DEFAULT_CONFIG.counterfactual, ...saved.counterfactual },
     }
   } catch {
     return DEFAULT_CONFIG
@@ -166,6 +189,24 @@ export function buildAnalysisCmd(c: AnalysisConfig): string {
   if (c.layers) cmd += ` --layers ${c.layers}`
   if (c.nFolds !== 5) cmd += ` --n-folds ${c.nFolds}`
   if (c.limit > 0) cmd += ` --limit ${c.limit}`
+  return cmd
+}
+
+export function buildCounterfactualBuildCmd(c: CounterfactualConfig): string {
+  return `uv run python -m pipelines.interp.counterfactual --dataset ${c.dataset} --seed ${c.seed}`
+}
+
+export function buildCounterfactualCaptureCmd(c: CounterfactualConfig): string {
+  let cmd = `./scripts/modal_capture.sh counterfactual-capture --experiment-id ${c.experimentId}`
+  cmd += ` --batch-size ${c.batchSize} --dataset ${c.dataset} --gpu ${c.gpu}`
+  return cmd
+}
+
+export function buildCounterfactualAnalyzeCmd(c: CounterfactualConfig): string {
+  let cmd = `./scripts/modal_capture.sh counterfactual-analyze --experiment-id ${c.experimentId}`
+  cmd += ` --questions ${c.questions}`
+  if (c.layers) cmd += ` --layers ${c.layers}`
+  cmd += ` --n-bootstrap ${c.nBootstrap} --seed ${c.seed}`
   return cmd
 }
 
