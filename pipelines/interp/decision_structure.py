@@ -186,6 +186,129 @@ def build_tick_label_row(
     }
 
 
+def _tokenize_text(tokenizer: Any, text: str) -> list[int]:
+    if hasattr(tokenizer, "encode"):
+        return list(tokenizer.encode(text, add_special_tokens=False))
+    encoded = tokenizer(text, add_special_tokens=False, return_tensors=None)
+    if isinstance(encoded, dict):
+        return list(encoded.get("input_ids", []))
+    return list(encoded)
+
+
+def _chat_template_ids(tokenizer: Any, system_text: str, user_text: str) -> list[int]:
+    messages = []
+    if system_text:
+        messages.append({"role": "system", "content": system_text})
+    messages.append({"role": "user", "content": user_text})
+    return list(tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt=False,
+        return_tensors=None,
+    ))
+
+
+def _find_subsequence(
+    haystack: list[int],
+    needle: list[int],
+    *,
+    start: int = 0,
+    end: int | None = None,
+) -> int:
+    if not needle:
+        return start
+    stop = len(haystack) if end is None else min(end, len(haystack))
+    width = len(needle)
+    limit = stop - width + 1
+    for idx in range(max(0, start), max(0, limit)):
+        if haystack[idx : idx + width] == needle:
+            return idx
+    return -1
+
+
+def find_real_section_boundaries(
+    tokenizer: Any,
+    system_text: str,
+    user_text: str,
+) -> dict[str, tuple[int, int]]:
+    from pipelines.interp.counterfactual import DOWNSTREAM_SECTIONS, MARKET_HEADER
+
+    full_ids = _chat_template_ids(tokenizer, system_text, user_text)
+    ordered_headers = [("market", MARKET_HEADER), *DOWNSTREAM_SECTIONS]
+
+    starts: list[tuple[str, int]] = []
+    search_start = 0
+    for name, header in ordered_headers:
+        if header not in user_text:
+            continue
+        header_ids = _tokenize_text(tokenizer, header)
+        start = _find_subsequence(full_ids, header_ids, start=search_start)
+        if start < 0:
+            continue
+        starts.append((name, start))
+        search_start = start + max(1, len(header_ids))
+
+    if not starts:
+        return {}
+
+    boundaries: dict[str, tuple[int, int]] = {}
+    for idx, (name, start) in enumerate(starts):
+        end = starts[idx + 1][1] if idx + 1 < len(starts) else len(full_ids)
+        boundaries[name] = (start, end)
+
+    market_start = next((start for name, start in starts if name == "market"), None)
+    if market_start is not None and market_start > 0:
+        boundaries["preamble"] = (0, market_start)
+    return boundaries
+
+
+def find_real_row_boundaries(
+    tokenizer: Any,
+    system_text: str,
+    user_text: str,
+    market_rows: list[Any],
+) -> list[dict[str, Any]]:
+    full_ids = _chat_template_ids(tokenizer, system_text, user_text)
+    section_boundaries = find_real_section_boundaries(tokenizer, system_text, user_text)
+    market_start = section_boundaries.get("market", (0, len(full_ids)))[0]
+    search_start = market_start
+
+    row_bounds: list[dict[str, Any]] = []
+    for i, market_row in enumerate(market_rows):
+        row_text = market_row.text_block
+        row_ids = _tokenize_text(tokenizer, row_text)
+        row_start = _find_subsequence(full_ids, row_ids, start=search_start)
+        if row_start < 0:
+            print(f"WARNING: could not locate token span for row {market_row.symbol}")
+            continue
+
+        row_end = row_start + len(row_ids)
+        pipe_pos = row_text.find("|")
+        content_start = row_start
+        if pipe_pos >= 0:
+            content_text = row_text[pipe_pos:]
+            content_ids = _tokenize_text(tokenizer, content_text)
+            matched = _find_subsequence(full_ids, content_ids, start=row_start, end=row_end)
+            if matched >= 0:
+                content_start = matched
+            else:
+                prefix_ids = _tokenize_text(tokenizer, row_text[:pipe_pos])
+                content_start = min(row_end, row_start + len(prefix_ids))
+
+        row_bounds.append({
+            "row_index": i,
+            "symbol": market_row.symbol,
+            "full_start": row_start,
+            "full_end": row_end,
+            "symbol_start": row_start,
+            "symbol_end": content_start,
+            "content_start": content_start,
+            "content_end": row_end,
+        })
+        search_start = row_end
+
+    return row_bounds
+
+
 def pool_decision_residual(
     residual: Any,
     row_boundaries: list[dict[str, Any]],
@@ -262,12 +385,8 @@ def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str,
     from transformers import AutoTokenizer
 
     from pipelines.interp.counterfactual import (
-        CanonicalPrompt,
-        Snapshot,
         build_market_rows,
         compute_labels,
-        find_downstream_section_boundaries,
-        find_row_boundaries,
         parse_market_section,
     )
 
@@ -310,29 +429,12 @@ def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str,
                 continue
             system_text, user_text = system_user
 
-            header, row_texts = parse_market_section(user_text)
+            _, row_texts = parse_market_section(user_text)
             market_rows = build_market_rows(market_json, row_texts)
             labels = compute_labels(market_rows)
 
-            prompt = CanonicalPrompt(
-                snapshot_id=str(log_id),
-                variant="original",
-                system_text=system_text,
-                user_text=user_text,
-                row_order=[r.symbol for r in market_rows],
-            )
-            snap = Snapshot(
-                snapshot_id=str(log_id),
-                vault_address="",
-                snap_date="",
-                week_num=0,
-                market_json=market_json,
-                market_header=header,
-                rows=market_rows,
-            )
-
-            section_boundaries = find_downstream_section_boundaries(tokenizer, system_text, user_text)
-            row_boundaries = find_row_boundaries(tokenizer, prompt, snap)
+            section_boundaries = find_real_section_boundaries(tokenizer, system_text, user_text)
+            row_boundaries = find_real_row_boundaries(tokenizer, system_text, user_text, market_rows)
 
             tensors = load_file(str(residual_path))
             residual = tensors.get("residual_stream")

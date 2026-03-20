@@ -6,8 +6,22 @@ from pipelines.interp.counterfactual import MarketRow
 from pipelines.interp.decision_structure import (
     build_asset_label_rows,
     build_tick_label_row,
+    find_real_row_boundaries,
+    find_real_section_boundaries,
     pool_decision_residual,
 )
+
+
+class DummyTokenizer:
+    def apply_chat_template(self, messages, add_generation_prompt=False, return_tensors=None):
+        rendered = "".join(
+            f"<{m['role']}>{m['content']}</{m['role']}>"
+            for m in messages
+        )
+        return [ord(ch) for ch in rendered]
+
+    def encode(self, text, add_special_tokens=False):
+        return [ord(ch) for ch in text]
 
 
 def test_pool_decision_residual_extracts_row_and_section_states():
@@ -96,3 +110,52 @@ def test_build_tick_label_row_sets_executed_valence():
     )
     assert tick["executed_valence"] == "bearish"
     assert tick["n_rows"] == 3
+
+
+def test_find_real_section_boundaries_matches_headers_by_token_subsequence():
+    tokenizer = DummyTokenizer()
+    user_text = (
+        "Intro\n"
+        "## MARKET SNAPSHOT\n"
+        "- A (A) | Price: 1\n"
+        "## ACTIVE STRATEGIES\n"
+        "none\n"
+        "## ACTIVE SETTINGS\n"
+        "risk=2\n"
+        "## PORTFOLIO CONTEXT\n"
+        "flat\n"
+    )
+
+    boundaries = find_real_section_boundaries(tokenizer, "sys", user_text)
+
+    assert "preamble" in boundaries
+    assert "market" in boundaries
+    assert "active_strategies" in boundaries
+    assert "active_settings" in boundaries
+    assert "portfolio" in boundaries
+    assert boundaries["preamble"][1] == boundaries["market"][0]
+    assert boundaries["market"][0] < boundaries["active_strategies"][0]
+
+
+def test_find_real_row_boundaries_finds_each_market_row():
+    tokenizer = DummyTokenizer()
+    user_text = (
+        "Intro\n"
+        "## MARKET SNAPSHOT\n"
+        "  - Alpha (AAA) | Price: 1\n"
+        "    Volume: 10\n"
+        "  - Beta (BBB) | Price: 2\n"
+        "    Volume: 20\n"
+        "## ACTIVE SETTINGS\n"
+        "risk=2\n"
+    )
+    market_rows = [
+        MarketRow(symbol="AAA", name="Alpha", text_block="  - Alpha (AAA) | Price: 1\n    Volume: 10"),
+        MarketRow(symbol="BBB", name="Beta", text_block="  - Beta (BBB) | Price: 2\n    Volume: 20"),
+    ]
+
+    row_bounds = find_real_row_boundaries(tokenizer, "sys", user_text, market_rows)
+
+    assert [rb["symbol"] for rb in row_bounds] == ["AAA", "BBB"]
+    assert row_bounds[0]["full_start"] < row_bounds[0]["content_start"] < row_bounds[0]["full_end"]
+    assert row_bounds[0]["full_end"] <= row_bounds[1]["full_start"]
