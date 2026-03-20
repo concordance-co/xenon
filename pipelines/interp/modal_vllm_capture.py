@@ -607,7 +607,10 @@ def run_vllm_capture(
     if all_metadata:
         write_metadata_to_volume.remote(all_metadata)
 
-    summary = f"Done: {len(all_metadata)} examples captured, {skipped} skipped (already done)"
+    summary = (
+        f"Done: {len(all_metadata)} examples captured, "
+        f"{already_captured} skipped (already done)"
+    )
     print(f"\n{summary}")
     return summary
 
