@@ -65,6 +65,41 @@ def run_synthetic_structure_pooling_modal(
     return result
 
 
+@app.function(
+    volumes={"/data": synthetic_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=8,
+    memory=32 * 1024,
+    secrets=[neon_secret],
+)
+def run_synthetic_manifold_analysis_modal(
+    phase_name: str = "phase1",
+    context_variant: str = "market_only",
+    layers: str = "",
+    num_workers: int = 8,
+) -> dict:
+    from pathlib import Path
+
+    from pipelines.interp.synthetic_manifold_analysis import (
+        SyntheticManifoldAnalysisConfig,
+        run_synthetic_manifold_analysis,
+    )
+
+    parsed_layers = [int(token) for token in layers.split(",") if token.strip()] or None
+    config = SyntheticManifoldAnalysisConfig(
+        structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
+        output_dir=Path(f"/data/analysis_results/synthetic_manifold/{phase_name}"),
+        phase_name=phase_name,
+        context_variant=context_variant,
+        layers=parsed_layers,
+        num_workers=num_workers,
+    )
+    result = run_synthetic_manifold_analysis(config)
+    synthetic_volume.commit()
+    return result
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "synthetic-structure",
@@ -75,6 +110,8 @@ def main(
     cohort_view: str = "synthetic_market_phase1_capture_v0",
     order_mode: str = "selection_rank_asc",
     num_workers: int = 8,
+    layers: str = "",
+    context_variant: str = "market_only",
 ):
     if mode == "synthetic-structure":
         result = run_synthetic_structure_pooling_modal.remote(
@@ -84,6 +121,14 @@ def main(
             skip_existing=skip_existing,
             cohort_view=cohort_view,
             order_mode=order_mode,
+            num_workers=num_workers,
+        )
+        print(result)
+    elif mode == "synthetic-manifold":
+        result = run_synthetic_manifold_analysis_modal.remote(
+            phase_name=phase_name,
+            context_variant=context_variant,
+            layers=layers,
             num_workers=num_workers,
         )
         print(result)
