@@ -8,6 +8,7 @@ _ORDER_MODES = {
     "log_id",
     "created_at_desc",
     "capture_priority_desc",
+    "selection_rank_asc",
     "hash",
 }
 
@@ -36,6 +37,8 @@ def cohort_order_by_sql(mode: str, *, has_cohort_view: bool) -> str:
     mode = validate_order_mode(mode)
     if mode == "capture_priority_desc" and has_cohort_view:
         return "c.capture_priority DESC NULLS LAST, c.created_at DESC NULLS LAST, ie.log_id DESC"
+    if mode == "selection_rank_asc" and has_cohort_view:
+        return "c.selection_rank ASC NULLS LAST, ie.log_id"
     if mode == "created_at_desc" and has_cohort_view:
         return "c.created_at DESC NULLS LAST, ie.log_id DESC"
     if mode == "hash":

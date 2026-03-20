@@ -119,6 +119,35 @@ uv run --extra interp --extra modal modal run pipelines/interp/modal_vllm_captur
   --limit 500
 ```
 
+To build a balanced full-sequence decision-capture manifest for the next probe run:
+
+```bash
+uv run python scripts/build_decision_capture_manifest.py build
+uv run python scripts/build_decision_capture_manifest.py stats
+```
+
+The default manifest publishes `decision_capture_manifest_v1` with a quota/diversity plan tuned for the decision-structure probes:
+
+- target mix: `300 buy`, `300 sell`, `200 policy_tension_observe`, `200 blocked_observe`
+- diversity caps: `max 1 row per cohort per vault`, `max 4 rows total per vault`
+- trade-asset cap: `60` per side per asset
+- deep scan: up to `70k` rows per cohort so concentrated priority rankings can still reach long-tail vaults
+
+Once built, use the manifest directly for capture/pooling:
+
+```bash
+uv run --extra interp --extra modal modal run pipelines/interp/modal_vllm_capture.py \
+  --mode capture \
+  --cohort-view decision_capture_manifest_v1 \
+  --order-mode selection_rank_asc \
+  --limit 959
+
+./scripts/modal_capture.sh decision-structure-pool \
+  --cohort-view decision_capture_manifest_v1 \
+  --order-mode selection_rank_asc \
+  --limit 959
+```
+
 For pre/post settings structure on counterfactual captures:
 
 ```bash

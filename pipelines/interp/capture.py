@@ -554,7 +554,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--order-mode",
         default="log_id",
-        choices=["log_id", "created_at_desc", "capture_priority_desc", "hash"],
+        choices=["log_id", "created_at_desc", "capture_priority_desc", "selection_rank_asc", "hash"],
     )
     parser.add_argument(
         "--layers",

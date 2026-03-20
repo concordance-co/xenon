@@ -565,7 +565,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--order-mode",
         default="log_id",
-        choices=["log_id", "created_at_desc", "capture_priority_desc", "hash"],
+        choices=["log_id", "created_at_desc", "capture_priority_desc", "selection_rank_asc", "hash"],
     )
     return p
 
