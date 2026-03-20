@@ -233,6 +233,8 @@ def run_decision_structure_pooling(
     cohort_view: str = "",
     order_mode: str = "log_id",
     num_workers: int = 8,
+    num_shards: int = 1,
+    shard_index: int = 0,
 ) -> dict:
     """Pool full-sequence real-decision captures into row/section structure states."""
     from pathlib import Path
@@ -249,12 +251,78 @@ def run_decision_structure_pooling(
         limit=limit if limit > 0 else None,
         skip_existing=skip_existing,
         num_workers=num_workers,
+        num_shards=num_shards,
+        shard_index=shard_index,
         cohort_view=cohort_view or None,
         order_mode=order_mode,
     )
     results = _run_pooling(config)
     volume.commit()
     return results
+
+
+@app.function(
+    volumes={"/data": volume, "/models": model_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=2,
+    memory=8 * 1024,
+    secrets=[neon_secret],
+)
+def run_decision_structure_pooling_parallel(
+    model_id: str = "Qwen/Qwen3-30B-A3B",
+    limit: int = 0,
+    skip_existing: bool = False,
+    cohort_view: str = "",
+    order_mode: str = "log_id",
+    num_workers: int = 8,
+    num_shards: int = 10,
+) -> dict:
+    """Pool full-sequence decision captures across multiple Modal containers, then merge shard outputs."""
+    import asyncio
+    from pathlib import Path
+
+    from modal.functions import FunctionCall
+
+    from pipelines.interp.decision_structure import merge_decision_structure_shards
+
+    if num_shards <= 1:
+        return run_decision_structure_pooling.remote(
+            model_id=model_id,
+            limit=limit,
+            skip_existing=skip_existing,
+            cohort_view=cohort_view,
+            order_mode=order_mode,
+            num_workers=num_workers,
+            num_shards=1,
+            shard_index=0,
+        )
+
+    calls = [
+        run_decision_structure_pooling.spawn(
+            model_id=model_id,
+            limit=limit,
+            skip_existing=skip_existing,
+            cohort_view=cohort_view,
+            order_mode=order_mode,
+            num_workers=num_workers,
+            num_shards=num_shards,
+            shard_index=shard_index,
+        )
+        for shard_index in range(num_shards)
+    ]
+    shard_results = asyncio.run(FunctionCall.gather(*calls))
+    volume.reload()
+    merge = merge_decision_structure_shards(
+        Path("/data/activations/decision_structure"),
+        num_shards=num_shards,
+    )
+    volume.commit()
+    return {
+        "num_shards": num_shards,
+        "shards": list(shard_results),
+        "merge": merge,
+    }
 
 
 @app.function(
@@ -319,6 +387,7 @@ def main(
     skip_existing: bool = True,
     test_fraction: float = 0.2,
     num_workers: int = 8,
+    num_shards: int = 1,
     cohort_view: str = "",
     order_mode: str = "log_id",
 ):
@@ -343,14 +412,27 @@ def main(
         )
         print(f"\nCounterfactual structure analysis complete. Results keys: {list(results.keys())}")
     elif mode == "decision-structure":
-        results = run_decision_structure_pooling.remote(
-            model_id=model_id,
-            limit=limit,
-            skip_existing=skip_existing,
-            num_workers=num_workers,
-            cohort_view=cohort_view,
-            order_mode=order_mode,
-        )
+        if num_shards > 1:
+            results = run_decision_structure_pooling_parallel.remote(
+                model_id=model_id,
+                limit=limit,
+                skip_existing=skip_existing,
+                num_workers=num_workers,
+                num_shards=num_shards,
+                cohort_view=cohort_view,
+                order_mode=order_mode,
+            )
+        else:
+            results = run_decision_structure_pooling.remote(
+                model_id=model_id,
+                limit=limit,
+                skip_existing=skip_existing,
+                num_workers=num_workers,
+                num_shards=1,
+                shard_index=0,
+                cohort_view=cohort_view,
+                order_mode=order_mode,
+            )
         print(f"\nDecision structure pooling complete. Results: {results}")
     elif mode == "decision-structure-analysis":
         results = run_decision_structure_analysis_modal.remote(

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from pipelines.interp.counterfactual import MarketRow
 from pipelines.interp.decision_structure import (
@@ -8,7 +10,10 @@ from pipelines.interp.decision_structure import (
     build_tick_label_row,
     find_real_row_boundaries,
     find_real_section_boundaries,
+    merge_decision_structure_shards,
     pool_decision_residual,
+    select_examples_for_shard,
+    shard_output_paths,
 )
 
 
@@ -170,3 +175,74 @@ def test_find_real_row_boundaries_finds_each_market_row():
     assert [rb["symbol"] for rb in row_bounds] == ["AAA", "BBB"]
     assert row_bounds[0]["full_start"] < row_bounds[0]["content_start"] < row_bounds[0]["full_end"]
     assert row_bounds[0]["full_end"] <= row_bounds[1]["full_start"]
+
+
+def test_select_examples_for_shard_uses_deterministic_round_robin():
+    examples = [{"log_id": idx} for idx in range(7)]
+
+    shard0 = select_examples_for_shard(examples, shard_index=0, num_shards=3)
+    shard1 = select_examples_for_shard(examples, shard_index=1, num_shards=3)
+    shard2 = select_examples_for_shard(examples, shard_index=2, num_shards=3)
+
+    assert [row["log_id"] for row in shard0] == [0, 3, 6]
+    assert [row["log_id"] for row in shard1] == [1, 4]
+    assert [row["log_id"] for row in shard2] == [2, 5]
+
+
+def test_merge_decision_structure_shards_builds_canonical_tables(tmp_path):
+    out_dir = tmp_path / "decision_structure"
+    meta0, tick0, asset0 = shard_output_paths(out_dir, 0)
+    meta1, tick1, asset1 = shard_output_paths(out_dir, 1)
+    meta0.parent.mkdir(parents=True, exist_ok=True)
+
+    pq.write_table(
+        pa.Table.from_pylist([{"log_id": 10, "seq_len": 100}]),
+        meta0,
+        compression="snappy",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([{"log_id": 10, "executed_valence": "bullish"}]),
+        tick0,
+        compression="snappy",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([
+            {"log_id": 10, "row_index": 0, "symbol": "AAA"},
+            {"log_id": 10, "row_index": 1, "symbol": "BBB"},
+        ]),
+        asset0,
+        compression="snappy",
+    )
+
+    pq.write_table(
+        pa.Table.from_pylist([{"log_id": 20, "seq_len": 120}]),
+        meta1,
+        compression="snappy",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([{"log_id": 20, "executed_valence": "bearish"}]),
+        tick1,
+        compression="snappy",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([
+            {"log_id": 20, "row_index": 0, "symbol": "CCC"},
+        ]),
+        asset1,
+        compression="snappy",
+    )
+
+    result = merge_decision_structure_shards(out_dir, num_shards=2)
+
+    assert result["seen_shards"] == 2
+    assert result["metadata_rows"] == 2
+    assert result["tick_rows"] == 2
+    assert result["asset_rows"] == 3
+
+    merged_meta = pq.read_table(out_dir / "metadata.parquet").to_pylist()
+    merged_tick = pq.read_table(out_dir / "tick_labels.parquet").to_pylist()
+    merged_asset = pq.read_table(out_dir / "asset_labels.parquet").to_pylist()
+
+    assert [row["log_id"] for row in merged_meta] == [10, 20]
+    assert [row["log_id"] for row in merged_tick] == [10, 20]
+    assert [(row["log_id"], row["row_index"]) for row in merged_asset] == [(10, 0), (10, 1), (20, 0)]

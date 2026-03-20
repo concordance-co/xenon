@@ -39,6 +39,8 @@ class DecisionStructureConfig:
     cohort_view: str | None = None
     order_mode: str = "log_id"
     num_workers: int = 8
+    shard_index: int = 0
+    num_shards: int = 1
 
 
 def _load_examples_from_neon(
@@ -77,6 +79,28 @@ def _load_existing_rows(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     return pq.read_table(path).to_pylist()
+
+
+def select_examples_for_shard(
+    examples: list[dict[str, Any]],
+    *,
+    shard_index: int,
+    num_shards: int,
+) -> list[dict[str, Any]]:
+    if num_shards <= 1:
+        return list(examples)
+    if shard_index < 0 or shard_index >= num_shards:
+        raise ValueError(f"Invalid shard_index={shard_index} for num_shards={num_shards}")
+    return [row for idx, row in enumerate(examples) if idx % num_shards == shard_index]
+
+
+def shard_output_paths(output_dir: Path, shard_index: int) -> tuple[Path, Path, Path]:
+    shard_dir = output_dir / "shards"
+    return (
+        shard_dir / f"metadata_shard_{shard_index:02d}.parquet",
+        shard_dir / f"tick_labels_shard_{shard_index:02d}.parquet",
+        shard_dir / f"asset_labels_shard_{shard_index:02d}.parquet",
+    )
 
 
 def _parse_messages(raw: Any) -> list[dict[str, str]]:
@@ -431,6 +455,49 @@ def _flush_table(path: Path, rows: list[dict[str, Any]]) -> None:
     pq.write_table(pa.Table.from_pylist(rows), path, compression="snappy")
 
 
+def merge_decision_structure_shards(
+    output_dir: Path,
+    *,
+    num_shards: int,
+) -> dict[str, Any]:
+    if num_shards <= 1:
+        raise ValueError("Shard merge requires num_shards > 1")
+
+    merged_metadata: dict[int, dict[str, Any]] = {}
+    merged_ticks: dict[int, dict[str, Any]] = {}
+    merged_assets: dict[tuple[int, int], dict[str, Any]] = {}
+    seen_shards = 0
+
+    for shard_index in range(num_shards):
+        meta_path, tick_path, asset_path = shard_output_paths(output_dir, shard_index)
+        if not (meta_path.exists() and tick_path.exists() and asset_path.exists()):
+            continue
+        seen_shards += 1
+        for row in _load_existing_rows(meta_path):
+            merged_metadata[int(row["log_id"])] = row
+        for row in _load_existing_rows(tick_path):
+            merged_ticks[int(row["log_id"])] = row
+        for row in _load_existing_rows(asset_path):
+            key = (int(row["log_id"]), int(row["row_index"]))
+            merged_assets[key] = row
+
+    metadata_rows = [merged_metadata[k] for k in sorted(merged_metadata)]
+    tick_rows = [merged_ticks[k] for k in sorted(merged_ticks)]
+    asset_rows = [merged_assets[k] for k in sorted(merged_assets)]
+
+    _flush_table(output_dir / "metadata.parquet", metadata_rows)
+    _flush_table(output_dir / "tick_labels.parquet", tick_rows)
+    _flush_table(output_dir / "asset_labels.parquet", asset_rows)
+
+    return {
+        "seen_shards": seen_shards,
+        "metadata_rows": len(metadata_rows),
+        "tick_rows": len(tick_rows),
+        "asset_rows": len(asset_rows),
+        "output_dir": str(output_dir),
+    }
+
+
 def _process_pooling_example(
     row: dict[str, Any],
     *,
@@ -521,13 +588,27 @@ def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str,
         cohort_view=config.cohort_view,
         order_mode=config.order_mode,
     )
-    print(f"Loaded {len(examples)} examples from Neon")
+    if config.num_shards > 1:
+        examples = select_examples_for_shard(
+            examples,
+            shard_index=config.shard_index,
+            num_shards=config.num_shards,
+        )
+        print(
+            f"Loaded shard {config.shard_index + 1}/{config.num_shards} "
+            f"with {len(examples)} examples from Neon",
+        )
+    else:
+        print(f"Loaded {len(examples)} examples from Neon")
 
     residual_in_dir = config.activations_dir / "residual_stream"
     residual_out_dir = config.output_dir / "residual"
-    meta_path = config.output_dir / "metadata.parquet"
-    tick_path = config.output_dir / "tick_labels.parquet"
-    asset_path = config.output_dir / "asset_labels.parquet"
+    if config.num_shards > 1:
+        meta_path, tick_path, asset_path = shard_output_paths(config.output_dir, config.shard_index)
+    else:
+        meta_path = config.output_dir / "metadata.parquet"
+        tick_path = config.output_dir / "tick_labels.parquet"
+        asset_path = config.output_dir / "asset_labels.parquet"
 
     metadata_rows = _load_existing_rows(meta_path)
     tick_rows = _load_existing_rows(tick_path)
@@ -601,6 +682,8 @@ def run_decision_structure_pooling(config: DecisionStructureConfig) -> dict[str,
         "skipped": skipped,
         "errors": errors,
         "output_dir": str(config.output_dir),
+        "shard_index": config.shard_index,
+        "num_shards": config.num_shards,
     }
 
 
@@ -613,6 +696,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--skip-existing", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--metadata-flush-interval", type=int, default=25)
     p.add_argument("--num-workers", type=int, default=8)
+    p.add_argument("--num-shards", type=int, default=1)
+    p.add_argument("--shard-index", type=int, default=0)
     p.add_argument("--cohort-view", default=None)
     p.add_argument(
         "--order-mode",
@@ -632,6 +717,8 @@ def main(argv: list[str] | None = None) -> None:
         skip_existing=args.skip_existing,
         metadata_flush_interval=args.metadata_flush_interval,
         num_workers=args.num_workers,
+        num_shards=args.num_shards,
+        shard_index=args.shard_index,
         cohort_view=args.cohort_view,
         order_mode=args.order_mode,
     )

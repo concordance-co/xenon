@@ -145,7 +145,10 @@ uv run --extra interp --extra modal modal run pipelines/interp/modal_vllm_captur
 ./scripts/modal_capture.sh decision-structure-pool \
   --cohort-view decision_capture_manifest_v1 \
   --order-mode selection_rank_asc \
-  --limit 959
+  --limit 959 \
+  --num-shards 10 \
+  --num-workers 8 \
+  --no-skip-existing
 ```
 
 For pre/post settings structure on counterfactual captures:
