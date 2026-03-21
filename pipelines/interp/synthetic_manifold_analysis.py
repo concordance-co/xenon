@@ -107,7 +107,9 @@ def _train_regression_probe(X_train: np.ndarray, y_train: np.ndarray) -> Any:
 
     probe = Pipeline([
         ("scaler", StandardScaler()),
-        ("ridge", Ridge(alpha=1.0)),
+        # Dense synthetic sweeps create highly collinear directions; the SVD solver
+        # is slower but avoids spurious ill-conditioned solve warnings.
+        ("ridge", Ridge(alpha=1.0, solver="svd")),
     ])
     probe.fit(X_train, y_train)
     return probe
