@@ -47,6 +47,18 @@ def test_clear_active_strategies_only_rewrites_strategy_section() -> None:
     assert "- Asset Risk Preference: 5/5" in updated
 
 
+def test_replace_section_body_matches_decorated_strategy_header() -> None:
+    user_text = USER_TEXT.replace(
+        "## ACTIVE STRATEGIES",
+        "## ACTIVE STRATEGIES (CURRENT ONLY)",
+    )
+
+    updated = clear_active_strategies(user_text)
+
+    assert "## ACTIVE STRATEGIES (CURRENT ONLY)" in updated
+    assert "No active strategies." in updated
+
+
 def test_slice_manifest_rows_applies_per_cohort_limits() -> None:
     rows = [
         {"log_id": 1, "cohort_label": "blocked_observe"},

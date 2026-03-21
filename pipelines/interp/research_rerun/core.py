@@ -45,9 +45,9 @@ def replace_section_body(user_text: str, header: str, body: str) -> str:
     """Replace a top-level ## section body while preserving surrounding sections."""
     eol = _detect_eol(user_text)
     for section_header, start, end in find_section_spans(user_text):
-        if section_header != header:
+        if not section_header.startswith(header):
             continue
-        replacement = f"{header}{eol}{eol}{body.strip()}{eol}{eol}"
+        replacement = f"{section_header}{eol}{eol}{body.strip()}{eol}{eol}"
         return f"{user_text[:start]}{replacement}{user_text[end:]}"
     raise ValueError(f"Section header not found: {header}")
 
@@ -489,4 +489,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
