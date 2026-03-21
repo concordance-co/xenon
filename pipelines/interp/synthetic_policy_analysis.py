@@ -455,7 +455,13 @@ class SyntheticPolicyAnalysisConfig:
     structure_dir: Path = Path("data/activations/synthetic_structure/policy_algebra_v1")
     output_dir: Path = Path("data/analysis_results/synthetic_policy/policy_algebra_v1")
     row_keys: tuple[str, ...] = ("row_mean", "row_eos")
-    section_keys: tuple[str, ...] = ("active_settings_eos", "last_token")
+    section_keys: tuple[str, ...] = (
+        "active_settings_eos",
+        "portfolio_eos",
+        "active_strategies_eos",
+        "constraints_eos",
+        "last_token",
+    )
     seed: int = 42
     test_fraction: float = 0.25
     max_workers: int = 8

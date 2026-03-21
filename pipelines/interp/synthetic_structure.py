@@ -220,6 +220,9 @@ def find_synthetic_section_boundaries(
 
     header_map = [
         ("active_settings", "## ACTIVE SETTINGS"),
+        ("portfolio", "## PORTFOLIO CONTEXT"),
+        ("active_strategies", "## ACTIVE STRATEGIES"),
+        ("constraints", "## EXECUTION CONSTRAINTS"),
         ("market", "## MARKET SNAPSHOT"),
         ("instruction", "Respond with the single best action for this tick:"),
     ]
