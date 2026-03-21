@@ -851,7 +851,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
     return {
         "phase1": 2_000_000_000,
         "phase2_geometry": 2_100_000_000,
-        "phase3_coupled_geometry": 2_120_000_000,
+        "phase3_coupled_geometry": 2_130_000_000,
     }.get(dataset_preset, 2_140_000_000)
 
 

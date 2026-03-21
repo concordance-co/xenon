@@ -88,7 +88,7 @@ def test_generate_phase3_coupled_geometry_dataset_expected_counts(tmp_path) -> N
         )
     )
     tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
-    assert min(row["log_id"] for row in tick_rows) >= 2_120_000_000
+    assert min(row["log_id"] for row in tick_rows) >= 2_130_000_000
 
 
 def test_prompts_use_neutral_asset_symbols() -> None:

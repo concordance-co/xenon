@@ -51,6 +51,12 @@ def parse_args() -> argparse.Namespace:
         help="Phase tag stored in Neon.",
     )
     parser.add_argument(
+        "--log-id-base",
+        type=int,
+        default=0,
+        help="Override the log_id base. Useful for keeping smoke and full runs disjoint.",
+    )
+    parser.add_argument(
         "--keep-existing-phase",
         action="store_true",
         help="Append instead of replacing rows for this phase name.",
@@ -60,6 +66,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.log_id_base > 0:
+        log_id_base = args.log_id_base
+    elif "smoke" in args.phase_name.lower():
+        log_id_base = 2_120_000_000
+    else:
+        log_id_base = 2_130_000_000
     build_result = build_synthetic_market_dataset(
         SyntheticMarketConfig(
             output_dir=args.output_dir,
@@ -67,6 +79,7 @@ def main() -> None:
             coupled_grid_steps=args.grid_steps,
             coupled_background_variants=args.coupled_background_variants,
             coupled_minimal_templates=args.coupled_minimal_templates,
+            log_id_base=log_id_base,
             include_settings_variants=False,
         )
     )
