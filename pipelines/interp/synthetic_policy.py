@@ -253,6 +253,94 @@ def _render_user_prompt_v3(
     return "\n".join(lines)
 
 
+def _render_user_prompt_v4(
+    example_id: str,
+    *,
+    held_symbol: str,
+    free_cash_eth: float,
+    held_age_sessions: int,
+    min_entry_cash_eth: float,
+    min_exit_age_sessions: int,
+    assets: list[SyntheticAsset],
+    phrasing_seed: int,
+) -> str:
+    rng = random.Random(phrasing_seed)
+
+    portfolio_lines = [
+        [
+            f"- Free cash reserve: {free_cash_eth:.2f} ETH.",
+            f"- Held swing position: Asset {held_symbol}.",
+            f"- Position age: {held_age_sessions} sessions.",
+        ],
+        [
+            f"- Uncommitted trading balance: {free_cash_eth:.2f} ETH.",
+            f"- Existing inventory line: Asset {held_symbol}.",
+            f"- Inventory age: {held_age_sessions} sessions.",
+        ],
+        [
+            f"- Liquid ETH available for fresh entries: {free_cash_eth:.2f}.",
+            f"- Current carried line: Asset {held_symbol}.",
+            f"- Held duration so far: {held_age_sessions} sessions.",
+        ],
+    ]
+    constraint_lines = [
+        [
+            f"- A fresh entry is allowed only if free ETH remains at or above {min_entry_cash_eth:.2f} after fees.",
+            f"- The held line may be reduced only once it has aged at least {min_exit_age_sessions} sessions.",
+            "- If neither route clears, default to observe.",
+        ],
+        [
+            f"- Opening a new position requires a post-fee cash buffer of at least {min_entry_cash_eth:.2f} ETH.",
+            f"- Exiting the carried position unlocks after {min_exit_age_sessions} sessions of age.",
+            "- If both routes stay locked, observe instead of trading.",
+        ],
+        [
+            f"- Only open a fresh line when free cash stays above the {min_entry_cash_eth:.2f} ETH threshold.",
+            f"- Only trim the held line once its age reaches {min_exit_age_sessions} sessions.",
+            "- When both checks fail, record an observation.",
+        ],
+    ]
+    strategy_lines = [
+        "- No high-priority strategy is currently overriding baseline action selection.",
+        "- There is no active high-priority strategy changing the default decision path.",
+        "- No strategy override is live; use the ordinary execution rules.",
+    ]
+
+    chosen_portfolio = list(rng.choice(portfolio_lines))
+    chosen_constraints = list(rng.choice(constraint_lines))
+    rng.shuffle(chosen_portfolio)
+    rng.shuffle(chosen_constraints)
+
+    lines = [
+        f"## SYNTHETIC POLICY SCENARIO {_scenario_header(example_id)}",
+        "",
+        "These assets are neutral synthetic placeholders, not real tickers.",
+        "",
+        "## ACTIVE SETTINGS",
+        "- Asset Risk Preference: 3 / 5. Use the market rows as the primary preference signal.",
+        "- Trading Activity: 3 / 5. Do not churn unless the executable edge is clear.",
+        "- Diversification: 3 / 5. No extra concentration or de-risking bias is imposed.",
+        "",
+        "## PORTFOLIO CONTEXT",
+        *chosen_portfolio,
+        "",
+        "## ACTIVE STRATEGIES",
+        rng.choice(strategy_lines),
+        "",
+        "## EXECUTION CONSTRAINTS",
+        *chosen_constraints,
+        "",
+        "## MARKET SNAPSHOT",
+    ]
+    for asset in assets:
+        lines.extend(_format_asset_block(asset))
+    lines.extend([
+        "",
+        "Respond with the single best action for this tick: buy, sell, or observe.",
+    ])
+    return "\n".join(lines)
+
+
 def _render_user_prompt(
     example_id: str,
     *,
@@ -661,15 +749,27 @@ def _generate_compositional_permission_grid(config: SyntheticPolicyConfig) -> li
             # The permission mode is still kept in labels for analysis, but the
             # prompt forces the model to compare portfolio facts against numeric
             # thresholds instead of reading a direct affordance statement.
-            user_prompt = _render_user_prompt_v3(
-                example_id,
-                held_symbol=held_symbol,
-                free_cash_eth=free_cash_eth,
-                held_age_sessions=held_age_sessions,
-                min_entry_cash_eth=min_entry_cash_eth,
-                min_exit_age_sessions=min_exit_age_sessions,
-                assets=assets,
-            )
+            if config.variant == "v4":
+                user_prompt = _render_user_prompt_v4(
+                    example_id,
+                    held_symbol=held_symbol,
+                    free_cash_eth=free_cash_eth,
+                    held_age_sessions=held_age_sessions,
+                    min_entry_cash_eth=min_entry_cash_eth,
+                    min_exit_age_sessions=min_exit_age_sessions,
+                    assets=assets,
+                    phrasing_seed=config.seed + seed_idx * 31 + len(permission_mode),
+                )
+            else:
+                user_prompt = _render_user_prompt_v3(
+                    example_id,
+                    held_symbol=held_symbol,
+                    free_cash_eth=free_cash_eth,
+                    held_age_sessions=held_age_sessions,
+                    min_entry_cash_eth=min_entry_cash_eth,
+                    min_exit_age_sessions=min_exit_age_sessions,
+                    assets=assets,
+                )
             examples.append(
                 _base_tick_row(
                     example_id=example_id,
@@ -712,7 +812,7 @@ def _assign_log_ids(
 
 
 def generate_dataset(config: SyntheticPolicyConfig) -> list[SyntheticMarketExample]:
-    if config.variant == "v3":
+    if config.variant in {"v3", "v4"}:
         return _assign_log_ids(
             _generate_compositional_permission_grid(config),
             base_log_id=config.log_id_base,
@@ -745,7 +845,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--log-id-base", type=int, default=2_145_000_000)
     parser.add_argument("--upload", action="store_true")
-    parser.add_argument("--variant", choices=("v1", "v2", "v3"), default="v1")
+    parser.add_argument("--variant", choices=("v1", "v2", "v3", "v4"), default="v1")
     args = parser.parse_args(argv)
 
     config = SyntheticPolicyConfig(
