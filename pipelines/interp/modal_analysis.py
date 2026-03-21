@@ -20,6 +20,7 @@ import modal
 app = modal.App("xenon-analysis")
 
 volume = modal.Volume.from_name("xenon-data", create_if_missing=True)
+research_volume = modal.Volume.from_name("xenon-research-data", create_if_missing=True)
 model_volume = modal.Volume.from_name("xenon-models", create_if_missing=True)
 
 neon_secret = modal.Secret.from_name("xenon-neon")
@@ -107,7 +108,7 @@ def run_counterfactual_analysis(
     """
     from pathlib import Path
 
-    from pipelines.interp.counterfactual_analysis import (
+    from pipelines.interp.counterfactual.analysis import (
         CounterfactualAnalysisConfig,
         apply_decision_rules,
         run_experiment_a,
@@ -202,7 +203,7 @@ def run_counterfactual_structure_analysis(
     """Run pre/post counterfactual structure analysis on Modal."""
     from pathlib import Path
 
-    from pipelines.interp.counterfactual_structure import (
+    from pipelines.interp.counterfactual.structure import (
         CounterfactualStructureConfig,
         run_counterfactual_structure,
     )
@@ -365,7 +366,7 @@ def run_decision_structure_analysis_modal(
     """Analyze pooled real-decision structure activations on Modal."""
     from pathlib import Path
 
-    from pipelines.interp.decision_structure_analysis import (
+    from pipelines.interp.decision_structure.analysis import (
         DecisionStructureAnalysisConfig,
         run_decision_structure_analysis,
     )
@@ -385,6 +386,78 @@ def run_decision_structure_analysis_modal(
     )
     results = run_decision_structure_analysis(config)
     volume.commit()
+    return results
+
+
+@app.function(
+    volumes={"/data": volume},
+    image=image,
+    timeout=7200,
+    cpu=8,
+    memory=24 * 1024,
+)
+def run_decision_structure_sanity_modal(
+    target: str = "is_buy_target",
+    summary_bucket: str = "best_pre",
+    seed: int = 42,
+    test_fraction: float = 0.2,
+) -> dict:
+    """Run a probe-vs-raw-metric sanity check on intact Modal pooled residuals."""
+    from pathlib import Path
+
+    from pipelines.interp.decision_structure.sanity import (
+        DecisionStructureSanityConfig,
+        run_decision_structure_sanity,
+    )
+
+    config = DecisionStructureSanityConfig(
+        structure_dir=Path("/data/activations/decision_structure"),
+        results_path=Path("/data/analysis_results/decision_structure/decision_structure_results.json"),
+        output_path=Path(f"/data/analysis_results/decision_structure/{target}_{summary_bucket}_metric_sanity.json"),
+        target=target,
+        summary_bucket=summary_bucket,
+        seed=seed,
+        test_fraction=test_fraction,
+    )
+    results = run_decision_structure_sanity(config)
+    volume.commit()
+    return results
+
+
+@app.function(
+    volumes={"/data": volume, "/research": research_volume},
+    image=image,
+    timeout=7200,
+    cpu=16,
+    memory=64 * 1024,
+    secrets=[neon_secret],
+)
+def run_research_rerun_analysis_modal(
+    experiment_id: str = "blocked_valence_settings_twist_kickoff_v1",
+    seed: int = 42,
+    test_fraction: float = 0.2,
+    num_workers: int = 16,
+) -> dict:
+    """Analyze real-prompt rerun captures against real decision-structure probes."""
+    from pathlib import Path
+
+    from pipelines.interp.research_rerun.analysis import (
+        ResearchRerunAnalysisConfig,
+        run_research_rerun_analysis,
+    )
+
+    config = ResearchRerunAnalysisConfig(
+        decision_structure_dir=Path("/data/activations/decision_structure"),
+        decision_results_path=Path("/data/analysis_results/decision_structure"),
+        research_activations_dir=Path("/research/activations/research_rerun"),
+        output_dir=Path("/research/analysis_results/research_rerun"),
+        experiment_id=experiment_id,
+        seed=seed,
+        test_fraction=test_fraction,
+        num_workers=num_workers,
+    )
+    results = run_research_rerun_analysis(config)
+    research_volume.commit()
     return results
 
 
@@ -413,6 +486,7 @@ def main(
     num_shards: int = 1,
     cohort_view: str = "",
     order_mode: str = "log_id",
+    summary_bucket: str = "best_pre",
 ):
     if mode == "counterfactual":
         results = run_counterfactual_analysis.remote(
@@ -466,6 +540,22 @@ def main(
             num_workers=num_workers,
         )
         print(f"\nDecision structure analysis complete. Results keys: {list(results.keys())}")
+    elif mode == "decision-structure-sanity":
+        results = run_decision_structure_sanity_modal.remote(
+            target=target,
+            summary_bucket=summary_bucket,
+            seed=seed,
+            test_fraction=test_fraction,
+        )
+        print(f"\nDecision structure sanity complete. Results keys: {list(results.keys())}")
+    elif mode == "research-rerun-analysis":
+        results = run_research_rerun_analysis_modal.remote(
+            experiment_id=experiment_id,
+            seed=seed,
+            test_fraction=test_fraction,
+            num_workers=num_workers,
+        )
+        print(f"\nResearch rerun analysis complete. Results keys: {list(results.keys())}")
     else:
         results = run_analysis.remote(
             mode=mode,
@@ -481,3 +571,4 @@ def main(
 
     print("\nTo download results:")
     print("  modal volume get xenon-data analysis_results/ ./data/analysis_results/ --force")
+    print("  modal volume get xenon-research-data analysis_results/ ./data/analysis_results/ --force")
