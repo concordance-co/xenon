@@ -286,18 +286,26 @@ def _build_settings_twist_prompts(
             "user_text": user_text,
         }
     ]
+    edited_texts: dict[str, str] = {}
     for value, variant in ((1, "settings_all1"), (5, "settings_all5")):
+        edited_user_text = build_settings_edited_variant(
+            user_text,
+            {name: value for name in SLIDER_NAMES},
+        )
+        edited_texts[variant] = edited_user_text
         prompts.append(
             {
                 **shared,
                 "prompt_id": f"{experiment_id}:{source_row['log_id']}:settings_twist:{variant}",
                 "variant": variant,
                 "system_text": system_text,
-                "user_text": build_settings_edited_variant(
-                    user_text,
-                    {name: value for name in SLIDER_NAMES},
-                ),
+                "user_text": edited_user_text,
             }
+        )
+    if edited_texts.get("settings_all1") == edited_texts.get("settings_all5"):
+        raise ValueError(
+            f"settings_all1/settings_all5 collapsed for log_id={source_row['log_id']}; "
+            "ACTIVE SETTINGS rewrite did not produce distinct prompts."
         )
     return prompts
 

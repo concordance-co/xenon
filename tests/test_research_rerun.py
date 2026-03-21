@@ -124,3 +124,41 @@ def test_settings_twist_prompt_builder_creates_three_variants() -> None:
     assert [prompt["variant"] for prompt in prompts] == ["original", "settings_all1", "settings_all5"]
     assert "- Trade Size: 1/5" in prompts[1]["user_text"]
     assert "- Trading Activity: 5/5" in prompts[2]["user_text"]
+
+
+def test_settings_twist_prompt_builder_rewrites_decorated_slider_labels() -> None:
+    decorated_user_text = (
+        "## ACTIVE SETTINGS\n\n"
+        "- Trading Activity (TA): 1 / 5\n"
+        "- Asset Risk Preference (Risk): 2 / 5\n"
+        "- Trade Size (Size): 3 / 5\n"
+        "- Holding Style (Hold): 4 / 5\n"
+        "- Diversification (Div): 5 / 5\n\n"
+        "## PORTFOLIO CONTEXT\n\n"
+    )
+
+    prompts = _build_settings_twist_prompts(
+        "exp3",
+        {
+            "example_id": "ex3",
+            "log_id": 12,
+            "system_text": "system",
+            "user_text": decorated_user_text,
+        },
+        {
+            "cohort_label": "policy_tension_observe",
+            "settings_signature": "1/2/3/4/5",
+            "actionability_cell": "buy+sell",
+        },
+        ["A"],
+    )
+
+    settings_all1 = next(prompt for prompt in prompts if prompt["variant"] == "settings_all1")
+    settings_all5 = next(prompt for prompt in prompts if prompt["variant"] == "settings_all5")
+
+    assert "Trading Activity (TA): 1 / 5" in settings_all1["user_text"]
+    assert "Trade Size (Size): 1 / 5" in settings_all1["user_text"]
+    assert "Diversification (Div): 1 / 5" in settings_all1["user_text"]
+    assert "Trading Activity (TA): 5 / 5" in settings_all5["user_text"]
+    assert "Asset Risk Preference (Risk): 5 / 5" in settings_all5["user_text"]
+    assert settings_all1["user_text"] != settings_all5["user_text"]
