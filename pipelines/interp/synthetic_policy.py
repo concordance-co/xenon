@@ -202,6 +202,13 @@ def _constraint_lines_v2(permission_mode: str, strategy_mode: str) -> list[str]:
     return base
 
 
+def _scenario_header(example_id: str) -> str:
+    parts = example_id.split(":")
+    if len(parts) >= 2:
+        return ":".join(parts[:2])
+    return example_id
+
+
 def _render_user_prompt_v3(
     example_id: str,
     *,
@@ -213,7 +220,7 @@ def _render_user_prompt_v3(
     assets: list[SyntheticAsset],
 ) -> str:
     lines = [
-        f"## SYNTHETIC POLICY SCENARIO {example_id}",
+        f"## SYNTHETIC POLICY SCENARIO {_scenario_header(example_id)}",
         "",
         "These assets are neutral synthetic placeholders, not real tickers.",
         "",
@@ -256,7 +263,7 @@ def _render_user_prompt(
     assets: list[SyntheticAsset],
 ) -> str:
     lines = [
-        f"## SYNTHETIC POLICY SCENARIO {example_id}",
+        f"## SYNTHETIC POLICY SCENARIO {_scenario_header(example_id)}",
         "",
         "These assets are neutral synthetic placeholders, not real tickers.",
         "",
@@ -290,7 +297,7 @@ def _render_user_prompt_v2(
     assets: list[SyntheticAsset],
 ) -> str:
     lines = [
-        f"## SYNTHETIC POLICY SCENARIO {example_id}",
+        f"## SYNTHETIC POLICY SCENARIO {_scenario_header(example_id)}",
         "",
         "These assets are neutral synthetic placeholders, not real tickers.",
         "",
