@@ -73,6 +73,7 @@ class SyntheticPolicyConfig:
     scenario_seeds: int = 12
     upload: bool = False
     log_id_base: int = 2_145_000_000
+    variant: str = "v1"
 
 
 def _format_asset_block(asset: SyntheticAsset) -> list[str]:
@@ -129,6 +130,122 @@ def _portfolio_description(permission_mode: str, held_symbol: str) -> str:
     }[permission_mode]
 
 
+def _portfolio_lines_v2(permission_mode: str, held_symbol: str) -> list[str]:
+    return {
+        "buy_and_sell": [
+            "- ETH balance: 1.40",
+            f"- Current holdings: Asset {held_symbol}",
+            f"- Position status: Asset {held_symbol} can be reduced if needed.",
+        ],
+        "buy_only": [
+            "- ETH balance: 1.40",
+            "- Current holdings: none that are eligible for reduction this tick.",
+            "- Position status: no sellable position is available.",
+        ],
+        "sell_only": [
+            "- ETH balance: 0.00",
+            f"- Current holdings: Asset {held_symbol}",
+            f"- Position status: Asset {held_symbol} can be reduced if needed.",
+        ],
+        "observe_only": [
+            "- ETH balance: 0.00",
+            "- Current holdings: none that are eligible for reduction this tick.",
+            "- Position status: no sellable position is available.",
+        ],
+    }[permission_mode]
+
+
+def _strategy_lines_v2(strategy_mode: str, held_symbol: str) -> list[str]:
+    return {
+        "none": [
+            "- No high-priority strategy is currently overriding baseline action selection.",
+        ],
+        "no_new_buys": [
+            "- HIGH strategy: avoid opening fresh positions during this interval.",
+            "- If exposure changes, reductions are allowed but new entries are not.",
+        ],
+        "force_sell_held": [
+            f"- HIGH strategy: if exposure changes, reduce Asset {held_symbol} first.",
+            "- Do not rotate into a new position before the held position is handled.",
+        ],
+        "force_observe": [
+            "- HIGH strategy: monitoring-only tick unless a hard safety event occurs.",
+            "- Do not trade under normal conditions.",
+        ],
+    }[strategy_mode]
+
+
+def _constraint_lines_v2(permission_mode: str, strategy_mode: str) -> list[str]:
+    base = {
+        "buy_and_sell": [
+            "- Fresh entries are executable.",
+            "- Position reductions are executable.",
+        ],
+        "buy_only": [
+            "- Fresh entries are executable.",
+            "- Position reductions are not executable this tick.",
+        ],
+        "sell_only": [
+            "- Fresh entries are not executable because capital is unavailable.",
+            "- Position reductions remain executable.",
+        ],
+        "observe_only": [
+            "- Fresh entries are not executable.",
+            "- Position reductions are not executable this tick.",
+        ],
+    }[permission_mode]
+    if strategy_mode == "force_observe":
+        return [
+            "- Strategy priority overrides ordinary execution even if a trade would otherwise be possible.",
+            "- Treat this as a monitoring-only interval.",
+        ]
+    return base
+
+
+def _render_user_prompt_v3(
+    example_id: str,
+    *,
+    held_symbol: str,
+    free_cash_eth: float,
+    held_age_sessions: int,
+    min_entry_cash_eth: float,
+    min_exit_age_sessions: int,
+    assets: list[SyntheticAsset],
+) -> str:
+    lines = [
+        f"## SYNTHETIC POLICY SCENARIO {example_id}",
+        "",
+        "These assets are neutral synthetic placeholders, not real tickers.",
+        "",
+        "## ACTIVE SETTINGS",
+        "- Asset Risk Preference: 3 / 5. Use the market rows as the primary preference signal.",
+        "- Trading Activity: 3 / 5. Do not churn unless the executable edge is clear.",
+        "- Diversification: 3 / 5. No extra concentration or de-risking bias is imposed.",
+        "",
+        "## PORTFOLIO CONTEXT",
+        f"- Free cash reserve: {free_cash_eth:.2f} ETH.",
+        f"- Held swing position: Asset {held_symbol}.",
+        f"- Position age: {held_age_sessions} sessions.",
+        "",
+        "## ACTIVE STRATEGIES",
+        "- No high-priority strategy is currently overriding baseline action selection.",
+        "",
+        "## EXECUTION CONSTRAINTS",
+        f"- Opening a fresh position requires at least {min_entry_cash_eth:.2f} ETH free after fees.",
+        f"- Reducing a held position is permitted only once it has aged for {min_exit_age_sessions} sessions.",
+        "- If neither route is available, observe.",
+        "",
+        "## MARKET SNAPSHOT",
+    ]
+    for asset in assets:
+        lines.extend(_format_asset_block(asset))
+    lines.extend([
+        "",
+        "Respond with the single best action for this tick: buy, sell, or observe.",
+    ])
+    return "\n".join(lines)
+
+
 def _render_user_prompt(
     example_id: str,
     *,
@@ -151,6 +268,45 @@ def _render_user_prompt(
         f"- {_strategy_description(strategy_mode, held_symbol)}",
         f"- Portfolio context: {_portfolio_description(permission_mode, held_symbol)}",
         "- Policy note: first identify the market-preferred asset from the rows, then apply permission and strategy priority.",
+        "",
+        "## MARKET SNAPSHOT",
+    ]
+    for asset in assets:
+        lines.extend(_format_asset_block(asset))
+    lines.extend([
+        "",
+        "Respond with the single best action for this tick: buy, sell, or observe.",
+    ])
+    return "\n".join(lines)
+
+
+def _render_user_prompt_v2(
+    example_id: str,
+    *,
+    permission_mode: str,
+    strategy_mode: str,
+    risk_mode: str,
+    held_symbol: str,
+    assets: list[SyntheticAsset],
+) -> str:
+    lines = [
+        f"## SYNTHETIC POLICY SCENARIO {example_id}",
+        "",
+        "These assets are neutral synthetic placeholders, not real tickers.",
+        "",
+        "## ACTIVE SETTINGS",
+        f"- {_risk_description(risk_mode)}",
+        "- Trading Activity: 3 / 5. Default turnover unless another rule overrides it.",
+        "- Diversification: 3 / 5. Normal diversification target.",
+        "",
+        "## PORTFOLIO CONTEXT",
+        *_portfolio_lines_v2(permission_mode, held_symbol),
+        "",
+        "## ACTIVE STRATEGIES",
+        *_strategy_lines_v2(strategy_mode, held_symbol),
+        "",
+        "## EXECUTION CONSTRAINTS",
+        *_constraint_lines_v2(permission_mode, strategy_mode),
         "",
         "## MARKET SNAPSHOT",
     ]
@@ -311,14 +467,24 @@ def _generate_permission_grid(config: SyntheticPolicyConfig) -> list[SyntheticMa
                 risk_mode="neutral",
                 held_symbol=held_symbol,
             )
-            user_prompt = _render_user_prompt(
-                example_id,
-                permission_mode=permission_mode,
-                strategy_mode="none",
-                risk_mode="neutral",
-                held_symbol=held_symbol,
-                assets=assets,
-            )
+            if config.variant == "v2":
+                user_prompt = _render_user_prompt_v2(
+                    example_id,
+                    permission_mode=permission_mode,
+                    strategy_mode="none",
+                    risk_mode="neutral",
+                    held_symbol=held_symbol,
+                    assets=assets,
+                )
+            else:
+                user_prompt = _render_user_prompt(
+                    example_id,
+                    permission_mode=permission_mode,
+                    strategy_mode="none",
+                    risk_mode="neutral",
+                    held_symbol=held_symbol,
+                    assets=assets,
+                )
             examples.append(
                 _base_tick_row(
                     example_id=example_id,
@@ -352,14 +518,24 @@ def _generate_strategy_grid(config: SyntheticPolicyConfig) -> list[SyntheticMark
                 risk_mode="neutral",
                 held_symbol=held_symbol,
             )
-            user_prompt = _render_user_prompt(
-                example_id,
-                permission_mode="buy_and_sell",
-                strategy_mode=strategy_mode,
-                risk_mode="neutral",
-                held_symbol=held_symbol,
-                assets=assets,
-            )
+            if config.variant == "v2":
+                user_prompt = _render_user_prompt_v2(
+                    example_id,
+                    permission_mode="buy_and_sell",
+                    strategy_mode=strategy_mode,
+                    risk_mode="neutral",
+                    held_symbol=held_symbol,
+                    assets=assets,
+                )
+            else:
+                user_prompt = _render_user_prompt(
+                    example_id,
+                    permission_mode="buy_and_sell",
+                    strategy_mode=strategy_mode,
+                    risk_mode="neutral",
+                    held_symbol=held_symbol,
+                    assets=assets,
+                )
             examples.append(
                 _base_tick_row(
                     example_id=example_id,
@@ -395,12 +571,96 @@ def _generate_risk_grid(config: SyntheticPolicyConfig) -> list[SyntheticMarketEx
                 held_symbol=held_symbol,
                 policy_best_override=safe_symbol if risk_mode == "low_risk" else risky_symbol,
             )
-            user_prompt = _render_user_prompt(
-                example_id,
-                permission_mode="buy_and_sell",
+            if config.variant == "v2":
+                user_prompt = _render_user_prompt_v2(
+                    example_id,
+                    permission_mode="buy_and_sell",
+                    strategy_mode="none",
+                    risk_mode=risk_mode,
+                    held_symbol=held_symbol,
+                    assets=assets,
+                )
+            else:
+                user_prompt = _render_user_prompt(
+                    example_id,
+                    permission_mode="buy_and_sell",
+                    strategy_mode="none",
+                    risk_mode=risk_mode,
+                    held_symbol=held_symbol,
+                    assets=assets,
+                )
+            examples.append(
+                _base_tick_row(
+                    example_id=example_id,
+                    family=family,
+                    family_variant=family_variant,
+                    user_prompt=user_prompt,
+                    labels=labels,
+                    assets=assets,
+                )
+            )
+    return examples
+
+
+def _generate_compositional_permission_grid(config: SyntheticPolicyConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    for seed_idx in range(config.scenario_seeds):
+        assets, _, held_symbol = _neutral_market_assets(seed_idx + 300)
+        scenario_group = f"permission_compose:{seed_idx:02d}"
+
+        rng = random.Random(config.seed + seed_idx * 17 + 991)
+        min_entry_cash_eth = round(rng.uniform(0.72, 1.28), 2)
+        min_exit_age_sessions = rng.randint(4, 9)
+
+        cash_high = round(min_entry_cash_eth + rng.uniform(0.10, 0.18), 2)
+        cash_low = round(max(0.05, min_entry_cash_eth - rng.uniform(0.10, 0.18)), 2)
+        age_high = min_exit_age_sessions + rng.randint(1, 2)
+        age_low = max(1, min_exit_age_sessions - rng.randint(1, 2))
+
+        composed = {
+            "buy_and_sell": (cash_high, age_high),
+            "buy_only": (cash_high, age_low),
+            "sell_only": (cash_low, age_high),
+            "observe_only": (cash_low, age_low),
+        }
+
+        for permission_mode in PERMISSION_VARIANTS:
+            free_cash_eth, held_age_sessions = composed[permission_mode]
+            family = "permission_grid"
+            family_variant = permission_mode
+            example_id = f"{scenario_group}:{permission_mode}"
+            policy_best_override = None if permission_mode != "sell_only" else held_symbol
+            if permission_mode == "observe_only":
+                policy_best_override = None
+
+            labels = _build_policy_labels(
+                example_id=example_id,
+                family=family,
+                family_variant=family_variant,
+                scenario_group=scenario_group,
+                assets=assets,
+                permission_mode=permission_mode,
                 strategy_mode="none",
-                risk_mode=risk_mode,
+                risk_mode="neutral",
                 held_symbol=held_symbol,
+                policy_best_override=policy_best_override,
+            )
+            if permission_mode == "observe_only":
+                labels["policy_best_asset"] = None
+                labels["policy_changes_best_asset"] = 0
+                labels["expected_action_asset"] = None
+
+            # Replace the surface-level permission label with the composed route.
+            # The permission mode is still kept in labels for analysis, but the
+            # prompt forces the model to compare portfolio facts against numeric
+            # thresholds instead of reading a direct affordance statement.
+            user_prompt = _render_user_prompt_v3(
+                example_id,
+                held_symbol=held_symbol,
+                free_cash_eth=free_cash_eth,
+                held_age_sessions=held_age_sessions,
+                min_entry_cash_eth=min_entry_cash_eth,
+                min_exit_age_sessions=min_exit_age_sessions,
                 assets=assets,
             )
             examples.append(
@@ -445,6 +705,11 @@ def _assign_log_ids(
 
 
 def generate_dataset(config: SyntheticPolicyConfig) -> list[SyntheticMarketExample]:
+    if config.variant == "v3":
+        return _assign_log_ids(
+            _generate_compositional_permission_grid(config),
+            base_log_id=config.log_id_base,
+        )
     examples: list[SyntheticMarketExample] = []
     examples.extend(_generate_permission_grid(config))
     examples.extend(_generate_strategy_grid(config))
@@ -473,6 +738,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--log-id-base", type=int, default=2_145_000_000)
     parser.add_argument("--upload", action="store_true")
+    parser.add_argument("--variant", choices=("v1", "v2", "v3"), default="v1")
     args = parser.parse_args(argv)
 
     config = SyntheticPolicyConfig(
@@ -482,6 +748,7 @@ def main(argv: list[str] | None = None) -> None:
         scenario_seeds=args.scenario_seeds,
         upload=args.upload,
         log_id_base=args.log_id_base,
+        variant=args.variant,
     )
     result = build_dataset(config)
     print(json.dumps(result["summary"], indent=2))
