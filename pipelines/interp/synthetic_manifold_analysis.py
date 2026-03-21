@@ -155,6 +155,10 @@ class SyntheticManifoldAnalysisConfig:
         "net_flow_5m",
         "top20_holder_pct",
     )
+    coupled_family_prefixes: tuple[str, ...] = (
+        "coupled_factor_dense",
+        "coupled_factor_minimal",
+    )
 
 
 def _load_structure_tables(structure_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
@@ -427,6 +431,79 @@ def _scalar_geometry_metrics(X: np.ndarray, values: np.ndarray) -> dict[str, Any
     }
 
 
+def _base_coupled_variant_name(family_variant: str) -> str:
+    parts = str(family_variant).split("__")
+    if len(parts) >= 3 and (parts[-1].startswith("bg") or parts[-1].startswith("t")):
+        return "__".join(parts[:-1])
+    return str(family_variant)
+
+
+def _parse_coupled_axes(base_variant: str) -> tuple[str, str]:
+    parts = base_variant.split("__")
+    if len(parts) != 2:
+        raise ValueError(f"Expected coupled variant 'metric_x__metric_y', got: {base_variant}")
+    return parts[0], parts[1]
+
+
+def _coupled_geometry_metrics(X: np.ndarray, values: np.ndarray) -> dict[str, Any]:
+    from scipy.spatial.distance import pdist
+    from scipy.stats import spearmanr
+    from sklearn.decomposition import PCA
+    from sklearn.linear_model import LinearRegression
+
+    if X.shape[0] < 4:
+        return {"error": "insufficient_points"}
+
+    pca = PCA(n_components=min(6, X.shape[0], X.shape[1]))
+    coords = pca.fit_transform(X)
+    explained = pca.explained_variance_ratio_
+    eigvals = pca.explained_variance_
+    participation_ratio = float((eigvals.sum() ** 2) / np.square(eigvals).sum()) if eigvals.size else None
+
+    latent_dists = pdist(values, metric="euclidean")
+    act_dists = pdist(X, metric="euclidean")
+    pc2_dists = pdist(coords[:, : min(2, coords.shape[1])], metric="euclidean")
+
+    dist_corr = spearmanr(latent_dists, act_dists).correlation
+    pc2_corr = spearmanr(latent_dists, pc2_dists).correlation
+
+    axis_alignment: list[float | None] = []
+    for axis_idx in range(values.shape[1]):
+        best = None
+        for pc_idx in range(min(3, coords.shape[1])):
+            corr = _spearman(values[:, axis_idx], coords[:, pc_idx])
+            if corr is None:
+                continue
+            corr = float(abs(corr))
+            best = corr if best is None else max(best, corr)
+        axis_alignment.append(best)
+
+    axis_r2: list[float | None] = []
+    if coords.shape[1] >= 2:
+        model = LinearRegression()
+        model.fit(coords[:, :2], values)
+        pred = model.predict(coords[:, :2])
+        for axis_idx in range(values.shape[1]):
+            y_true = values[:, axis_idx]
+            y_pred = pred[:, axis_idx]
+            ss_res = float(np.square(y_true - y_pred).sum())
+            ss_tot = float(np.square(y_true - y_true.mean()).sum())
+            axis_r2.append(None if ss_tot == 0.0 else 1.0 - (ss_res / ss_tot))
+    else:
+        axis_r2 = [None] * values.shape[1]
+
+    return {
+        "n_points": int(X.shape[0]),
+        "explained_variance_ratio": [float(x) for x in explained[:5]],
+        "pc12_explained_variance": float(explained[:2].sum()) if explained.size else None,
+        "participation_ratio": participation_ratio,
+        "distance_latent_spearman": None if dist_corr is None or np.isnan(dist_corr) else float(dist_corr),
+        "pc2_distance_latent_spearman": None if pc2_corr is None or np.isnan(pc2_corr) else float(pc2_corr),
+        "axis_alignment_spearman": axis_alignment,
+        "pc2_axis_r2": axis_r2,
+    }
+
+
 def _summarize_regression_results(results: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     for target, reps in results.items():
@@ -501,6 +578,25 @@ def _summarize_scalar_geometry(results: dict[str, Any]) -> dict[str, Any]:
     return summary
 
 
+def _summarize_coupled_geometry(results: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for family, reps in results.items():
+        best: tuple[str, float, int] | None = None
+        for row_key, per_layer in reps.items():
+            for layer_result in per_layer:
+                score = layer_result.get("distance_latent_spearman")
+                if score is None:
+                    continue
+                if best is None or float(score) > best[1]:
+                    best = (row_key, float(score), int(layer_result["layer"]))
+        summary[family] = None if best is None else {
+            "representation": best[0],
+            "distance_latent_spearman": best[1],
+            "layer": best[2],
+        }
+    return summary
+
+
 def run_synthetic_manifold_analysis(config: SyntheticManifoldAnalysisConfig) -> dict[str, Any]:
     meta_rows, tick_rows, asset_rows = _load_structure_tables(config.structure_dir)
     if not meta_rows:
@@ -566,6 +662,7 @@ def run_synthetic_manifold_analysis(config: SyntheticManifoldAnalysisConfig) -> 
         "best_asset": {},
         "pairwise": {},
         "scalar_geometry": {},
+        "coupled_geometry": {},
     }
 
     train_asset_rows = [row for row in asset_rows if int(row["log_id"]) in train_ids]
@@ -578,8 +675,12 @@ def run_synthetic_manifold_analysis(config: SyntheticManifoldAnalysisConfig) -> 
     if config.family_allowlist:
         allowed = set(config.family_allowlist)
         pairwise_rows = [row for row in pairwise_rows if str(row.get("family")) in allowed]
-    train_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in train_ids and str(row["family"]) == "pairwise_tradeoff"]
-    test_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in test_ids and str(row["family"]) == "pairwise_tradeoff"]
+    if config.family_allowlist:
+        train_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in train_ids]
+        test_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in test_ids]
+    else:
+        train_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in train_ids and str(row["family"]) == "pairwise_tradeoff"]
+        test_pairwise = [row for row in pairwise_rows if int(row["log_id"]) in test_ids and str(row["family"]) == "pairwise_tradeoff"]
 
     for target in config.regression_targets:
         print(f"=== Synthetic regression target: {target} ===", flush=True)
@@ -704,11 +805,76 @@ def run_synthetic_manifold_analysis(config: SyntheticManifoldAnalysisConfig) -> 
                 per_layer.append(metrics)
             analysis["scalar_geometry"][family][row_key] = per_layer
 
+    print("=== Synthetic coupled geometry ===", flush=True)
+    coupled_rows = [
+        row for row in asset_rows
+        if str(row.get("family")) in set(config.coupled_family_prefixes)
+        and int(row.get("row_index", -1)) == 0
+    ]
+    coupled_variants = sorted({_base_coupled_variant_name(str(row.get("family_variant"))) for row in coupled_rows})
+    for coupled_variant in coupled_variants:
+        axis_x, axis_y = _parse_coupled_axes(coupled_variant)
+        family_rows = [
+            row for row in coupled_rows
+            if _base_coupled_variant_name(str(row.get("family_variant"))) == coupled_variant
+        ]
+        family_rows = sorted(
+            family_rows,
+            key=lambda row: (float(row[axis_x]), float(row[axis_y]), str(row.get("family_variant"))),
+        )
+        analysis["coupled_geometry"][coupled_variant] = {}
+        exact_variants = sorted({str(row.get("family_variant")) for row in family_rows})
+        values = np.asarray(
+            [[float(row[axis_x]), float(row[axis_y])] for row in family_rows],
+            dtype=np.float32,
+        )
+        for row_key in config.row_keys:
+            per_layer: list[dict[str, Any]] = []
+            for layer in layers:
+                X_rows: list[np.ndarray] = []
+                for row in family_rows:
+                    acts = activation_cache.get(int(row["log_id"]))
+                    key = f"{row_key}_{int(row['row_index'])}"
+                    if not acts or key not in acts:
+                        X_rows = []
+                        break
+                    X_rows.append(acts[key][layer].astype(np.float32))
+                if not X_rows:
+                    per_layer.append({"layer": layer, "error": "missing_activations"})
+                    continue
+                X = np.stack(X_rows)
+                metrics = _coupled_geometry_metrics(X, values)
+                metrics["layer"] = layer
+                metrics["axis_names"] = [axis_x, axis_y]
+                metrics["exact_variants"] = exact_variants
+
+                subgroup_scores: list[float] = []
+                subgroup_pc2_scores: list[float] = []
+                for exact_variant in exact_variants:
+                    subgroup_indices = [
+                        idx for idx, row in enumerate(family_rows)
+                        if str(row.get("family_variant")) == exact_variant
+                    ]
+                    if len(subgroup_indices) < 4:
+                        continue
+                    subgroup_metrics = _coupled_geometry_metrics(X[subgroup_indices], values[subgroup_indices])
+                    subgroup_score = subgroup_metrics.get("distance_latent_spearman")
+                    subgroup_pc2_score = subgroup_metrics.get("pc2_distance_latent_spearman")
+                    if subgroup_score is not None:
+                        subgroup_scores.append(float(subgroup_score))
+                    if subgroup_pc2_score is not None:
+                        subgroup_pc2_scores.append(float(subgroup_pc2_score))
+                metrics["within_variant_distance_latent_spearman_mean"] = _mean(subgroup_scores)
+                metrics["within_variant_pc2_distance_latent_spearman_mean"] = _mean(subgroup_pc2_scores)
+                per_layer.append(metrics)
+            analysis["coupled_geometry"][coupled_variant][row_key] = per_layer
+
     analysis["summary"] = {
         "regression": _summarize_regression_results(analysis["regression"]),
         "best_asset": _summarize_best_asset_results(analysis["best_asset"]),
         "pairwise": _summarize_pairwise_results(analysis["pairwise"]),
         "scalar_geometry": _summarize_scalar_geometry(analysis["scalar_geometry"]),
+        "coupled_geometry": _summarize_coupled_geometry(analysis["coupled_geometry"]),
     }
 
     config.output_dir.mkdir(parents=True, exist_ok=True)

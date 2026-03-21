@@ -65,6 +65,9 @@ class SyntheticMarketConfig:
     scalar_steps: int = 9
     pairwise_variants: int = 5
     archetype_variants: int = 4
+    coupled_grid_steps: int = 11
+    coupled_background_variants: int = 2
+    coupled_minimal_templates: int = 1
     include_settings_variants: bool = True
     dataset_preset: str = "phase1"
     scalar_background_variants: int = 1
@@ -162,6 +165,28 @@ SCALAR_ANCHOR_ARCHETYPES = {
     "net_flow_5m": "flow_backed_continuation",
     "top20_holder_pct": "crowded_risk",
 }
+
+
+COUPLED_FACTOR_SPECS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "pct_5m__unique_traders_5m",
+        "anchor_archetype": "momentum_burst",
+        "metric_x": ("pct_5m", -10.0, 12.0),
+        "metric_y": ("unique_traders_5m", 4.0, 28.0),
+    },
+    {
+        "name": "pct_5m__top20_holder_pct",
+        "anchor_archetype": "crowded_risk",
+        "metric_x": ("pct_5m", -10.0, 12.0),
+        "metric_y": ("top20_holder_pct", 18.0, 78.0),
+    },
+    {
+        "name": "pct_5m__net_flow_5m",
+        "anchor_archetype": "flow_backed_continuation",
+        "metric_x": ("pct_5m", -10.0, 12.0),
+        "metric_y": ("net_flow_5m", -2.8, 3.2),
+    },
+)
 
 
 SCALAR_BACKGROUND_ROSTERS: list[tuple[str, str, str]] = [
@@ -378,6 +403,8 @@ def _override_metric(asset: SyntheticAsset, metric_name: str, value: float) -> S
         payload["pct_5m"] = round(value, 2)
     elif metric_name == "net_flow_5m":
         payload["net_flow_5m"] = round(value, 3)
+    elif metric_name == "unique_traders_5m":
+        payload["unique_traders_5m"] = max(1, int(round(value)))
     elif metric_name == "top20_holder_pct":
         payload["top20_holder_pct"] = round(value, 2)
     else:
@@ -568,6 +595,96 @@ def generate_minimal_scalar_sweeps(config: SyntheticMarketConfig) -> list[Synthe
     return examples
 
 
+def _linspace(lower: float, upper: float, steps: int) -> list[float]:
+    if steps <= 1:
+        return [round((lower + upper) / 2.0, 3)]
+    return [
+        lower + (upper - lower) * (step_idx / (steps - 1))
+        for step_idx in range(steps)
+    ]
+
+
+def generate_coupled_factor_dense_grids(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    steps = max(5, config.coupled_grid_steps)
+    background_variants = max(1, config.coupled_background_variants)
+    examples: list[SyntheticMarketExample] = []
+
+    for spec in COUPLED_FACTOR_SPECS:
+        metric_x, lower_x, upper_x = spec["metric_x"]
+        metric_y, lower_y, upper_y = spec["metric_y"]
+        values_x = _linspace(lower_x, upper_x, steps)
+        values_y = _linspace(lower_y, upper_y, steps)
+        for roster_index in range(background_variants):
+            distractor_roster = SCALAR_BACKGROUND_ROSTERS[roster_index % len(SCALAR_BACKGROUND_ROSTERS)]
+            for x_idx, value_x in enumerate(values_x):
+                for y_idx, value_y in enumerate(values_y):
+                    jitter = 30_000 + 400 * roster_index + 17 * x_idx + y_idx
+                    anchor = _make_asset("A", spec["anchor_archetype"], jitter_index=jitter)
+                    anchor = _override_metric(anchor, metric_x, value_x)
+                    anchor = _override_metric(anchor, metric_y, value_y)
+                    base_assets = [anchor]
+                    for offset, distractor in enumerate(distractor_roster, start=1):
+                        base_assets.append(
+                            _make_asset(
+                                chr(ord("A") + offset),
+                                distractor,
+                                jitter_index=jitter + 19 * offset,
+                            )
+                        )
+                    variant = f"{spec['name']}__bg{roster_index:02d}"
+                    example_id = f"coupled_dense_{spec['name']}_r{roster_index:02d}_x{x_idx:02d}_y{y_idx:02d}"
+                    examples.extend(
+                        _apply_context_variants(
+                            example_id,
+                            family="coupled_factor_dense",
+                            family_variant=variant,
+                            base_assets=base_assets,
+                            include_settings_variants=config.include_settings_variants,
+                        )
+                    )
+    return examples
+
+
+def generate_coupled_factor_minimal_grids(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    steps = max(5, config.coupled_grid_steps)
+    template_count = max(1, config.coupled_minimal_templates)
+    examples: list[SyntheticMarketExample] = []
+
+    for spec in COUPLED_FACTOR_SPECS:
+        metric_x, lower_x, upper_x = spec["metric_x"]
+        metric_y, lower_y, upper_y = spec["metric_y"]
+        values_x = _linspace(lower_x, upper_x, steps)
+        values_y = _linspace(lower_y, upper_y, steps)
+        for template_index in range(template_count):
+            for x_idx, value_x in enumerate(values_x):
+                for y_idx, value_y in enumerate(values_y):
+                    jitter = 40_000 + 400 * template_index + 17 * x_idx + y_idx
+                    anchor = _make_asset("A", spec["anchor_archetype"], jitter_index=jitter)
+                    anchor = _override_metric(anchor, metric_x, value_x)
+                    anchor = _override_metric(anchor, metric_y, value_y)
+                    base_assets = [anchor]
+                    for offset in range(1, 4):
+                        base_assets.append(
+                            _make_minimal_asset(
+                                chr(ord("A") + offset),
+                                template_index=template_index,
+                                jitter_index=jitter + 23 * offset,
+                            )
+                        )
+                    variant = f"{spec['name']}__t{template_index:02d}"
+                    example_id = f"coupled_minimal_{spec['name']}_t{template_index:02d}_x{x_idx:02d}_y{y_idx:02d}"
+                    examples.extend(
+                        _apply_context_variants(
+                            example_id,
+                            family="coupled_factor_minimal",
+                            family_variant=variant,
+                            base_assets=base_assets,
+                            include_settings_variants=config.include_settings_variants,
+                        )
+                    )
+    return examples
+
+
 def generate_pairwise_tradeoff_grids(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
     examples: list[SyntheticMarketExample] = []
 
@@ -717,6 +834,11 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         examples.extend(generate_dense_scalar_sweeps(config))
         examples.extend(generate_minimal_scalar_sweeps(config))
         return examples
+    if config.dataset_preset == "phase3_coupled_geometry":
+        examples = []
+        examples.extend(generate_coupled_factor_dense_grids(config))
+        examples.extend(generate_coupled_factor_minimal_grids(config))
+        return examples
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -729,7 +851,8 @@ def _default_log_id_base(dataset_preset: str) -> int:
     return {
         "phase1": 2_000_000_000,
         "phase2_geometry": 2_100_000_000,
-    }.get(dataset_preset, 2_200_000_000)
+        "phase3_coupled_geometry": 2_120_000_000,
+    }.get(dataset_preset, 2_140_000_000)
 
 
 def _assign_log_ids(

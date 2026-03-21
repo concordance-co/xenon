@@ -62,6 +62,35 @@ def test_generate_phase2_geometry_dataset_expected_counts(tmp_path) -> None:
     assert min(row["log_id"] for row in tick_rows) >= 2_100_000_000
 
 
+def test_generate_phase3_coupled_geometry_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase3_coupled_geometry",
+        coupled_grid_steps=5,
+        coupled_background_variants=2,
+        coupled_minimal_templates=1,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == (3 * 2 * 25) + (3 * 1 * 25)
+    families = {example.family for example in examples}
+    assert families == {"coupled_factor_dense", "coupled_factor_minimal"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase3_coupled_geometry",
+            coupled_grid_steps=5,
+            coupled_background_variants=1,
+            coupled_minimal_templates=1,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_120_000_000
+
+
 def test_prompts_use_neutral_asset_symbols() -> None:
     config = SyntheticMarketConfig(
         scalar_steps=3,
