@@ -19,6 +19,9 @@ SCHEMA_SQL_PATH = Path(__file__).resolve().parents[2] / "sql" / "synthetic_marke
 
 def _family_priority(family: str) -> float:
     return {
+        "permission_grid": 520.0,
+        "strategy_override_grid": 500.0,
+        "risk_gate_grid": 480.0,
         "coupled_factor_minimal": 460.0,
         "coupled_factor_dense": 440.0,
         "scalar_sweep_minimal": 360.0,

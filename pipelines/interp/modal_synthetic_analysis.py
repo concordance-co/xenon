@@ -197,6 +197,41 @@ def run_synthetic_manifold_analysis_modal(
     return result
 
 
+@app.function(
+    volumes={"/data": synthetic_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=8,
+    memory=32 * 1024,
+    secrets=[neon_secret],
+)
+def run_synthetic_policy_analysis_modal(
+    phase_name: str = "policy_algebra_v1",
+    analysis_tag: str = "",
+    num_workers: int = 8,
+) -> dict:
+    from pathlib import Path
+
+    from pipelines.interp.synthetic_policy_analysis import (
+        SyntheticPolicyAnalysisConfig,
+        run_synthetic_policy_analysis,
+    )
+
+    config = SyntheticPolicyAnalysisConfig(
+        phase_name=phase_name,
+        structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
+        output_dir=(
+            Path(f"/data/analysis_results/synthetic_policy/{phase_name}") / analysis_tag
+            if analysis_tag
+            else Path(f"/data/analysis_results/synthetic_policy/{phase_name}")
+        ),
+        max_workers=num_workers,
+    )
+    result = run_synthetic_policy_analysis(config)
+    synthetic_volume.commit()
+    return result
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "synthetic-structure",
@@ -247,6 +282,13 @@ def main(
             scalar_family_name=scalar_family_name,
             analysis_tag=analysis_tag,
             layers=layers,
+            num_workers=num_workers,
+        )
+        print(result)
+    elif mode == "synthetic-policy":
+        result = run_synthetic_policy_analysis_modal.remote(
+            phase_name=phase_name,
+            analysis_tag=analysis_tag,
             num_workers=num_workers,
         )
         print(result)
