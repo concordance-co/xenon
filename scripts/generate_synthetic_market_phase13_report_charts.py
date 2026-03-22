@@ -112,21 +112,20 @@ def _pair_label(pair_key: str) -> str:
 
 
 def experiment_design_chart(summary: dict) -> Path:
-    fig = plt.figure(figsize=(13.8, 7.2), dpi=180)
+    fig = plt.figure(figsize=(14.8, 8.2), dpi=180)
     fig.patch.set_facecolor("white")
-    gs = fig.add_gridspec(2, 3, height_ratios=[1.05, 1.0], hspace=0.32, wspace=0.28)
+    gs = fig.add_gridspec(2, 3, height_ratios=[1.05, 1.0], hspace=0.34, wspace=0.32)
 
     ax_data = fig.add_subplot(gs[0, 0])
     ax_data.axis("off")
-    ax_data.text(0.0, 1.04, "What data was used", fontsize=13, fontweight="bold", color=CHARCOAL, transform=ax_data.transAxes)
+    ax_data.text(0.0, 1.02, "What data was used", fontsize=13, fontweight="bold", color=CHARCOAL, transform=ax_data.transAxes)
     ax_data.text(
         0.0,
-        0.92,
-        "The dataset is built from repeated versions of the same 4-asset markets, not from one-off prompts.",
+        0.82,
+        "The dataset is built from repeated versions\nof the same 4-asset markets, not from\none-off prompts.",
         fontsize=9.5,
         color=SLATE,
         transform=ax_data.transAxes,
-        wrap=True,
     )
     data_lines = [
         "4 latent market scenarios",
@@ -135,19 +134,19 @@ def experiment_design_chart(summary: dict) -> Path:
         "3 global magnitude scales",
         "6 portfolio contexts",
     ]
-    y = 0.76
+    y = 0.58
     for idx, line in enumerate(data_lines, start=1):
         ax_data.text(0.02, y, f"{idx}.", fontsize=10, weight="bold", color=NAVY, transform=ax_data.transAxes)
         ax_data.text(0.10, y, line, fontsize=10, color=CHARCOAL, transform=ax_data.transAxes)
         y -= 0.10
     ax_data.text(
         0.02,
-        0.14,
+        0.02,
         f"Total prompts: {summary['n_examples']}\nAsset rows: {summary['n_asset_rows']}\nPairwise rows: {summary['n_pairwise_rows']}",
         fontsize=10,
         color=CHARCOAL,
         transform=ax_data.transAxes,
-        bbox=dict(boxstyle="round,pad=0.45", fc="#F7F4EF", ec=GRID),
+        bbox=dict(boxstyle="round,pad=0.35", fc="#F7F4EF", ec=GRID),
     )
 
     ax_ladder = fig.add_subplot(gs[0, 1:])
@@ -171,34 +170,25 @@ def experiment_design_chart(summary: dict) -> Path:
         fontweight="bold",
         color=CHARCOAL,
     )
-    ax_ladder.text(
-        0.01,
-        0.95,
-        "Across P1→P5, the prompt gives the agent less free ETH, a larger existing position in one asset,\nand a stronger instruction to avoid adding concentration.",
-        fontsize=9.2,
-        color=SLATE,
-        transform=ax_ladder.transAxes,
-        va="top",
-    )
-    ax_ladder.legend(frameon=False, loc="upper right")
+    ax_ladder.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.73, 1.06), ncol=2, fontsize=8.2)
 
     ax_goal = fig.add_subplot(gs[1, :])
     ax_goal.axis("off")
     ax_goal.text(0.0, 1.02, "What is being tested", fontsize=13, fontweight="bold", color=CHARCOAL, transform=ax_goal.transAxes)
     boxes = [
-        ("Base market", "Recover the same latent 4-asset coordinates across contexts."),
-        ("Early state", "Ask whether row_mean keeps the shared market frame intact."),
-        ("Late state", "Ask whether row_eos moves that frame toward portfolio-adjusted scores."),
-        ("Transforms", "Fit step-to-step maps and test whether the full ladder composes cleanly."),
+        ("Base market", "Recover the same latent\n4-asset coordinates\nacross contexts."),
+        ("Early state", "Test whether row_mean\nkeeps the shared market\nframe intact."),
+        ("Late state", "Test whether row_eos\nmoves that frame toward\nportfolio-adjusted scores."),
+        ("Transforms", "Fit step-to-step maps\nand test whether the\nfull ladder composes cleanly."),
     ]
-    x_positions = [0.00, 0.26, 0.52, 0.78]
+    x_positions = [0.00, 0.255, 0.51, 0.765]
     for x0, (title, body) in zip(x_positions, boxes, strict=True):
-        rect = Rectangle((x0, 0.18), 0.20, 0.56, facecolor="#FAF7F2", edgecolor=GRID, linewidth=1.2, transform=ax_goal.transAxes)
+        rect = Rectangle((x0, 0.18), 0.22, 0.56, facecolor="#FAF7F2", edgecolor=GRID, linewidth=1.2, transform=ax_goal.transAxes)
         ax_goal.add_patch(rect)
         ax_goal.text(x0 + 0.015, 0.66, title, fontsize=10.5, fontweight="bold", color=CHARCOAL, transform=ax_goal.transAxes)
-        ax_goal.text(x0 + 0.015, 0.55, body, fontsize=9.1, color=SLATE, transform=ax_goal.transAxes, va="top", wrap=True)
+        ax_goal.text(x0 + 0.015, 0.56, body, fontsize=9.0, color=SLATE, transform=ax_goal.transAxes, va="top")
         if x0 < x_positions[-1]:
-            ax_goal.annotate("", xy=(x0 + 0.24, 0.46), xytext=(x0 + 0.205, 0.46), arrowprops=dict(arrowstyle="->", lw=1.5, color=GOLD), xycoords=ax_goal.transAxes)
+            ax_goal.annotate("", xy=(x0 + 0.247, 0.46), xytext=(x0 + 0.225, 0.46), arrowprops=dict(arrowstyle="->", lw=1.5, color=GOLD), xycoords=ax_goal.transAxes)
 
     fig.suptitle(
         "Phase 13 dataset design and experimental target",
