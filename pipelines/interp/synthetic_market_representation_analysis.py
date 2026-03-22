@@ -29,6 +29,11 @@ from pipelines.interp.synthetic_manifold_analysis import (
     _train_regression_probe,
 )
 
+PROFILE_CONTROL_FAMILIES = {
+    "symbol_permutation_control",
+    "profile_invariance_control",
+}
+
 
 def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float | None:
     denom = float(np.linalg.norm(vec_a) * np.linalg.norm(vec_b))
@@ -44,6 +49,23 @@ def _group_asset_rows(asset_rows: list[dict[str, Any]]) -> dict[int, list[dict[s
     for log_id in grouped:
         grouped[log_id].sort(key=lambda item: int(item["row_index"]))
     return grouped
+
+
+def _is_profile_control_family(family: Any) -> bool:
+    return str(family) in PROFILE_CONTROL_FAMILIES
+
+
+def _parse_profile_invariance_example_id(example_id: Any) -> tuple[int, int, int] | None:
+    text = str(example_id)
+    if not text.startswith("profile_inv_"):
+        return None
+    parts = text.split("_")
+    if len(parts) != 5:
+        return None
+    try:
+        return int(parts[2]), int(parts[3]), int(parts[4])
+    except ValueError:
+        return None
 
 
 def _load_pairwise_rows(
@@ -87,6 +109,7 @@ class SyntheticMarketRepresentationConfig:
         "pairwise_tradeoff_hard",
         "rank_context_tradeoff",
         "symbol_permutation_control",
+        "profile_invariance_control",
     )
     regression_targets: tuple[str, ...] = (
         "pct_5m",
@@ -372,7 +395,7 @@ def _collect_symbol_permutation_entries(
 ) -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in asset_rows:
-        if str(row.get("family")) != "symbol_permutation_control":
+        if not _is_profile_control_family(row.get("family")):
             continue
         profile_id = row.get("profile_id")
         if not profile_id:
@@ -389,6 +412,43 @@ def _collect_symbol_permutation_entries(
             "profile_id": str(profile_id),
             "symbol": str(row["symbol"]),
             "row_index": int(row["row_index"]),
+            "vec": acts[key][layer].astype(np.float32),
+        })
+    return grouped
+
+
+def _collect_profile_invariance_entries(
+    *,
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in asset_rows:
+        if str(row.get("family")) != "profile_invariance_control":
+            continue
+        parsed = _parse_profile_invariance_example_id(row.get("example_id"))
+        if parsed is None:
+            continue
+        _, style_idx, perm_idx = parsed
+        profile_id = row.get("profile_id")
+        if not profile_id:
+            continue
+        log_id = int(row["log_id"])
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        grouped.setdefault(str(row["family_variant"]), []).append({
+            "example_id": str(row["example_id"]),
+            "profile_id": str(profile_id),
+            "symbol": str(row["symbol"]),
+            "row_index": int(row["row_index"]),
+            "style_idx": style_idx,
+            "perm_idx": perm_idx,
             "vec": acts[key][layer].astype(np.float32),
         })
     return grouped
@@ -474,6 +534,71 @@ def _symbol_permutation_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]
     }
 
 
+def _profile_invariance_mode_metrics(
+    entries: list[dict[str, Any]],
+    *,
+    mode: str,
+) -> dict[str, Any]:
+    if len(entries) < 4:
+        return {"nn_accuracy": None, "margin": None}
+
+    hits: list[int] = []
+    same_sims: list[float] = []
+    other_sims: list[float] = []
+
+    for idx, entry in enumerate(entries):
+        best_match: dict[str, Any] | None = None
+        best_sim = None
+        best_same = None
+        best_other = None
+        for other_idx, other in enumerate(entries):
+            if idx == other_idx or entry["example_id"] == other["example_id"]:
+                continue
+            if mode == "style_only":
+                if other["perm_idx"] != entry["perm_idx"] or other["style_idx"] == entry["style_idx"]:
+                    continue
+            elif mode == "layout_only":
+                if other["style_idx"] != entry["style_idx"] or other["perm_idx"] == entry["perm_idx"]:
+                    continue
+            else:
+                raise ValueError(f"unknown profile invariance mode: {mode}")
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            if best_sim is None or sim > best_sim:
+                best_sim = sim
+                best_match = other
+            if other["profile_id"] == entry["profile_id"]:
+                if best_same is None or sim > best_same:
+                    best_same = sim
+            else:
+                if best_other is None or sim > best_other:
+                    best_other = sim
+        if best_match is not None:
+            hits.append(int(best_match["profile_id"] == entry["profile_id"]))
+        if best_same is not None:
+            same_sims.append(best_same)
+        if best_other is not None:
+            other_sims.append(best_other)
+
+    return {
+        "nn_accuracy": _mean(hits),
+        "margin": None if not same_sims or not other_sims else float(np.mean(same_sims) - np.mean(other_sims)),
+    }
+
+
+def _profile_invariance_decomposition_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    style_only = _profile_invariance_mode_metrics(entries, mode="style_only")
+    layout_only = _profile_invariance_mode_metrics(entries, mode="layout_only")
+    return {
+        "n_entries": len(entries),
+        "style_only_nn_accuracy": style_only["nn_accuracy"],
+        "style_only_margin": style_only["margin"],
+        "layout_only_nn_accuracy": layout_only["nn_accuracy"],
+        "layout_only_margin": layout_only["margin"],
+    }
+
+
 def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     for scenario, per_row_key in results.items():
@@ -493,6 +618,50 @@ def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
             "profile_control_margin": best[1],
             "layer": best[2],
             "profile_control_nn_accuracy": best[3],
+        }
+    return summary
+
+
+def _summarize_profile_invariance_decomposition(results: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for scenario, per_row_key in results.items():
+        best_style: tuple[str, float, int, float | None] | None = None
+        best_layout: tuple[str, float, int, float | None] | None = None
+        for row_key, per_layer in per_row_key.items():
+            for metrics in per_layer:
+                style_margin = metrics.get("style_only_margin")
+                if style_margin is not None:
+                    style_acc = metrics.get("style_only_nn_accuracy")
+                    if best_style is None or float(style_margin) > best_style[1]:
+                        best_style = (
+                            row_key,
+                            float(style_margin),
+                            int(metrics["layer"]),
+                            None if style_acc is None else float(style_acc),
+                        )
+                layout_margin = metrics.get("layout_only_margin")
+                if layout_margin is not None:
+                    layout_acc = metrics.get("layout_only_nn_accuracy")
+                    if best_layout is None or float(layout_margin) > best_layout[1]:
+                        best_layout = (
+                            row_key,
+                            float(layout_margin),
+                            int(metrics["layer"]),
+                            None if layout_acc is None else float(layout_acc),
+                        )
+        summary[scenario] = {
+            "best_style_only": None if best_style is None else {
+                "representation": best_style[0],
+                "margin": best_style[1],
+                "layer": best_style[2],
+                "nn_accuracy": best_style[3],
+            },
+            "best_layout_only": None if best_layout is None else {
+                "representation": best_layout[0],
+                "margin": best_layout[1],
+                "layer": best_layout[2],
+                "nn_accuracy": best_layout[3],
+            },
         }
     return summary
 
@@ -550,6 +719,7 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "focal_pairwise": {},
         "rank_context": {},
         "symbol_permutation": {},
+        "profile_invariance_decomposition": {},
     }
 
     for target in config.regression_targets:
@@ -629,7 +799,7 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
             for scenario, per_layer in scenario_groups_by_layer.items():
                 analysis["rank_context"].setdefault(scenario, {})[row_key] = per_layer
 
-    symbol_rows = [row for row in asset_rows if str(row.get("family")) == "symbol_permutation_control"]
+    symbol_rows = [row for row in asset_rows if _is_profile_control_family(row.get("family"))]
     if symbol_rows:
         for row_key in config.row_keys:
             scenario_groups_by_layer: dict[str, list[dict[str, Any]]] = {}
@@ -648,11 +818,33 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
             for scenario, per_layer in scenario_groups_by_layer.items():
                 analysis["symbol_permutation"].setdefault(scenario, {})[row_key] = per_layer
 
+    profile_invariance_rows = [row for row in asset_rows if str(row.get("family")) == "profile_invariance_control"]
+    if profile_invariance_rows:
+        for row_key in config.row_keys:
+            scenario_groups_by_layer: dict[str, list[dict[str, Any]]] = {}
+            for layer in layers:
+                grouped = _collect_profile_invariance_entries(
+                    asset_rows=profile_invariance_rows,
+                    activation_cache=activation_cache,
+                    row_key=row_key,
+                    layer=layer,
+                )
+                for scenario, entries in grouped.items():
+                    scenario_groups_by_layer.setdefault(scenario, []).append({
+                        **_profile_invariance_decomposition_metrics(entries),
+                        "layer": layer,
+                    })
+            for scenario, per_layer in scenario_groups_by_layer.items():
+                analysis["profile_invariance_decomposition"].setdefault(scenario, {})[row_key] = per_layer
+
     analysis["summary"] = {
         "primitive_regression": _summarize_regression(analysis["primitive_regression"]),
         "focal_pairwise": _summarize_pairwise(analysis["focal_pairwise"]),
         "rank_context": _summarize_rank_context(analysis["rank_context"]),
         "symbol_permutation": _summarize_symbol_permutation(analysis["symbol_permutation"]),
+        "profile_invariance_decomposition": _summarize_profile_invariance_decomposition(
+            analysis["profile_invariance_decomposition"]
+        ),
     }
 
     config.output_dir.mkdir(parents=True, exist_ok=True)

@@ -3,8 +3,10 @@ from __future__ import annotations
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from pipelines.interp.synthetic_market import SyntheticAsset, _render_user_prompt
 from pipelines.interp.synthetic_structure import (
     clear_synthetic_structure_shards,
+    find_synthetic_row_boundaries,
     merge_synthetic_structure_shards,
     select_examples_for_shard,
     shard_output_paths,
@@ -106,3 +108,47 @@ def test_clear_synthetic_structure_shards_removes_shard_and_canonical_tables(tmp
     assert not tick0.exists()
     assert not asset0.exists()
     assert not (out_dir / "metadata.parquet").exists()
+
+
+class _FakeTokenizer:
+    def apply_chat_template(self, messages, add_generation_prompt=False, tokenize=False):
+        parts = []
+        for message in messages:
+            parts.append(f"{message['role'].upper()}:\n{message['content']}")
+        return "\n\n".join(parts)
+
+    def __call__(self, rendered_text, add_special_tokens=False, return_offsets_mapping=True):
+        return {
+            "input_ids": list(range(len(rendered_text))),
+            "offset_mapping": [(idx, idx + 1) for idx in range(len(rendered_text))],
+        }
+
+
+def test_find_synthetic_row_boundaries_handles_compact_surface_style():
+    assets = [
+        SyntheticAsset("North", "stable_winner", 4.4, 8.0, 1.1, 5.0, 20.0, 18, 24.0, "mature"),
+        SyntheticAsset("South", "crowded_risk", 4.5, 7.8, 1.0, 5.2, 21.0, 27, 61.0, "mid"),
+        SyntheticAsset("East", "mean_reverter", -2.6, -4.0, 0.2, 2.4, 8.0, 10, 34.0, "mature"),
+        SyntheticAsset("West", "illiquid_spike", 5.0, 4.5, 0.18, 1.1, 4.0, 4, 72.0, "fresh"),
+    ]
+    user_text = _render_user_prompt(
+        "profile_inv_test",
+        "market_only",
+        assets,
+        surface_style="compact",
+    )
+    rows = [
+        {"row_index": idx, "symbol": asset.symbol}
+        for idx, asset in enumerate(assets)
+    ]
+
+    bounds = find_synthetic_row_boundaries(
+        _FakeTokenizer(),
+        "system prompt",
+        user_text,
+        rows,
+    )
+
+    assert len(bounds) == 4
+    assert [row["symbol"] for row in bounds] == ["North", "South", "East", "West"]
+    assert all(row["full_start"] < row["full_end"] for row in bounds)

@@ -145,6 +145,48 @@ def test_generate_phase5_symbol_permutation_dataset_expected_counts(tmp_path) ->
     assert all(row["profile_id"] is not None for row in asset_rows)
 
 
+def test_generate_phase6_profile_invariance_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase6_profile_invariance",
+        permutation_variants=3,
+        profile_surface_variants=2,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == 2 * 3 * 2
+    families = {example.family for example in examples}
+    assert families == {"profile_invariance_control"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase6_profile_invariance",
+            permutation_variants=3,
+            profile_surface_variants=2,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_146_950_000
+
+
+def test_phase6_profile_invariance_emits_distinct_surface_styles() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase6_profile_invariance",
+            permutation_variants=1,
+            profile_surface_variants=4,
+            include_settings_variants=False,
+        )
+    )
+    prompts = [example.user_prompt for example in examples if example.family_variant == "participation_concentration_tiebreak"]
+    assert any("Snapshot:" in prompt for prompt in prompts)
+    assert any("Holder concentration (top 20)" in prompt for prompt in prompts)
+    assert any("Short-horizon price move" in prompt for prompt in prompts)
+
+
 def test_rank_context_tradeoff_preserves_focal_pair_across_backgrounds() -> None:
     examples = generate_dataset(
         SyntheticMarketConfig(

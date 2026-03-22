@@ -195,19 +195,8 @@ def _load_asset_rows(log_ids: list[int], *, phase_name: str) -> dict[int, list[d
     return grouped
 
 
-def _format_asset_block(row: dict[str, Any]) -> str:
-    return "\n".join([
-        f"- Asset {row['symbol']}",
-        f"  - Archetype: {row['archetype']}",
-        f"  - 5m change: {float(row['pct_5m']):+.1f}%",
-        f"  - 1h change: {float(row['pct_1h']):+.1f}%",
-        f"  - Net flow 5m: {float(row['net_flow_5m']):+.2f}",
-        f"  - Volume 5m: {float(row['vol_5m']):.2f}",
-        f"  - Volume 1h: {float(row['vol_1h']):.2f}",
-        f"  - Unique traders 5m: {int(row['unique_traders_5m'])}",
-        f"  - Top 20 holder pct: {float(row['top20_holder_pct']):.1f}%",
-        f"  - Age bucket: {row['age_bucket']}",
-    ])
+def _row_header_text(row: dict[str, Any]) -> str:
+    return f"- Asset {row['symbol']}"
 
 
 def find_synthetic_section_boundaries(
@@ -260,15 +249,23 @@ def find_synthetic_row_boundaries(
     _, offsets = _token_offsets_for_rendered(tokenizer, rendered)
     market_char = rendered.find("## MARKET SNAPSHOT")
     search_char = market_char if market_char >= 0 else 0
+    instruction_char = rendered.find("Respond with the single best action for this tick:")
+    market_end_char = instruction_char if instruction_char >= 0 else len(rendered)
+
+    located_headers: list[tuple[dict[str, Any], int]] = []
+    for row in asset_rows:
+        header = _row_header_text(row)
+        row_char = rendered.find(header, search_char)
+        if row_char < 0:
+            print(f"WARNING: could not locate synthetic row header for {row['symbol']}")
+            continue
+        located_headers.append((row, row_char))
+        search_char = row_char + len(header)
 
     row_bounds: list[dict[str, Any]] = []
-    for row in asset_rows:
-        row_text = _format_asset_block(row)
-        row_char = rendered.find(row_text, search_char)
-        if row_char < 0:
-            print(f"WARNING: could not locate synthetic row span for {row['symbol']}")
-            continue
-        row_span = _char_to_token_span(offsets, start_char=row_char, end_char=row_char + len(row_text))
+    for idx, (row, row_char) in enumerate(located_headers):
+        next_row_char = located_headers[idx + 1][1] if idx + 1 < len(located_headers) else market_end_char
+        row_span = _char_to_token_span(offsets, start_char=row_char, end_char=next_row_char)
         if row_span is None:
             print(f"WARNING: could not map synthetic row span for {row['symbol']}")
             continue
@@ -281,7 +278,6 @@ def find_synthetic_row_boundaries(
             "content_start": row_start,
             "content_end": row_end,
         })
-        search_char = row_char + len(row_text)
     return row_bounds
 
 

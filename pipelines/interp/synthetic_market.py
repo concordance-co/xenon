@@ -72,6 +72,7 @@ class SyntheticMarketConfig:
     representation_steps: int = 7
     representation_background_variants: int = 3
     permutation_variants: int = 6
+    profile_surface_variants: int = 4
     include_settings_variants: bool = True
     dataset_preset: str = "phase1"
     scalar_background_variants: int = 1
@@ -207,6 +208,14 @@ SYMBOL_PERMUTATION_LAYOUTS: list[dict[str, tuple[int, ...] | tuple[str, ...]]] =
     {"order": (3, 2, 1, 0), "symbols": ("D", "C", "B", "A")},
     {"order": (1, 3, 0, 2), "symbols": ("A", "D", "C", "B")},
     {"order": (2, 0, 3, 1), "symbols": ("B", "C", "D", "A")},
+]
+
+
+PROFILE_INVARIANCE_SURFACE_STYLES: list[dict[str, Any]] = [
+    {"name": "canonical", "symbols": ("A", "B", "C", "D")},
+    {"name": "reordered", "symbols": ("Alpha", "Beta", "Gamma", "Delta")},
+    {"name": "compact", "symbols": ("North", "South", "East", "West")},
+    {"name": "analyst", "symbols": ("One", "Two", "Three", "Four")},
 ]
 
 
@@ -369,7 +378,69 @@ def _compute_labels(example_id: str, family: str, family_variant: str, context_v
     }
 
 
-def _render_user_prompt(example_id: str, context_variant: str, assets: list[SyntheticAsset]) -> str:
+def _render_asset_lines(asset: SyntheticAsset, *, surface_style: str = "canonical") -> list[str]:
+    if surface_style == "canonical":
+        return [
+            f"- Asset {asset.symbol}",
+            f"  - Archetype: {asset.archetype}",
+            f"  - 5m change: {asset.pct_5m:+.1f}%",
+            f"  - 1h change: {asset.pct_1h:+.1f}%",
+            f"  - Net flow 5m: {asset.net_flow_5m:+.2f}",
+            f"  - Volume 5m: {asset.vol_5m:.2f}",
+            f"  - Volume 1h: {asset.vol_1h:.2f}",
+            f"  - Unique traders 5m: {asset.unique_traders_5m}",
+            f"  - Top 20 holder pct: {asset.top20_holder_pct:.1f}%",
+            f"  - Age bucket: {asset.age_bucket}",
+        ]
+    if surface_style == "reordered":
+        return [
+            f"- Asset {asset.symbol}",
+            f"  - Holder concentration (top 20): {asset.top20_holder_pct:.1f}%",
+            f"  - Active traders over 5m: {asset.unique_traders_5m}",
+            f"  - Recent net flow (5m): {asset.net_flow_5m:+.2f}",
+            f"  - 1h move: {asset.pct_1h:+.1f}%",
+            f"  - 5m move: {asset.pct_5m:+.1f}%",
+            f"  - Archetype family: {asset.archetype}",
+            f"  - 1h volume: {asset.vol_1h:.2f}",
+            f"  - 5m volume: {asset.vol_5m:.2f}",
+            f"  - Age cohort: {asset.age_bucket}",
+        ]
+    if surface_style == "compact":
+        return [
+            f"- Asset {asset.symbol}",
+            "  - Snapshot: "
+            f"5m={asset.pct_5m:+.1f}%; "
+            f"1h={asset.pct_1h:+.1f}%; "
+            f"flow5m={asset.net_flow_5m:+.2f}; "
+            f"traders5m={asset.unique_traders_5m}; "
+            f"top20={asset.top20_holder_pct:.1f}%; "
+            f"vol5m={asset.vol_5m:.2f}; "
+            f"vol1h={asset.vol_1h:.2f}; "
+            f"age={asset.age_bucket}; "
+            f"archetype={asset.archetype}",
+        ]
+    if surface_style == "analyst":
+        return [
+            f"- Asset {asset.symbol}",
+            f"  - Short-horizon price move: {asset.pct_5m:+.1f}% over 5m",
+            f"  - Hourly continuation: {asset.pct_1h:+.1f}% over 1h",
+            f"  - Participation pulse: {asset.unique_traders_5m} traders in 5m",
+            f"  - Concentration check: top-20 holders own {asset.top20_holder_pct:.1f}%",
+            f"  - Flow tape: {asset.net_flow_5m:+.2f} net over 5m",
+            f"  - Liquidity tape: {asset.vol_5m:.2f} / {asset.vol_1h:.2f} volume",
+            f"  - Lifecycle bucket: {asset.age_bucket}",
+            f"  - Archetype read: {asset.archetype}",
+        ]
+    raise ValueError(f"Unsupported surface_style: {surface_style}")
+
+
+def _render_user_prompt(
+    example_id: str,
+    context_variant: str,
+    assets: list[SyntheticAsset],
+    *,
+    surface_style: str = "canonical",
+) -> str:
     lines = [
         f"## SYNTHETIC MARKET SCENARIO {example_id}",
         "",
@@ -381,18 +452,7 @@ def _render_user_prompt(example_id: str, context_variant: str, assets: list[Synt
         "## MARKET SNAPSHOT",
     ]
     for asset in assets:
-        lines.extend([
-            f"- Asset {asset.symbol}",
-            f"  - Archetype: {asset.archetype}",
-            f"  - 5m change: {asset.pct_5m:+.1f}%",
-            f"  - 1h change: {asset.pct_1h:+.1f}%",
-            f"  - Net flow 5m: {asset.net_flow_5m:+.2f}",
-            f"  - Volume 5m: {asset.vol_5m:.2f}",
-            f"  - Volume 1h: {asset.vol_1h:.2f}",
-            f"  - Unique traders 5m: {asset.unique_traders_5m}",
-            f"  - Top 20 holder pct: {asset.top20_holder_pct:.1f}%",
-            f"  - Age bucket: {asset.age_bucket}",
-        ])
+        lines.extend(_render_asset_lines(asset, surface_style=surface_style))
     lines.extend([
         "",
         "Respond with the single best action for this tick: buy, sell, or observe.",
@@ -472,6 +532,7 @@ def _apply_context_variants(
     family_variant: str,
     base_assets: list[SyntheticAsset],
     include_settings_variants: bool,
+    surface_style: str = "canonical",
 ) -> list[SyntheticMarketExample]:
     variants = ["market_only"]
     if include_settings_variants:
@@ -480,7 +541,12 @@ def _apply_context_variants(
     examples: list[SyntheticMarketExample] = []
     for context_variant in variants:
         labels = _compute_labels(example_id, family, family_variant, context_variant, base_assets)
-        user_prompt = _render_user_prompt(example_id, context_variant, base_assets)
+        user_prompt = _render_user_prompt(
+            example_id,
+            context_variant,
+            base_assets,
+            surface_style=surface_style,
+        )
         examples.append(
             SyntheticMarketExample(
                 log_id=-1,
@@ -1093,6 +1159,110 @@ def generate_symbol_permutation_controls(config: SyntheticMarketConfig) -> list[
     return examples
 
 
+def generate_profile_invariance_controls(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    layouts = SYMBOL_PERMUTATION_LAYOUTS[: max(2, min(config.permutation_variants, len(SYMBOL_PERMUTATION_LAYOUTS)))]
+    surface_styles = PROFILE_INVARIANCE_SURFACE_STYLES[
+        : max(2, min(config.profile_surface_variants, len(PROFILE_INVARIANCE_SURFACE_STYLES)))
+    ]
+
+    base_scenarios: list[tuple[str, list[SyntheticAsset]]] = [
+        (
+            "participation_concentration_tiebreak",
+            [
+                _override_display(
+                    _override_metrics(
+                        _make_asset("A", "stable_winner", jitter_index=72_001),
+                        {"pct_5m": 4.4, "net_flow_5m": 1.10, "unique_traders_5m": 18.0, "top20_holder_pct": 24.0},
+                    ),
+                    profile_id="profile_broad_participation",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("B", "crowded_risk", jitter_index=72_002),
+                        {"pct_5m": 4.5, "net_flow_5m": 1.05, "unique_traders_5m": 27.0, "top20_holder_pct": 61.0},
+                    ),
+                    profile_id="profile_crowded_participation",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("C", "mean_reverter", jitter_index=72_003),
+                        {"pct_5m": -2.6, "net_flow_5m": 0.20, "unique_traders_5m": 10.0, "top20_holder_pct": 34.0},
+                    ),
+                    profile_id="profile_mean_reverter_distractor",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("D", "illiquid_spike", jitter_index=72_004),
+                        {"pct_5m": 5.0, "net_flow_5m": 0.18, "unique_traders_5m": 4.0, "top20_holder_pct": 72.0},
+                    ),
+                    profile_id="profile_illiquid_spike_distractor",
+                ),
+            ],
+        ),
+        (
+            "momentum_flow_tiebreak",
+            [
+                _override_display(
+                    _override_metrics(
+                        _make_asset("A", "momentum_burst", jitter_index=73_001),
+                        {"pct_5m": 5.8, "net_flow_5m": 0.82, "unique_traders_5m": 18.0, "top20_holder_pct": 33.0},
+                    ),
+                    profile_id="profile_momentum_anchor",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("B", "flow_backed_continuation", jitter_index=73_002),
+                        {"pct_5m": 4.8, "net_flow_5m": 1.58, "unique_traders_5m": 18.0, "top20_holder_pct": 33.5},
+                    ),
+                    profile_id="profile_flow_anchor",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("C", "stable_winner", jitter_index=73_003),
+                        {"pct_5m": 3.2, "net_flow_5m": 0.78, "unique_traders_5m": 15.0, "top20_holder_pct": 27.0},
+                    ),
+                    profile_id="profile_stable_distractor",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("D", "crowded_risk", jitter_index=73_004),
+                        {"pct_5m": 3.8, "net_flow_5m": 0.64, "unique_traders_5m": 16.0, "top20_holder_pct": 60.0},
+                    ),
+                    profile_id="profile_crowded_distractor",
+                ),
+            ],
+        ),
+    ]
+
+    for scenario_idx, (variant, base_assets) in enumerate(base_scenarios):
+        for style_idx, style in enumerate(surface_styles):
+            symbols = tuple(str(symbol) for symbol in style["symbols"])
+            style_name = str(style["name"])
+            for perm_idx, layout in enumerate(layouts):
+                order = tuple(int(idx) for idx in layout["order"])
+                permuted_assets: list[SyntheticAsset] = []
+                for row_index, asset_index in enumerate(order):
+                    permuted_assets.append(
+                        _override_display(
+                            base_assets[asset_index],
+                            symbol=symbols[row_index],
+                        )
+                    )
+                example_id = f"profile_inv_{scenario_idx:02d}_{style_idx:02d}_{perm_idx:02d}"
+                examples.extend(
+                    _apply_context_variants(
+                        example_id,
+                        family="profile_invariance_control",
+                        family_variant=variant,
+                        base_assets=permuted_assets,
+                        include_settings_variants=False,
+                        surface_style=style_name,
+                    )
+                )
+    return examples
+
+
 def generate_archetype_families(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
     examples: list[SyntheticMarketExample] = []
     distractors = ["stable_winner", "flow_backed_continuation", "crowded_risk"]
@@ -1133,6 +1303,8 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         return examples
     if config.dataset_preset == "phase5_symbol_permutation":
         return generate_symbol_permutation_controls(config)
+    if config.dataset_preset == "phase6_profile_invariance":
+        return generate_profile_invariance_controls(config)
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -1148,6 +1320,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase3_coupled_geometry": 2_130_000_000,
         "phase4_market_representation": 2_147_300_000,
         "phase5_symbol_permutation": 2_146_900_000,
+        "phase6_profile_invariance": 2_146_950_000,
     }.get(dataset_preset, 2_140_000_000)
 
 
