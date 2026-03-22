@@ -88,11 +88,42 @@ def test_symbol_permutation_metrics_can_favor_profile_over_symbol() -> None:
             "row_index": 0,
             "vec": np.asarray([0.02, 0.98], dtype=np.float32),
         },
+        {
+            "example_id": "ex2",
+            "profile_id": "p2",
+            "symbol": "D",
+            "row_index": 2,
+            "vec": np.asarray([-1.0, 0.0], dtype=np.float32),
+        },
+        {
+            "example_id": "ex2",
+            "profile_id": "p3",
+            "symbol": "E",
+            "row_index": 3,
+            "vec": np.asarray([0.0, -1.0], dtype=np.float32),
+        },
+        {
+            "example_id": "ex3",
+            "profile_id": "p2",
+            "symbol": "F",
+            "row_index": 3,
+            "vec": np.asarray([-0.98, -0.02], dtype=np.float32),
+        },
+        {
+            "example_id": "ex3",
+            "profile_id": "p3",
+            "symbol": "G",
+            "row_index": 2,
+            "vec": np.asarray([-0.02, -0.98], dtype=np.float32),
+        },
     ]
 
     metrics = _symbol_permutation_metrics(entries)
     assert metrics["same_profile_nn_accuracy"] == 1.0
     assert metrics["same_symbol_nn_accuracy"] == 0.0
     assert metrics["same_row_nn_accuracy"] == 0.0
+    assert metrics["profile_control_nn_accuracy"] == 1.0
     assert metrics["profile_minus_symbol_margin"] is not None
     assert metrics["profile_minus_symbol_margin"] > 0.9
+    assert metrics["profile_control_margin"] is not None
+    assert metrics["profile_control_margin"] > 0.9

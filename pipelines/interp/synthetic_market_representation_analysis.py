@@ -404,10 +404,17 @@ def _symbol_permutation_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]
     same_profile_sims: list[float] = []
     same_symbol_sims: list[float] = []
     same_row_sims: list[float] = []
+    profile_control_hits: list[int] = []
+    profile_control_same_sims: list[float] = []
+    profile_control_other_sims: list[float] = []
 
     for idx, entry in enumerate(entries):
         best_sim = None
         best_match: dict[str, Any] | None = None
+        best_control_sim = None
+        best_control_match: dict[str, Any] | None = None
+        best_same_profile_control = None
+        best_other_profile_control = None
         for other_idx, other in enumerate(entries):
             if idx == other_idx or entry["example_id"] == other["example_id"]:
                 continue
@@ -423,43 +430,69 @@ def _symbol_permutation_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]
             if best_sim is None or sim > best_sim:
                 best_sim = sim
                 best_match = other
+            if other["symbol"] != entry["symbol"] and other["row_index"] != entry["row_index"]:
+                if best_control_sim is None or sim > best_control_sim:
+                    best_control_sim = sim
+                    best_control_match = other
+                if other["profile_id"] == entry["profile_id"]:
+                    if best_same_profile_control is None or sim > best_same_profile_control:
+                        best_same_profile_control = sim
+                else:
+                    if best_other_profile_control is None or sim > best_other_profile_control:
+                        best_other_profile_control = sim
         if best_match is not None:
             same_profile_hits.append(int(best_match["profile_id"] == entry["profile_id"]))
             same_symbol_hits.append(int(best_match["symbol"] == entry["symbol"]))
             same_row_hits.append(int(best_match["row_index"] == entry["row_index"]))
+        if best_control_match is not None:
+            profile_control_hits.append(int(best_control_match["profile_id"] == entry["profile_id"]))
+        if best_same_profile_control is not None:
+            profile_control_same_sims.append(best_same_profile_control)
+        if best_other_profile_control is not None:
+            profile_control_other_sims.append(best_other_profile_control)
 
     return {
         "n_entries": len(entries),
         "same_profile_nn_accuracy": _mean(same_profile_hits),
         "same_symbol_nn_accuracy": _mean(same_symbol_hits),
         "same_row_nn_accuracy": _mean(same_row_hits),
+        "profile_control_nn_accuracy": _mean(profile_control_hits),
         "same_profile_cosine_mean": _mean(same_profile_sims),
         "same_symbol_cosine_mean": _mean(same_symbol_sims),
         "same_row_cosine_mean": _mean(same_row_sims),
+        "profile_control_same_cosine_mean": _mean(profile_control_same_sims),
+        "profile_control_other_cosine_mean": _mean(profile_control_other_sims),
         "profile_minus_symbol_margin": None
         if not same_profile_sims or not same_symbol_sims
         else float(np.mean(same_profile_sims) - np.mean(same_symbol_sims)),
         "profile_minus_row_margin": None
         if not same_profile_sims or not same_row_sims
         else float(np.mean(same_profile_sims) - np.mean(same_row_sims)),
+        "profile_control_margin": None
+        if not profile_control_same_sims or not profile_control_other_sims
+        else float(np.mean(profile_control_same_sims) - np.mean(profile_control_other_sims)),
     }
 
 
 def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     for scenario, per_row_key in results.items():
-        best: tuple[str, float, int] | None = None
+        best: tuple[str, float, int, float | None] | None = None
         for row_key, per_layer in per_row_key.items():
             for metrics in per_layer:
-                score = metrics.get("profile_minus_symbol_margin")
+                score = metrics.get("profile_control_margin")
+                if score is None:
+                    score = metrics.get("profile_minus_symbol_margin")
                 if score is None:
                     continue
+                control_acc = metrics.get("profile_control_nn_accuracy")
                 if best is None or float(score) > best[1]:
-                    best = (row_key, float(score), int(metrics["layer"]))
+                    best = (row_key, float(score), int(metrics["layer"]), None if control_acc is None else float(control_acc))
         summary[scenario] = None if best is None else {
             "representation": best[0],
-            "profile_minus_symbol_margin": best[1],
+            "profile_control_margin": best[1],
             "layer": best[2],
+            "profile_control_nn_accuracy": best[3],
         }
     return summary
 
