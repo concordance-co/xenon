@@ -206,7 +206,7 @@ def _collect_tick_classification_data(
         acts = activation_cache.get(log_id)
         if not acts or section_key not in acts:
             continue
-        label = example["labels"].get(label_key)
+        label = _resolve_tick_label(example, label_key)
         if label is None:
             label = "NONE"
         elif label == "":
@@ -232,6 +232,17 @@ def _evaluate_multiclass(
         "balanced_accuracy": float(balanced_accuracy_score(y_test, pred)),
         "n_rows": int(len(y_test)),
     }
+
+
+def _resolve_tick_label(example: dict[str, Any], label_key: str) -> Any:
+    labels = example["labels"]
+    if label_key == "can_buy":
+        permission_mode = str(labels.get("permission_mode") or "NONE")
+        return "yes" if permission_mode in {"buy_and_sell", "buy_only"} else "no"
+    if label_key == "can_sell":
+        permission_mode = str(labels.get("permission_mode") or "NONE")
+        return "yes" if permission_mode in {"buy_and_sell", "sell_only"} else "no"
+    return labels.get(label_key)
 
 
 def _policy_invariance_summary(
@@ -527,6 +538,9 @@ def run_synthetic_policy_analysis(config: SyntheticPolicyAnalysisConfig) -> dict
         "expected_action_type": [],
         "policy_best_asset": [],
         "permission_mode": [],
+        "observe_vs_act": [],
+        "can_buy": [],
+        "can_sell": [],
     }
     for target in tick_results:
         for section_key in config.section_keys:
@@ -563,6 +577,9 @@ def run_synthetic_policy_analysis(config: SyntheticPolicyAnalysisConfig) -> dict
     best_action = max(tick_results["expected_action_type"], key=lambda row: row.get("accuracy") or -1.0)
     best_policy_asset = max(tick_results["policy_best_asset"], key=lambda row: row.get("accuracy") or -1.0)
     best_permission = max(tick_results["permission_mode"], key=lambda row: row.get("accuracy") or -1.0)
+    best_observe_vs_act = max(tick_results["observe_vs_act"], key=lambda row: row.get("accuracy") or -1.0)
+    best_can_buy = max(tick_results["can_buy"], key=lambda row: row.get("accuracy") or -1.0)
+    best_can_sell = max(tick_results["can_sell"], key=lambda row: row.get("accuracy") or -1.0)
 
     invariance = _policy_invariance_summary(
         examples=examples,
@@ -593,6 +610,9 @@ def run_synthetic_policy_analysis(config: SyntheticPolicyAnalysisConfig) -> dict
         "expected_action_type_classifier": best_action,
         "policy_best_asset_classifier": best_policy_asset,
         "permission_mode_classifier": best_permission,
+        "observe_vs_act_classifier": best_observe_vs_act,
+        "can_buy_classifier": best_can_buy,
+        "can_sell_classifier": best_can_sell,
         "invariance": invariance,
         "repeated_invariance": repeated_invariance,
     }
