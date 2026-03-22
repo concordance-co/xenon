@@ -93,6 +93,35 @@ def test_generate_phase3_coupled_geometry_dataset_expected_counts(tmp_path) -> N
     assert min(row["log_id"] for row in tick_rows) >= 2_130_000_000
 
 
+def test_generate_phase10_set_geometry_context_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase10_set_geometry_context",
+        permutation_variants=3,
+        profile_surface_variants=2,
+        relation_scale_variants=2,
+        include_settings_variants=True,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == 4 * 3 * 2 * 2 * 3
+    families = {example.family for example in examples}
+    assert families == {"set_geometry_control"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only", "low_risk", "high_risk"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase10_set_geometry_context",
+            permutation_variants=3,
+            profile_surface_variants=2,
+            relation_scale_variants=2,
+            include_settings_variants=True,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_150_000
+
+
 def test_generate_phase4_market_representation_dataset_expected_counts(tmp_path) -> None:
     config = SyntheticMarketConfig(
         dataset_preset="phase4_market_representation",
@@ -203,6 +232,24 @@ def test_generate_phase7_relation_invariance_dataset_expected_counts(tmp_path) -
     )
     tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
     assert min(row["log_id"] for row in tick_rows) >= 2_147_000_000
+
+
+def test_phase10_set_geometry_context_uses_stronger_settings_language() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase10_set_geometry_context",
+            permutation_variants=1,
+            profile_surface_variants=1,
+            relation_scale_variants=1,
+            include_settings_variants=True,
+        )
+    )
+    prompts = {}
+    for example in examples:
+        prompts.setdefault(example.context_variant, example.user_prompt)
+    assert "edge clearly exceeds fees" in prompts["market_only"].lower()
+    assert "lower holder concentration" in prompts["low_risk"].lower()
+    assert "fresh momentum and thinner participation are acceptable" in prompts["high_risk"].lower()
 
 
 def test_phase6_profile_invariance_emits_distinct_surface_styles() -> None:

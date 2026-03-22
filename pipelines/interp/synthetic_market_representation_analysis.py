@@ -1380,6 +1380,234 @@ def _set_geometry_identity_metrics(
     }
 
 
+def _split_example_ids(
+    example_ids: list[str],
+    *,
+    seed: int,
+    test_fraction: float,
+) -> tuple[set[str], set[str]]:
+    unique_ids = sorted({str(example_id) for example_id in example_ids})
+    if not unique_ids:
+        return set(), set()
+    if len(unique_ids) == 1:
+        return {unique_ids[0]}, {unique_ids[0]}
+    rng = np.random.default_rng(seed)
+    shuffled = list(unique_ids)
+    rng.shuffle(shuffled)
+    n_test = max(1, int(round(len(shuffled) * test_fraction)))
+    n_test = min(len(shuffled) - 1, n_test)
+    test_ids = set(shuffled[:n_test])
+    train_ids = set(shuffled[n_test:])
+    return train_ids, test_ids
+
+
+def _score_distance_vector_for_profiles(
+    score_coords: dict[str, tuple[float, float]],
+    *,
+    ordered_profiles: tuple[str, ...],
+) -> tuple[np.ndarray, tuple[str, ...]]:
+    values: list[float] = []
+    labels: list[str] = []
+    for left_idx in range(len(ordered_profiles)):
+        for right_idx in range(left_idx + 1, len(ordered_profiles)):
+            left = ordered_profiles[left_idx]
+            right = ordered_profiles[right_idx]
+            left_coords = np.asarray(score_coords[left], dtype=np.float32)
+            right_coords = np.asarray(score_coords[right], dtype=np.float32)
+            values.append(float(np.linalg.norm(left_coords - right_coords)))
+            labels.append(f"{left}__{right}")
+    return np.asarray(values, dtype=np.float32), tuple(labels)
+
+
+def _collect_set_geometry_context_examples(
+    *,
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in asset_rows:
+        if str(row.get("family")) != SET_GEOMETRY_CONTROL_FAMILY:
+            continue
+        parsed = _parse_set_geometry_example_id(row.get("example_id"))
+        if parsed is None:
+            continue
+        _, style_idx, perm_idx, scale_idx = parsed
+        scenario = str(row.get("family_variant"))
+        context_variant = str(row.get("context_variant"))
+        profile_id = str(row.get("profile_id") or "")
+        if profile_id not in SET_GEOMETRY_COORDS_BY_SCENARIO.get(scenario, {}):
+            continue
+        log_id = int(row["log_id"])
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        example_key = (str(row["example_id"]), context_variant)
+        entry = grouped.setdefault(
+            example_key,
+            {
+                "example_id": str(row["example_id"]),
+                "context_variant": context_variant,
+                "scenario": scenario,
+                "style_idx": style_idx,
+                "perm_idx": perm_idx,
+                "scale_idx": scale_idx,
+                "profiles": {},
+                "score_coords": {},
+            },
+        )
+        entry["profiles"][profile_id] = acts[key][layer].astype(np.float32)
+        entry["score_coords"][profile_id] = (
+            float(row.get("attractiveness_score", 0.0)),
+            float(row.get("risk_adjusted_score", 0.0)),
+        )
+
+    finalized: list[dict[str, Any]] = []
+    for (_, _), entry in sorted(grouped.items()):
+        ordered_profiles = tuple(SET_GEOMETRY_COORDS_BY_SCENARIO[entry["scenario"]])
+        if any(profile_id not in entry["profiles"] for profile_id in ordered_profiles):
+            continue
+        if any(profile_id not in entry["score_coords"] for profile_id in ordered_profiles):
+            continue
+        geometry_vec, pair_labels = _pairwise_distance_vector_for_profiles(
+            entry["profiles"],
+            ordered_profiles=ordered_profiles,
+        )
+        score_geometry_vec, score_labels = _score_distance_vector_for_profiles(
+            entry["score_coords"],
+            ordered_profiles=ordered_profiles,
+        )
+        finalized.append({
+            **entry,
+            "ordered_profiles": ordered_profiles,
+            "geometry_vec": geometry_vec,
+            "pair_labels": pair_labels,
+            "score_geometry_vec": score_geometry_vec,
+            "score_labels": score_labels,
+        })
+    return finalized
+
+
+def _collect_set_geometry_coordinate_rows_for_context(
+    *,
+    example_ids: set[str],
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+    axis_index: int,
+    context_variant: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    X_rows: list[np.ndarray] = []
+    y_rows: list[float] = []
+    for row in asset_rows:
+        if str(row.get("family")) != SET_GEOMETRY_CONTROL_FAMILY:
+            continue
+        if str(row.get("context_variant")) != context_variant:
+            continue
+        if str(row.get("example_id")) not in example_ids:
+            continue
+        scenario = str(row.get("family_variant"))
+        profile_id = str(row.get("profile_id") or "")
+        coords = SET_GEOMETRY_COORDS_BY_SCENARIO.get(scenario, {}).get(profile_id)
+        if coords is None:
+            continue
+        log_id = int(row["log_id"])
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        X_rows.append(acts[key][layer].astype(np.float32))
+        y_rows.append(float(coords[axis_index]))
+    if not X_rows:
+        return np.zeros((0, 0), dtype=np.float32), np.zeros((0,), dtype=np.float32)
+    return np.stack(X_rows), np.asarray(y_rows, dtype=np.float32)
+
+
+def _set_geometry_context_realignment_metrics(examples: list[dict[str, Any]]) -> dict[str, Any]:
+    if len(examples) < 2:
+        return {"error": "insufficient_examples"}
+
+    base_spearmans: list[float] = []
+    score_spearmans: list[float] = []
+    for example in examples:
+        latent_vec, latent_labels = _latent_distance_vector_for_scenario(example["scenario"])
+        if tuple(latent_labels) != tuple(example["pair_labels"]):
+            continue
+        if tuple(example["score_labels"]) != tuple(example["pair_labels"]):
+            continue
+        act_vec = np.asarray(example["geometry_vec"], dtype=np.float32)
+        score_vec = np.asarray(example["score_geometry_vec"], dtype=np.float32)
+
+        base_corr = spearmanr(latent_vec, act_vec).correlation
+        if base_corr is not None and not np.isnan(base_corr):
+            base_spearmans.append(float(base_corr))
+
+        score_corr = spearmanr(score_vec, act_vec).correlation
+        if score_corr is not None and not np.isnan(score_corr):
+            score_spearmans.append(float(score_corr))
+
+    return {
+        "n_examples": len(examples),
+        "base_distance_spearman_mean": _mean(base_spearmans),
+        "score_distance_spearman_mean": _mean(score_spearmans),
+        "score_over_base_margin": None
+        if not base_spearmans or not score_spearmans
+        else float(np.mean(score_spearmans) - np.mean(base_spearmans)),
+    }
+
+
+def _set_geometry_context_deformation_metrics(
+    examples: list[dict[str, Any]],
+    *,
+    source_context: str,
+    target_context: str,
+) -> dict[str, Any]:
+    by_key = {
+        (str(example["example_id"]), str(example["context_variant"])): example
+        for example in examples
+    }
+
+    spearmans: list[float] = []
+    cosines: list[float] = []
+    activation_norms: list[float] = []
+    score_norms: list[float] = []
+    paired = 0
+
+    for example_id in sorted({str(example["example_id"]) for example in examples}):
+        source = by_key.get((example_id, source_context))
+        target = by_key.get((example_id, target_context))
+        if source is None or target is None:
+            continue
+        if tuple(source["pair_labels"]) != tuple(target["pair_labels"]):
+            continue
+        act_delta = np.asarray(target["geometry_vec"], dtype=np.float32) - np.asarray(source["geometry_vec"], dtype=np.float32)
+        score_delta = np.asarray(target["score_geometry_vec"], dtype=np.float32) - np.asarray(source["score_geometry_vec"], dtype=np.float32)
+        paired += 1
+        activation_norms.append(float(np.linalg.norm(act_delta)))
+        score_norms.append(float(np.linalg.norm(score_delta)))
+        corr = spearmanr(score_delta, act_delta).correlation
+        if corr is not None and not np.isnan(corr):
+            spearmans.append(float(corr))
+        cosine = _cosine_similarity(score_delta, act_delta)
+        if cosine is not None:
+            cosines.append(float(cosine))
+
+    return {
+        "n_examples": paired,
+        "deformation_spearman_mean": _mean(spearmans),
+        "deformation_cosine_mean": _mean(cosines),
+        "activation_delta_norm_mean": _mean(activation_norms),
+        "score_delta_norm_mean": _mean(score_norms),
+    }
+
+
 def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     for scenario, per_row_key in results.items():
@@ -1517,12 +1745,38 @@ def _summarize_best_metric(
     return summary
 
 
+def _summarize_context_transfer(results: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for target_name, by_transfer in results.items():
+        summary[target_name] = {}
+        for transfer_key, per_row_key in by_transfer.items():
+            best: tuple[str, float, int] | None = None
+            for row_key, per_layer in per_row_key.items():
+                for metrics in per_layer:
+                    score = metrics.get("r2")
+                    if score is None:
+                        continue
+                    if best is None or float(score) > best[1]:
+                        best = (row_key, float(score), int(metrics["layer"]))
+            summary[target_name][transfer_key] = None if best is None else {
+                "representation": best[0],
+                "r2": best[1],
+                "layer": best[2],
+            }
+    return summary
+
+
 def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresentationConfig) -> dict[str, Any]:
     meta_rows, tick_rows, asset_rows = _load_structure_tables(config.structure_dir)
     if not meta_rows:
         return {"error": "no_synthetic_structure_metadata"}
 
     allowed = set(config.family_allowlist)
+    all_tick_rows = [
+        row for row in tick_rows
+        if str(row.get("family")) in allowed
+    ]
+    all_log_ids = sorted({int(row["log_id"]) for row in all_tick_rows})
     tick_rows = [
         row for row in tick_rows
         if str(row.get("context_variant")) == config.context_variant
@@ -1532,17 +1786,21 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
     if not log_ids:
         return {"error": "no_market_ticks_for_phase"}
 
-    asset_rows = [
+    all_asset_rows = [
         row for row in asset_rows
+        if int(row["log_id"]) in set(all_log_ids)
+        and str(row.get("family")) in allowed
+    ]
+    asset_rows = [
+        row for row in all_asset_rows
         if int(row["log_id"]) in set(log_ids)
         and str(row.get("context_variant")) == config.context_variant
-        and str(row.get("family")) in allowed
     ]
     asset_by_log = _group_asset_rows(asset_rows)
 
     activation_cache = _preload_pooled_residuals(
         config.structure_dir,
-        log_ids,
+        all_log_ids,
         max_workers=config.num_workers,
     )
     if not activation_cache:
@@ -1579,6 +1837,9 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "set_geometry_coordinate_regression": {},
         "set_geometry_alignment": {},
         "set_geometry_identity": {},
+        "set_geometry_context_transfer": {},
+        "set_geometry_context_realignment": {},
+        "set_geometry_context_deformation": {},
     }
 
     for target in config.regression_targets:
@@ -1799,6 +2060,7 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
                 analysis["relation_scale_control"][scenario][row_key] = scale_by_scenario[scenario]
 
     set_geometry_rows = [row for row in asset_rows if str(row.get("family")) == SET_GEOMETRY_CONTROL_FAMILY]
+    set_geometry_all_rows = [row for row in all_asset_rows if str(row.get("family")) == SET_GEOMETRY_CONTROL_FAMILY]
     if set_geometry_rows:
         for target_name, axis_index in (("latent_x", 0), ("latent_y", 1)):
             analysis["set_geometry_coordinate_regression"][target_name] = {}
@@ -1874,6 +2136,111 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
                 analysis["set_geometry_alignment"][scenario][row_key] = alignment_by_scenario[scenario]
                 analysis["set_geometry_identity"][scenario][row_key] = identity_by_scenario_and_mode[scenario]
 
+    set_geometry_context_variants = sorted({str(row.get("context_variant")) for row in set_geometry_all_rows})
+    if len(set_geometry_context_variants) > 1:
+        base_example_ids = sorted({str(row.get("example_id")) for row in set_geometry_all_rows})
+        train_example_ids, test_example_ids = _split_example_ids(
+            base_example_ids,
+            seed=config.seed,
+            test_fraction=config.test_fraction,
+        )
+
+        transfer_pairs = [
+            ("market_only", "market_only"),
+            ("market_only", "low_risk"),
+            ("market_only", "high_risk"),
+        ]
+        transfer_pairs = [
+            (source_context, target_context)
+            for source_context, target_context in transfer_pairs
+            if source_context in set_geometry_context_variants and target_context in set_geometry_context_variants
+        ]
+        for target_name, axis_index in (("latent_x", 0), ("latent_y", 1)):
+            analysis["set_geometry_context_transfer"][target_name] = {}
+            for source_context, target_context in transfer_pairs:
+                transfer_key = f"{source_context}_to_{target_context}"
+                analysis["set_geometry_context_transfer"][target_name][transfer_key] = {}
+                for row_key in config.row_keys:
+                    per_layer: list[dict[str, Any]] = []
+                    for layer in layers:
+                        X_train, y_train = _collect_set_geometry_coordinate_rows_for_context(
+                            example_ids=train_example_ids,
+                            asset_rows=set_geometry_all_rows,
+                            activation_cache=activation_cache,
+                            row_key=row_key,
+                            layer=layer,
+                            axis_index=axis_index,
+                            context_variant=source_context,
+                        )
+                        X_test, y_test = _collect_set_geometry_coordinate_rows_for_context(
+                            example_ids=test_example_ids,
+                            asset_rows=set_geometry_all_rows,
+                            activation_cache=activation_cache,
+                            row_key=row_key,
+                            layer=layer,
+                            axis_index=axis_index,
+                            context_variant=target_context,
+                        )
+                        if X_train.size == 0 or X_test.size == 0:
+                            per_layer.append({"layer": layer, "error": "insufficient_data"})
+                            continue
+                        probe = _train_regression_probe(X_train, y_train)
+                        metrics = _evaluate_regression_probe(probe, X_test, y_test)
+                        metrics["layer"] = layer
+                        per_layer.append(metrics)
+                    analysis["set_geometry_context_transfer"][target_name][transfer_key][row_key] = per_layer
+
+        for context_variant in set_geometry_context_variants:
+            analysis["set_geometry_context_realignment"][context_variant] = {}
+            for row_key in config.row_keys:
+                per_layer: list[dict[str, Any]] = []
+                for layer in layers:
+                    examples = _collect_set_geometry_context_examples(
+                        asset_rows=set_geometry_all_rows,
+                        activation_cache=activation_cache,
+                        row_key=row_key,
+                        layer=layer,
+                    )
+                    context_examples = [
+                        example for example in examples
+                        if example["context_variant"] == context_variant
+                    ]
+                    metrics = _set_geometry_context_realignment_metrics(context_examples)
+                    metrics["layer"] = layer
+                    per_layer.append(metrics)
+                analysis["set_geometry_context_realignment"][context_variant][row_key] = per_layer
+
+        deformation_pairs = [
+            ("market_only", "low_risk"),
+            ("market_only", "high_risk"),
+            ("low_risk", "high_risk"),
+        ]
+        deformation_pairs = [
+            (source_context, target_context)
+            for source_context, target_context in deformation_pairs
+            if source_context in set_geometry_context_variants and target_context in set_geometry_context_variants
+        ]
+        for source_context, target_context in deformation_pairs:
+            pair_key = f"{source_context}_to_{target_context}"
+            analysis["set_geometry_context_deformation"][pair_key] = {}
+            for row_key in config.row_keys:
+                per_layer: list[dict[str, Any]] = []
+                for layer in layers:
+                    examples = _collect_set_geometry_context_examples(
+                        asset_rows=set_geometry_all_rows,
+                        activation_cache=activation_cache,
+                        row_key=row_key,
+                        layer=layer,
+                    )
+                    metrics = _set_geometry_context_deformation_metrics(
+                        examples,
+                        source_context=source_context,
+                        target_context=target_context,
+                    )
+                    metrics["layer"] = layer
+                    per_layer.append(metrics)
+                analysis["set_geometry_context_deformation"][pair_key][row_key] = per_layer
+
     analysis["summary"] = {
         "primitive_regression": _summarize_regression(analysis["primitive_regression"]),
         "focal_pairwise": _summarize_pairwise(analysis["focal_pairwise"]),
@@ -1919,6 +2286,19 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
             analysis["set_geometry_identity"],
             margin_key="geometry_identity_margin",
             acc_key="nn_accuracy",
+        ),
+        "set_geometry_context_transfer": _summarize_context_transfer(
+            analysis["set_geometry_context_transfer"]
+        ),
+        "set_geometry_context_realignment": _summarize_best_metric(
+            analysis["set_geometry_context_realignment"],
+            margin_key="score_over_base_margin",
+            acc_key="score_distance_spearman_mean",
+        ),
+        "set_geometry_context_deformation": _summarize_best_metric(
+            analysis["set_geometry_context_deformation"],
+            margin_key="deformation_spearman_mean",
+            acc_key="deformation_cosine_mean",
         ),
     }
 

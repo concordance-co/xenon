@@ -15,6 +15,8 @@ from pipelines.interp.synthetic_market_representation_analysis import (
     _relation_over_magnitude_control_metrics,
     _relation_over_rank_control_metrics,
     _set_geometry_alignment_metrics,
+    _set_geometry_context_deformation_metrics,
+    _set_geometry_context_realignment_metrics,
     _set_geometry_identity_metrics,
     _snapshot_geometry_metrics,
     _rank_context_metrics,
@@ -705,3 +707,104 @@ def test_set_geometry_identity_metrics_prefer_same_shape_over_other_same_rank_sh
     assert metrics["nn_accuracy"] == 1.0
     assert metrics["geometry_identity_margin"] is not None
     assert metrics["geometry_identity_margin"] > 0.03
+
+
+def test_set_geometry_context_realignment_prefers_context_score_space_when_activation_matches_it() -> None:
+    examples = [
+        {
+            "example_id": "set_geom_00_00_00_00",
+            "context_variant": "low_risk",
+            "scenario": "even_ladder",
+            "geometry_vec": np.asarray([0.28, 0.44, 0.70, 0.19, 0.46, 0.27], dtype=np.float32),
+            "score_geometry_vec": np.asarray([0.28, 0.44, 0.70, 0.19, 0.46, 0.27], dtype=np.float32),
+            "pair_labels": (
+                "geo_alpha__geo_beta",
+                "geo_alpha__geo_gamma",
+                "geo_alpha__geo_delta",
+                "geo_beta__geo_gamma",
+                "geo_beta__geo_delta",
+                "geo_gamma__geo_delta",
+            ),
+            "score_labels": (
+                "geo_alpha__geo_beta",
+                "geo_alpha__geo_gamma",
+                "geo_alpha__geo_delta",
+                "geo_beta__geo_gamma",
+                "geo_beta__geo_delta",
+                "geo_gamma__geo_delta",
+            ),
+        },
+        {
+            "example_id": "set_geom_00_01_00_00",
+            "context_variant": "low_risk",
+            "scenario": "even_ladder",
+            "geometry_vec": np.asarray([0.27, 0.43, 0.69, 0.18, 0.45, 0.26], dtype=np.float32),
+            "score_geometry_vec": np.asarray([0.27, 0.43, 0.69, 0.18, 0.45, 0.26], dtype=np.float32),
+            "pair_labels": (
+                "geo_alpha__geo_beta",
+                "geo_alpha__geo_gamma",
+                "geo_alpha__geo_delta",
+                "geo_beta__geo_gamma",
+                "geo_beta__geo_delta",
+                "geo_gamma__geo_delta",
+            ),
+            "score_labels": (
+                "geo_alpha__geo_beta",
+                "geo_alpha__geo_gamma",
+                "geo_alpha__geo_delta",
+                "geo_beta__geo_gamma",
+                "geo_beta__geo_delta",
+                "geo_gamma__geo_delta",
+            ),
+        },
+    ]
+
+    metrics = _set_geometry_context_realignment_metrics(examples)
+    assert metrics["score_distance_spearman_mean"] is not None
+    assert metrics["base_distance_spearman_mean"] is not None
+    assert metrics["score_over_base_margin"] is not None
+    assert metrics["score_over_base_margin"] > 0.15
+
+
+def test_set_geometry_context_deformation_tracks_score_delta() -> None:
+    examples = [
+        {
+            "example_id": "set_geom_00_00_00_00",
+            "context_variant": "market_only",
+            "geometry_vec": np.asarray([0.20, 0.40, 0.70, 0.20, 0.50, 0.30], dtype=np.float32),
+            "score_geometry_vec": np.asarray([0.20, 0.40, 0.70, 0.20, 0.50, 0.30], dtype=np.float32),
+            "pair_labels": ("ab", "ac", "ad", "bc", "bd", "cd"),
+        },
+        {
+            "example_id": "set_geom_00_00_00_00",
+            "context_variant": "low_risk",
+            "geometry_vec": np.asarray([0.28, 0.44, 0.74, 0.19, 0.46, 0.27], dtype=np.float32),
+            "score_geometry_vec": np.asarray([0.30, 0.45, 0.75, 0.20, 0.47, 0.28], dtype=np.float32),
+            "pair_labels": ("ab", "ac", "ad", "bc", "bd", "cd"),
+        },
+        {
+            "example_id": "set_geom_00_01_00_00",
+            "context_variant": "market_only",
+            "geometry_vec": np.asarray([0.24, 0.38, 0.68, 0.16, 0.44, 0.26], dtype=np.float32),
+            "score_geometry_vec": np.asarray([0.24, 0.38, 0.68, 0.16, 0.44, 0.26], dtype=np.float32),
+            "pair_labels": ("ab", "ac", "ad", "bc", "bd", "cd"),
+        },
+        {
+            "example_id": "set_geom_00_01_00_00",
+            "context_variant": "low_risk",
+            "geometry_vec": np.asarray([0.32, 0.43, 0.73, 0.15, 0.40, 0.23], dtype=np.float32),
+            "score_geometry_vec": np.asarray([0.34, 0.44, 0.74, 0.16, 0.41, 0.24], dtype=np.float32),
+            "pair_labels": ("ab", "ac", "ad", "bc", "bd", "cd"),
+        },
+    ]
+
+    metrics = _set_geometry_context_deformation_metrics(
+        examples,
+        source_context="market_only",
+        target_context="low_risk",
+    )
+    assert metrics["n_examples"] == 2
+    assert metrics["deformation_spearman_mean"] is not None
+    assert metrics["deformation_cosine_mean"] is not None
+    assert metrics["deformation_spearman_mean"] > 0.8
+    assert metrics["deformation_cosine_mean"] > 0.8

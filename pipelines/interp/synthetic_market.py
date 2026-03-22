@@ -30,6 +30,20 @@ RISK_SETTING_TEXT = {
     "high_risk": "Asset Risk Preference: 5 / 5. High-volatility and fresh setups are acceptable.",
 }
 
+PHASE10_RISK_SETTING_TEXT = {
+    "market_only": (
+        "No explicit settings are provided. Read the market as-is and trade only when the edge clearly exceeds fees."
+    ),
+    "low_risk": (
+        "Asset Risk Preference: 1 / 5. Strongly prefer steadier participation, lower holder concentration, and mature setups. "
+        "Treat crowded or fresh assets as lower quality unless the edge is overwhelming."
+    ),
+    "high_risk": (
+        "Asset Risk Preference: 5 / 5. Fresh momentum and thinner participation are acceptable when short-horizon strength is strong. "
+        "Do not heavily penalize concentration or freshness if the immediate market edge is compelling."
+    ),
+}
+
 
 @dataclass(frozen=True)
 class SyntheticAsset:
@@ -495,6 +509,7 @@ def _render_user_prompt(
     assets: list[SyntheticAsset],
     *,
     surface_style: str = "canonical",
+    settings_text_override: str | None = None,
 ) -> str:
     lines = [
         f"## SYNTHETIC MARKET SCENARIO {example_id}",
@@ -502,7 +517,7 @@ def _render_user_prompt(
         "These assets are neutral synthetic placeholders, not real tickers.",
         "",
         "## ACTIVE SETTINGS",
-        f"- {RISK_SETTING_TEXT[context_variant]}",
+        f"- {settings_text_override or RISK_SETTING_TEXT[context_variant]}",
         "",
         "## MARKET SNAPSHOT",
     ]
@@ -658,6 +673,7 @@ def _apply_context_variants(
     base_assets: list[SyntheticAsset],
     include_settings_variants: bool,
     surface_style: str = "canonical",
+    settings_text_by_context: dict[str, str] | None = None,
 ) -> list[SyntheticMarketExample]:
     variants = ["market_only"]
     if include_settings_variants:
@@ -671,6 +687,7 @@ def _apply_context_variants(
             context_variant,
             base_assets,
             surface_style=surface_style,
+            settings_text_override=None if settings_text_by_context is None else settings_text_by_context.get(context_variant),
         )
         examples.append(
             SyntheticMarketExample(
@@ -2289,6 +2306,51 @@ def generate_set_geometry_controls(config: SyntheticMarketConfig) -> list[Synthe
     return examples
 
 
+def generate_set_geometry_context_controls(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    layouts = SYMBOL_PERMUTATION_LAYOUTS[: max(2, min(config.permutation_variants, len(SYMBOL_PERMUTATION_LAYOUTS)))]
+    styles = PROFILE_INVARIANCE_SURFACE_STYLES[: max(1, min(config.profile_surface_variants, len(PROFILE_INVARIANCE_SURFACE_STYLES)))]
+    scale_variants = RELATION_INVARIANCE_SCALE_FACTORS[: max(1, min(config.relation_scale_variants, len(RELATION_INVARIANCE_SCALE_FACTORS)))]
+
+    for scenario_idx, scenario in enumerate(SET_GEOMETRY_SCENARIOS):
+        scenario_assets = [
+            _make_geometry_asset(
+                symbol=chr(ord("A") + profile_idx),
+                profile_id=str(profile["profile_id"]),
+                coords=tuple(float(value) for value in profile["coords"]),
+            )
+            for profile_idx, profile in enumerate(scenario["profiles"])
+        ]
+
+        for style_idx, style in enumerate(styles):
+            style_name = str(style["name"])
+            for perm_idx, layout in enumerate(layouts):
+                order = tuple(int(idx) for idx in layout["order"])
+                symbols = tuple(str(symbol) for symbol in style["symbols"])
+                permuted_assets = [
+                    _override_display(
+                        scenario_assets[asset_index],
+                        symbol=symbols[row_index],
+                    )
+                    for row_index, asset_index in enumerate(order)
+                ]
+                for scale_idx, (_, scale_factor) in enumerate(scale_variants):
+                    scaled_assets = [_scale_market_magnitude(asset, scale_factor) for asset in permuted_assets]
+                    example_id = f"set_geom_{scenario_idx:02d}_{style_idx:02d}_{perm_idx:02d}_{scale_idx:02d}"
+                    examples.extend(
+                        _apply_context_variants(
+                            example_id,
+                            family="set_geometry_control",
+                            family_variant=str(scenario["name"]),
+                            base_assets=scaled_assets,
+                            include_settings_variants=True,
+                            surface_style=style_name,
+                            settings_text_by_context=PHASE10_RISK_SETTING_TEXT,
+                        )
+                    )
+    return examples
+
+
 def generate_archetype_families(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
     examples: list[SyntheticMarketExample] = []
     distractors = ["stable_winner", "flow_backed_continuation", "crowded_risk"]
@@ -2337,6 +2399,8 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         return generate_contextual_relation_controls(config)
     if config.dataset_preset == "phase9_set_geometry":
         return generate_set_geometry_controls(config)
+    if config.dataset_preset == "phase10_set_geometry_context":
+        return generate_set_geometry_context_controls(config)
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -2356,6 +2420,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase7_relation_invariance": 2_147_000_000,
         "phase8_contextual_relation": 2_147_050_000,
         "phase9_set_geometry": 2_147_100_000,
+        "phase10_set_geometry_context": 2_147_150_000,
     }.get(dataset_preset, 2_140_000_000)
 
 
