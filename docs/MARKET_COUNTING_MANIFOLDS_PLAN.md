@@ -10,7 +10,9 @@ The key shift is methodological:
 - stop relying on weak prompt ablations as the main route to insight
 - move to a hypothesis-first, synthetic-data-first program modeled on the workflow in *When Models Manipulate Manifolds: The Geometry of a Counting Task*
 
-The goal is to identify the clean intermediate quantities the model may actually represent when it "sees" a market, and then study those quantities as manifolds before bringing the result back to noisy DX-terminal prompts.
+The goal is to identify the clean intermediate quantities the model may actually represent when it "sees" a market, and then study those quantities before bringing the result back to noisy DX-terminal prompts.
+
+The current emphasis is explicitly on *market representation* rather than *end-state behavior*. Geometry remains one lens, but not the only one.
 
 This should not be read as assuming that the *entire* market state reduces to one universal one-dimensional manifold. The intended sequence is:
 

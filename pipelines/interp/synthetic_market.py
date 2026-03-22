@@ -68,6 +68,8 @@ class SyntheticMarketConfig:
     coupled_grid_steps: int = 11
     coupled_background_variants: int = 2
     coupled_minimal_templates: int = 1
+    representation_steps: int = 7
+    representation_background_variants: int = 3
     include_settings_variants: bool = True
     dataset_preset: str = "phase1"
     scalar_background_variants: int = 1
@@ -187,6 +189,13 @@ COUPLED_FACTOR_SPECS: tuple[dict[str, Any], ...] = (
         "metric_y": ("net_flow_5m", -2.8, 3.2),
     },
 )
+
+
+REPRESENTATION_BACKGROUND_ROSTERS: list[tuple[str, str]] = [
+    ("mean_reverter", "illiquid_spike"),
+    ("stable_winner", "flow_backed_continuation"),
+    ("crowded_risk", "stable_winner"),
+]
 
 
 SCALAR_BACKGROUND_ROSTERS: list[tuple[str, str, str]] = [
@@ -410,6 +419,13 @@ def _override_metric(asset: SyntheticAsset, metric_name: str, value: float) -> S
     else:
         raise ValueError(f"Unsupported metric_name: {metric_name}")
     return SyntheticAsset(**payload)
+
+
+def _override_metrics(asset: SyntheticAsset, overrides: dict[str, float]) -> SyntheticAsset:
+    updated = asset
+    for metric_name, value in overrides.items():
+        updated = _override_metric(updated, metric_name, value)
+    return updated
 
 
 def _make_minimal_asset(symbol: str, template_index: int, jitter_index: int = 0) -> SyntheticAsset:
@@ -806,6 +822,170 @@ def generate_pairwise_tradeoff_grids(config: SyntheticMarketConfig) -> list[Synt
     return examples
 
 
+def generate_hard_pairwise_tradeoff_grids(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    steps = max(5, config.representation_steps)
+    background_variants = max(1, config.representation_background_variants)
+    alphas = [(-1.0 + 2.0 * i / (steps - 1)) for i in range(steps)]
+    examples: list[SyntheticMarketExample] = []
+
+    for roster_index in range(background_variants):
+        distractors = REPRESENTATION_BACKGROUND_ROSTERS[roster_index % len(REPRESENTATION_BACKGROUND_ROSTERS)]
+        for step_idx, alpha in enumerate(alphas):
+            scenarios: list[tuple[str, list[SyntheticAsset]]] = []
+
+            a = _override_metrics(
+                _make_asset("A", "momentum_burst", jitter_index=50_000 + 100 * roster_index + step_idx),
+                {
+                    "pct_5m": 6.2 + 1.3 * alpha,
+                    "net_flow_5m": 0.85 - 0.45 * alpha,
+                    "top20_holder_pct": 34.0 + 1.4 * alpha,
+                },
+            )
+            b = _override_metrics(
+                _make_asset("B", "flow_backed_continuation", jitter_index=50_000 + 100 * roster_index + 30 + step_idx),
+                {
+                    "pct_5m": 4.9 - 0.8 * alpha,
+                    "net_flow_5m": 1.55 + 0.40 * alpha,
+                    "top20_holder_pct": 29.0 - 0.6 * alpha,
+                },
+            )
+            scenarios.append((
+                "momentum_vs_flow_near_tie",
+                [
+                    a,
+                    b,
+                    _make_asset("C", distractors[0], jitter_index=50_000 + 100 * roster_index + 61 + step_idx),
+                    _make_asset("D", distractors[1], jitter_index=50_000 + 100 * roster_index + 79 + step_idx),
+                ],
+            ))
+
+            a = _override_metrics(
+                _make_asset("A", "crowded_risk", jitter_index=51_000 + 100 * roster_index + step_idx),
+                {
+                    "unique_traders_5m": 25 + 2.2 * alpha,
+                    "top20_holder_pct": 60.0 - 8.5 * alpha,
+                    "pct_5m": 4.4 + 0.7 * alpha,
+                },
+            )
+            b = _override_metrics(
+                _make_asset("B", "stable_winner", jitter_index=51_000 + 100 * roster_index + 31 + step_idx),
+                {
+                    "unique_traders_5m": 16 - 0.9 * alpha,
+                    "top20_holder_pct": 27.0 + 1.8 * alpha,
+                    "pct_5m": 4.1 - 0.3 * alpha,
+                },
+            )
+            scenarios.append((
+                "participation_vs_concentration_near_tie",
+                [
+                    a,
+                    b,
+                    _make_asset("C", distractors[0], jitter_index=51_000 + 100 * roster_index + 63 + step_idx),
+                    _make_asset("D", distractors[1], jitter_index=51_000 + 100 * roster_index + 81 + step_idx),
+                ],
+            ))
+
+            a = _override_metrics(
+                _make_asset("A", "noisy_pump", jitter_index=52_000 + 100 * roster_index + step_idx),
+                {
+                    "pct_5m": 6.0 + 1.1 * alpha,
+                    "net_flow_5m": 1.15 + 0.25 * alpha,
+                    "top20_holder_pct": 42.0 - 1.5 * alpha,
+                },
+            )
+            b = _override_metrics(
+                _make_asset("B", "stable_winner", jitter_index=52_000 + 100 * roster_index + 29 + step_idx),
+                {
+                    "pct_5m": 4.2 - 0.4 * alpha,
+                    "net_flow_5m": 1.20 - 0.15 * alpha,
+                    "top20_holder_pct": 27.0 + 0.8 * alpha,
+                },
+            )
+            scenarios.append((
+                "fresh_vs_mature_near_tie",
+                [
+                    a,
+                    b,
+                    _make_asset("C", distractors[0], jitter_index=52_000 + 100 * roster_index + 65 + step_idx),
+                    _make_asset("D", distractors[1], jitter_index=52_000 + 100 * roster_index + 83 + step_idx),
+                ],
+            ))
+
+            for scenario_idx, (variant, assets) in enumerate(scenarios):
+                example_id = f"hard_pairwise_r{roster_index:02d}_{scenario_idx:02d}_{step_idx:02d}"
+                examples.extend(
+                    _apply_context_variants(
+                        example_id,
+                        family="pairwise_tradeoff_hard",
+                        family_variant=variant,
+                        base_assets=assets,
+                        include_settings_variants=config.include_settings_variants,
+                    )
+                )
+    return examples
+
+
+def generate_rank_context_tradeoffs(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    background_variants = max(2, config.representation_background_variants)
+    examples: list[SyntheticMarketExample] = []
+
+    focal_scenarios = [
+        (
+            "fixed_momentum_flow_pair",
+            _override_metrics(
+                _make_asset("A", "momentum_burst", jitter_index=60_001),
+                {"pct_5m": 5.7, "net_flow_5m": 0.95, "top20_holder_pct": 33.5},
+            ),
+            _override_metrics(
+                _make_asset("B", "flow_backed_continuation", jitter_index=60_002),
+                {"pct_5m": 4.9, "net_flow_5m": 1.45, "top20_holder_pct": 29.0},
+            ),
+        ),
+        (
+            "fixed_participation_concentration_pair",
+            _override_metrics(
+                _make_asset("A", "crowded_risk", jitter_index=60_101),
+                {"unique_traders_5m": 23.0, "top20_holder_pct": 55.0, "pct_5m": 4.3},
+            ),
+            _override_metrics(
+                _make_asset("B", "stable_winner", jitter_index=60_102),
+                {"unique_traders_5m": 16.0, "top20_holder_pct": 27.0, "pct_5m": 4.0},
+            ),
+        ),
+    ]
+
+    background_progressions = [
+        [
+            _make_asset("C", "mean_reverter", jitter_index=61_000),
+            _make_asset("D", "illiquid_spike", jitter_index=61_001),
+        ],
+        [
+            _make_asset("C", "stable_winner", jitter_index=61_010),
+            _make_asset("D", "mean_reverter", jitter_index=61_011),
+        ],
+        [
+            _make_asset("C", "flow_backed_continuation", jitter_index=61_020),
+            _make_asset("D", "stable_winner", jitter_index=61_021),
+        ],
+    ]
+
+    for scenario_idx, (variant, focal_a, focal_b) in enumerate(focal_scenarios):
+        for bg_idx in range(background_variants):
+            c, d = background_progressions[bg_idx % len(background_progressions)]
+            assets = [focal_a, focal_b, c, d]
+            example_id = f"rank_context_{scenario_idx:02d}_{bg_idx:02d}"
+            examples.extend(
+                _apply_context_variants(
+                    example_id,
+                    family="rank_context_tradeoff",
+                    family_variant=f"{variant}__bg{bg_idx:02d}",
+                    base_assets=assets,
+                    include_settings_variants=config.include_settings_variants,
+                )
+            )
+    return examples
+
+
 def generate_archetype_families(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
     examples: list[SyntheticMarketExample] = []
     distractors = ["stable_winner", "flow_backed_continuation", "crowded_risk"]
@@ -839,6 +1019,11 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         examples.extend(generate_coupled_factor_dense_grids(config))
         examples.extend(generate_coupled_factor_minimal_grids(config))
         return examples
+    if config.dataset_preset == "phase4_market_representation":
+        examples = []
+        examples.extend(generate_hard_pairwise_tradeoff_grids(config))
+        examples.extend(generate_rank_context_tradeoffs(config))
+        return examples
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -852,6 +1037,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase1": 2_000_000_000,
         "phase2_geometry": 2_100_000_000,
         "phase3_coupled_geometry": 2_130_000_000,
+        "phase4_market_representation": 2_147_300_000,
     }.get(dataset_preset, 2_140_000_000)
 
 

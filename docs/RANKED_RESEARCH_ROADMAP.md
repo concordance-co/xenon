@@ -2,54 +2,56 @@
 
 ## Main Read
 
-The best path is no longer "manifold-first."
+The best path is no longer "behavior-first."
 
 The main program should be:
 
-1. determine what the model wants to do
-2. determine what stops it
-3. determine whether settings reweight that preference or merely gate execution
-4. use geometry only when it simplifies that story
+1. determine what market variables the model represents cleanly
+2. determine whether those variables are absolute, relative, or low-dimensional coupled factors
+3. determine how settings and affordances transform that market representation downstream
+4. use final action only as a validation target, not the primary object
 
-This keeps the manifold work, but moves it into a supporting role.
+This keeps the actionability work, but moves it into a supporting role.
 
 
 ## Ranked Tracks
 
-### 1. Blocked Valence + Settings Twist
+### 1. Synthetic Market Representation
 
 Why this is first:
 
-- It is the shortest path from localization to mechanism.
-- It directly addresses the strongest unresolved questions from the decision-structure work:
-  - is `observe` actually neutral?
-  - are settings late gates or true reinterpretation operators?
-- It creates the labels needed for a cleaner asset-valence program.
+- It aligns directly with the actual research goal: how the model understands the market.
+- The last actionability experiments showed that fused end-state labels are often the wrong target.
+- The strongest synthetic result so far is still the robust early market-side signal, not any end-state classifier.
 
 Core hypotheses:
 
-- Early preference, late permission: market preference forms before legality gating.
-- Observe contains hidden bullish and bearish states, not just neutral non-action.
-- Settings reweight an existing preference space rather than creating preference from scratch.
+- Primitive market factors are represented more cleanly than final action labels.
+- Pairwise and near-tie tradeoffs are more diagnostic than easy best-asset cases.
+- Some market factors are absolute, while others are represented relative to the current roster.
+- Settings and affordances transform an existing market representation rather than creating it from scratch.
 
 First experiments:
 
-- Build blocked-observe rerun cohorts stratified by block reason and actionability regime.
-- Build settings-tension cohorts with legal action available but extreme settings pressure.
-- Run deconstraint and settings-rewrite reruns and compare downstream states.
+- Build a harder synthetic market-only dataset with:
+  - near-ties
+  - factor tradeoffs
+  - context-driven rank shifts
+- Probe primitive market variables and pairwise relations on that dataset.
+- Compare absolute-metric baselines against rank-based and pairwise representation probes.
 
 Success criteria:
 
-- A nontrivial fraction of observe cases reveal blocked bullish or blocked bearish preference under rerun.
-- Settings rewrites change downstream use of preference without destroying the underlying market-side signal.
+- At least one harder market dataset yields nontrivial but not trivial decodability.
+- Pairwise or factor-level targets outperform naive best-asset framing as research objects.
+- We can distinguish absolute vs roster-relative representation on the same fixed focal rows.
 
 
 ### 2. Causal Necessity of Market Variables
 
 Why this is second:
 
-- The synthetic work has already surfaced the strongest candidates.
-- The next gain comes from causal tests, not more passive decoding.
+- Once cleaner market variables are identified, the next gain comes from causal tests, not more passive decoding.
 
 Core hypotheses:
 
@@ -64,30 +66,43 @@ First experiments:
 - Measure effects on best-asset and pairwise preference.
 
 
-### 3. Real-Data Decision Decomposition
+### 3. Real-Data Representation Validation
 
 Why this is third:
 
-- Synthetic findings only matter if they transfer back to real DX-terminal-style prompts.
+- Synthetic market findings only matter if they transfer back to real DX-terminal-style prompts.
 
 Core hypotheses:
 
-- Asset-conditioned valence transfers better than pooled buy/sell probes.
-- Real observe cases split into neutral, blocked bullish, and blocked bearish subtypes.
-- Late sections sharpen actionability more than raw preference.
+- Primitive market variables and pairwise relations transfer better than pooled buy/sell probes.
+- Real prompts preserve the same upstream market-side signal even when downstream action is noisy.
+- Later sections sharpen actionability more than raw preference.
 
 First experiments:
 
-- Train asset-valence probes on rerun-labeled blocked cases.
-- Compare row states versus `active_settings_eos` and `constraints_eos`.
-- Residualize out simple market heuristics and re-evaluate.
+- Validate primitive factor probes and pairwise probes on real DX rows.
+- Compare row states versus later sections after residualizing out simple heuristics.
+- Use reruns only to validate downstream transformations of the market representation.
 
 
-### 4. Policy vs Perception Routing
+### 4. Actionability Factorization
 
 Why this is fourth:
 
-- Routing may provide a cleaner mechanistic handle than generic residual-stream analysis if experts split along perception versus policy.
+- The `v3/v4` synthetic results suggest that primitive affordance bits are cleaner than fused permission mode.
+- This is mechanistically interesting, but it is still downstream of market understanding.
+
+Core hypotheses:
+
+- `can_buy`, `can_sell`, and `observe_vs_act` are represented more cleanly than fused `permission_mode`.
+- Downstream permission is factorized rather than monolithic.
+
+
+### 5. Policy vs Perception Routing
+
+Why this is fifth:
+
+- Routing may still provide a cleaner mechanistic handle if experts split along perception versus policy.
 
 Core hypotheses:
 
@@ -95,11 +110,11 @@ Core hypotheses:
 - Settings-twist effects are concentrated in a narrower routing subset than market perception itself.
 
 
-### 5. Geometry Support Track
+### 6. Geometry Support Track
 
-Why this is fifth:
+Why this is sixth:
 
-- Geometry is still useful, but it should simplify causal stories rather than define the main agenda.
+- Geometry is still useful, but it should simplify market-representation stories rather than define the main agenda.
 
 Core hypotheses:
 
@@ -109,23 +124,25 @@ Core hypotheses:
 
 ## What To Deprioritize
 
-- broad manifold search without a behavioral decomposition
-- more generic buy/sell probes without blocked-valence labels
-- treating `observe` as uniformly neutral
-- adding more synthetic geometry breadth before testing the top behavioral hypotheses
+- broad manifold search without a representation target
+- more generic buy/sell probes as primary evidence
+- treating action labels as the cleanest object
+- more synthetic actionability breadth before testing harder market-only representation hypotheses
 
 
 ## Kickoff Status
 
-The research kickoff has already started around the top-ranked track:
+The actionability work has still been useful, but it should now be treated as a supporting lane.
 
-- a live Neon audit of blocked-observe and policy-tension candidate pools
-- a blocked-valence kickoff manifest
-- a settings-twist kickoff manifest
-- a report that quantifies why these tracks should outrank more manifold-first work
+The current handoff point is:
 
-This is the handoff point for the next concrete research step:
+- market-best asset remains trivially early on synthetic data
+- fused downstream permission labels are weak under prompt hardening
+- primitive affordance bits survive better than fused permission mode
+- therefore the next concrete research step should return to market-only synthetic representation work, not more end-state probing
 
-- rerun the blocked-valence manifest under deconstraint or strategy removal
-- rerun the settings-twist manifest under meaningful settings rewrites
-- compare downstream state shifts before returning to broader geometry work
+Specifically:
+
+- build a harder synthetic market-only dataset with near-ties and rank-shift backgrounds
+- use that to study primitive market factors and pairwise relations
+- then bring only the strongest representation claims back to real DX data

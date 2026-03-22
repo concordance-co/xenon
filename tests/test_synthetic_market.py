@@ -91,6 +91,63 @@ def test_generate_phase3_coupled_geometry_dataset_expected_counts(tmp_path) -> N
     assert min(row["log_id"] for row in tick_rows) >= 2_130_000_000
 
 
+def test_generate_phase4_market_representation_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase4_market_representation",
+        representation_steps=5,
+        representation_background_variants=2,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == (3 * 2 * 5) + (2 * 2)
+    families = {example.family for example in examples}
+    assert families == {"pairwise_tradeoff_hard", "rank_context_tradeoff"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase4_market_representation",
+            representation_steps=5,
+            representation_background_variants=2,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_300_000
+
+
+def test_rank_context_tradeoff_preserves_focal_pair_across_backgrounds() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase4_market_representation",
+            representation_steps=5,
+            representation_background_variants=3,
+            include_settings_variants=False,
+        )
+    )
+    fixed_pair_rows = [
+        example for example in examples
+        if example.family == "rank_context_tradeoff"
+        and example.family_variant.startswith("fixed_momentum_flow_pair")
+    ]
+    assert len(fixed_pair_rows) == 3
+
+    focal_metrics = [
+        (
+            example.assets[0].pct_5m,
+            example.assets[0].net_flow_5m,
+            example.assets[0].top20_holder_pct,
+            example.assets[1].pct_5m,
+            example.assets[1].net_flow_5m,
+            example.assets[1].top20_holder_pct,
+        )
+        for example in fixed_pair_rows
+    ]
+    assert len(set(focal_metrics)) == 1
+
+
 def test_prompts_use_neutral_asset_symbols() -> None:
     config = SyntheticMarketConfig(
         scalar_steps=3,

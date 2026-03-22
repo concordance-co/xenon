@@ -232,6 +232,44 @@ def run_synthetic_policy_analysis_modal(
     return result
 
 
+@app.function(
+    volumes={"/data": synthetic_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=8,
+    memory=32 * 1024,
+    secrets=[neon_secret],
+)
+def run_synthetic_market_representation_analysis_modal(
+    phase_name: str = "phase4_market_representation_v1",
+    analysis_tag: str = "",
+    layers: str = "",
+    num_workers: int = 8,
+) -> dict:
+    from pathlib import Path
+
+    from pipelines.interp.synthetic_market_representation_analysis import (
+        SyntheticMarketRepresentationConfig,
+        run_synthetic_market_representation_analysis,
+    )
+
+    parsed_layers = [int(token) for token in layers.split(",") if token.strip()] or None
+    config = SyntheticMarketRepresentationConfig(
+        structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
+        output_dir=(
+            Path(f"/data/analysis_results/synthetic_market_representation/{phase_name}") / analysis_tag
+            if analysis_tag
+            else Path(f"/data/analysis_results/synthetic_market_representation/{phase_name}")
+        ),
+        phase_name=phase_name,
+        layers=parsed_layers,
+        num_workers=num_workers,
+    )
+    result = run_synthetic_market_representation_analysis(config)
+    synthetic_volume.commit()
+    return result
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "synthetic-structure",
@@ -289,6 +327,14 @@ def main(
         result = run_synthetic_policy_analysis_modal.remote(
             phase_name=phase_name,
             analysis_tag=analysis_tag,
+            num_workers=num_workers,
+        )
+        print(result)
+    elif mode == "synthetic-representation":
+        result = run_synthetic_market_representation_analysis_modal.remote(
+            phase_name=phase_name,
+            analysis_tag=analysis_tag,
+            layers=layers,
             num_workers=num_workers,
         )
         print(result)
