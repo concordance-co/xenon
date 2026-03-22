@@ -17,9 +17,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from scipy.stats import spearmanr
 
 from pipelines.db import connect_neon
 from pipelines.interp.counterfactual.analysis import train_probe
+from pipelines.interp.synthetic_market import SET_GEOMETRY_SCENARIOS
 from pipelines.interp.synthetic_manifold_analysis import (
     _evaluate_regression_probe,
     _load_structure_tables,
@@ -36,6 +38,14 @@ PROFILE_CONTROL_FAMILIES = {
 
 
 RELATION_CONTROL_FAMILY = "relation_invariance_control"
+SET_GEOMETRY_CONTROL_FAMILY = "set_geometry_control"
+SET_GEOMETRY_COORDS_BY_SCENARIO = {
+    str(scenario["name"]): {
+        str(profile["profile_id"]): tuple(float(value) for value in profile["coords"])
+        for profile in scenario["profiles"]
+    }
+    for scenario in SET_GEOMETRY_SCENARIOS
+}
 
 
 def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float | None:
@@ -84,6 +94,19 @@ def _parse_relation_invariance_example_id(example_id: Any) -> tuple[int, int, in
         return None
 
 
+def _parse_set_geometry_example_id(example_id: Any) -> tuple[int, int, int, int] | None:
+    text = str(example_id)
+    if not text.startswith("set_geom_"):
+        return None
+    parts = text.split("_")
+    if len(parts) != 6:
+        return None
+    try:
+        return int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])
+    except ValueError:
+        return None
+
+
 def _load_pairwise_rows(
     *,
     phase_name: str,
@@ -127,6 +150,7 @@ class SyntheticMarketRepresentationConfig:
         "symbol_permutation_control",
         "profile_invariance_control",
         "relation_invariance_control",
+        "set_geometry_control",
     )
     regression_targets: tuple[str, ...] = (
         "pct_5m",
@@ -1128,6 +1152,199 @@ def _relation_over_magnitude_control_metrics(
     }
 
 
+def _pairwise_distance_vector_for_profiles(
+    profiles: dict[str, np.ndarray],
+    *,
+    ordered_profiles: tuple[str, ...],
+) -> tuple[np.ndarray, tuple[str, ...]]:
+    values: list[float] = []
+    labels: list[str] = []
+    for left_idx in range(len(ordered_profiles)):
+        for right_idx in range(left_idx + 1, len(ordered_profiles)):
+            left = ordered_profiles[left_idx]
+            right = ordered_profiles[right_idx]
+            sim = _cosine_similarity(profiles[left], profiles[right])
+            values.append(1.0 - (0.0 if sim is None else sim))
+            labels.append(f"{left}__{right}")
+    return np.asarray(values, dtype=np.float32), tuple(labels)
+
+
+def _latent_distance_vector_for_scenario(scenario: str) -> tuple[np.ndarray, tuple[str, ...]]:
+    coords_by_profile = SET_GEOMETRY_COORDS_BY_SCENARIO[str(scenario)]
+    ordered_profiles = tuple(coords_by_profile)
+    values: list[float] = []
+    labels: list[str] = []
+    for left_idx in range(len(ordered_profiles)):
+        for right_idx in range(left_idx + 1, len(ordered_profiles)):
+            left = ordered_profiles[left_idx]
+            right = ordered_profiles[right_idx]
+            left_coords = np.asarray(coords_by_profile[left], dtype=np.float32)
+            right_coords = np.asarray(coords_by_profile[right], dtype=np.float32)
+            values.append(float(np.linalg.norm(left_coords - right_coords)))
+            labels.append(f"{left}__{right}")
+    return np.asarray(values, dtype=np.float32), tuple(labels)
+
+
+def _collect_set_geometry_examples(
+    *,
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+) -> list[dict[str, Any]]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for row in asset_rows:
+        if str(row.get("family")) != SET_GEOMETRY_CONTROL_FAMILY:
+            continue
+        parsed = _parse_set_geometry_example_id(row.get("example_id"))
+        if parsed is None:
+            continue
+        _, style_idx, perm_idx, scale_idx = parsed
+        scenario = str(row.get("family_variant"))
+        profile_id = str(row.get("profile_id") or "")
+        if profile_id not in SET_GEOMETRY_COORDS_BY_SCENARIO.get(scenario, {}):
+            continue
+        log_id = int(row["log_id"])
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        example_id = str(row["example_id"])
+        entry = grouped.setdefault(
+            example_id,
+            {
+                "example_id": example_id,
+                "scenario": scenario,
+                "style_idx": style_idx,
+                "perm_idx": perm_idx,
+                "scale_idx": scale_idx,
+                "profiles": {},
+            },
+        )
+        entry["profiles"][profile_id] = acts[key][layer].astype(np.float32)
+
+    finalized: list[dict[str, Any]] = []
+    for example_id in sorted(grouped):
+        entry = grouped[example_id]
+        ordered_profiles = tuple(SET_GEOMETRY_COORDS_BY_SCENARIO[entry["scenario"]])
+        if any(profile_id not in entry["profiles"] for profile_id in ordered_profiles):
+            continue
+        geometry_vec, pair_labels = _pairwise_distance_vector_for_profiles(
+            entry["profiles"],
+            ordered_profiles=ordered_profiles,
+        )
+        finalized.append({
+            **entry,
+            "ordered_profiles": ordered_profiles,
+            "geometry_vec": geometry_vec,
+            "pair_labels": pair_labels,
+        })
+    return finalized
+
+
+def _set_geometry_alignment_metrics(examples: list[dict[str, Any]]) -> dict[str, Any]:
+    if len(examples) < 2:
+        return {"error": "insufficient_examples"}
+
+    spearmans: list[float] = []
+    closest_hits: list[int] = []
+    farthest_hits: list[int] = []
+    for example in examples:
+        latent_vec, latent_labels = _latent_distance_vector_for_scenario(example["scenario"])
+        if tuple(latent_labels) != tuple(example["pair_labels"]):
+            continue
+        act_vec = np.asarray(example["geometry_vec"], dtype=np.float32)
+        corr = spearmanr(latent_vec, act_vec).correlation
+        if corr is not None and not np.isnan(corr):
+            spearmans.append(float(corr))
+        closest_hits.append(int(int(np.argmin(latent_vec)) == int(np.argmin(act_vec))))
+        farthest_hits.append(int(int(np.argmax(latent_vec)) == int(np.argmax(act_vec))))
+
+    return {
+        "n_examples": len(examples),
+        "distance_spearman_mean": _mean(spearmans),
+        "closest_pair_accuracy": _mean(closest_hits),
+        "farthest_pair_accuracy": _mean(farthest_hits),
+    }
+
+
+def _set_geometry_mode_allowed(anchor: dict[str, Any], other: dict[str, Any], *, mode: str) -> bool:
+    if anchor["example_id"] == other["example_id"]:
+        return False
+    if mode == "full":
+        return True
+    if mode == "style_only":
+        return (
+            anchor["perm_idx"] == other["perm_idx"]
+            and anchor["scale_idx"] == other["scale_idx"]
+            and anchor["style_idx"] != other["style_idx"]
+        )
+    if mode == "layout_only":
+        return (
+            anchor["style_idx"] == other["style_idx"]
+            and anchor["scale_idx"] == other["scale_idx"]
+            and anchor["perm_idx"] != other["perm_idx"]
+        )
+    if mode == "magnitude_only":
+        return (
+            anchor["style_idx"] == other["style_idx"]
+            and anchor["perm_idx"] == other["perm_idx"]
+            and anchor["scale_idx"] != other["scale_idx"]
+        )
+    raise ValueError(f"unknown set-geometry mode: {mode}")
+
+
+def _set_geometry_identity_metrics(
+    examples: list[dict[str, Any]],
+    *,
+    anchor_scenario: str,
+    mode: str,
+) -> dict[str, Any]:
+    anchors = [example for example in examples if example["scenario"] == anchor_scenario]
+    if len(anchors) < 2 or len(examples) < 4:
+        return {"error": "insufficient_examples"}
+
+    hits: list[int] = []
+    same_sims: list[float] = []
+    other_sims: list[float] = []
+    for entry in anchors:
+        best_match: dict[str, Any] | None = None
+        best_sim = None
+        best_same = None
+        best_other = None
+        for other in examples:
+            if not _set_geometry_mode_allowed(entry, other, mode=mode):
+                continue
+            sim = _cosine_similarity(entry["geometry_vec"], other["geometry_vec"])
+            if sim is None:
+                continue
+            if best_sim is None or sim > best_sim:
+                best_sim = sim
+                best_match = other
+            if other["scenario"] == entry["scenario"]:
+                if best_same is None or sim > best_same:
+                    best_same = sim
+            else:
+                if best_other is None or sim > best_other:
+                    best_other = sim
+        if best_match is not None:
+            hits.append(int(best_match["scenario"] == entry["scenario"]))
+        if best_same is not None:
+            same_sims.append(best_same)
+        if best_other is not None:
+            other_sims.append(best_other)
+
+    return {
+        "n_examples": len(anchors),
+        "nn_accuracy": _mean(hits),
+        "same_geometry_cosine_mean": _mean(same_sims),
+        "other_geometry_cosine_mean": _mean(other_sims),
+        "geometry_identity_margin": None if not same_sims or not other_sims else float(np.mean(same_sims) - np.mean(other_sims)),
+    }
+
+
 def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     for scenario, per_row_key in results.items():
@@ -1324,6 +1541,8 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "relation_invariance": {},
         "relation_rank_control": {},
         "relation_scale_control": {},
+        "set_geometry_alignment": {},
+        "set_geometry_identity": {},
     }
 
     for target in config.regression_targets:
@@ -1543,6 +1762,52 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
                 analysis["relation_rank_control"][scenario][row_key] = rank_by_scenario[scenario]
                 analysis["relation_scale_control"][scenario][row_key] = scale_by_scenario[scenario]
 
+    set_geometry_rows = [row for row in asset_rows if str(row.get("family")) == SET_GEOMETRY_CONTROL_FAMILY]
+    if set_geometry_rows:
+        geometry_scenarios = sorted({str(row["family_variant"]) for row in set_geometry_rows})
+        for scenario in geometry_scenarios:
+            analysis["set_geometry_alignment"].setdefault(scenario, {})
+            analysis["set_geometry_identity"].setdefault(scenario, {})
+
+        for row_key in config.row_keys:
+            alignment_by_scenario: dict[str, list[dict[str, Any]]] = {
+                scenario: [] for scenario in geometry_scenarios
+            }
+            identity_by_scenario_and_mode: dict[str, dict[str, list[dict[str, Any]]]] = {
+                scenario: {
+                    "full": [],
+                    "style_only": [],
+                    "layout_only": [],
+                    "magnitude_only": [],
+                }
+                for scenario in geometry_scenarios
+            }
+            for layer in layers:
+                examples = _collect_set_geometry_examples(
+                    asset_rows=set_geometry_rows,
+                    activation_cache=activation_cache,
+                    row_key=row_key,
+                    layer=layer,
+                )
+                for scenario in geometry_scenarios:
+                    scenario_examples = [example for example in examples if example["scenario"] == scenario]
+                    alignment_metrics = _set_geometry_alignment_metrics(scenario_examples)
+                    alignment_metrics["layer"] = layer
+                    alignment_by_scenario[scenario].append(alignment_metrics)
+
+                    for mode_key in ("full", "style_only", "layout_only", "magnitude_only"):
+                        identity_metrics = _set_geometry_identity_metrics(
+                            examples,
+                            anchor_scenario=scenario,
+                            mode=mode_key,
+                        )
+                        identity_metrics["layer"] = layer
+                        identity_by_scenario_and_mode[scenario][mode_key].append(identity_metrics)
+
+            for scenario in geometry_scenarios:
+                analysis["set_geometry_alignment"][scenario][row_key] = alignment_by_scenario[scenario]
+                analysis["set_geometry_identity"][scenario][row_key] = identity_by_scenario_and_mode[scenario]
+
     analysis["summary"] = {
         "primitive_regression": _summarize_regression(analysis["primitive_regression"]),
         "focal_pairwise": _summarize_pairwise(analysis["focal_pairwise"]),
@@ -1574,6 +1839,16 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "relation_scale_control": _summarize_best_metric(
             analysis["relation_scale_control"],
             margin_key="relation_over_scale_margin",
+            acc_key="nn_accuracy",
+        ),
+        "set_geometry_alignment": _summarize_best_metric(
+            analysis["set_geometry_alignment"],
+            margin_key="distance_spearman_mean",
+            acc_key="closest_pair_accuracy",
+        ),
+        "set_geometry_identity": _summarize_mode_metric(
+            analysis["set_geometry_identity"],
+            margin_key="geometry_identity_margin",
             acc_key="nn_accuracy",
         ),
     }

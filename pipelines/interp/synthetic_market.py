@@ -234,6 +234,46 @@ RELATION_INVARIANCE_SCALE_FACTORS: tuple[tuple[str, float], ...] = (
 )
 
 
+SET_GEOMETRY_SCENARIOS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "even_ladder",
+        "profiles": (
+            {"profile_id": "geo_alpha", "coords": (1.80, 0.62)},
+            {"profile_id": "geo_beta", "coords": (0.92, 0.34)},
+            {"profile_id": "geo_gamma", "coords": (-0.05, 0.02)},
+            {"profile_id": "geo_delta", "coords": (-1.02, -0.30)},
+        ),
+    },
+    {
+        "name": "top_pair_cluster",
+        "profiles": (
+            {"profile_id": "geo_alpha", "coords": (1.74, 0.60)},
+            {"profile_id": "geo_beta", "coords": (1.42, 0.52)},
+            {"profile_id": "geo_gamma", "coords": (-0.18, -0.04)},
+            {"profile_id": "geo_delta", "coords": (-1.26, -0.36)},
+        ),
+    },
+    {
+        "name": "dominant_outlier",
+        "profiles": (
+            {"profile_id": "geo_alpha", "coords": (2.24, 0.72)},
+            {"profile_id": "geo_beta", "coords": (0.56, 0.20)},
+            {"profile_id": "geo_gamma", "coords": (0.10, 0.04)},
+            {"profile_id": "geo_delta", "coords": (-0.40, -0.18)},
+        ),
+    },
+    {
+        "name": "middle_gap",
+        "profiles": (
+            {"profile_id": "geo_alpha", "coords": (1.66, 0.60)},
+            {"profile_id": "geo_beta", "coords": (1.02, 0.28)},
+            {"profile_id": "geo_gamma", "coords": (-0.82, -0.14)},
+            {"profile_id": "geo_delta", "coords": (-1.18, -0.34)},
+        ),
+    },
+)
+
+
 SCALAR_BACKGROUND_ROSTERS: list[tuple[str, str, str]] = [
     ("stable_winner", "flow_backed_continuation", "crowded_risk"),
     ("stable_winner", "mean_reverter", "illiquid_spike"),
@@ -563,6 +603,35 @@ def _scale_market_magnitude(asset: SyntheticAsset, factor: float) -> SyntheticAs
     payload["unique_traders_5m"] = max(1, int(round(payload["unique_traders_5m"] * factor)))
     payload["top20_holder_pct"] = round(_clamp(35.0 + factor * (payload["top20_holder_pct"] - 35.0), 15.0, 85.0), 2)
     return SyntheticAsset(**payload)
+
+
+def _make_geometry_asset(
+    symbol: str,
+    *,
+    profile_id: str,
+    coords: tuple[float, float],
+) -> SyntheticAsset:
+    strength, quality = coords
+    pct_5m = 3.9 + 1.7 * strength + 0.35 * quality
+    pct_1h = 8.2 + 1.5 * strength + 0.85 * quality
+    net_flow_5m = 0.95 + 0.28 * strength + 0.10 * quality
+    vol_5m = 4.1 + 0.55 * abs(strength) + 0.40 * (quality + 1.2)
+    vol_1h = 16.5 + 1.30 * abs(strength) + 1.05 * (quality + 1.2)
+    unique_traders_5m = int(round(15.0 + 1.4 * strength + 4.2 * quality))
+    top20_holder_pct = 38.0 - 1.8 * strength - 8.2 * quality
+    return _make_custom_asset(
+        symbol,
+        archetype=f"set_geometry_{profile_id}",
+        pct_5m=pct_5m,
+        pct_1h=pct_1h,
+        net_flow_5m=net_flow_5m,
+        vol_5m=vol_5m,
+        vol_1h=vol_1h,
+        unique_traders_5m=unique_traders_5m,
+        top20_holder_pct=top20_holder_pct,
+        age_bucket="mid",
+        profile_id=profile_id,
+    )
 
 
 def _make_minimal_asset(symbol: str, template_index: int, jitter_index: int = 0) -> SyntheticAsset:
@@ -2170,6 +2239,56 @@ def generate_contextual_relation_controls(config: SyntheticMarketConfig) -> list
     return examples
 
 
+def generate_set_geometry_controls(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    layouts = SYMBOL_PERMUTATION_LAYOUTS[: max(2, min(config.permutation_variants, len(SYMBOL_PERMUTATION_LAYOUTS)))]
+    surface_styles = RELATION_INVARIANCE_SURFACE_STYLES[
+        : max(2, min(config.profile_surface_variants, len(RELATION_INVARIANCE_SURFACE_STYLES)))
+    ]
+    scale_specs = RELATION_INVARIANCE_SCALE_FACTORS[
+        : max(2, min(config.relation_scale_variants, len(RELATION_INVARIANCE_SCALE_FACTORS)))
+    ]
+
+    for scenario_idx, scenario in enumerate(SET_GEOMETRY_SCENARIOS):
+        base_assets = [
+            _make_geometry_asset(
+                symbol=chr(ord("A") + asset_idx),
+                profile_id=str(profile["profile_id"]),
+                coords=tuple(profile["coords"]),
+            )
+            for asset_idx, profile in enumerate(scenario["profiles"])
+        ]
+        for style_idx, style in enumerate(surface_styles):
+            symbols = tuple(str(symbol) for symbol in style["symbols"])
+            style_name = str(style["name"])
+            for perm_idx, layout in enumerate(layouts):
+                order = tuple(int(idx) for idx in layout["order"])
+                for scale_idx, (_, scale_factor) in enumerate(scale_specs):
+                    scaled_assets = [_scale_market_magnitude(asset, scale_factor) for asset in base_assets]
+                    permuted_assets: list[SyntheticAsset] = []
+                    for row_index, asset_index in enumerate(order):
+                        permuted_assets.append(
+                            _override_display(
+                                scaled_assets[asset_index],
+                                symbol=symbols[row_index],
+                            )
+                        )
+                    example_id = (
+                        f"set_geom_{scenario_idx:02d}_{style_idx:02d}_{perm_idx:02d}_{scale_idx:02d}"
+                    )
+                    examples.extend(
+                        _apply_context_variants(
+                            example_id,
+                            family="set_geometry_control",
+                            family_variant=str(scenario["name"]),
+                            base_assets=permuted_assets,
+                            include_settings_variants=False,
+                            surface_style=style_name,
+                        )
+                    )
+    return examples
+
+
 def generate_archetype_families(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
     examples: list[SyntheticMarketExample] = []
     distractors = ["stable_winner", "flow_backed_continuation", "crowded_risk"]
@@ -2216,6 +2335,8 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         return generate_relation_invariance_controls(config)
     if config.dataset_preset == "phase8_contextual_relation":
         return generate_contextual_relation_controls(config)
+    if config.dataset_preset == "phase9_set_geometry":
+        return generate_set_geometry_controls(config)
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -2234,6 +2355,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase6_profile_invariance": 2_146_950_000,
         "phase7_relation_invariance": 2_147_000_000,
         "phase8_contextual_relation": 2_147_050_000,
+        "phase9_set_geometry": 2_147_100_000,
     }.get(dataset_preset, 2_140_000_000)
 
 

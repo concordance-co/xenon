@@ -10,9 +10,12 @@ from pipelines.interp.synthetic_market_representation_analysis import (
     _pairwise_relation_invariance_metrics,
     _parse_profile_invariance_example_id,
     _parse_relation_invariance_example_id,
+    _parse_set_geometry_example_id,
     _profile_invariance_decomposition_metrics,
     _relation_over_magnitude_control_metrics,
     _relation_over_rank_control_metrics,
+    _set_geometry_alignment_metrics,
+    _set_geometry_identity_metrics,
     _snapshot_geometry_metrics,
     _rank_context_metrics,
     _symbol_permutation_metrics,
@@ -38,6 +41,11 @@ def test_parse_profile_invariance_example_id_extracts_style_and_perm() -> None:
 def test_parse_relation_invariance_example_id_extracts_all_axes() -> None:
     assert _parse_relation_invariance_example_id("relation_inv_01_02_03_04_05") == (1, 2, 3, 4, 5)
     assert _parse_relation_invariance_example_id("profile_inv_00_00_00") is None
+
+
+def test_parse_set_geometry_example_id_extracts_all_axes() -> None:
+    assert _parse_set_geometry_example_id("set_geom_01_02_03_04") == (1, 2, 3, 4)
+    assert _parse_set_geometry_example_id("relation_inv_01_02_03_04_05") is None
 
 
 def test_rank_context_metrics_prefers_same_symbol_neighbors() -> None:
@@ -614,3 +622,86 @@ def test_relation_controls_can_anchor_one_scenario_against_full_pool() -> None:
     assert scale["nn_accuracy"] == 1.0
     assert scale["relation_over_scale_margin"] is not None
     assert scale["relation_over_scale_margin"] > 0.5
+
+
+def test_set_geometry_alignment_metrics_detect_latent_shape() -> None:
+    examples = [
+        {
+            "example_id": "set_geom_00_00_00_00",
+            "scenario": "even_ladder",
+            "geometry_vec": np.asarray([0.20, 0.49, 0.80, 0.29, 0.61, 0.41], dtype=np.float32),
+            "pair_labels": (
+                "geo_alpha__geo_beta",
+                "geo_alpha__geo_gamma",
+                "geo_alpha__geo_delta",
+                "geo_beta__geo_gamma",
+                "geo_beta__geo_delta",
+                "geo_gamma__geo_delta",
+            ),
+        },
+        {
+            "example_id": "set_geom_00_01_00_00",
+            "scenario": "even_ladder",
+            "geometry_vec": np.asarray([0.19, 0.48, 0.79, 0.28, 0.60, 0.40], dtype=np.float32),
+            "pair_labels": (
+                "geo_alpha__geo_beta",
+                "geo_alpha__geo_gamma",
+                "geo_alpha__geo_delta",
+                "geo_beta__geo_gamma",
+                "geo_beta__geo_delta",
+                "geo_gamma__geo_delta",
+            ),
+        },
+    ]
+
+    metrics = _set_geometry_alignment_metrics(examples)
+    assert metrics["distance_spearman_mean"] is not None
+    assert metrics["distance_spearman_mean"] > 0.9
+    assert metrics["closest_pair_accuracy"] == 1.0
+    assert metrics["farthest_pair_accuracy"] == 1.0
+
+
+def test_set_geometry_identity_metrics_prefer_same_shape_over_other_same_rank_shapes() -> None:
+    examples = [
+        {
+            "example_id": "set_geom_00_00_00_00",
+            "scenario": "even_ladder",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "scale_idx": 0,
+            "geometry_vec": np.asarray([0.20, 0.49, 0.80, 0.29, 0.61, 0.41], dtype=np.float32),
+        },
+        {
+            "example_id": "set_geom_00_01_00_00",
+            "scenario": "even_ladder",
+            "style_idx": 1,
+            "perm_idx": 0,
+            "scale_idx": 0,
+            "geometry_vec": np.asarray([0.19, 0.48, 0.79, 0.28, 0.60, 0.40], dtype=np.float32),
+        },
+        {
+            "example_id": "set_geom_01_00_00_00",
+            "scenario": "top_pair_cluster",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "scale_idx": 0,
+            "geometry_vec": np.asarray([0.04, 0.68, 1.02, 0.64, 0.96, 0.22], dtype=np.float32),
+        },
+        {
+            "example_id": "set_geom_01_01_00_00",
+            "scenario": "top_pair_cluster",
+            "style_idx": 1,
+            "perm_idx": 0,
+            "scale_idx": 0,
+            "geometry_vec": np.asarray([0.05, 0.67, 1.01, 0.63, 0.95, 0.23], dtype=np.float32),
+        },
+    ]
+
+    metrics = _set_geometry_identity_metrics(
+        examples,
+        anchor_scenario="even_ladder",
+        mode="style_only",
+    )
+    assert metrics["nn_accuracy"] == 1.0
+    assert metrics["geometry_identity_margin"] is not None
+    assert metrics["geometry_identity_margin"] > 0.03

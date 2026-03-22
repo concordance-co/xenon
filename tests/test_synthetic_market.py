@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
 import pyarrow.parquet as pq
 
 from pipelines.interp.synthetic_market import (
     ARCHETYPES,
+    SET_GEOMETRY_SCENARIOS,
     SyntheticMarketConfig,
     build_synthetic_market_dataset,
     generate_dataset,
@@ -288,6 +290,35 @@ def test_generate_phase8_contextual_relation_dataset_expected_counts(tmp_path) -
     assert min(row["log_id"] for row in tick_rows) >= 2_147_050_000
 
 
+def test_generate_phase9_set_geometry_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase9_set_geometry",
+        permutation_variants=4,
+        profile_surface_variants=2,
+        relation_scale_variants=3,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == len(SET_GEOMETRY_SCENARIOS) * 4 * 2 * 3
+    families = {example.family for example in examples}
+    assert families == {"set_geometry_control"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase9_set_geometry",
+            permutation_variants=3,
+            profile_surface_variants=2,
+            relation_scale_variants=2,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_100_000
+
+
 def test_phase8_contextual_relation_keeps_anchor_raw_scores_constant_across_scenarios() -> None:
     examples = generate_dataset(
         SyntheticMarketConfig(
@@ -340,6 +371,63 @@ def test_phase8_contextual_relation_changes_anchor_rank_contexts() -> None:
             int(asset_rows["anchor_right"]["attractiveness_rank"]),
         ))
     assert len(rank_pairs) >= 3
+
+
+def test_phase9_set_geometry_preserves_rank_order_across_scenarios() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase9_set_geometry",
+            permutation_variants=1,
+            profile_surface_variants=1,
+            relation_scale_variants=1,
+            include_settings_variants=False,
+        )
+    )
+    rank_orders = set()
+    for example in examples:
+        ordered = tuple(
+            row["profile_id"]
+            for row in sorted(example.labels["asset_rows"], key=lambda row: row["attractiveness_rank"])
+        )
+        rank_orders.add(ordered)
+    assert rank_orders == {("geo_alpha", "geo_beta", "geo_gamma", "geo_delta")}
+
+
+def test_phase9_set_geometry_emits_distinct_distance_signatures_under_same_rank_order() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase9_set_geometry",
+            permutation_variants=1,
+            profile_surface_variants=1,
+            relation_scale_variants=1,
+            include_settings_variants=False,
+        )
+    )
+    signatures = {}
+    for example in examples:
+        rows = {
+            row["profile_id"]: row
+            for row in example.labels["asset_rows"]
+        }
+        ordered = ("geo_alpha", "geo_beta", "geo_gamma", "geo_delta")
+        coords = np.asarray(
+            [
+                [
+                    rows[profile_id]["pct_5m"],
+                    rows[profile_id]["net_flow_5m"],
+                    rows[profile_id]["unique_traders_5m"],
+                    rows[profile_id]["top20_holder_pct"],
+                ]
+                for profile_id in ordered
+            ],
+            dtype=np.float32,
+        )
+        dists = []
+        for left in range(len(ordered)):
+            for right in range(left + 1, len(ordered)):
+                dists.append(float(np.linalg.norm(coords[left] - coords[right])))
+        signatures[example.family_variant] = tuple(round(value, 3) for value in dists)
+    assert len(set(signatures.values())) == len(SET_GEOMETRY_SCENARIOS)
 
 
 def test_rank_context_tradeoff_preserves_focal_pair_across_backgrounds() -> None:
