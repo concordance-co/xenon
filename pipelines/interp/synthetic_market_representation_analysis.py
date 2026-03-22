@@ -107,6 +107,64 @@ def _parse_set_geometry_example_id(example_id: Any) -> tuple[int, int, int, int]
         return None
 
 
+def _parse_risk_ladder_context(context_variant: Any) -> int | None:
+    text = str(context_variant)
+    if not text.startswith("risk_"):
+        return None
+    suffix = text.removeprefix("risk_")
+    if not suffix.isdigit():
+        return None
+    level = int(suffix)
+    if 1 <= level <= 5:
+        return level
+    return None
+
+
+def _ordered_set_geometry_context_variants(context_variants: list[str]) -> list[str]:
+    unique = sorted({str(context_variant) for context_variant in context_variants})
+    ordered: list[str] = []
+    if "market_only" in unique:
+        ordered.append("market_only")
+    ladder_contexts = sorted(
+        (context for context in unique if _parse_risk_ladder_context(context) is not None),
+        key=lambda context: int(_parse_risk_ladder_context(context) or 0),
+    )
+    if ladder_contexts:
+        ordered.extend(ladder_contexts)
+    else:
+        for context in ("low_risk", "high_risk"):
+            if context in unique:
+                ordered.append(context)
+    for context in unique:
+        if context not in ordered:
+            ordered.append(context)
+    return ordered
+
+
+def _set_geometry_context_transfer_pairs(context_variants: list[str]) -> list[tuple[str, str]]:
+    ordered = _ordered_set_geometry_context_variants(context_variants)
+    if not ordered:
+        return []
+    base_context = "market_only" if "market_only" in ordered else ordered[0]
+    pairs: list[tuple[str, str]] = [(base_context, base_context)]
+    for context in ordered:
+        if context == base_context:
+            continue
+        pairs.append((base_context, context))
+    return pairs
+
+
+def _set_geometry_context_deformation_pairs(context_variants: list[str]) -> list[tuple[str, str]]:
+    ordered = _ordered_set_geometry_context_variants(context_variants)
+    if len(ordered) < 2:
+        return []
+    pairs: list[tuple[str, str]] = list(zip(ordered, ordered[1:], strict=False))
+    long_span = (ordered[0], ordered[-1])
+    if long_span not in pairs:
+        pairs.append(long_span)
+    return pairs
+
+
 def _load_pairwise_rows(
     *,
     phase_name: str,
@@ -2136,7 +2194,9 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
                 analysis["set_geometry_alignment"][scenario][row_key] = alignment_by_scenario[scenario]
                 analysis["set_geometry_identity"][scenario][row_key] = identity_by_scenario_and_mode[scenario]
 
-    set_geometry_context_variants = sorted({str(row.get("context_variant")) for row in set_geometry_all_rows})
+    set_geometry_context_variants = _ordered_set_geometry_context_variants(
+        [str(row.get("context_variant")) for row in set_geometry_all_rows]
+    )
     if len(set_geometry_context_variants) > 1:
         base_example_ids = sorted({str(row.get("example_id")) for row in set_geometry_all_rows})
         train_example_ids, test_example_ids = _split_example_ids(
@@ -2145,16 +2205,7 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
             test_fraction=config.test_fraction,
         )
 
-        transfer_pairs = [
-            ("market_only", "market_only"),
-            ("market_only", "low_risk"),
-            ("market_only", "high_risk"),
-        ]
-        transfer_pairs = [
-            (source_context, target_context)
-            for source_context, target_context in transfer_pairs
-            if source_context in set_geometry_context_variants and target_context in set_geometry_context_variants
-        ]
+        transfer_pairs = _set_geometry_context_transfer_pairs(set_geometry_context_variants)
         for target_name, axis_index in (("latent_x", 0), ("latent_y", 1)):
             analysis["set_geometry_context_transfer"][target_name] = {}
             for source_context, target_context in transfer_pairs:
@@ -2210,16 +2261,7 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
                     per_layer.append(metrics)
                 analysis["set_geometry_context_realignment"][context_variant][row_key] = per_layer
 
-        deformation_pairs = [
-            ("market_only", "low_risk"),
-            ("market_only", "high_risk"),
-            ("low_risk", "high_risk"),
-        ]
-        deformation_pairs = [
-            (source_context, target_context)
-            for source_context, target_context in deformation_pairs
-            if source_context in set_geometry_context_variants and target_context in set_geometry_context_variants
-        ]
+        deformation_pairs = _set_geometry_context_deformation_pairs(set_geometry_context_variants)
         for source_context, target_context in deformation_pairs:
             pair_key = f"{source_context}_to_{target_context}"
             analysis["set_geometry_context_deformation"][pair_key] = {}

@@ -7,16 +7,20 @@ from pipelines.interp.synthetic_market_representation_analysis import (
     _base_rank_context_variant,
     _focal_relation_invariance_metrics,
     _is_profile_control_family,
+    _ordered_set_geometry_context_variants,
     _pairwise_relation_invariance_metrics,
     _parse_profile_invariance_example_id,
     _parse_relation_invariance_example_id,
+    _parse_risk_ladder_context,
     _parse_set_geometry_example_id,
     _profile_invariance_decomposition_metrics,
     _relation_over_magnitude_control_metrics,
     _relation_over_rank_control_metrics,
     _set_geometry_alignment_metrics,
     _set_geometry_context_deformation_metrics,
+    _set_geometry_context_deformation_pairs,
     _set_geometry_context_realignment_metrics,
+    _set_geometry_context_transfer_pairs,
     _set_geometry_identity_metrics,
     _snapshot_geometry_metrics,
     _rank_context_metrics,
@@ -48,6 +52,40 @@ def test_parse_relation_invariance_example_id_extracts_all_axes() -> None:
 def test_parse_set_geometry_example_id_extracts_all_axes() -> None:
     assert _parse_set_geometry_example_id("set_geom_01_02_03_04") == (1, 2, 3, 4)
     assert _parse_set_geometry_example_id("relation_inv_01_02_03_04_05") is None
+
+
+def test_parse_risk_ladder_context_extracts_dx_risk_levels() -> None:
+    assert _parse_risk_ladder_context("risk_1") == 1
+    assert _parse_risk_ladder_context("risk_5") == 5
+    assert _parse_risk_ladder_context("risk_7") is None
+    assert _parse_risk_ladder_context("low_risk") is None
+
+
+def test_ordered_set_geometry_context_variants_prefers_market_then_risk_ladder() -> None:
+    ordered = _ordered_set_geometry_context_variants(
+        ["risk_4", "market_only", "risk_2", "risk_5", "risk_1", "risk_3"]
+    )
+    assert ordered == ["market_only", "risk_1", "risk_2", "risk_3", "risk_4", "risk_5"]
+
+
+def test_set_geometry_context_pair_helpers_cover_adjacent_risk_steps() -> None:
+    variants = ["risk_4", "market_only", "risk_2", "risk_5", "risk_1", "risk_3"]
+    assert _set_geometry_context_transfer_pairs(variants) == [
+        ("market_only", "market_only"),
+        ("market_only", "risk_1"),
+        ("market_only", "risk_2"),
+        ("market_only", "risk_3"),
+        ("market_only", "risk_4"),
+        ("market_only", "risk_5"),
+    ]
+    assert _set_geometry_context_deformation_pairs(variants) == [
+        ("market_only", "risk_1"),
+        ("risk_1", "risk_2"),
+        ("risk_2", "risk_3"),
+        ("risk_3", "risk_4"),
+        ("risk_4", "risk_5"),
+        ("market_only", "risk_5"),
+    ]
 
 
 def test_rank_context_metrics_prefers_same_symbol_neighbors() -> None:
