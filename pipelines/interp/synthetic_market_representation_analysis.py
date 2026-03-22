@@ -454,6 +454,75 @@ def _collect_profile_invariance_entries(
     return grouped
 
 
+def _profile_control_mode_allowed(anchor: dict[str, Any], other: dict[str, Any], *, mode: str) -> bool:
+    if anchor["example_id"] == other["example_id"]:
+        return False
+    if mode == "full":
+        return True
+    if mode == "style_only":
+        return other["perm_idx"] == anchor["perm_idx"] and other["style_idx"] != anchor["style_idx"]
+    if mode == "layout_only":
+        return other["style_idx"] == anchor["style_idx"] and other["perm_idx"] != anchor["perm_idx"]
+    raise ValueError(f"unknown profile-control mode: {mode}")
+
+
+def _collect_profile_invariance_examples(
+    *,
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, dict[str, dict[str, Any]]] = {}
+    for row in asset_rows:
+        if str(row.get("family")) != "profile_invariance_control":
+            continue
+        parsed = _parse_profile_invariance_example_id(row.get("example_id"))
+        if parsed is None:
+            continue
+        _, style_idx, perm_idx = parsed
+        profile_id = row.get("profile_id")
+        if not profile_id:
+            continue
+        log_id = int(row["log_id"])
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        scenario = str(row["family_variant"])
+        example_id = str(row["example_id"])
+        scenario_group = grouped.setdefault(scenario, {})
+        example = scenario_group.setdefault(
+            example_id,
+            {
+                "example_id": example_id,
+                "style_idx": style_idx,
+                "perm_idx": perm_idx,
+                "profiles": {},
+            },
+        )
+        example["profiles"][str(profile_id)] = acts[key][layer].astype(np.float32)
+
+    finalized: dict[str, list[dict[str, Any]]] = {}
+    for scenario, examples in grouped.items():
+        rows: list[dict[str, Any]] = []
+        for example_id in sorted(examples):
+            example = examples[example_id]
+            ordered_profiles = tuple(sorted(example["profiles"]))
+            if len(ordered_profiles) < 2:
+                continue
+            rows.append(
+                {
+                    **example,
+                    "ordered_profiles": ordered_profiles,
+                }
+            )
+        finalized[scenario] = rows
+    return finalized
+
+
 def _symbol_permutation_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]:
     if len(entries) < 4:
         return {"error": "insufficient_entries"}
@@ -599,6 +668,169 @@ def _profile_invariance_decomposition_metrics(entries: list[dict[str, Any]]) -> 
     }
 
 
+def _build_relation_entries(example: dict[str, Any]) -> list[dict[str, Any]]:
+    ordered_profiles = tuple(example["ordered_profiles"])
+    profiles = example["profiles"]
+    relation_entries: list[dict[str, Any]] = []
+    for left_idx in range(len(ordered_profiles)):
+        for right_idx in range(left_idx + 1, len(ordered_profiles)):
+            left = ordered_profiles[left_idx]
+            right = ordered_profiles[right_idx]
+            relation_entries.append(
+                {
+                    "example_id": example["example_id"],
+                    "style_idx": example["style_idx"],
+                    "perm_idx": example["perm_idx"],
+                    "relation_id": f"{left}__minus__{right}",
+                    "vec": profiles[left] - profiles[right],
+                }
+            )
+    return relation_entries
+
+
+def _pairwise_relation_invariance_metrics(examples: list[dict[str, Any]], *, mode: str) -> dict[str, Any]:
+    relation_entries: list[dict[str, Any]] = []
+    for example in examples:
+        relation_entries.extend(_build_relation_entries(example))
+    if len(relation_entries) < 4:
+        return {"error": "insufficient_entries"}
+
+    hits: list[int] = []
+    same_sims: list[float] = []
+    other_sims: list[float] = []
+
+    for entry in relation_entries:
+        best_match: dict[str, Any] | None = None
+        best_sim = None
+        best_same = None
+        best_other = None
+        for other in relation_entries:
+            if not _profile_control_mode_allowed(entry, other, mode=mode):
+                continue
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            if best_sim is None or sim > best_sim:
+                best_sim = sim
+                best_match = other
+            if other["relation_id"] == entry["relation_id"]:
+                if best_same is None or sim > best_same:
+                    best_same = sim
+            else:
+                if best_other is None or sim > best_other:
+                    best_other = sim
+        if best_match is not None:
+            hits.append(int(best_match["relation_id"] == entry["relation_id"]))
+        if best_same is not None:
+            same_sims.append(best_same)
+        if best_other is not None:
+            other_sims.append(best_other)
+
+    return {
+        "n_relations": len(relation_entries),
+        "nn_accuracy": _mean(hits),
+        "same_relation_cosine_mean": _mean(same_sims),
+        "other_relation_cosine_mean": _mean(other_sims),
+        "relation_margin": None if not same_sims or not other_sims else float(np.mean(same_sims) - np.mean(other_sims)),
+    }
+
+
+def _snapshot_geometry_vector(example: dict[str, Any]) -> np.ndarray:
+    ordered_profiles = tuple(example["ordered_profiles"])
+    profiles = example["profiles"]
+    values: list[float] = []
+    for left_idx in range(len(ordered_profiles)):
+        for right_idx in range(left_idx + 1, len(ordered_profiles)):
+            left = ordered_profiles[left_idx]
+            right = ordered_profiles[right_idx]
+            sim = _cosine_similarity(profiles[left], profiles[right])
+            values.append(0.0 if sim is None else sim)
+    return np.asarray(values, dtype=np.float32)
+
+
+def _snapshot_geometry_metrics(
+    same_examples: list[dict[str, Any]],
+    other_examples: list[dict[str, Any]],
+    *,
+    mode: str,
+) -> dict[str, Any]:
+    if len(same_examples) < 2 or not other_examples:
+        return {"error": "insufficient_examples"}
+
+    same_entries = [
+        {
+            "example_id": example["example_id"],
+            "style_idx": example["style_idx"],
+            "perm_idx": example["perm_idx"],
+            "scenario": "same",
+            "vec": _snapshot_geometry_vector(example),
+        }
+        for example in same_examples
+    ]
+    other_entries = [
+        {
+            "example_id": example["example_id"],
+            "style_idx": example["style_idx"],
+            "perm_idx": example["perm_idx"],
+            "scenario": "other",
+            "vec": _snapshot_geometry_vector(example),
+        }
+        for example in other_examples
+    ]
+
+    hits: list[int] = []
+    same_sims: list[float] = []
+    other_sims: list[float] = []
+
+    for entry in same_entries:
+        best_match: dict[str, Any] | None = None
+        best_sim = None
+        best_same = None
+        best_other = None
+        for other in same_entries:
+            if not _profile_control_mode_allowed(entry, other, mode=mode):
+                continue
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            if best_sim is None or sim > best_sim:
+                best_sim = sim
+                best_match = other
+            if best_same is None or sim > best_same:
+                best_same = sim
+        for other in other_entries:
+            if mode == "style_only":
+                if other["perm_idx"] != entry["perm_idx"] or other["style_idx"] == entry["style_idx"]:
+                    continue
+            elif mode == "layout_only":
+                if other["style_idx"] != entry["style_idx"] or other["perm_idx"] == entry["perm_idx"]:
+                    continue
+            elif mode != "full":
+                raise ValueError(f"unknown snapshot-geometry mode: {mode}")
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            if best_sim is None or sim > best_sim:
+                best_sim = sim
+                best_match = other
+            if best_other is None or sim > best_other:
+                best_other = sim
+        if best_match is not None:
+            hits.append(int(best_match["scenario"] == "same"))
+        if best_same is not None:
+            same_sims.append(best_same)
+        if best_other is not None:
+            other_sims.append(best_other)
+
+    return {
+        "n_examples": len(same_examples),
+        "nn_accuracy": _mean(hits),
+        "same_market_cosine_mean": _mean(same_sims),
+        "other_market_cosine_mean": _mean(other_sims),
+        "geometry_margin": None if not same_sims or not other_sims else float(np.mean(same_sims) - np.mean(other_sims)),
+    }
+
+
 def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     for scenario, per_row_key in results.items():
@@ -666,6 +898,40 @@ def _summarize_profile_invariance_decomposition(results: dict[str, Any]) -> dict
     return summary
 
 
+def _summarize_mode_metric(
+    results: dict[str, Any],
+    *,
+    margin_key: str,
+    acc_key: str,
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for scenario, per_row_key in results.items():
+        scenario_summary: dict[str, Any] = {}
+        for mode_key in ("full", "style_only", "layout_only"):
+            best: tuple[str, float, int, float | None] | None = None
+            for row_key, per_layer in per_row_key.items():
+                for metrics in per_layer.get(mode_key, []):
+                    score = metrics.get(margin_key)
+                    if score is None:
+                        continue
+                    acc = metrics.get(acc_key)
+                    if best is None or float(score) > best[1]:
+                        best = (
+                            row_key,
+                            float(score),
+                            int(metrics["layer"]),
+                            None if acc is None else float(acc),
+                        )
+            scenario_summary[mode_key] = None if best is None else {
+                "representation": best[0],
+                "margin": best[1],
+                "layer": best[2],
+                "nn_accuracy": best[3],
+            }
+        summary[scenario] = scenario_summary
+    return summary
+
+
 def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresentationConfig) -> dict[str, Any]:
     meta_rows, tick_rows, asset_rows = _load_structure_tables(config.structure_dir)
     if not meta_rows:
@@ -720,6 +986,8 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "rank_context": {},
         "symbol_permutation": {},
         "profile_invariance_decomposition": {},
+        "pairwise_relation_invariance": {},
+        "snapshot_geometry": {},
     }
 
     for target in config.regression_targets:
@@ -837,6 +1105,50 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
             for scenario, per_layer in scenario_groups_by_layer.items():
                 analysis["profile_invariance_decomposition"].setdefault(scenario, {})[row_key] = per_layer
 
+        scenario_names = sorted({str(row["family_variant"]) for row in profile_invariance_rows})
+        for scenario in scenario_names:
+            analysis["pairwise_relation_invariance"].setdefault(scenario, {})
+            analysis["snapshot_geometry"].setdefault(scenario, {})
+
+        for row_key in config.row_keys:
+            relation_by_scenario_and_mode: dict[str, dict[str, list[dict[str, Any]]]] = {
+                scenario: {"full": [], "style_only": [], "layout_only": []}
+                for scenario in scenario_names
+            }
+            geometry_by_scenario_and_mode: dict[str, dict[str, list[dict[str, Any]]]] = {
+                scenario: {"full": [], "style_only": [], "layout_only": []}
+                for scenario in scenario_names
+            }
+            for layer in layers:
+                grouped_examples = _collect_profile_invariance_examples(
+                    asset_rows=profile_invariance_rows,
+                    activation_cache=activation_cache,
+                    row_key=row_key,
+                    layer=layer,
+                )
+                for scenario in scenario_names:
+                    scenario_examples = grouped_examples.get(scenario, [])
+                    other_examples: list[dict[str, Any]] = []
+                    for other_scenario, entries in grouped_examples.items():
+                        if other_scenario != scenario:
+                            other_examples.extend(entries)
+                    for mode_key in ("full", "style_only", "layout_only"):
+                        relation_metrics = _pairwise_relation_invariance_metrics(scenario_examples, mode=mode_key)
+                        relation_metrics["layer"] = layer
+                        relation_by_scenario_and_mode[scenario][mode_key].append(relation_metrics)
+
+                        geometry_metrics = _snapshot_geometry_metrics(
+                            scenario_examples,
+                            other_examples,
+                            mode=mode_key,
+                        )
+                        geometry_metrics["layer"] = layer
+                        geometry_by_scenario_and_mode[scenario][mode_key].append(geometry_metrics)
+
+            for scenario in scenario_names:
+                analysis["pairwise_relation_invariance"][scenario][row_key] = relation_by_scenario_and_mode[scenario]
+                analysis["snapshot_geometry"][scenario][row_key] = geometry_by_scenario_and_mode[scenario]
+
     analysis["summary"] = {
         "primitive_regression": _summarize_regression(analysis["primitive_regression"]),
         "focal_pairwise": _summarize_pairwise(analysis["focal_pairwise"]),
@@ -844,6 +1156,16 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "symbol_permutation": _summarize_symbol_permutation(analysis["symbol_permutation"]),
         "profile_invariance_decomposition": _summarize_profile_invariance_decomposition(
             analysis["profile_invariance_decomposition"]
+        ),
+        "pairwise_relation_invariance": _summarize_mode_metric(
+            analysis["pairwise_relation_invariance"],
+            margin_key="relation_margin",
+            acc_key="nn_accuracy",
+        ),
+        "snapshot_geometry": _summarize_mode_metric(
+            analysis["snapshot_geometry"],
+            margin_key="geometry_margin",
+            acc_key="nn_accuracy",
         ),
     }
 

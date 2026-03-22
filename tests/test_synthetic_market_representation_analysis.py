@@ -6,8 +6,10 @@ import pytest
 from pipelines.interp.synthetic_market_representation_analysis import (
     _base_rank_context_variant,
     _is_profile_control_family,
+    _pairwise_relation_invariance_metrics,
     _parse_profile_invariance_example_id,
     _profile_invariance_decomposition_metrics,
+    _snapshot_geometry_metrics,
     _rank_context_metrics,
     _symbol_permutation_metrics,
 )
@@ -208,3 +210,95 @@ def test_profile_invariance_decomposition_separates_style_and_layout_controls() 
     assert metrics["layout_only_margin"] is not None
     assert metrics["style_only_margin"] > 0.9
     assert metrics["layout_only_margin"] > 0.9
+
+
+def test_pairwise_relation_invariance_detects_stable_relations() -> None:
+    examples = [
+        {
+            "example_id": "profile_inv_00_00_00",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "ordered_profiles": ("p0", "p1", "p2"),
+            "profiles": {
+                "p0": np.asarray([1.0, 0.0], dtype=np.float32),
+                "p1": np.asarray([0.0, 1.0], dtype=np.float32),
+                "p2": np.asarray([-1.0, 0.0], dtype=np.float32),
+            },
+        },
+        {
+            "example_id": "profile_inv_00_01_00",
+            "style_idx": 1,
+            "perm_idx": 0,
+            "ordered_profiles": ("p0", "p1", "p2"),
+            "profiles": {
+                "p0": np.asarray([0.99, 0.01], dtype=np.float32),
+                "p1": np.asarray([0.01, 0.99], dtype=np.float32),
+                "p2": np.asarray([-0.99, 0.0], dtype=np.float32),
+            },
+        },
+        {
+            "example_id": "profile_inv_00_00_01",
+            "style_idx": 0,
+            "perm_idx": 1,
+            "ordered_profiles": ("p0", "p1", "p2"),
+            "profiles": {
+                "p0": np.asarray([0.98, 0.02], dtype=np.float32),
+                "p1": np.asarray([0.02, 0.98], dtype=np.float32),
+                "p2": np.asarray([-0.98, 0.0], dtype=np.float32),
+            },
+        },
+    ]
+
+    style_metrics = _pairwise_relation_invariance_metrics(examples, mode="style_only")
+    layout_metrics = _pairwise_relation_invariance_metrics(examples, mode="layout_only")
+    assert style_metrics["nn_accuracy"] == 1.0
+    assert style_metrics["relation_margin"] is not None
+    assert style_metrics["relation_margin"] > 0.2
+    assert layout_metrics["nn_accuracy"] == 1.0
+    assert layout_metrics["relation_margin"] is not None
+    assert layout_metrics["relation_margin"] > 0.2
+
+
+def test_snapshot_geometry_metrics_detect_same_market() -> None:
+    same_examples = [
+        {
+            "example_id": "profile_inv_00_00_00",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "ordered_profiles": ("p0", "p1", "p2"),
+            "profiles": {
+                "p0": np.asarray([1.0, 0.0], dtype=np.float32),
+                "p1": np.asarray([0.0, 1.0], dtype=np.float32),
+                "p2": np.asarray([-1.0, 0.0], dtype=np.float32),
+            },
+        },
+        {
+            "example_id": "profile_inv_00_01_00",
+            "style_idx": 1,
+            "perm_idx": 0,
+            "ordered_profiles": ("p0", "p1", "p2"),
+            "profiles": {
+                "p0": np.asarray([0.99, 0.01], dtype=np.float32),
+                "p1": np.asarray([0.01, 0.99], dtype=np.float32),
+                "p2": np.asarray([-0.99, 0.01], dtype=np.float32),
+            },
+        },
+    ]
+    other_examples = [
+        {
+            "example_id": "profile_inv_01_01_00",
+            "style_idx": 1,
+            "perm_idx": 0,
+            "ordered_profiles": ("q0", "q1", "q2"),
+            "profiles": {
+                "q0": np.asarray([1.0, 0.0], dtype=np.float32),
+                "q1": np.asarray([0.7, 0.7], dtype=np.float32),
+                "q2": np.asarray([0.0, 1.0], dtype=np.float32),
+            },
+        },
+    ]
+
+    metrics = _snapshot_geometry_metrics(same_examples, other_examples, mode="style_only")
+    assert metrics["nn_accuracy"] == 1.0
+    assert metrics["geometry_margin"] is not None
+    assert metrics["geometry_margin"] > 0.9
