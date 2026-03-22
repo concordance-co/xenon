@@ -20,6 +20,7 @@ V1 = _load("synthetic_policy_actionability_algebra_v1_results.json")
 V2 = _load("synthetic_policy_actionability_algebra_v2_results.json")
 V3 = _load("synthetic_policy_actionability_algebra_v3_results.json")
 V4 = _load("synthetic_policy_actionability_algebra_v4_results.json")
+V3A = _load("synthetic_policy_actionability_algebra_v3_affordances_results.json")
 V4A = _load("synthetic_policy_actionability_algebra_v4_affordances_results.json")
 
 
@@ -55,38 +56,48 @@ def make_phase_progression() -> Path:
     return path
 
 
-def make_v4_factorization() -> Path:
-    fig, ax = plt.subplots(figsize=(8.6, 4.8))
-    labels = [
-        "permission_mode",
-        "expected_action_type",
-        "policy_best_asset",
-        "observe_vs_act",
-        "can_buy",
-        "can_sell",
+def make_cross_variant_factorization() -> Path:
+    fig, ax = plt.subplots(figsize=(9.2, 4.8))
+    labels = ["permission_mode", "observe_vs_act", "can_buy", "can_sell"]
+    x = np.arange(len(labels))
+    width = 0.34
+
+    v3_values = [
+        _metric(V3A["summary"], "permission_mode_classifier"),
+        _metric(V3A["summary"], "observe_vs_act_classifier"),
+        _metric(V3A["summary"], "can_buy_classifier"),
+        _metric(V3A["summary"], "can_sell_classifier"),
     ]
-    values = [
+    v4_values = [
         _metric(V4A["summary"], "permission_mode_classifier"),
-        _metric(V4A["summary"], "expected_action_type_classifier"),
-        _metric(V4A["summary"], "policy_best_asset_classifier"),
         _metric(V4A["summary"], "observe_vs_act_classifier"),
         _metric(V4A["summary"], "can_buy_classifier"),
         _metric(V4A["summary"], "can_sell_classifier"),
     ]
-    colors = ["#b33a2a", "#6a7f96", "#a89b6d", "#3c7d5b", "#2f6f86", "#684c8d"]
-    ypos = np.arange(len(labels))
 
-    ax.barh(ypos, values, color=colors)
-    ax.set_yticks(ypos, labels)
-    ax.set_xlim(0.0, 1.0)
-    ax.set_xlabel("Balanced accuracy")
-    ax.set_title("`v4` improves when permission is decomposed into affordance bits")
-    ax.grid(axis="x", alpha=0.2)
-    for y, value in zip(ypos, values):
-        ax.text(value + 0.015, y, f"{value:.3f}", va="center", fontsize=9)
+    bars1 = ax.bar(x - width / 2, v3_values, width, label="v3", color="#58677c")
+    bars2 = ax.bar(x + width / 2, v4_values, width, label="v4", color="#b33a2a")
+
+    ax.set_xticks(x, labels)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_ylabel("Balanced accuracy")
+    ax.set_title("Affordance factorization survives across hardened variants")
+    ax.grid(axis="y", alpha=0.2)
+    ax.legend(frameon=False, loc="upper right")
+    for bars in (bars1, bars2):
+        for bar in bars:
+            value = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                value + 0.02,
+                f"{value:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
     fig.tight_layout()
 
-    path = OUT_DIR / "v4_factorization.png"
+    path = OUT_DIR / "cross_variant_factorization.png"
     fig.savefig(path, dpi=220, bbox_inches="tight")
     plt.close(fig)
     return path
@@ -129,7 +140,7 @@ def make_section_summary() -> Path:
 def main() -> None:
     outputs = {
         "phase_progression": str(make_phase_progression()),
-        "v4_factorization": str(make_v4_factorization()),
+        "cross_variant_factorization": str(make_cross_variant_factorization()),
         "section_summary": str(make_section_summary()),
     }
     print(json.dumps(outputs, indent=2))

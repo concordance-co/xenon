@@ -38,23 +38,29 @@ This is exactly the kind of "wrong fused probe target" failure mode highlighted 
 
 ## Result
 
-On the exact same pooled `actionability_algebra_v4` activations:
+The affordance-factorization pattern now appears in both hardened variants:
 
+### `actionability_algebra_v3`
+
+- `permission_mode`: `0.625`
+- `can_buy`: `constraints_eos @ L40`, balanced accuracy `0.875`
+- `can_sell`: `active_strategies_eos @ L3`, balanced accuracy `0.792`
+- `observe_vs_act`: `last_token @ L40`, balanced accuracy `0.833`
+
+### `actionability_algebra_v4`
+
+- `permission_mode`: `0.458`
 - `can_buy`: `portfolio_eos @ L18`, balanced accuracy `0.792`
 - `can_sell`: `constraints_eos @ L41`, balanced accuracy `0.750`
 - `observe_vs_act`: `active_strategies_eos @ L2`, balanced accuracy `0.667`
-- `permission_mode`: still only `0.458`
 
 ## Interpretation
 
 This is the strongest current result in the actionability line.
 
-- The 4-way fused permission label is weak.
-- The primitive affordance bits survive materially better.
-- The sections also split in a plausible way:
-  - buyability is strongest in `portfolio_eos`
-  - sellability is strongest in `constraints_eos`
-  - act-vs-observe appears early in `active_strategies_eos`
+- The 4-way fused permission label is weaker than the primitive affordance bits.
+- The primitive affordance bits survive materially better in both `v3` and `v4`.
+- The exact best section moves with prompt presentation, but the factorized affordance story itself survives.
 
 That suggests the downstream computation is more factorized than the earlier report implied.
 
