@@ -212,3 +212,52 @@ The next phase should stay set-level and make the deformation hypothesis more ge
 1. Replace the discrete `market_only / low_risk / high_risk` split with a graded risk ladder and test whether the geometry rotates smoothly.
 2. Add portfolio and affordance overlays to the same 4-asset base market and measure whether those produce new deformations or mostly gate the existing geometry.
 3. Move from pair-distance summaries to explicit alignment transforms, for example Procrustes maps or learned linear maps between context-specific geometries.
+
+
+= Appendix A: One Market In Pictures
+
+#align(center)[#image("../../data/report_assets/synthetic_market_phase10_geometry_deformation/geometry_example.png", width: 100%)]
+#text(size: 8pt, fill: rgb("#888"))[
+Representative `top_pair_cluster` market. Top-left is the hand-designed latent layout, top-right is the context-adjusted score geometry, bottom-left is an early activation-space PCA (`row_mean @ L2`), and bottom-right is a later activation-space PCA (`row_eos @ L12`).
+]
+
+#v(0.4em)
+
+This figure is illustrative rather than statistical, but it helps explain the Phase 10 logic:
+
+- the same four assets occupy a stable shared frame early
+- the context variants do not destroy that frame
+- later states start to separate those same assets in a way that looks more like the context-adjusted score geometry than like the original latent layout
+
+The PCA axes in the two 3D panels are fitted separately, so the exact axis values are not comparable across panels. The point of the figure is structural: early overlap versus later context-conditioned warping.
+
+
+= Appendix B: How To Read The Metrics
+
+#table(
+  columns: (1.4fr, 3.6fr),
+  align: (left, left),
+  table.hline(stroke: 1pt),
+  table.header([*Term*], [*Meaning*]),
+  table.hline(stroke: 0.5pt),
+  [`latent coordinate frame`], [The hand-designed 2D geometry used to place the four synthetic assets before any settings/context are applied.],
+  [`score geometry`], [A context-adjusted geometry built from `(attractiveness_score, risk_adjusted_score)`. This is the target Phase 10 uses when asking whether later states move toward a settings-sensitive market representation.],
+  [`row_mean`], [The mean-pooled residual state across all tokens belonging to one asset row. This tends to preserve primitive market factors very early.],
+  [`row_eos`], [The residual state at the end of one asset row. This often behaves more like a summarized row representation and is where late geometry effects frequently appear.],
+  [`coordinate transfer`], [Train a probe on `market_only`, then test it on another context. High R² means the same base market axes still exist after context is added.],
+  [`realignment margin`], [Within one context, compare activation-space pair distances against raw latent geometry and against score geometry. A positive margin means the state is closer to the score-like market than to the original latent layout.],
+  [`deformation Spearman`], [Across matched prompt pairs, compare how pair distances change in activation space versus score space. Positive values mean the ordering of changes tracks the predicted deformation.],
+  [`deformation cosine`], [The cosine between the activation-space deformation vector and the score-space deformation vector. Positive is good directional alignment; negative means the warp is mixed even if rank order still tracks.],
+  table.hline(stroke: 1pt),
+)
+
+#v(0.6em)
+
+The short reading guide for Phase 10 is:
+
+1. Look at #text(weight: "medium")[coordinate transfer] first.
+   If it stays high, the base market frame survived.
+2. Then look at #text(weight: "medium")[realignment margin].
+   If it is positive later in the model, the geometry is bending toward a score-like space.
+3. Then look at #text(weight: "medium")[deformation Spearman] and #text(weight: "medium")[deformation cosine].
+   If both are positive, the context change is producing a coherent warp rather than noise.
