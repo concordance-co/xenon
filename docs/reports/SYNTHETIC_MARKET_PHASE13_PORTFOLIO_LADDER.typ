@@ -131,6 +131,8 @@ That yields:
 - `2,304` asset rows
 - `6,912` pairwise asset comparisons
 
+In this report, the surface styles, row permutations, and global magnitude scales are all #emph[nuisance variants]. That means they change how the same market is written on the page without changing the underlying latent market shape we actually care about.
+
 
 = What “Portfolio Ladder” Means
 
@@ -183,6 +185,41 @@ Why this matters:
 - a real set-level representation should preserve more than “which token looks best”
 
 So when the report says “shared market frame,” it means a reusable coordinate system that organizes all four assets together.
+
+#table(
+  columns: (1.3fr, 3.7fr),
+  align: (left, left),
+  table.hline(stroke: 1pt),
+  table.header([*Scenario name*], [*Plain-language meaning*]),
+  table.hline(stroke: 0.5pt),
+  [`even ladder`], [The four assets step down in fairly regular intervals. There is a clear ordering, but no special clustering.],
+  [`top pair cluster`], [The top two assets sit close together while the lower two are farther away.],
+  [`dominant outlier`], [One asset is clearly separated above the other three, which are comparatively compressed.],
+  [`middle gap`], [There is a larger-than-usual split between the upper pair and lower pair of assets.],
+)
+
+
+= Plain-Language Terminology
+
+This is the shortest way to decode the jargon used later in the report:
+
+- #text(weight: "medium")[market frame]
+  the shared coordinate system the model seems to use to organize all four assets
+- #text(weight: "medium")[market coordinates]
+  the x/y position of each individual asset inside that shared frame
+- #text(weight: "medium")[market geometry]
+  the whole shape formed by those four coordinates together
+- #text(weight: "medium")[rigid map]
+  a transform that mostly keeps distances and angles intact, like a rotation or reflection
+- #text(weight: "medium")[context-adjusted score geometry]
+  the asset layout implied after we rescore the same market under a specific context, such as portfolio pressure
+- #text(weight: "medium")[nuisance variants]
+  prompt differences that should not change the underlying market meaning, like row order, symbol aliases, or formatting style
+
+The point of Phase 13 is to separate:
+
+- real geometry changes caused by context
+- from fake changes caused by nuisance presentation differences
 
 
 = The Shared Market Frame Still Survives the Full Ladder
@@ -364,12 +401,17 @@ This figure anchors what “portfolio deformation” means in the report. The tr
   table.header([*Term*], [*Meaning*]),
   table.hline(stroke: 0.5pt),
   [`shared market frame`], [The recovered 2D coordinate system that organizes all four assets before context-specific reweighting.],
+  [`market coordinates`], [The individual x/y positions of the four assets inside the shared market frame.],
+  [`market geometry`], [The whole-market arrangement of those coordinates, including spacing, clustering, and pairwise distances.],
   [`4-asset geometry`], [The full relative placement of all four assets at once. In practice this means the coordinate layout or, equivalently, the pattern of six pairwise distances between assets.],
   [`portfolio ladder`], [A matched sequence of context variants where the base market is fixed and the portfolio pressure is stepped from `market_only` to `portfolio_5`.],
+  [`nuisance variants`], [Prompt changes that alter presentation but should not alter the underlying market meaning, such as row order, formatting style, symbol aliases, or global scale formatting.],
   [`coordinate transfer`], [How well a probe trained in one context can recover the same latent coordinate in another context. High `R²` means the base frame survived.],
   [`realignment margin`], [How much closer the recovered geometry is to the context-adjusted score geometry than to the raw latent layout. Positive margins mean the context is actively reweighting the market.],
+  [`context-adjusted score geometry`], [The geometry implied by rescoring the same four assets under the current context. In Phase 13, that means incorporating the existing position, shrinking free ETH, and diversification pressure.],
   [`identity`], [No transform at all. If identity already works, the two contexts share almost the same geometry in the decoded frame.],
   [`orthogonal`], [A pure rotation or reflection. Distances and angles are preserved; only orientation changes.],
+  [`rigid map`], [A transform that preserves shape up to orientation. In practice here, the closest approximation is an orthogonal map or a near-rigid similarity map.],
   [`similarity`], [Uniform scaling plus rotation. This captures isotropic compression or expansion.],
   [`diagonal`], [Axis-aligned rescaling in the shared coordinate frame. This captures simple non-uniform compression without rotation.],
   [`linear`], [Any 2×2 linear map. This is the most flexible family here and can absorb rotation, anisotropic scaling, and shear-like behavior.],
