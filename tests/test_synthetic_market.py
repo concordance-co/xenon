@@ -172,6 +172,37 @@ def test_generate_phase6_profile_invariance_dataset_expected_counts(tmp_path) ->
     assert min(row["log_id"] for row in tick_rows) >= 2_146_950_000
 
 
+def test_generate_phase7_relation_invariance_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase7_relation_invariance",
+        permutation_variants=3,
+        profile_surface_variants=2,
+        relation_roster_variants=4,
+        relation_scale_variants=3,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == 4 * 3 * 2 * 4 * 3
+    families = {example.family for example in examples}
+    assert families == {"relation_invariance_control"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase7_relation_invariance",
+            permutation_variants=3,
+            profile_surface_variants=2,
+            relation_roster_variants=4,
+            relation_scale_variants=3,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_000_000
+
+
 def test_phase6_profile_invariance_emits_distinct_surface_styles() -> None:
     examples = generate_dataset(
         SyntheticMarketConfig(
@@ -185,6 +216,45 @@ def test_phase6_profile_invariance_emits_distinct_surface_styles() -> None:
     assert any("Snapshot:" in prompt for prompt in prompts)
     assert any("Holder concentration (top 20)" in prompt for prompt in prompts)
     assert any("Short-horizon price move" in prompt for prompt in prompts)
+
+
+def test_phase7_relation_invariance_preserves_anchor_order_across_controls() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase7_relation_invariance",
+            permutation_variants=2,
+            profile_surface_variants=2,
+            relation_roster_variants=4,
+            relation_scale_variants=3,
+            include_settings_variants=False,
+        )
+    )
+    for example in examples:
+        asset_rows = {row["profile_id"]: row for row in example.labels["asset_rows"]}
+        assert asset_rows["anchor_left"]["attractiveness_score"] > asset_rows["anchor_right"]["attractiveness_score"]
+
+
+def test_phase7_relation_invariance_changes_anchor_rank_context_across_rosters() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase7_relation_invariance",
+            permutation_variants=1,
+            profile_surface_variants=1,
+            relation_roster_variants=4,
+            relation_scale_variants=1,
+            include_settings_variants=False,
+        )
+    )
+    by_scenario: dict[str, set[tuple[int, int]]] = {}
+    for example in examples:
+        asset_rows = {row["profile_id"]: row for row in example.labels["asset_rows"]}
+        ranks = (
+            int(asset_rows["anchor_left"]["attractiveness_rank"]),
+            int(asset_rows["anchor_right"]["attractiveness_rank"]),
+        )
+        by_scenario.setdefault(example.family_variant, set()).add(ranks)
+
+    assert all(len(rank_pairs) >= 3 for rank_pairs in by_scenario.values())
 
 
 def test_rank_context_tradeoff_preserves_focal_pair_across_backgrounds() -> None:

@@ -35,6 +35,9 @@ PROFILE_CONTROL_FAMILIES = {
 }
 
 
+RELATION_CONTROL_FAMILY = "relation_invariance_control"
+
+
 def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float | None:
     denom = float(np.linalg.norm(vec_a) * np.linalg.norm(vec_b))
     if denom == 0.0:
@@ -64,6 +67,19 @@ def _parse_profile_invariance_example_id(example_id: Any) -> tuple[int, int, int
         return None
     try:
         return int(parts[2]), int(parts[3]), int(parts[4])
+    except ValueError:
+        return None
+
+
+def _parse_relation_invariance_example_id(example_id: Any) -> tuple[int, int, int, int, int] | None:
+    text = str(example_id)
+    if not text.startswith("relation_inv_"):
+        return None
+    parts = text.split("_")
+    if len(parts) != 7:
+        return None
+    try:
+        return int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5]), int(parts[6])
     except ValueError:
         return None
 
@@ -110,6 +126,7 @@ class SyntheticMarketRepresentationConfig:
         "rank_context_tradeoff",
         "symbol_permutation_control",
         "profile_invariance_control",
+        "relation_invariance_control",
     )
     regression_targets: tuple[str, ...] = (
         "pct_5m",
@@ -831,6 +848,258 @@ def _snapshot_geometry_metrics(
     }
 
 
+def _collect_relation_invariance_examples(
+    *,
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+) -> list[dict[str, Any]]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for row in asset_rows:
+        if str(row.get("family")) != RELATION_CONTROL_FAMILY:
+            continue
+        parsed = _parse_relation_invariance_example_id(row.get("example_id"))
+        if parsed is None:
+            continue
+        _, style_idx, perm_idx, roster_idx, scale_idx = parsed
+        profile_id = str(row.get("profile_id") or "")
+        if profile_id not in {"anchor_left", "anchor_right"}:
+            continue
+        log_id = int(row["log_id"])
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        example_id = str(row["example_id"])
+        entry = grouped.setdefault(
+            example_id,
+            {
+                "example_id": example_id,
+                "scenario": str(row["family_variant"]),
+                "style_idx": style_idx,
+                "perm_idx": perm_idx,
+                "roster_idx": roster_idx,
+                "scale_idx": scale_idx,
+                "anchors": {},
+                "ranks": {},
+            },
+        )
+        entry["anchors"][profile_id] = acts[key][layer].astype(np.float32)
+        entry["ranks"][profile_id] = int(row.get("attractiveness_rank", 0))
+
+    finalized: list[dict[str, Any]] = []
+    for example_id in sorted(grouped):
+        entry = grouped[example_id]
+        anchors = entry["anchors"]
+        if {"anchor_left", "anchor_right"} - set(anchors):
+            continue
+        left_rank = int(entry["ranks"].get("anchor_left", 0))
+        right_rank = int(entry["ranks"].get("anchor_right", 0))
+        finalized.append(
+            {
+                **entry,
+                "vec": anchors["anchor_left"] - anchors["anchor_right"],
+                "rank_bucket": f"{min(left_rank, right_rank)}v{max(left_rank, right_rank)}",
+            }
+        )
+    return finalized
+
+
+def _relation_invariance_mode_allowed(anchor: dict[str, Any], other: dict[str, Any], *, mode: str) -> bool:
+    if anchor["example_id"] == other["example_id"]:
+        return False
+    if mode == "full":
+        return True
+    if mode == "style_only":
+        return (
+            anchor["perm_idx"] == other["perm_idx"]
+            and anchor["roster_idx"] == other["roster_idx"]
+            and anchor["scale_idx"] == other["scale_idx"]
+            and anchor["style_idx"] != other["style_idx"]
+        )
+    if mode == "layout_only":
+        return (
+            anchor["style_idx"] == other["style_idx"]
+            and anchor["roster_idx"] == other["roster_idx"]
+            and anchor["scale_idx"] == other["scale_idx"]
+            and anchor["perm_idx"] != other["perm_idx"]
+        )
+    if mode == "roster_only":
+        return (
+            anchor["style_idx"] == other["style_idx"]
+            and anchor["perm_idx"] == other["perm_idx"]
+            and anchor["scale_idx"] == other["scale_idx"]
+            and anchor["roster_idx"] != other["roster_idx"]
+        )
+    if mode == "magnitude_only":
+        return (
+            anchor["style_idx"] == other["style_idx"]
+            and anchor["perm_idx"] == other["perm_idx"]
+            and anchor["roster_idx"] == other["roster_idx"]
+            and anchor["scale_idx"] != other["scale_idx"]
+        )
+    raise ValueError(f"unknown relation-invariance mode: {mode}")
+
+
+def _focal_relation_invariance_metrics(examples: list[dict[str, Any]], *, mode: str) -> dict[str, Any]:
+    if len(examples) < 4:
+        return {"error": "insufficient_examples"}
+
+    hits: list[int] = []
+    same_sims: list[float] = []
+    other_sims: list[float] = []
+
+    for entry in examples:
+        best_match: dict[str, Any] | None = None
+        best_sim = None
+        best_same = None
+        best_other = None
+        for other in examples:
+            if not _relation_invariance_mode_allowed(entry, other, mode=mode):
+                continue
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            if best_sim is None or sim > best_sim:
+                best_sim = sim
+                best_match = other
+            if other["scenario"] == entry["scenario"]:
+                if best_same is None or sim > best_same:
+                    best_same = sim
+            else:
+                if best_other is None or sim > best_other:
+                    best_other = sim
+        if best_match is not None:
+            hits.append(int(best_match["scenario"] == entry["scenario"]))
+        if best_same is not None:
+            same_sims.append(best_same)
+        if best_other is not None:
+            other_sims.append(best_other)
+
+    return {
+        "n_examples": len(examples),
+        "nn_accuracy": _mean(hits),
+        "same_relation_cosine_mean": _mean(same_sims),
+        "other_relation_cosine_mean": _mean(other_sims),
+        "relation_margin": None if not same_sims or not other_sims else float(np.mean(same_sims) - np.mean(other_sims)),
+    }
+
+
+def _relation_over_rank_control_metrics(examples: list[dict[str, Any]]) -> dict[str, Any]:
+    if len(examples) < 4:
+        return {"error": "insufficient_examples"}
+
+    hits: list[int] = []
+    same_sims: list[float] = []
+    rank_negative_sims: list[float] = []
+
+    for entry in examples:
+        positive_best = None
+        negative_best = None
+        overall_best_label: str | None = None
+        overall_best_sim = None
+        for other in examples:
+            if entry["example_id"] == other["example_id"]:
+                continue
+            if not (
+                entry["style_idx"] == other["style_idx"]
+                and entry["perm_idx"] == other["perm_idx"]
+                and entry["scale_idx"] == other["scale_idx"]
+            ):
+                continue
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            label: str | None = None
+            if entry["scenario"] == other["scenario"] and entry["roster_idx"] != other["roster_idx"]:
+                label = "same_relation"
+                if positive_best is None or sim > positive_best:
+                    positive_best = sim
+            elif entry["scenario"] != other["scenario"] and entry["rank_bucket"] == other["rank_bucket"]:
+                label = "same_rank"
+                if negative_best is None or sim > negative_best:
+                    negative_best = sim
+            if label is not None and (overall_best_sim is None or sim > overall_best_sim):
+                overall_best_sim = sim
+                overall_best_label = label
+
+        if positive_best is not None:
+            same_sims.append(positive_best)
+        if negative_best is not None:
+            rank_negative_sims.append(negative_best)
+        if overall_best_label is not None:
+            hits.append(int(overall_best_label == "same_relation"))
+
+    return {
+        "n_examples": len(examples),
+        "nn_accuracy": _mean(hits),
+        "same_relation_cosine_mean": _mean(same_sims),
+        "same_rank_other_relation_cosine_mean": _mean(rank_negative_sims),
+        "relation_over_rank_margin": None
+        if not same_sims or not rank_negative_sims
+        else float(np.mean(same_sims) - np.mean(rank_negative_sims)),
+    }
+
+
+def _relation_over_magnitude_control_metrics(examples: list[dict[str, Any]]) -> dict[str, Any]:
+    if len(examples) < 4:
+        return {"error": "insufficient_examples"}
+
+    hits: list[int] = []
+    same_sims: list[float] = []
+    scale_negative_sims: list[float] = []
+
+    for entry in examples:
+        positive_best = None
+        negative_best = None
+        overall_best_label: str | None = None
+        overall_best_sim = None
+        for other in examples:
+            if entry["example_id"] == other["example_id"]:
+                continue
+            if not (
+                entry["style_idx"] == other["style_idx"]
+                and entry["perm_idx"] == other["perm_idx"]
+                and entry["roster_idx"] == other["roster_idx"]
+            ):
+                continue
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            label: str | None = None
+            if entry["scenario"] == other["scenario"] and entry["scale_idx"] != other["scale_idx"]:
+                label = "same_relation"
+                if positive_best is None or sim > positive_best:
+                    positive_best = sim
+            elif entry["scenario"] != other["scenario"] and entry["scale_idx"] == other["scale_idx"]:
+                label = "same_scale"
+                if negative_best is None or sim > negative_best:
+                    negative_best = sim
+            if label is not None and (overall_best_sim is None or sim > overall_best_sim):
+                overall_best_sim = sim
+                overall_best_label = label
+
+        if positive_best is not None:
+            same_sims.append(positive_best)
+        if negative_best is not None:
+            scale_negative_sims.append(negative_best)
+        if overall_best_label is not None:
+            hits.append(int(overall_best_label == "same_relation"))
+
+    return {
+        "n_examples": len(examples),
+        "nn_accuracy": _mean(hits),
+        "same_relation_cosine_mean": _mean(same_sims),
+        "same_scale_other_relation_cosine_mean": _mean(scale_negative_sims),
+        "relation_over_scale_margin": None
+        if not same_sims or not scale_negative_sims
+        else float(np.mean(same_sims) - np.mean(scale_negative_sims)),
+    }
+
+
 def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     for scenario, per_row_key in results.items():
@@ -907,7 +1176,12 @@ def _summarize_mode_metric(
     summary: dict[str, Any] = {}
     for scenario, per_row_key in results.items():
         scenario_summary: dict[str, Any] = {}
-        for mode_key in ("full", "style_only", "layout_only"):
+        mode_keys: list[str] = []
+        for per_layer in per_row_key.values():
+            for key in per_layer:
+                if key not in mode_keys:
+                    mode_keys.append(key)
+        for mode_key in mode_keys:
             best: tuple[str, float, int, float | None] | None = None
             for row_key, per_layer in per_row_key.items():
                 for metrics in per_layer.get(mode_key, []):
@@ -929,6 +1203,37 @@ def _summarize_mode_metric(
                 "nn_accuracy": best[3],
             }
         summary[scenario] = scenario_summary
+    return summary
+
+
+def _summarize_best_metric(
+    results: dict[str, Any],
+    *,
+    margin_key: str,
+    acc_key: str,
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for scenario, per_row_key in results.items():
+        best: tuple[str, float, int, float | None] | None = None
+        for row_key, per_layer in per_row_key.items():
+            for metrics in per_layer:
+                score = metrics.get(margin_key)
+                if score is None:
+                    continue
+                acc = metrics.get(acc_key)
+                if best is None or float(score) > best[1]:
+                    best = (
+                        row_key,
+                        float(score),
+                        int(metrics["layer"]),
+                        None if acc is None else float(acc),
+                    )
+        summary[scenario] = None if best is None else {
+            "representation": best[0],
+            "margin": best[1],
+            "layer": best[2],
+            "nn_accuracy": best[3],
+        }
     return summary
 
 
@@ -988,6 +1293,9 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "profile_invariance_decomposition": {},
         "pairwise_relation_invariance": {},
         "snapshot_geometry": {},
+        "relation_invariance": {},
+        "relation_rank_control": {},
+        "relation_scale_control": {},
     }
 
     for target in config.regression_targets:
@@ -1149,6 +1457,55 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
                 analysis["pairwise_relation_invariance"][scenario][row_key] = relation_by_scenario_and_mode[scenario]
                 analysis["snapshot_geometry"][scenario][row_key] = geometry_by_scenario_and_mode[scenario]
 
+    relation_rows = [row for row in asset_rows if str(row.get("family")) == RELATION_CONTROL_FAMILY]
+    if relation_rows:
+        relation_scenarios = sorted({str(row["family_variant"]) for row in relation_rows})
+        for scenario in relation_scenarios:
+            analysis["relation_invariance"].setdefault(scenario, {})
+            analysis["relation_rank_control"].setdefault(scenario, {})
+            analysis["relation_scale_control"].setdefault(scenario, {})
+
+        for row_key in config.row_keys:
+            relation_by_scenario_and_mode: dict[str, dict[str, list[dict[str, Any]]]] = {
+                scenario: {
+                    "full": [],
+                    "style_only": [],
+                    "layout_only": [],
+                    "roster_only": [],
+                    "magnitude_only": [],
+                }
+                for scenario in relation_scenarios
+            }
+            rank_by_scenario: dict[str, list[dict[str, Any]]] = {scenario: [] for scenario in relation_scenarios}
+            scale_by_scenario: dict[str, list[dict[str, Any]]] = {scenario: [] for scenario in relation_scenarios}
+
+            for layer in layers:
+                examples = _collect_relation_invariance_examples(
+                    asset_rows=relation_rows,
+                    activation_cache=activation_cache,
+                    row_key=row_key,
+                    layer=layer,
+                )
+                for scenario in relation_scenarios:
+                    scenario_examples = [example for example in examples if example["scenario"] == scenario]
+                    for mode_key in ("full", "style_only", "layout_only", "roster_only", "magnitude_only"):
+                        metrics = _focal_relation_invariance_metrics(scenario_examples, mode=mode_key)
+                        metrics["layer"] = layer
+                        relation_by_scenario_and_mode[scenario][mode_key].append(metrics)
+
+                    rank_metrics = _relation_over_rank_control_metrics(scenario_examples)
+                    rank_metrics["layer"] = layer
+                    rank_by_scenario[scenario].append(rank_metrics)
+
+                    scale_metrics = _relation_over_magnitude_control_metrics(scenario_examples)
+                    scale_metrics["layer"] = layer
+                    scale_by_scenario[scenario].append(scale_metrics)
+
+            for scenario in relation_scenarios:
+                analysis["relation_invariance"][scenario][row_key] = relation_by_scenario_and_mode[scenario]
+                analysis["relation_rank_control"][scenario][row_key] = rank_by_scenario[scenario]
+                analysis["relation_scale_control"][scenario][row_key] = scale_by_scenario[scenario]
+
     analysis["summary"] = {
         "primitive_regression": _summarize_regression(analysis["primitive_regression"]),
         "focal_pairwise": _summarize_pairwise(analysis["focal_pairwise"]),
@@ -1165,6 +1522,21 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "snapshot_geometry": _summarize_mode_metric(
             analysis["snapshot_geometry"],
             margin_key="geometry_margin",
+            acc_key="nn_accuracy",
+        ),
+        "relation_invariance": _summarize_mode_metric(
+            analysis["relation_invariance"],
+            margin_key="relation_margin",
+            acc_key="nn_accuracy",
+        ),
+        "relation_rank_control": _summarize_best_metric(
+            analysis["relation_rank_control"],
+            margin_key="relation_over_rank_margin",
+            acc_key="nn_accuracy",
+        ),
+        "relation_scale_control": _summarize_best_metric(
+            analysis["relation_scale_control"],
+            margin_key="relation_over_scale_margin",
             acc_key="nn_accuracy",
         ),
     }

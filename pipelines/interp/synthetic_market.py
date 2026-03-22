@@ -73,6 +73,8 @@ class SyntheticMarketConfig:
     representation_background_variants: int = 3
     permutation_variants: int = 6
     profile_surface_variants: int = 4
+    relation_roster_variants: int = 4
+    relation_scale_variants: int = 3
     include_settings_variants: bool = True
     dataset_preset: str = "phase1"
     scalar_background_variants: int = 1
@@ -217,6 +219,19 @@ PROFILE_INVARIANCE_SURFACE_STYLES: list[dict[str, Any]] = [
     {"name": "compact", "symbols": ("North", "South", "East", "West")},
     {"name": "analyst", "symbols": ("One", "Two", "Three", "Four")},
 ]
+
+
+RELATION_INVARIANCE_SURFACE_STYLES: list[dict[str, Any]] = [
+    {"name": "canonical", "symbols": ("A", "B", "C", "D")},
+    {"name": "analyst", "symbols": ("North", "South", "East", "West")},
+]
+
+
+RELATION_INVARIANCE_SCALE_FACTORS: tuple[tuple[str, float], ...] = (
+    ("compressed", 0.82),
+    ("baseline", 1.00),
+    ("expanded", 1.18),
+)
 
 
 SCALAR_BACKGROUND_ROSTERS: list[tuple[str, str, str]] = [
@@ -506,6 +521,47 @@ def _override_display(asset: SyntheticAsset, *, symbol: str | None = None, profi
         payload["symbol"] = symbol
     if profile_id is not None:
         payload["profile_id"] = profile_id
+    return SyntheticAsset(**payload)
+
+
+def _make_custom_asset(
+    symbol: str,
+    *,
+    archetype: str,
+    pct_5m: float,
+    pct_1h: float,
+    net_flow_5m: float,
+    vol_5m: float,
+    vol_1h: float,
+    unique_traders_5m: int,
+    top20_holder_pct: float,
+    age_bucket: str,
+    profile_id: str | None = None,
+) -> SyntheticAsset:
+    return SyntheticAsset(
+        symbol=symbol,
+        archetype=archetype,
+        pct_5m=round(pct_5m, 2),
+        pct_1h=round(pct_1h, 2),
+        net_flow_5m=round(net_flow_5m, 3),
+        vol_5m=round(vol_5m, 3),
+        vol_1h=round(vol_1h, 3),
+        unique_traders_5m=max(1, int(unique_traders_5m)),
+        top20_holder_pct=round(top20_holder_pct, 2),
+        age_bucket=age_bucket,
+        profile_id=profile_id,
+    )
+
+
+def _scale_market_magnitude(asset: SyntheticAsset, factor: float) -> SyntheticAsset:
+    payload = asdict(asset)
+    payload["pct_5m"] = round(payload["pct_5m"] * factor, 2)
+    payload["pct_1h"] = round(payload["pct_1h"] * factor, 2)
+    payload["net_flow_5m"] = round(payload["net_flow_5m"] * factor, 3)
+    payload["vol_5m"] = round(_clamp(payload["vol_5m"] * factor, 0.4, 12.0), 3)
+    payload["vol_1h"] = round(_clamp(payload["vol_1h"] * factor, 1.0, 45.0), 3)
+    payload["unique_traders_5m"] = max(1, int(round(payload["unique_traders_5m"] * factor)))
+    payload["top20_holder_pct"] = round(_clamp(35.0 + factor * (payload["top20_holder_pct"] - 35.0), 15.0, 85.0), 2)
     return SyntheticAsset(**payload)
 
 
@@ -1259,7 +1315,308 @@ def generate_profile_invariance_controls(config: SyntheticMarketConfig) -> list[
                         include_settings_variants=False,
                         surface_style=style_name,
                     )
-                )
+                    )
+    return examples
+
+
+def generate_relation_invariance_controls(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    layouts = SYMBOL_PERMUTATION_LAYOUTS[: max(2, min(config.permutation_variants, len(SYMBOL_PERMUTATION_LAYOUTS)))]
+    surface_styles = RELATION_INVARIANCE_SURFACE_STYLES[
+        : max(2, min(config.profile_surface_variants, len(RELATION_INVARIANCE_SURFACE_STYLES)))
+    ]
+    scale_specs = RELATION_INVARIANCE_SCALE_FACTORS[
+        : max(2, min(config.relation_scale_variants, len(RELATION_INVARIANCE_SCALE_FACTORS)))
+    ]
+
+    base_scenarios: list[tuple[str, list[SyntheticAsset]]] = [
+        (
+            "momentum_edge_near_tie",
+            [
+                _make_custom_asset(
+                    "A",
+                    archetype="momentum_edge_anchor",
+                    pct_5m=5.4,
+                    pct_1h=10.5,
+                    net_flow_5m=1.20,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=18,
+                    top20_holder_pct=32.0,
+                    age_bucket="mid",
+                    profile_id="anchor_left",
+                ),
+                _make_custom_asset(
+                    "B",
+                    archetype="flow_counterpart",
+                    pct_5m=4.6,
+                    pct_1h=11.0,
+                    net_flow_5m=1.15,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=18,
+                    top20_holder_pct=32.0,
+                    age_bucket="mid",
+                    profile_id="anchor_right",
+                ),
+            ],
+        ),
+        (
+            "flow_edge_near_tie",
+            [
+                _make_custom_asset(
+                    "A",
+                    archetype="flow_edge_anchor",
+                    pct_5m=4.4,
+                    pct_1h=10.5,
+                    net_flow_5m=1.20,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=18,
+                    top20_holder_pct=32.0,
+                    age_bucket="mid",
+                    profile_id="anchor_left",
+                ),
+                _make_custom_asset(
+                    "B",
+                    archetype="momentum_counterpart",
+                    pct_5m=5.4,
+                    pct_1h=11.0,
+                    net_flow_5m=1.10,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=18,
+                    top20_holder_pct=32.0,
+                    age_bucket="mid",
+                    profile_id="anchor_right",
+                ),
+            ],
+        ),
+        (
+            "broad_participation_edge",
+            [
+                _make_custom_asset(
+                    "A",
+                    archetype="broad_holder_anchor",
+                    pct_5m=4.6,
+                    pct_1h=9.8,
+                    net_flow_5m=1.02,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=22,
+                    top20_holder_pct=22.0,
+                    age_bucket="mid",
+                    profile_id="anchor_left",
+                ),
+                _make_custom_asset(
+                    "B",
+                    archetype="crowded_participation_counterpart",
+                    pct_5m=4.6,
+                    pct_1h=9.8,
+                    net_flow_5m=1.02,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=24,
+                    top20_holder_pct=36.0,
+                    age_bucket="mid",
+                    profile_id="anchor_right",
+                ),
+            ],
+        ),
+        (
+            "concentration_penalty_edge",
+            [
+                _make_custom_asset(
+                    "A",
+                    archetype="concentration_penalty_anchor",
+                    pct_5m=4.5,
+                    pct_1h=9.8,
+                    net_flow_5m=1.00,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=22,
+                    top20_holder_pct=22.0,
+                    age_bucket="mid",
+                    profile_id="anchor_left",
+                ),
+                _make_custom_asset(
+                    "B",
+                    archetype="crowded_momentum_counterpart",
+                    pct_5m=4.7,
+                    pct_1h=9.8,
+                    net_flow_5m=1.00,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=24,
+                    top20_holder_pct=36.0,
+                    age_bucket="mid",
+                    profile_id="anchor_right",
+                ),
+            ],
+        ),
+    ]
+
+    roster_variants: list[tuple[str, list[SyntheticAsset]]] = [
+        (
+            "weak_distractors",
+            [
+                _make_custom_asset(
+                    "C",
+                    archetype="weak_distractor",
+                    pct_5m=2.0,
+                    pct_1h=4.0,
+                    net_flow_5m=0.40,
+                    vol_5m=3.0,
+                    vol_1h=12.0,
+                    unique_traders_5m=10,
+                    top20_holder_pct=38.0,
+                    age_bucket="mid",
+                    profile_id="context_alpha",
+                ),
+                _make_custom_asset(
+                    "D",
+                    archetype="cold_distractor",
+                    pct_5m=1.0,
+                    pct_1h=2.0,
+                    net_flow_5m=0.20,
+                    vol_5m=2.2,
+                    vol_1h=8.0,
+                    unique_traders_5m=8,
+                    top20_holder_pct=42.0,
+                    age_bucket="mid",
+                    profile_id="context_beta",
+                ),
+            ],
+        ),
+        (
+            "lead_distractor",
+            [
+                _make_custom_asset(
+                    "C",
+                    archetype="lead_distractor",
+                    pct_5m=6.5,
+                    pct_1h=12.0,
+                    net_flow_5m=1.40,
+                    vol_5m=5.6,
+                    vol_1h=22.0,
+                    unique_traders_5m=22,
+                    top20_holder_pct=28.0,
+                    age_bucket="mid",
+                    profile_id="context_alpha",
+                ),
+                _make_custom_asset(
+                    "D",
+                    archetype="cold_distractor",
+                    pct_5m=1.2,
+                    pct_1h=2.5,
+                    net_flow_5m=0.20,
+                    vol_5m=2.3,
+                    vol_1h=8.5,
+                    unique_traders_5m=8,
+                    top20_holder_pct=42.0,
+                    age_bucket="mid",
+                    profile_id="context_beta",
+                ),
+            ],
+        ),
+        (
+            "double_lead_distractors",
+            [
+                _make_custom_asset(
+                    "C",
+                    archetype="lead_distractor",
+                    pct_5m=6.5,
+                    pct_1h=12.0,
+                    net_flow_5m=1.40,
+                    vol_5m=5.6,
+                    vol_1h=22.0,
+                    unique_traders_5m=22,
+                    top20_holder_pct=28.0,
+                    age_bucket="mid",
+                    profile_id="context_alpha",
+                ),
+                _make_custom_asset(
+                    "D",
+                    archetype="secondary_lead_distractor",
+                    pct_5m=5.9,
+                    pct_1h=11.5,
+                    net_flow_5m=1.30,
+                    vol_5m=5.3,
+                    vol_1h=21.0,
+                    unique_traders_5m=20,
+                    top20_holder_pct=30.0,
+                    age_bucket="mid",
+                    profile_id="context_beta",
+                ),
+            ],
+        ),
+        (
+            "interleaved_distractor",
+            [
+                _make_custom_asset(
+                    "C",
+                    archetype="interleaved_distractor",
+                    pct_5m=5.0,
+                    pct_1h=10.0,
+                    net_flow_5m=1.18,
+                    vol_5m=5.0,
+                    vol_1h=20.0,
+                    unique_traders_5m=18,
+                    top20_holder_pct=31.0,
+                    age_bucket="mid",
+                    profile_id="context_alpha",
+                ),
+                _make_custom_asset(
+                    "D",
+                    archetype="cold_distractor",
+                    pct_5m=1.2,
+                    pct_1h=2.5,
+                    net_flow_5m=0.20,
+                    vol_5m=2.3,
+                    vol_1h=8.5,
+                    unique_traders_5m=8,
+                    top20_holder_pct=42.0,
+                    age_bucket="mid",
+                    profile_id="context_beta",
+                ),
+            ],
+        ),
+    ][: max(2, min(config.relation_roster_variants, 4))]
+
+    for scenario_idx, (variant, anchors) in enumerate(base_scenarios):
+        for style_idx, style in enumerate(surface_styles):
+            symbols = tuple(str(symbol) for symbol in style["symbols"])
+            style_name = str(style["name"])
+            for perm_idx, layout in enumerate(layouts):
+                order = tuple(int(idx) for idx in layout["order"])
+                for roster_idx, (_, roster_assets) in enumerate(roster_variants):
+                    for scale_idx, (_, scale_factor) in enumerate(scale_specs):
+                        scaled_assets = [
+                            _scale_market_magnitude(asset, scale_factor)
+                            for asset in [*anchors, *roster_assets]
+                        ]
+                        permuted_assets: list[SyntheticAsset] = []
+                        for row_index, asset_index in enumerate(order):
+                            permuted_assets.append(
+                                _override_display(
+                                    scaled_assets[asset_index],
+                                    symbol=symbols[row_index],
+                                )
+                            )
+                        example_id = (
+                            f"relation_inv_{scenario_idx:02d}_{style_idx:02d}_{perm_idx:02d}_"
+                            f"{roster_idx:02d}_{scale_idx:02d}"
+                        )
+                        examples.extend(
+                            _apply_context_variants(
+                                example_id,
+                                family="relation_invariance_control",
+                                family_variant=variant,
+                                base_assets=permuted_assets,
+                                include_settings_variants=False,
+                                surface_style=style_name,
+                            )
+                        )
     return examples
 
 
@@ -1305,6 +1662,8 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         return generate_symbol_permutation_controls(config)
     if config.dataset_preset == "phase6_profile_invariance":
         return generate_profile_invariance_controls(config)
+    if config.dataset_preset == "phase7_relation_invariance":
+        return generate_relation_invariance_controls(config)
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -1321,6 +1680,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase4_market_representation": 2_147_300_000,
         "phase5_symbol_permutation": 2_146_900_000,
         "phase6_profile_invariance": 2_146_950_000,
+        "phase7_relation_invariance": 2_147_000_000,
     }.get(dataset_preset, 2_140_000_000)
 
 
