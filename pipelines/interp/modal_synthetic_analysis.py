@@ -270,6 +270,42 @@ def run_synthetic_market_representation_analysis_modal(
     return result
 
 
+@app.function(
+    volumes={"/data": synthetic_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=8,
+    memory=32 * 1024,
+    secrets=[neon_secret],
+)
+def run_synthetic_market_transform_analysis_modal(
+    phase_name: str = "phase11_set_geometry_risk_ladder_v1",
+    analysis_tag: str = "",
+    num_workers: int = 8,
+) -> dict:
+    from pathlib import Path
+
+    from pipelines.interp.synthetic_market_transform_analysis import (
+        SyntheticMarketTransformConfig,
+        run_synthetic_market_transform_analysis,
+    )
+
+    config = SyntheticMarketTransformConfig(
+        structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
+        phase11_results_path=Path(f"/data/analysis_results/synthetic_market_representation/{phase_name}/results.json"),
+        output_dir=(
+            Path(f"/data/analysis_results/synthetic_market_transform/{phase_name}") / analysis_tag
+            if analysis_tag
+            else Path(f"/data/analysis_results/synthetic_market_transform/{phase_name}")
+        ),
+        phase_name=phase_name,
+        num_workers=num_workers,
+    )
+    result = run_synthetic_market_transform_analysis(config)
+    synthetic_volume.commit()
+    return result
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "synthetic-structure",
@@ -335,6 +371,13 @@ def main(
             phase_name=phase_name,
             analysis_tag=analysis_tag,
             layers=layers,
+            num_workers=num_workers,
+        )
+        print(result)
+    elif mode == "synthetic-transform":
+        result = run_synthetic_market_transform_analysis_modal.remote(
+            phase_name=phase_name,
+            analysis_tag=analysis_tag,
             num_workers=num_workers,
         )
         print(result)
