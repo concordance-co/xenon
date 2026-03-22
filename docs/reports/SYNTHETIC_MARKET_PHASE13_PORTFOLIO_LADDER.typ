@@ -101,6 +101,90 @@ Portfolio is a useful second family because it is qualitatively different. In th
 That should create an asset-relative overlay. Unlike risk, this context is not supposed to apply the same penalty to every asset.
 
 
+= Experimental Design
+
+#align(center)[#image("../../data/report_assets/synthetic_market_phase13_portfolio_ladder/experiment_design.png", width: 100%)]
+#text(size: 8pt, fill: rgb("#888"))[
+Phase 13 is built from repeated variants of the same 4-asset markets. The figure shows the dataset recipe, what the portfolio ladder means, and the actual question being tested.
+]
+
+#v(0.4em)
+
+The easiest way to read this phase is:
+
+- start with a base 4-asset market
+- render many nuisance variants of the same market
+- place each variant into six contexts: `market_only`, then `portfolio_1..portfolio_5`
+- ask whether the model keeps the same market coordinates and how those coordinates change across the ladder
+
+Concretely, the dataset contains:
+
+- `4` latent market scenarios
+- `2` surface styles
+- `4` row / symbol permutations
+- `3` global scale variants
+- `6` contexts per base market
+
+That yields:
+
+- `576` prompts total
+- `2,304` asset rows
+- `6,912` pairwise asset comparisons
+
+
+= What “Portfolio Ladder” Means
+
+In this report, a “ladder” just means an ordered sequence of matched prompt variants. The market stays the same, but the contextual pressure changes step by step.
+
+For Phase 13:
+
+- `market_only` has no portfolio overlay
+- `portfolio_1` introduces a small existing position and plenty of free ETH
+- `portfolio_5` has the largest existing position, the least free ETH, and the strongest anti-concentration instruction
+
+So the ladder is not a time series. It is a controlled context sweep over the same base market.
+
+#table(
+  columns: (1.1fr, 1.2fr, 1.3fr, 2.8fr),
+  align: (left, left, left, left),
+  table.hline(stroke: 1pt),
+  table.header([*Context*], [*Available ETH*], [*Existing position*], [*Instructional effect*]),
+  table.hline(stroke: 0.5pt),
+  [`market_only`], [`2.80`], [`none`], [No portfolio-specific pressure.],
+  [`portfolio_1`], [`2.40`], [`8%`], [Light pressure against adding more concentration.],
+  [`portfolio_2`], [`2.05`], [`16%`], [Moderate diversification pressure begins.],
+  [`portfolio_3`], [`1.70`], [`24%`], [The held asset becomes more expensive to add to.],
+  [`portfolio_4`], [`1.35`], [`34%`], [Concentration avoidance becomes strong.],
+  [`portfolio_5`], [`1.00`], [`45%`], [Strongest reallocation pressure toward alternatives.],
+)
+
+
+= What “4-Asset Market Geometry” Means
+
+#align(center)[#image("../../data/report_assets/synthetic_market_phase13_portfolio_ladder/geometry_scenarios.png", width: 95%)]
+#text(size: 8pt, fill: rgb("#888"))[
+The four latent market-shape families used in the dataset. Each point is one asset. Dashed edges mark the pairwise distances that collectively define the whole-market geometry.
+]
+
+#v(0.4em)
+
+The key object here is not a single asset row and not a single pairwise comparison. It is the #emph[shape of the 4-asset market].
+
+That means:
+
+- four assets are placed at known latent coordinates
+- those coordinates define six pairwise distances
+- the distances together determine the market’s overall shape
+
+Why this matters:
+
+- two markets can have the same winner but different shapes
+- two markets can have the same rank order but different spacing or clustering
+- a real set-level representation should preserve more than “which token looks best”
+
+So when the report says “shared market frame,” it means a reusable coordinate system that organizes all four assets together.
+
+
 = The Shared Market Frame Still Survives the Full Ladder
 
 #align(center)[#image("../../data/report_assets/synthetic_market_phase13_portfolio_ladder/coordinate_transfer.png", width: 100%)]
@@ -280,6 +364,8 @@ This figure anchors what “portfolio deformation” means in the report. The tr
   table.header([*Term*], [*Meaning*]),
   table.hline(stroke: 0.5pt),
   [`shared market frame`], [The recovered 2D coordinate system that organizes all four assets before context-specific reweighting.],
+  [`4-asset geometry`], [The full relative placement of all four assets at once. In practice this means the coordinate layout or, equivalently, the pattern of six pairwise distances between assets.],
+  [`portfolio ladder`], [A matched sequence of context variants where the base market is fixed and the portfolio pressure is stepped from `market_only` to `portfolio_5`.],
   [`coordinate transfer`], [How well a probe trained in one context can recover the same latent coordinate in another context. High `R²` means the base frame survived.],
   [`realignment margin`], [How much closer the recovered geometry is to the context-adjusted score geometry than to the raw latent layout. Positive margins mean the context is actively reweighting the market.],
   [`identity`], [No transform at all. If identity already works, the two contexts share almost the same geometry in the decoded frame.],

@@ -7,6 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pyarrow.parquet as pq
+from matplotlib.patches import Rectangle
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -26,6 +27,9 @@ TRANSFORM_RESULTS_PATH = Path(
 )
 EXPORT_ASSETS_PATH = Path(
     "data/interp_exports/synthetic_market_phase13_set_geometry_portfolio_ladder/synthetic_market_asset_records.parquet"
+)
+SUMMARY_PATH = Path(
+    "data/interp_exports/synthetic_market_phase13_set_geometry_portfolio_ladder/synthetic_market_summary.json"
 )
 OUTPUT_DIR = Path("data/report_assets/synthetic_market_phase13_portfolio_ladder")
 
@@ -68,6 +72,10 @@ def _load_json(path: Path) -> dict:
     return json.loads(_resolve_json_path(path).read_text())
 
 
+def _load_summary() -> dict:
+    return json.loads(SUMMARY_PATH.read_text())
+
+
 def _setup_axes(ax: plt.Axes, *, ygrid: bool = True) -> None:
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -101,6 +109,166 @@ def _pair_label(pair_key: str) -> str:
         "portfolio_5": "P5",
     }
     return f"{short.get(left, left)}→{short.get(right, right)}"
+
+
+def experiment_design_chart(summary: dict) -> Path:
+    fig = plt.figure(figsize=(13.8, 7.2), dpi=180)
+    fig.patch.set_facecolor("white")
+    gs = fig.add_gridspec(2, 3, height_ratios=[1.05, 1.0], hspace=0.32, wspace=0.28)
+
+    ax_data = fig.add_subplot(gs[0, 0])
+    ax_data.axis("off")
+    ax_data.text(0.0, 1.04, "What data was used", fontsize=13, fontweight="bold", color=CHARCOAL, transform=ax_data.transAxes)
+    ax_data.text(
+        0.0,
+        0.92,
+        "The dataset is built from repeated versions of the same 4-asset markets, not from one-off prompts.",
+        fontsize=9.5,
+        color=SLATE,
+        transform=ax_data.transAxes,
+        wrap=True,
+    )
+    data_lines = [
+        "4 latent market scenarios",
+        "2 surface styles",
+        "4 row/symbol permutations",
+        "3 global magnitude scales",
+        "6 portfolio contexts",
+    ]
+    y = 0.76
+    for idx, line in enumerate(data_lines, start=1):
+        ax_data.text(0.02, y, f"{idx}.", fontsize=10, weight="bold", color=NAVY, transform=ax_data.transAxes)
+        ax_data.text(0.10, y, line, fontsize=10, color=CHARCOAL, transform=ax_data.transAxes)
+        y -= 0.10
+    ax_data.text(
+        0.02,
+        0.14,
+        f"Total prompts: {summary['n_examples']}\nAsset rows: {summary['n_asset_rows']}\nPairwise rows: {summary['n_pairwise_rows']}",
+        fontsize=10,
+        color=CHARCOAL,
+        transform=ax_data.transAxes,
+        bbox=dict(boxstyle="round,pad=0.45", fc="#F7F4EF", ec=GRID),
+    )
+
+    ax_ladder = fig.add_subplot(gs[0, 1:])
+    _setup_axes(ax_ladder, ygrid=False)
+    levels = np.arange(6)
+    labels = ["Market", "P1", "P2", "P3", "P4", "P5"]
+    eth_left = np.array([2.80, 2.40, 2.05, 1.70, 1.35, 1.00])
+    held_share = np.array([0, 8, 16, 24, 34, 45])
+    ax_ladder.bar(levels - 0.18, eth_left, width=0.36, color=TEAL, label="Available ETH")
+    ax_ladder.bar(levels + 0.18, held_share / 10.0, width=0.36, color=ROSE, label="Existing holding share / 10")
+    for x, eth, share in zip(levels, eth_left, held_share, strict=True):
+        ax_ladder.text(x - 0.18, eth + 0.08, f"{eth:.2f}", ha="center", va="bottom", fontsize=8, color=CHARCOAL)
+        ax_ladder.text(x + 0.18, share / 10.0 + 0.08, f"{share}%", ha="center", va="bottom", fontsize=8, color=CHARCOAL)
+    ax_ladder.set_xticks(levels, labels)
+    ax_ladder.set_ylim(0, 5.5)
+    ax_ladder.set_ylabel("Context pressure")
+    ax_ladder.set_title(
+        "What a portfolio ladder means in this dataset",
+        loc="left",
+        fontsize=13,
+        fontweight="bold",
+        color=CHARCOAL,
+    )
+    ax_ladder.text(
+        0.01,
+        0.95,
+        "Across P1→P5, the prompt gives the agent less free ETH, a larger existing position in one asset,\nand a stronger instruction to avoid adding concentration.",
+        fontsize=9.2,
+        color=SLATE,
+        transform=ax_ladder.transAxes,
+        va="top",
+    )
+    ax_ladder.legend(frameon=False, loc="upper right")
+
+    ax_goal = fig.add_subplot(gs[1, :])
+    ax_goal.axis("off")
+    ax_goal.text(0.0, 1.02, "What is being tested", fontsize=13, fontweight="bold", color=CHARCOAL, transform=ax_goal.transAxes)
+    boxes = [
+        ("Base market", "Recover the same latent 4-asset coordinates across contexts."),
+        ("Early state", "Ask whether row_mean keeps the shared market frame intact."),
+        ("Late state", "Ask whether row_eos moves that frame toward portfolio-adjusted scores."),
+        ("Transforms", "Fit step-to-step maps and test whether the full ladder composes cleanly."),
+    ]
+    x_positions = [0.00, 0.26, 0.52, 0.78]
+    for x0, (title, body) in zip(x_positions, boxes, strict=True):
+        rect = Rectangle((x0, 0.18), 0.20, 0.56, facecolor="#FAF7F2", edgecolor=GRID, linewidth=1.2, transform=ax_goal.transAxes)
+        ax_goal.add_patch(rect)
+        ax_goal.text(x0 + 0.015, 0.66, title, fontsize=10.5, fontweight="bold", color=CHARCOAL, transform=ax_goal.transAxes)
+        ax_goal.text(x0 + 0.015, 0.55, body, fontsize=9.1, color=SLATE, transform=ax_goal.transAxes, va="top", wrap=True)
+        if x0 < x_positions[-1]:
+            ax_goal.annotate("", xy=(x0 + 0.24, 0.46), xytext=(x0 + 0.205, 0.46), arrowprops=dict(arrowstyle="->", lw=1.5, color=GOLD), xycoords=ax_goal.transAxes)
+
+    fig.suptitle(
+        "Phase 13 dataset design and experimental target",
+        x=0.02,
+        y=0.99,
+        ha="left",
+        fontsize=15,
+        fontweight="bold",
+        color=CHARCOAL,
+    )
+    path = OUTPUT_DIR / "experiment_design.png"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def geometry_scenarios_chart() -> Path:
+    scenario_order = ["even_ladder", "top_pair_cluster", "dominant_outlier", "middle_gap"]
+    fig, axes = plt.subplots(2, 2, figsize=(10.8, 9.2), dpi=180)
+    fig.patch.set_facecolor("white")
+    all_x = [coord[0] for coords in SET_GEOMETRY_COORDS_BY_SCENARIO.values() for coord in coords.values()]
+    all_y = [coord[1] for coords in SET_GEOMETRY_COORDS_BY_SCENARIO.values() for coord in coords.values()]
+    xlim = (min(all_x) - 0.25, max(all_x) + 0.25)
+    ylim = (min(all_y) - 0.18, max(all_y) + 0.18)
+    asset_name = {
+        "geo_alpha": "Alpha",
+        "geo_beta": "Beta",
+        "geo_gamma": "Gamma",
+        "geo_delta": "Delta",
+    }
+
+    for ax, scenario in zip(axes.flat, scenario_order, strict=True):
+        _setup_axes(ax, ygrid=False)
+        ax.grid(color=GRID, linewidth=0.7, alpha=0.45)
+        coords = SET_GEOMETRY_COORDS_BY_SCENARIO[scenario]
+        points = list(coords.items())
+        for i, (_, coord_i) in enumerate(points):
+            for j, (_, coord_j) in enumerate(points):
+                if j <= i:
+                    continue
+                ax.plot([coord_i[0], coord_j[0]], [coord_i[1], coord_j[1]], color=GRID, linewidth=0.8, linestyle="--", alpha=0.8)
+        for profile_id, coord in points:
+            ax.scatter(coord[0], coord[1], s=84, color=ASSET_COLORS[profile_id], edgecolors="white", linewidth=1.0, zorder=3)
+            ax.text(coord[0] + 0.03, coord[1] + 0.025, asset_name[profile_id], fontsize=8.8, color=CHARCOAL)
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
+        ax.set_xlabel("Latent x")
+        ax.set_ylabel("Latent y")
+        ax.set_title(scenario.replace("_", " ").title(), loc="left", fontsize=11.8, fontweight="bold", color=CHARCOAL)
+
+    fig.suptitle(
+        "The 4-asset geometry object: same assets, different whole-market shapes",
+        x=0.02,
+        y=0.99,
+        ha="left",
+        fontsize=15,
+        fontweight="bold",
+        color=CHARCOAL,
+    )
+    fig.text(
+        0.02,
+        0.01,
+        "Each panel is a different latent market shape. The goal is not just to recover a winner, but to preserve the relative placement of all four assets at once.",
+        fontsize=9.2,
+        color=SLATE,
+    )
+    path = OUTPUT_DIR / "geometry_scenarios.png"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return path
 
 
 def coordinate_transfer_chart(data: dict) -> Path:
@@ -403,8 +571,11 @@ def composition_chart(data: dict) -> Path:
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    summary = _load_summary()
     rep = _load_json(REPRESENTATION_RESULTS_PATH)
     tr = _load_json(TRANSFORM_RESULTS_PATH)
+    experiment_design_chart(summary)
+    geometry_scenarios_chart()
     coordinate_transfer_chart(rep)
     context_realignment_chart(rep)
     context_deformation_chart(rep)
