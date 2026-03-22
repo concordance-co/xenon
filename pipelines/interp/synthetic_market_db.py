@@ -22,6 +22,7 @@ def _family_priority(family: str) -> float:
         "permission_grid": 520.0,
         "strategy_override_grid": 500.0,
         "risk_gate_grid": 480.0,
+        "symbol_permutation_control": 475.0,
         "pairwise_tradeoff_hard": 470.0,
         "rank_context_tradeoff": 465.0,
         "coupled_factor_minimal": 460.0,
@@ -210,7 +211,7 @@ def upload_dataset(
                     """
                     INSERT INTO synthetic_market_assets_v0 (
                         log_id, phase_name, example_id, family, family_variant, context_variant,
-                        row_index, symbol, archetype, pct_5m, pct_1h, net_flow_5m, vol_5m, vol_1h,
+                        row_index, symbol, profile_id, archetype, pct_5m, pct_1h, net_flow_5m, vol_5m, vol_1h,
                         unique_traders_5m, top20_holder_pct, age_bucket, momentum_score, participation_score,
                         flow_score, concentration_penalty, riskiness_score, attractiveness_score,
                         risk_adjusted_score, edge_after_fee_score, edge_gt_fee, attractiveness_rank,
@@ -218,7 +219,7 @@ def upload_dataset(
                         acceptable_under_risk_setting
                     ) VALUES (
                         %(log_id)s, %(phase_name)s, %(example_id)s, %(family)s, %(family_variant)s, %(context_variant)s,
-                        %(row_index)s, %(symbol)s, %(archetype)s, %(pct_5m)s, %(pct_1h)s, %(net_flow_5m)s, %(vol_5m)s, %(vol_1h)s,
+                        %(row_index)s, %(symbol)s, %(profile_id)s, %(archetype)s, %(pct_5m)s, %(pct_1h)s, %(net_flow_5m)s, %(vol_5m)s, %(vol_1h)s,
                         %(unique_traders_5m)s, %(top20_holder_pct)s, %(age_bucket)s, %(momentum_score)s, %(participation_score)s,
                         %(flow_score)s, %(concentration_penalty)s, %(riskiness_score)s, %(attractiveness_score)s,
                         %(risk_adjusted_score)s, %(edge_after_fee_score)s, %(edge_gt_fee)s, %(attractiveness_rank)s,

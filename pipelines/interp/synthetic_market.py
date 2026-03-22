@@ -43,6 +43,7 @@ class SyntheticAsset:
     unique_traders_5m: int
     top20_holder_pct: float
     age_bucket: str
+    profile_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,7 @@ class SyntheticMarketConfig:
     coupled_minimal_templates: int = 1
     representation_steps: int = 7
     representation_background_variants: int = 3
+    permutation_variants: int = 6
     include_settings_variants: bool = True
     dataset_preset: str = "phase1"
     scalar_background_variants: int = 1
@@ -195,6 +197,16 @@ REPRESENTATION_BACKGROUND_ROSTERS: list[tuple[str, str]] = [
     ("mean_reverter", "illiquid_spike"),
     ("stable_winner", "flow_backed_continuation"),
     ("crowded_risk", "stable_winner"),
+]
+
+
+SYMBOL_PERMUTATION_LAYOUTS: list[dict[str, tuple[int, ...] | tuple[str, ...]]] = [
+    {"order": (0, 1, 2, 3), "symbols": ("A", "B", "C", "D")},
+    {"order": (1, 0, 3, 2), "symbols": ("C", "A", "D", "B")},
+    {"order": (2, 3, 0, 1), "symbols": ("B", "D", "A", "C")},
+    {"order": (3, 2, 1, 0), "symbols": ("D", "C", "B", "A")},
+    {"order": (1, 3, 0, 2), "symbols": ("A", "D", "C", "B")},
+    {"order": (2, 0, 3, 1), "symbols": ("B", "C", "D", "A")},
 ]
 
 
@@ -426,6 +438,15 @@ def _override_metrics(asset: SyntheticAsset, overrides: dict[str, float]) -> Syn
     for metric_name, value in overrides.items():
         updated = _override_metric(updated, metric_name, value)
     return updated
+
+
+def _override_display(asset: SyntheticAsset, *, symbol: str | None = None, profile_id: str | None = None) -> SyntheticAsset:
+    payload = asdict(asset)
+    if symbol is not None:
+        payload["symbol"] = symbol
+    if profile_id is not None:
+        payload["profile_id"] = profile_id
+    return SyntheticAsset(**payload)
 
 
 def _make_minimal_asset(symbol: str, template_index: int, jitter_index: int = 0) -> SyntheticAsset:
@@ -986,6 +1007,92 @@ def generate_rank_context_tradeoffs(config: SyntheticMarketConfig) -> list[Synth
     return examples
 
 
+def generate_symbol_permutation_controls(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    layouts = SYMBOL_PERMUTATION_LAYOUTS[: max(2, min(config.permutation_variants, len(SYMBOL_PERMUTATION_LAYOUTS)))]
+
+    base_scenarios: list[tuple[str, list[SyntheticAsset]]] = [
+        (
+            "momentum_flow_permuted_market",
+            [
+                _override_display(
+                    _override_metrics(
+                        _make_asset("A", "momentum_burst", jitter_index=70_001),
+                        {"pct_5m": 5.8, "net_flow_5m": 0.90, "top20_holder_pct": 33.0},
+                    ),
+                    profile_id="profile_momentum_anchor",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("B", "flow_backed_continuation", jitter_index=70_002),
+                        {"pct_5m": 4.7, "net_flow_5m": 1.50, "top20_holder_pct": 28.5},
+                    ),
+                    profile_id="profile_flow_anchor",
+                ),
+                _override_display(
+                    _make_asset("C", "stable_winner", jitter_index=70_003),
+                    profile_id="profile_stable_distractor",
+                ),
+                _override_display(
+                    _make_asset("D", "mean_reverter", jitter_index=70_004),
+                    profile_id="profile_mean_reverter",
+                ),
+            ],
+        ),
+        (
+            "participation_concentration_permuted_market",
+            [
+                _override_display(
+                    _override_metrics(
+                        _make_asset("A", "crowded_risk", jitter_index=71_001),
+                        {"unique_traders_5m": 24.0, "top20_holder_pct": 58.0, "pct_5m": 4.2},
+                    ),
+                    profile_id="profile_crowded_high_participation",
+                ),
+                _override_display(
+                    _override_metrics(
+                        _make_asset("B", "stable_winner", jitter_index=71_002),
+                        {"unique_traders_5m": 16.0, "top20_holder_pct": 26.5, "pct_5m": 4.0},
+                    ),
+                    profile_id="profile_stable_low_concentration",
+                ),
+                _override_display(
+                    _make_asset("C", "illiquid_spike", jitter_index=71_003),
+                    profile_id="profile_illiquid_spike",
+                ),
+                _override_display(
+                    _make_asset("D", "flow_backed_continuation", jitter_index=71_004),
+                    profile_id="profile_flow_distractor",
+                ),
+            ],
+        ),
+    ]
+
+    for scenario_idx, (variant, base_assets) in enumerate(base_scenarios):
+        for perm_idx, layout in enumerate(layouts):
+            order = tuple(int(idx) for idx in layout["order"])
+            symbols = tuple(str(symbol) for symbol in layout["symbols"])
+            permuted_assets: list[SyntheticAsset] = []
+            for row_index, asset_index in enumerate(order):
+                permuted_assets.append(
+                    _override_display(
+                        base_assets[asset_index],
+                        symbol=symbols[row_index],
+                    )
+                )
+            example_id = f"symbol_perm_{scenario_idx:02d}_{perm_idx:02d}"
+            examples.extend(
+                _apply_context_variants(
+                    example_id,
+                    family="symbol_permutation_control",
+                    family_variant=variant,
+                    base_assets=permuted_assets,
+                    include_settings_variants=False,
+                )
+            )
+    return examples
+
+
 def generate_archetype_families(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
     examples: list[SyntheticMarketExample] = []
     distractors = ["stable_winner", "flow_backed_continuation", "crowded_risk"]
@@ -1024,6 +1131,8 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         examples.extend(generate_hard_pairwise_tradeoff_grids(config))
         examples.extend(generate_rank_context_tradeoffs(config))
         return examples
+    if config.dataset_preset == "phase5_symbol_permutation":
+        return generate_symbol_permutation_controls(config)
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -1038,6 +1147,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase2_geometry": 2_100_000_000,
         "phase3_coupled_geometry": 2_130_000_000,
         "phase4_market_representation": 2_147_300_000,
+        "phase5_symbol_permutation": 2_146_900_000,
     }.get(dataset_preset, 2_140_000_000)
 
 

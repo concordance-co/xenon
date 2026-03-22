@@ -118,6 +118,33 @@ def test_generate_phase4_market_representation_dataset_expected_counts(tmp_path)
     assert min(row["log_id"] for row in tick_rows) >= 2_147_300_000
 
 
+def test_generate_phase5_symbol_permutation_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase5_symbol_permutation",
+        permutation_variants=4,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == 2 * 4
+    families = {example.family for example in examples}
+    assert families == {"symbol_permutation_control"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase5_symbol_permutation",
+            permutation_variants=4,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    asset_rows = pq.read_table(tmp_path / "synthetic_market_asset_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_146_900_000
+    assert all(row["profile_id"] is not None for row in asset_rows)
+
+
 def test_rank_context_tradeoff_preserves_focal_pair_across_backgrounds() -> None:
     examples = generate_dataset(
         SyntheticMarketConfig(
@@ -146,6 +173,27 @@ def test_rank_context_tradeoff_preserves_focal_pair_across_backgrounds() -> None
         for example in fixed_pair_rows
     ]
     assert len(set(focal_metrics)) == 1
+
+
+def test_symbol_permutation_control_relabels_profiles_across_variants() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase5_symbol_permutation",
+            permutation_variants=4,
+            include_settings_variants=False,
+        )
+    )
+    first_scenario = [
+        example for example in examples
+        if example.family_variant == "momentum_flow_permuted_market"
+    ]
+    assert len(first_scenario) == 4
+
+    profile_symbol_pairs = [
+        tuple((asset.profile_id, asset.symbol) for asset in example.assets)
+        for example in first_scenario
+    ]
+    assert len(set(profile_symbol_pairs)) == len(first_scenario)
 
 
 def test_prompts_use_neutral_asset_symbols() -> None:

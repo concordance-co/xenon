@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS synthetic_market_assets_v0 (
     context_variant                  TEXT NOT NULL,
     row_index                        INT NOT NULL,
     symbol                           TEXT NOT NULL,
+    profile_id                       TEXT,
     archetype                        TEXT NOT NULL,
     pct_5m                           DOUBLE PRECISION NOT NULL,
     pct_1h                           DOUBLE PRECISION NOT NULL,
@@ -65,6 +66,9 @@ CREATE INDEX IF NOT EXISTS idx_synthetic_market_assets_phase
 
 CREATE INDEX IF NOT EXISTS idx_synthetic_market_assets_symbol
     ON synthetic_market_assets_v0 (symbol, archetype, phase_name);
+
+ALTER TABLE synthetic_market_assets_v0
+    ADD COLUMN IF NOT EXISTS profile_id TEXT;
 
 CREATE TABLE IF NOT EXISTS synthetic_market_pairs_v0 (
     log_id                           INT NOT NULL REFERENCES synthetic_market_examples_v0(log_id) ON DELETE CASCADE,

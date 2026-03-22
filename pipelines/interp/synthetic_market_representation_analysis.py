@@ -83,7 +83,11 @@ class SyntheticMarketRepresentationConfig:
     seed: int = 42
     test_fraction: float = 0.2
     num_workers: int = 8
-    family_allowlist: tuple[str, ...] = ("pairwise_tradeoff_hard", "rank_context_tradeoff")
+    family_allowlist: tuple[str, ...] = (
+        "pairwise_tradeoff_hard",
+        "rank_context_tradeoff",
+        "symbol_permutation_control",
+    )
     regression_targets: tuple[str, ...] = (
         "pct_5m",
         "net_flow_5m",
@@ -359,6 +363,107 @@ def _summarize_rank_context(results: dict[str, Any]) -> dict[str, Any]:
     return summary
 
 
+def _collect_symbol_permutation_entries(
+    *,
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in asset_rows:
+        if str(row.get("family")) != "symbol_permutation_control":
+            continue
+        profile_id = row.get("profile_id")
+        if not profile_id:
+            continue
+        log_id = int(row["log_id"])
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        grouped.setdefault(str(row["family_variant"]), []).append({
+            "example_id": str(row["example_id"]),
+            "profile_id": str(profile_id),
+            "symbol": str(row["symbol"]),
+            "row_index": int(row["row_index"]),
+            "vec": acts[key][layer].astype(np.float32),
+        })
+    return grouped
+
+
+def _symbol_permutation_metrics(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    if len(entries) < 4:
+        return {"error": "insufficient_entries"}
+
+    same_profile_hits: list[int] = []
+    same_symbol_hits: list[int] = []
+    same_row_hits: list[int] = []
+    same_profile_sims: list[float] = []
+    same_symbol_sims: list[float] = []
+    same_row_sims: list[float] = []
+
+    for idx, entry in enumerate(entries):
+        best_sim = None
+        best_match: dict[str, Any] | None = None
+        for other_idx, other in enumerate(entries):
+            if idx == other_idx or entry["example_id"] == other["example_id"]:
+                continue
+            sim = _cosine_similarity(entry["vec"], other["vec"])
+            if sim is None:
+                continue
+            if entry["profile_id"] == other["profile_id"]:
+                same_profile_sims.append(sim)
+            if entry["symbol"] == other["symbol"]:
+                same_symbol_sims.append(sim)
+            if entry["row_index"] == other["row_index"]:
+                same_row_sims.append(sim)
+            if best_sim is None or sim > best_sim:
+                best_sim = sim
+                best_match = other
+        if best_match is not None:
+            same_profile_hits.append(int(best_match["profile_id"] == entry["profile_id"]))
+            same_symbol_hits.append(int(best_match["symbol"] == entry["symbol"]))
+            same_row_hits.append(int(best_match["row_index"] == entry["row_index"]))
+
+    return {
+        "n_entries": len(entries),
+        "same_profile_nn_accuracy": _mean(same_profile_hits),
+        "same_symbol_nn_accuracy": _mean(same_symbol_hits),
+        "same_row_nn_accuracy": _mean(same_row_hits),
+        "same_profile_cosine_mean": _mean(same_profile_sims),
+        "same_symbol_cosine_mean": _mean(same_symbol_sims),
+        "same_row_cosine_mean": _mean(same_row_sims),
+        "profile_minus_symbol_margin": None
+        if not same_profile_sims or not same_symbol_sims
+        else float(np.mean(same_profile_sims) - np.mean(same_symbol_sims)),
+        "profile_minus_row_margin": None
+        if not same_profile_sims or not same_row_sims
+        else float(np.mean(same_profile_sims) - np.mean(same_row_sims)),
+    }
+
+
+def _summarize_symbol_permutation(results: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for scenario, per_row_key in results.items():
+        best: tuple[str, float, int] | None = None
+        for row_key, per_layer in per_row_key.items():
+            for metrics in per_layer:
+                score = metrics.get("profile_minus_symbol_margin")
+                if score is None:
+                    continue
+                if best is None or float(score) > best[1]:
+                    best = (row_key, float(score), int(metrics["layer"]))
+        summary[scenario] = None if best is None else {
+            "representation": best[0],
+            "profile_minus_symbol_margin": best[1],
+            "layer": best[2],
+        }
+    return summary
+
+
 def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresentationConfig) -> dict[str, Any]:
     meta_rows, tick_rows, asset_rows = _load_structure_tables(config.structure_dir)
     if not meta_rows:
@@ -411,6 +516,7 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "primitive_regression": {},
         "focal_pairwise": {},
         "rank_context": {},
+        "symbol_permutation": {},
     }
 
     for target in config.regression_targets:
@@ -490,10 +596,30 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
             for scenario, per_layer in scenario_groups_by_layer.items():
                 analysis["rank_context"].setdefault(scenario, {})[row_key] = per_layer
 
+    symbol_rows = [row for row in asset_rows if str(row.get("family")) == "symbol_permutation_control"]
+    if symbol_rows:
+        for row_key in config.row_keys:
+            scenario_groups_by_layer: dict[str, list[dict[str, Any]]] = {}
+            for layer in layers:
+                grouped = _collect_symbol_permutation_entries(
+                    asset_rows=symbol_rows,
+                    activation_cache=activation_cache,
+                    row_key=row_key,
+                    layer=layer,
+                )
+                for scenario, entries in grouped.items():
+                    scenario_groups_by_layer.setdefault(scenario, []).append({
+                        **_symbol_permutation_metrics(entries),
+                        "layer": layer,
+                    })
+            for scenario, per_layer in scenario_groups_by_layer.items():
+                analysis["symbol_permutation"].setdefault(scenario, {})[row_key] = per_layer
+
     analysis["summary"] = {
         "primitive_regression": _summarize_regression(analysis["primitive_regression"]),
         "focal_pairwise": _summarize_pairwise(analysis["focal_pairwise"]),
         "rank_context": _summarize_rank_context(analysis["rank_context"]),
+        "symbol_permutation": _summarize_symbol_permutation(analysis["symbol_permutation"]),
     }
 
     config.output_dir.mkdir(parents=True, exist_ok=True)
