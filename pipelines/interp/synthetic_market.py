@@ -54,6 +54,32 @@ DX_RISK_LADDER_TEXT = {
     ),
 }
 
+PORTFOLIO_LADDER_TEXT = {
+    "market_only": (
+        "No explicit settings are provided. Portfolio context is neutral: no existing positions are supplied."
+    ),
+    "portfolio_1": (
+        "No explicit settings are provided. There is a light existing position in the current leader, "
+        "so incremental edge must justify adding to that exposure."
+    ),
+    "portfolio_2": (
+        "No explicit settings are provided. There is a modest existing position in the current leader, "
+        "so concentration should matter when evaluating whether to add."
+    ),
+    "portfolio_3": (
+        "No explicit settings are provided. There is a medium existing position in the current leader, "
+        "so broadening exposure is preferable unless the incremental edge is obvious."
+    ),
+    "portfolio_4": (
+        "No explicit settings are provided. There is a heavy existing position in the current leader, "
+        "so adding further should face a meaningful concentration penalty."
+    ),
+    "portfolio_5": (
+        "No explicit settings are provided. The current leader is already a very large position, "
+        "so further concentration should be strongly discouraged unless the incremental edge is overwhelming."
+    ),
+}
+
 PHASE10_RISK_SETTING_TEXT = {
     "market_only": (
         "No explicit settings are provided. Read the market as-is and trade only when the edge clearly exceeds fees."
@@ -374,6 +400,18 @@ def _context_risk_level(context_variant: str) -> int | None:
     return None
 
 
+def _context_portfolio_level(context_variant: str) -> int | None:
+    if not context_variant.startswith("portfolio_"):
+        return None
+    suffix = context_variant.removeprefix("portfolio_")
+    if not suffix.isdigit():
+        return None
+    level = int(suffix)
+    if 1 <= level <= 5:
+        return level
+    return None
+
+
 def _risk_multiplier(context_variant: str) -> float:
     level = _context_risk_level(context_variant)
     if level is not None:
@@ -385,7 +423,27 @@ def _risk_multiplier(context_variant: str) -> float:
 def _settings_text(context_variant: str) -> str:
     if context_variant in DX_RISK_LADDER_TEXT:
         return DX_RISK_LADDER_TEXT[context_variant]
+    if context_variant in PORTFOLIO_LADDER_TEXT:
+        return PORTFOLIO_LADDER_TEXT[context_variant]
     return RISK_SETTING_TEXT[context_variant]
+
+
+def _portfolio_context_lines(context_variant: str, assets: list[SyntheticAsset]) -> list[str]:
+    level = _context_portfolio_level(context_variant)
+    if level is None:
+        return ["- No existing positions are provided."]
+
+    held_asset = next((asset for asset in assets if asset.profile_id == "geo_alpha"), assets[0])
+    share_by_level = {1: 8, 2: 16, 3: 24, 4: 34, 5: 45}
+    eth_by_level = {1: 2.40, 2: 2.05, 3: 1.70, 4: 1.35, 5: 1.00}
+    share = share_by_level[level]
+    eth_left = eth_by_level[level]
+    return [
+        f"- Available ETH: {eth_left:.2f}",
+        f"- Existing position: Asset {held_asset.symbol} already represents about {share}% of deployed capital.",
+        f"- Position note: {held_asset.symbol} was accumulated earlier and remains active.",
+        "- Portfolio objective: avoid adding concentration unless the incremental edge is materially stronger than the alternatives.",
+    ]
 
 
 def _score_asset(asset: SyntheticAsset, context_variant: str) -> dict[str, float]:
@@ -402,6 +460,15 @@ def _score_asset(asset: SyntheticAsset, context_variant: str) -> dict[str, float
     )
     attractiveness = 0.08 * momentum + 0.05 * participation + flow + freshness - concentration_penalty
     risk_adjusted = attractiveness - _risk_multiplier(context_variant) * riskiness
+    portfolio_penalty = 0.0
+    diversification_bonus = 0.0
+    portfolio_level = _context_portfolio_level(context_variant)
+    if portfolio_level is not None:
+        if asset.profile_id == "geo_alpha":
+            portfolio_penalty = 0.24 * portfolio_level
+        else:
+            diversification_bonus = 0.03 * portfolio_level
+        risk_adjusted = risk_adjusted - portfolio_penalty + diversification_bonus
     edge_after_fee = risk_adjusted - 0.55
     return {
         "momentum_score": momentum,
@@ -411,6 +478,8 @@ def _score_asset(asset: SyntheticAsset, context_variant: str) -> dict[str, float
         "riskiness_score": riskiness,
         "attractiveness_score": attractiveness,
         "risk_adjusted_score": risk_adjusted,
+        "portfolio_penalty": portfolio_penalty,
+        "diversification_bonus": diversification_bonus,
         "edge_after_fee_score": edge_after_fee,
         "edge_gt_fee": float(edge_after_fee > 0.0),
     }
@@ -554,6 +623,7 @@ def _render_user_prompt(
     *,
     surface_style: str = "canonical",
     settings_text_override: str | None = None,
+    portfolio_lines: list[str] | None = None,
 ) -> str:
     lines = [
         f"## SYNTHETIC MARKET SCENARIO {example_id}",
@@ -562,9 +632,17 @@ def _render_user_prompt(
         "",
         "## ACTIVE SETTINGS",
         f"- {settings_text_override or _settings_text(context_variant)}",
+    ]
+    if portfolio_lines:
+        lines.extend([
+            "",
+            "## PORTFOLIO CONTEXT",
+            *portfolio_lines,
+        ])
+    lines.extend([
         "",
         "## MARKET SNAPSHOT",
-    ]
+    ])
     for asset in assets:
         lines.extend(_render_asset_lines(asset, surface_style=surface_style))
     lines.extend([
@@ -719,6 +797,7 @@ def _apply_context_variants(
     surface_style: str = "canonical",
     settings_text_by_context: dict[str, str] | None = None,
     context_variants: list[str] | None = None,
+    portfolio_lines_by_context: dict[str, list[str]] | None = None,
 ) -> list[SyntheticMarketExample]:
     if context_variants is not None:
         variants = [str(variant) for variant in context_variants]
@@ -736,6 +815,7 @@ def _apply_context_variants(
             base_assets,
             surface_style=surface_style,
             settings_text_override=None if settings_text_by_context is None else settings_text_by_context.get(context_variant),
+            portfolio_lines=None if portfolio_lines_by_context is None else portfolio_lines_by_context.get(context_variant),
         )
         examples.append(
             SyntheticMarketExample(
@@ -2450,6 +2530,62 @@ def generate_set_geometry_risk_ladder_controls(config: SyntheticMarketConfig) ->
     return examples
 
 
+def generate_set_geometry_portfolio_ladder_controls(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    layouts = SYMBOL_PERMUTATION_LAYOUTS[: max(2, min(config.permutation_variants, len(SYMBOL_PERMUTATION_LAYOUTS)))]
+    styles = PROFILE_INVARIANCE_SURFACE_STYLES[
+        : max(1, min(config.profile_surface_variants, len(PROFILE_INVARIANCE_SURFACE_STYLES)))
+    ]
+    scale_variants = RELATION_INVARIANCE_SCALE_FACTORS[
+        : max(1, min(config.relation_scale_variants, len(RELATION_INVARIANCE_SCALE_FACTORS)))
+    ]
+    portfolio_contexts = ["market_only", "portfolio_1", "portfolio_2", "portfolio_3", "portfolio_4", "portfolio_5"]
+
+    for scenario_idx, scenario in enumerate(SET_GEOMETRY_SCENARIOS):
+        scenario_assets = [
+            _make_geometry_asset(
+                symbol=chr(ord("A") + profile_idx),
+                profile_id=str(profile["profile_id"]),
+                coords=tuple(float(value) for value in profile["coords"]),
+            )
+            for profile_idx, profile in enumerate(scenario["profiles"])
+        ]
+
+        for style_idx, style in enumerate(styles):
+            style_name = str(style["name"])
+            for perm_idx, layout in enumerate(layouts):
+                order = tuple(int(idx) for idx in layout["order"])
+                symbols = tuple(str(symbol) for symbol in style["symbols"])
+                permuted_assets = [
+                    _override_display(
+                        scenario_assets[asset_index],
+                        symbol=symbols[row_index],
+                    )
+                    for row_index, asset_index in enumerate(order)
+                ]
+                for scale_idx, (_, scale_factor) in enumerate(scale_variants):
+                    scaled_assets = [_scale_market_magnitude(asset, scale_factor) for asset in permuted_assets]
+                    example_id = f"set_geom_{scenario_idx:02d}_{style_idx:02d}_{perm_idx:02d}_{scale_idx:02d}"
+                    portfolio_lines_by_context = {
+                        context_variant: _portfolio_context_lines(context_variant, scaled_assets)
+                        for context_variant in portfolio_contexts
+                    }
+                    examples.extend(
+                        _apply_context_variants(
+                            example_id,
+                            family="set_geometry_control",
+                            family_variant=str(scenario["name"]),
+                            base_assets=scaled_assets,
+                            include_settings_variants=False,
+                            surface_style=style_name,
+                            settings_text_by_context=PORTFOLIO_LADDER_TEXT,
+                            context_variants=portfolio_contexts,
+                            portfolio_lines_by_context=portfolio_lines_by_context,
+                        )
+                    )
+    return examples
+
+
 def generate_archetype_families(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
     examples: list[SyntheticMarketExample] = []
     distractors = ["stable_winner", "flow_backed_continuation", "crowded_risk"]
@@ -2502,6 +2638,8 @@ def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExamp
         return generate_set_geometry_context_controls(config)
     if config.dataset_preset == "phase11_set_geometry_risk_ladder":
         return generate_set_geometry_risk_ladder_controls(config)
+    if config.dataset_preset == "phase13_set_geometry_portfolio_ladder":
+        return generate_set_geometry_portfolio_ladder_controls(config)
 
     examples = []
     examples.extend(generate_scalar_sweeps(config))
@@ -2523,6 +2661,7 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase9_set_geometry": 2_147_100_000,
         "phase10_set_geometry_context": 2_147_150_000,
         "phase11_set_geometry_risk_ladder": 2_147_200_000,
+        "phase13_set_geometry_portfolio_ladder": 2_147_240_000,
     }.get(dataset_preset, 2_140_000_000)
 
 

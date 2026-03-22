@@ -120,17 +120,36 @@ def _parse_risk_ladder_context(context_variant: Any) -> int | None:
     return None
 
 
+def _parse_portfolio_ladder_context(context_variant: Any) -> int | None:
+    text = str(context_variant)
+    if not text.startswith("portfolio_"):
+        return None
+    suffix = text.removeprefix("portfolio_")
+    if not suffix.isdigit():
+        return None
+    level = int(suffix)
+    if 1 <= level <= 5:
+        return level
+    return None
+
+
 def _ordered_set_geometry_context_variants(context_variants: list[str]) -> list[str]:
     unique = sorted({str(context_variant) for context_variant in context_variants})
     ordered: list[str] = []
     if "market_only" in unique:
         ordered.append("market_only")
-    ladder_contexts = sorted(
+    risk_contexts = sorted(
         (context for context in unique if _parse_risk_ladder_context(context) is not None),
         key=lambda context: int(_parse_risk_ladder_context(context) or 0),
     )
-    if ladder_contexts:
-        ordered.extend(ladder_contexts)
+    portfolio_contexts = sorted(
+        (context for context in unique if _parse_portfolio_ladder_context(context) is not None),
+        key=lambda context: int(_parse_portfolio_ladder_context(context) or 0),
+    )
+    if risk_contexts:
+        ordered.extend(risk_contexts)
+    elif portfolio_contexts:
+        ordered.extend(portfolio_contexts)
     else:
         for context in ("low_risk", "high_risk"):
             if context in unique:

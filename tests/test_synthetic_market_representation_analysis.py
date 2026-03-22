@@ -10,6 +10,7 @@ from pipelines.interp.synthetic_market_representation_analysis import (
     _ordered_set_geometry_context_variants,
     _pairwise_relation_invariance_metrics,
     _parse_profile_invariance_example_id,
+    _parse_portfolio_ladder_context,
     _parse_relation_invariance_example_id,
     _parse_risk_ladder_context,
     _parse_set_geometry_example_id,
@@ -66,6 +67,20 @@ def test_ordered_set_geometry_context_variants_prefers_market_then_risk_ladder()
         ["risk_4", "market_only", "risk_2", "risk_5", "risk_1", "risk_3"]
     )
     assert ordered == ["market_only", "risk_1", "risk_2", "risk_3", "risk_4", "risk_5"]
+
+
+def test_parse_portfolio_ladder_context_extracts_levels() -> None:
+    assert _parse_portfolio_ladder_context("portfolio_1") == 1
+    assert _parse_portfolio_ladder_context("portfolio_5") == 5
+    assert _parse_portfolio_ladder_context("portfolio_7") is None
+    assert _parse_portfolio_ladder_context("risk_1") is None
+
+
+def test_ordered_set_geometry_context_variants_prefers_market_then_portfolio_ladder() -> None:
+    ordered = _ordered_set_geometry_context_variants(
+        ["portfolio_4", "market_only", "portfolio_2", "portfolio_5", "portfolio_1", "portfolio_3"]
+    )
+    assert ordered == ["market_only", "portfolio_1", "portfolio_2", "portfolio_3", "portfolio_4", "portfolio_5"]
 
 
 def test_set_geometry_context_pair_helpers_cover_adjacent_risk_steps() -> None:

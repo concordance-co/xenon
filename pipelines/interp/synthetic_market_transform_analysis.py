@@ -25,6 +25,7 @@ from pipelines.interp.synthetic_market_representation_analysis import (
     _parse_set_geometry_example_id,
     _score_distance_vector_for_profiles,
     _set_geometry_context_deformation_pairs,
+    _set_geometry_context_transfer_pairs,
     _split_example_ids,
 )
 
@@ -329,35 +330,68 @@ def _compose_matrices(matrices: list[np.ndarray]) -> np.ndarray:
 
 
 def _select_states(phase11_results: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    transfer = phase11_results["set_geometry_context_transfer"]
-    transfer_keys = [
-        "market_only_to_risk_1",
-        "market_only_to_risk_2",
-        "market_only_to_risk_3",
-        "market_only_to_risk_4",
-        "market_only_to_risk_5",
-    ]
+    transfer = phase11_results.get("set_geometry_context_transfer", {})
+    transfer_contexts = _ordered_set_geometry_context_variants(
+        list(phase11_results.get("set_geometry_context_realignment", {}).keys())
+    )
+    transfer_pairs = _set_geometry_context_transfer_pairs(transfer_contexts)
+    transfer_keys = [f"{left}_to_{right}" for left, right in transfer_pairs]
+    available_targets = [target_name for target_name in ("latent_x", "latent_y") if target_name in transfer]
+    if not transfer_keys or not available_targets:
+        return {
+            "early": {"error": "insufficient_context_transfer"},
+            "late": {"error": "insufficient_context_realignment"},
+        }
+
     best_early: tuple[str, int, float] | None = None
     for row_key in ("row_mean", "row_eos"):
-        n_layers = len(transfer["latent_x"][transfer_keys[0]][row_key])
+        sample_target = available_targets[0]
+        sample_key = next(
+            (
+                transfer_key
+                for transfer_key in transfer_keys
+                if transfer_key in transfer.get(sample_target, {})
+                and row_key in transfer[sample_target][transfer_key]
+            ),
+            None,
+        )
+        if sample_key is None:
+            continue
+        n_layers = len(transfer[sample_target][sample_key][row_key])
         for layer_idx in range(n_layers):
             values: list[float] = []
             for transfer_key in transfer_keys:
-                values.append(float(transfer["latent_x"][transfer_key][row_key][layer_idx]["r2"]))
-                values.append(float(transfer["latent_y"][transfer_key][row_key][layer_idx]["r2"]))
+                for target_name in available_targets:
+                    target_transfers = transfer.get(target_name, {})
+                    if transfer_key not in target_transfers or row_key not in target_transfers[transfer_key]:
+                        continue
+                    metric = target_transfers[transfer_key][row_key][layer_idx].get("r2")
+                    if metric is not None:
+                        values.append(float(metric))
+            if not values:
+                continue
             score = float(np.mean(values))
             if best_early is None or score > best_early[2]:
                 best_early = (row_key, layer_idx, score)
 
-    realignment = phase11_results["set_geometry_context_realignment"]
-    contexts = ["market_only", "risk_1", "risk_2", "risk_3", "risk_4", "risk_5"]
+    realignment = phase11_results.get("set_geometry_context_realignment", {})
+    contexts = _ordered_set_geometry_context_variants(list(realignment.keys()))
+    if not contexts:
+        return {
+            "early": {"error": "insufficient_context_transfer"},
+            "late": {"error": "insufficient_context_realignment"},
+        }
     best_late: tuple[str, int, float] | None = None
     for row_key in ("row_mean", "row_eos"):
+        if row_key not in realignment.get(contexts[0], {}):
+            continue
         n_layers = len(realignment[contexts[0]][row_key])
         for layer_idx in range(n_layers):
             values = []
             for context in contexts:
-                margin = realignment[context][row_key][layer_idx]["score_over_base_margin"]
+                if row_key not in realignment.get(context, {}):
+                    continue
+                margin = realignment[context][row_key][layer_idx].get("score_over_base_margin")
                 if margin is not None:
                     values.append(float(margin))
             if not values:
@@ -366,8 +400,16 @@ def _select_states(phase11_results: dict[str, Any]) -> dict[str, dict[str, Any]]
             if best_late is None or score > best_late[2]:
                 best_late = (row_key, layer_idx, score)
 
-    assert best_early is not None
-    assert best_late is not None
+    if best_early is None:
+        return {
+            "early": {"error": "insufficient_context_transfer"},
+            "late": {"error": "insufficient_context_realignment"},
+        }
+    if best_late is None:
+        return {
+            "early": {"row_key": best_early[0], "layer": best_early[1], "selection_score": best_early[2]},
+            "late": {"error": "insufficient_context_realignment"},
+        }
     return {
         "early": {"row_key": best_early[0], "layer": best_early[1], "selection_score": best_early[2]},
         "late": {"row_key": best_late[0], "layer": best_late[1], "selection_score": best_late[2]},
@@ -377,6 +419,12 @@ def _select_states(phase11_results: dict[str, Any]) -> dict[str, dict[str, Any]]
 def run_synthetic_market_transform_analysis(config: SyntheticMarketTransformConfig) -> dict[str, Any]:
     phase11_results = json.loads(config.phase11_results_path.read_text())
     selected_states = _select_states(phase11_results)
+    if any("error" in state for state in selected_states.values()):
+        return {
+            "phase_name": config.phase_name,
+            "selected_states": selected_states,
+            "error": "insufficient_context_ladder_for_transform_analysis",
+        }
 
     meta_rows, tick_rows, asset_rows = _load_structure_tables(config.structure_dir)
     if not meta_rows:
@@ -502,39 +550,35 @@ def run_synthetic_market_transform_analysis(config: SyntheticMarketTransformConf
             pair_matrices[pair_key] = family_matrices
 
         composition_results: dict[str, Any] = {}
-        adjacent_keys = [
-            "market_only_to_risk_1",
-            "risk_1_to_risk_2",
-            "risk_2_to_risk_3",
-            "risk_3_to_risk_4",
-            "risk_4_to_risk_5",
-        ]
-        direct_key = "market_only_to_risk_5"
+        adjacent_pairs = _set_geometry_context_deformation_pairs(context_variants)
+        adjacent_keys = [f"{left}_to_{right}" for left, right in adjacent_pairs]
+        direct_key = f"{context_variants[0]}_to_{context_variants[-1]}"
         direct_test_pairs = _collect_pair_entries(
             decoded_examples,
-            source_context="market_only",
-            target_context="risk_5",
+            source_context=context_variants[0],
+            target_context=context_variants[-1],
             example_ids=test_example_ids,
         )
-        for family in TRANSFORM_FAMILIES:
-            if any(family not in pair_matrices[pair_key] for pair_key in adjacent_keys + [direct_key]):
-                continue
-            composed = _compose_matrices([pair_matrices[pair_key][family] for pair_key in adjacent_keys])
-            direct = pair_matrices[direct_key][family]
-            composed_eval = _evaluate_transform(direct_test_pairs, composed)
-            direct_eval = _evaluate_transform(direct_test_pairs, direct)
-            composition_results[family] = {
-                "composed": {
-                    **composed_eval,
-                    **_matrix_summary(composed),
-                },
-                "direct": {
-                    **direct_eval,
-                    **_matrix_summary(direct),
-                },
-                "matrix_cosine": _matrix_cosine_similarity(composed, direct),
-                "frobenius_gap": float(np.linalg.norm(composed - direct)),
-            }
+        if len(context_variants) >= 2:
+            for family in TRANSFORM_FAMILIES:
+                if any(family not in pair_matrices[pair_key] for pair_key in adjacent_keys + [direct_key]):
+                    continue
+                composed = _compose_matrices([pair_matrices[pair_key][family] for pair_key in adjacent_keys])
+                direct = pair_matrices[direct_key][family]
+                composed_eval = _evaluate_transform(direct_test_pairs, composed)
+                direct_eval = _evaluate_transform(direct_test_pairs, direct)
+                composition_results[family] = {
+                    "composed": {
+                        **composed_eval,
+                        **_matrix_summary(composed),
+                    },
+                    "direct": {
+                        **direct_eval,
+                        **_matrix_summary(direct),
+                    },
+                    "matrix_cosine": _matrix_cosine_similarity(composed, direct),
+                    "frobenius_gap": float(np.linalg.norm(composed - direct)),
+                }
 
         summary = {
             "best_family_by_pair": {},
