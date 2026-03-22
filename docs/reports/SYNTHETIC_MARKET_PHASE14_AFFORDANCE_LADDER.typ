@@ -230,6 +230,45 @@ The point of Phase 14 is to separate:
 - from fake changes caused by nuisance presentation differences
 
 
+= How To Read The Layerwise Charts
+
+Several figures in this report use the same general format: some metric is plotted #emph[by layer]. The point of those charts is to show
+#emph[where in the model] a representation or deformation is strongest.
+
+The basic reading rules are:
+
+- #text(weight: "medium")[x-axis = layer]
+  moving left to right means moving from earlier model layers to later ones
+- #text(weight: "medium")[y-axis = average metric value]
+  higher usually means the tested representation is clearer or the tested context effect is stronger
+- #text(weight: "medium")[a peak]
+  the layer where that metric is strongest under the current comparison
+- #text(weight: "medium")[`row_mean` vs `row_eos`]
+  `row_mean` averages all tokens in a market row, while `row_eos` uses the row-ending token only
+
+In this report, the two most common y-axis metrics are:
+
+- #text(weight: "medium")[mean Spearman]
+  a rank-correlation measure. Use this when the chart asks whether distances or relative orderings line up. `1.0` means the activation-space
+  ordering matches the target ordering almost perfectly, `0` means little relationship, and negative values mean the ordering is inverted.
+- #text(weight: "medium")[margin]
+  a difference score between two candidate explanations. Here it usually means “how much closer is the recovered geometry to the
+  context-adjusted score geometry than to the raw latent geometry?” Positive is evidence for realignment or deformation in the expected
+  direction; values near `0` mean little separation; negative means the comparison is going the wrong way.
+
+So a good mental model is:
+
+- #emph[high early peak] = the representation is present very early and may be close to raw market parsing
+- #emph[high late peak] = the effect emerges after more integration with context
+- #emph[broad plateau] = the effect is distributed across many layers
+- #emph[sharp isolated spike] = the effect is localized to a narrower part of the network
+
+The figures below use those curves to answer two different questions:
+
+- #text(weight: "medium")[coordinate transfer] asks whether the same base market frame survives across contexts
+- #text(weight: "medium")[realignment or deformation] asks whether later layers actively move that frame toward a new context-specific geometry
+
+
 = The Shared Market Frame Still Survives the Full Ladder
 
 #align(center)[#image("../../data/report_assets/synthetic_market_phase14_affordance_ladder/coordinate_transfer.png", width: 100%)]
