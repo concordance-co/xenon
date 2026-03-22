@@ -261,6 +261,82 @@ def test_select_states_supports_portfolio_ladder_contexts() -> None:
     assert states["late"]["layer"] == 1
 
 
+def test_select_states_supports_affordance_ladder_contexts() -> None:
+    fake = {
+        "set_geometry_context_transfer": {
+            "latent_x": {
+                "market_only_to_affordance_1": {
+                    "row_mean": [{"r2": 0.89, "layer": 0}, {"r2": 0.8, "layer": 1}],
+                    "row_eos": [{"r2": 0.31, "layer": 0}, {"r2": 0.41, "layer": 1}],
+                },
+                "market_only_to_affordance_2": {
+                    "row_mean": [{"r2": 0.88, "layer": 0}, {"r2": 0.79, "layer": 1}],
+                    "row_eos": [{"r2": 0.32, "layer": 0}, {"r2": 0.42, "layer": 1}],
+                },
+                "market_only_to_affordance_3": {
+                    "row_mean": [{"r2": 0.87, "layer": 0}, {"r2": 0.78, "layer": 1}],
+                    "row_eos": [{"r2": 0.33, "layer": 0}, {"r2": 0.43, "layer": 1}],
+                },
+                "market_only_to_affordance_4": {
+                    "row_mean": [{"r2": 0.86, "layer": 0}, {"r2": 0.77, "layer": 1}],
+                    "row_eos": [{"r2": 0.34, "layer": 0}, {"r2": 0.44, "layer": 1}],
+                },
+                "market_only_to_affordance_5": {
+                    "row_mean": [{"r2": 0.85, "layer": 0}, {"r2": 0.76, "layer": 1}],
+                    "row_eos": [{"r2": 0.35, "layer": 0}, {"r2": 0.45, "layer": 1}],
+                },
+            },
+            "latent_y": {
+                "market_only_to_affordance_1": {
+                    "row_mean": [{"r2": 0.91, "layer": 0}, {"r2": 0.81, "layer": 1}],
+                    "row_eos": [{"r2": 0.36, "layer": 0}, {"r2": 0.46, "layer": 1}],
+                },
+                "market_only_to_affordance_2": {
+                    "row_mean": [{"r2": 0.9, "layer": 0}, {"r2": 0.8, "layer": 1}],
+                    "row_eos": [{"r2": 0.37, "layer": 0}, {"r2": 0.47, "layer": 1}],
+                },
+                "market_only_to_affordance_3": {
+                    "row_mean": [{"r2": 0.89, "layer": 0}, {"r2": 0.79, "layer": 1}],
+                    "row_eos": [{"r2": 0.38, "layer": 0}, {"r2": 0.48, "layer": 1}],
+                },
+                "market_only_to_affordance_4": {
+                    "row_mean": [{"r2": 0.88, "layer": 0}, {"r2": 0.78, "layer": 1}],
+                    "row_eos": [{"r2": 0.39, "layer": 0}, {"r2": 0.49, "layer": 1}],
+                },
+                "market_only_to_affordance_5": {
+                    "row_mean": [{"r2": 0.87, "layer": 0}, {"r2": 0.77, "layer": 1}],
+                    "row_eos": [{"r2": 0.4, "layer": 0}, {"r2": 0.5, "layer": 1}],
+                },
+            },
+        },
+        "set_geometry_context_realignment": {
+            context: {
+                "row_mean": [
+                    {"score_over_base_margin": 0.01, "layer": 0},
+                    {"score_over_base_margin": 0.015, "layer": 1},
+                ],
+                "row_eos": [
+                    {"score_over_base_margin": 0.02, "layer": 0},
+                    {"score_over_base_margin": 0.04, "layer": 1},
+                ],
+            }
+            for context in [
+                "market_only",
+                "affordance_1",
+                "affordance_2",
+                "affordance_3",
+                "affordance_4",
+                "affordance_5",
+            ]
+        },
+    }
+    states = _select_states(fake)
+    assert states["early"]["row_key"] == "row_mean"
+    assert states["early"]["layer"] == 0
+    assert states["late"]["row_key"] == "row_eos"
+    assert states["late"]["layer"] == 1
+
+
 def test_select_states_returns_error_when_context_transfer_missing() -> None:
     fake = {
         "set_geometry_context_transfer": {},

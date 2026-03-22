@@ -96,6 +96,14 @@ def _parse_relation_invariance_example_id(example_id: Any) -> tuple[int, int, in
 
 def _parse_set_geometry_example_id(example_id: Any) -> tuple[int, int, int, int] | None:
     text = str(example_id)
+    if text.startswith("set_geom_aff_"):
+        parts = text.split("_")
+        if len(parts) != 7:
+            return None
+        try:
+            return int(parts[3]), int(parts[4]), int(parts[5]), int(parts[6])
+        except ValueError:
+            return None
     if not text.startswith("set_geom_"):
         return None
     parts = text.split("_")
@@ -133,6 +141,19 @@ def _parse_portfolio_ladder_context(context_variant: Any) -> int | None:
     return None
 
 
+def _parse_affordance_ladder_context(context_variant: Any) -> int | None:
+    text = str(context_variant)
+    if not text.startswith("affordance_"):
+        return None
+    suffix = text.removeprefix("affordance_")
+    if not suffix.isdigit():
+        return None
+    level = int(suffix)
+    if 1 <= level <= 5:
+        return level
+    return None
+
+
 def _ordered_set_geometry_context_variants(context_variants: list[str]) -> list[str]:
     unique = sorted({str(context_variant) for context_variant in context_variants})
     ordered: list[str] = []
@@ -146,10 +167,16 @@ def _ordered_set_geometry_context_variants(context_variants: list[str]) -> list[
         (context for context in unique if _parse_portfolio_ladder_context(context) is not None),
         key=lambda context: int(_parse_portfolio_ladder_context(context) or 0),
     )
+    affordance_contexts = sorted(
+        (context for context in unique if _parse_affordance_ladder_context(context) is not None),
+        key=lambda context: int(_parse_affordance_ladder_context(context) or 0),
+    )
     if risk_contexts:
         ordered.extend(risk_contexts)
     elif portfolio_contexts:
         ordered.extend(portfolio_contexts)
+    elif affordance_contexts:
+        ordered.extend(affordance_contexts)
     else:
         for context in ("low_risk", "high_risk"):
             if context in unique:

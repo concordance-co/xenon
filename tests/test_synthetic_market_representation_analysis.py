@@ -5,6 +5,7 @@ import pytest
 
 from pipelines.interp.synthetic_market_representation_analysis import (
     _base_rank_context_variant,
+    _parse_affordance_ladder_context,
     _focal_relation_invariance_metrics,
     _is_profile_control_family,
     _ordered_set_geometry_context_variants,
@@ -52,6 +53,7 @@ def test_parse_relation_invariance_example_id_extracts_all_axes() -> None:
 
 def test_parse_set_geometry_example_id_extracts_all_axes() -> None:
     assert _parse_set_geometry_example_id("set_geom_01_02_03_04") == (1, 2, 3, 4)
+    assert _parse_set_geometry_example_id("set_geom_aff_01_02_03_04") == (1, 2, 3, 4)
     assert _parse_set_geometry_example_id("relation_inv_01_02_03_04_05") is None
 
 
@@ -81,6 +83,20 @@ def test_ordered_set_geometry_context_variants_prefers_market_then_portfolio_lad
         ["portfolio_4", "market_only", "portfolio_2", "portfolio_5", "portfolio_1", "portfolio_3"]
     )
     assert ordered == ["market_only", "portfolio_1", "portfolio_2", "portfolio_3", "portfolio_4", "portfolio_5"]
+
+
+def test_parse_affordance_ladder_context_extracts_levels() -> None:
+    assert _parse_affordance_ladder_context("affordance_1") == 1
+    assert _parse_affordance_ladder_context("affordance_5") == 5
+    assert _parse_affordance_ladder_context("affordance_7") is None
+    assert _parse_affordance_ladder_context("portfolio_1") is None
+
+
+def test_ordered_set_geometry_context_variants_prefers_market_then_affordance_ladder() -> None:
+    ordered = _ordered_set_geometry_context_variants(
+        ["affordance_4", "market_only", "affordance_2", "affordance_5", "affordance_1", "affordance_3"]
+    )
+    assert ordered == ["market_only", "affordance_1", "affordance_2", "affordance_3", "affordance_4", "affordance_5"]
 
 
 def test_set_geometry_context_pair_helpers_cover_adjacent_risk_steps() -> None:

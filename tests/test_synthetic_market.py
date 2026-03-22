@@ -180,6 +180,35 @@ def test_generate_phase13_set_geometry_portfolio_ladder_dataset_expected_counts(
     assert min(row["log_id"] for row in tick_rows) >= 2_147_240_000
 
 
+def test_generate_phase14_set_geometry_affordance_ladder_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase14_set_geometry_affordance_ladder",
+        permutation_variants=3,
+        profile_surface_variants=2,
+        relation_scale_variants=2,
+        include_settings_variants=True,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == 4 * 3 * 2 * 2 * 6
+    families = {example.family for example in examples}
+    assert families == {"set_geometry_control"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only", "affordance_1", "affordance_2", "affordance_3", "affordance_4", "affordance_5"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase14_set_geometry_affordance_ladder",
+            permutation_variants=3,
+            profile_surface_variants=2,
+            relation_scale_variants=2,
+            include_settings_variants=True,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_250_000
+
+
 def test_generate_phase4_market_representation_dataset_expected_counts(tmp_path) -> None:
     config = SyntheticMarketConfig(
         dataset_preset="phase4_market_representation",
@@ -346,6 +375,26 @@ def test_phase13_set_geometry_portfolio_ladder_uses_portfolio_context_language()
     assert "existing position" in prompts["portfolio_3"].lower()
     assert "already represents about 24% of deployed capital" in prompts["portfolio_3"].lower()
     assert "very large position" in prompts["portfolio_5"].lower()
+
+
+def test_phase14_set_geometry_affordance_ladder_uses_constraint_language() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase14_set_geometry_affordance_ladder",
+            permutation_variants=1,
+            profile_surface_variants=1,
+            relation_scale_variants=1,
+            include_settings_variants=True,
+        )
+    )
+    prompts = {}
+    for example in examples:
+        prompts.setdefault(example.context_variant, example.user_prompt)
+    assert "## constraints" in prompts["market_only"].lower()
+    assert "no hard execution constraints are supplied" in prompts["market_only"].lower()
+    assert "capped for new adds" in prompts["affordance_1"].lower()
+    assert "confirmation-only mode" in prompts["affordance_2"].lower()
+    assert "only fully unrestricted add path" in prompts["affordance_5"].lower()
 
 
 def test_phase6_profile_invariance_emits_distinct_surface_styles() -> None:
