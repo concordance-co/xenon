@@ -1244,6 +1244,41 @@ def _collect_set_geometry_examples(
     return finalized
 
 
+def _collect_set_geometry_coordinate_rows(
+    *,
+    log_ids: set[int],
+    asset_rows: list[dict[str, Any]],
+    activation_cache: dict[int, dict[str, np.ndarray]],
+    row_key: str,
+    layer: int,
+    axis_index: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    X_rows: list[np.ndarray] = []
+    y_rows: list[float] = []
+    for row in asset_rows:
+        if str(row.get("family")) != SET_GEOMETRY_CONTROL_FAMILY:
+            continue
+        log_id = int(row["log_id"])
+        if log_id not in log_ids:
+            continue
+        scenario = str(row.get("family_variant"))
+        profile_id = str(row.get("profile_id") or "")
+        coords = SET_GEOMETRY_COORDS_BY_SCENARIO.get(scenario, {}).get(profile_id)
+        if coords is None:
+            continue
+        acts = activation_cache.get(log_id)
+        if not acts:
+            continue
+        key = f"{row_key}_{int(row['row_index'])}"
+        if key not in acts:
+            continue
+        X_rows.append(acts[key][layer].astype(np.float32))
+        y_rows.append(float(coords[axis_index]))
+    if not X_rows:
+        return np.zeros((0, 0), dtype=np.float32), np.zeros((0,), dtype=np.float32)
+    return np.stack(X_rows), np.asarray(y_rows, dtype=np.float32)
+
+
 def _set_geometry_alignment_metrics(examples: list[dict[str, Any]]) -> dict[str, Any]:
     if len(examples) < 2:
         return {"error": "insufficient_examples"}
@@ -1541,6 +1576,7 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
         "relation_invariance": {},
         "relation_rank_control": {},
         "relation_scale_control": {},
+        "set_geometry_coordinate_regression": {},
         "set_geometry_alignment": {},
         "set_geometry_identity": {},
     }
@@ -1764,6 +1800,36 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
 
     set_geometry_rows = [row for row in asset_rows if str(row.get("family")) == SET_GEOMETRY_CONTROL_FAMILY]
     if set_geometry_rows:
+        for target_name, axis_index in (("latent_x", 0), ("latent_y", 1)):
+            analysis["set_geometry_coordinate_regression"][target_name] = {}
+            for row_key in config.row_keys:
+                per_layer: list[dict[str, Any]] = []
+                for layer in layers:
+                    X_train, y_train = _collect_set_geometry_coordinate_rows(
+                        log_ids=train_ids,
+                        asset_rows=set_geometry_rows,
+                        activation_cache=activation_cache,
+                        row_key=row_key,
+                        layer=layer,
+                        axis_index=axis_index,
+                    )
+                    X_test, y_test = _collect_set_geometry_coordinate_rows(
+                        log_ids=test_ids,
+                        asset_rows=set_geometry_rows,
+                        activation_cache=activation_cache,
+                        row_key=row_key,
+                        layer=layer,
+                        axis_index=axis_index,
+                    )
+                    if X_train.size == 0 or X_test.size == 0:
+                        per_layer.append({"layer": layer, "error": "insufficient_data"})
+                        continue
+                    probe = _train_regression_probe(X_train, y_train)
+                    metrics = _evaluate_regression_probe(probe, X_test, y_test)
+                    metrics["layer"] = layer
+                    per_layer.append(metrics)
+                analysis["set_geometry_coordinate_regression"][target_name][row_key] = per_layer
+
         geometry_scenarios = sorted({str(row["family_variant"]) for row in set_geometry_rows})
         for scenario in geometry_scenarios:
             analysis["set_geometry_alignment"].setdefault(scenario, {})
@@ -1840,6 +1906,9 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
             analysis["relation_scale_control"],
             margin_key="relation_over_scale_margin",
             acc_key="nn_accuracy",
+        ),
+        "set_geometry_coordinate_regression": _summarize_regression(
+            analysis["set_geometry_coordinate_regression"]
         ),
         "set_geometry_alignment": _summarize_best_metric(
             analysis["set_geometry_alignment"],
