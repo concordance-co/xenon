@@ -318,9 +318,12 @@ def _evaluate_focal_pairwise_probe(
     for variant, rows in by_variant.items():
         labels = np.asarray([row[0] for row in rows], dtype=np.int64)
         preds = np.asarray([row[1] for row in rows], dtype=np.int64)
+        balanced_acc = None
+        if len(np.unique(labels)) >= 2 and len(np.unique(preds)) >= 2:
+            balanced_acc = float(balanced_accuracy_score(labels, preds))
         by_variant_metrics[variant] = {
             "accuracy": float(accuracy_score(labels, preds)),
-            "balanced_accuracy": float(balanced_accuracy_score(labels, preds)),
+            "balanced_accuracy": balanced_acc,
             "n": int(len(labels)),
         }
 

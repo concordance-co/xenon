@@ -148,7 +148,7 @@ def test_generate_phase11_set_geometry_risk_ladder_dataset_expected_counts(tmp_p
         )
     )
     tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
-    assert min(row["log_id"] for row in tick_rows) >= 2_147_600_000
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_200_000
 
 
 def test_generate_phase4_market_representation_dataset_expected_counts(tmp_path) -> None:

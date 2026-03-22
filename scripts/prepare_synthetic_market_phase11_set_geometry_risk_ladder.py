@@ -69,9 +69,9 @@ def main() -> None:
     if args.log_id_base > 0:
         log_id_base = args.log_id_base
     elif "smoke" in args.phase_name.lower():
-        log_id_base = 2_147_610_000
+        log_id_base = 2_147_210_000
     else:
-        log_id_base = 2_147_600_000
+        log_id_base = 2_147_200_000
 
     build_result = build_synthetic_market_dataset(
         SyntheticMarketConfig(
