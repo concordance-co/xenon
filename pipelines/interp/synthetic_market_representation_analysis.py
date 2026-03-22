@@ -944,15 +944,25 @@ def _relation_invariance_mode_allowed(anchor: dict[str, Any], other: dict[str, A
     raise ValueError(f"unknown relation-invariance mode: {mode}")
 
 
-def _focal_relation_invariance_metrics(examples: list[dict[str, Any]], *, mode: str) -> dict[str, Any]:
-    if len(examples) < 4:
+def _focal_relation_invariance_metrics(
+    examples: list[dict[str, Any]],
+    *,
+    mode: str,
+    anchor_scenario: str | None = None,
+) -> dict[str, Any]:
+    anchors = (
+        [example for example in examples if example["scenario"] == anchor_scenario]
+        if anchor_scenario is not None
+        else list(examples)
+    )
+    if len(anchors) < 2 or len(examples) < 4:
         return {"error": "insufficient_examples"}
 
     hits: list[int] = []
     same_sims: list[float] = []
     other_sims: list[float] = []
 
-    for entry in examples:
+    for entry in anchors:
         best_match: dict[str, Any] | None = None
         best_sim = None
         best_same = None
@@ -980,7 +990,7 @@ def _focal_relation_invariance_metrics(examples: list[dict[str, Any]], *, mode: 
             other_sims.append(best_other)
 
     return {
-        "n_examples": len(examples),
+        "n_examples": len(anchors),
         "nn_accuracy": _mean(hits),
         "same_relation_cosine_mean": _mean(same_sims),
         "other_relation_cosine_mean": _mean(other_sims),
@@ -988,15 +998,24 @@ def _focal_relation_invariance_metrics(examples: list[dict[str, Any]], *, mode: 
     }
 
 
-def _relation_over_rank_control_metrics(examples: list[dict[str, Any]]) -> dict[str, Any]:
-    if len(examples) < 4:
+def _relation_over_rank_control_metrics(
+    examples: list[dict[str, Any]],
+    *,
+    anchor_scenario: str | None = None,
+) -> dict[str, Any]:
+    anchors = (
+        [example for example in examples if example["scenario"] == anchor_scenario]
+        if anchor_scenario is not None
+        else list(examples)
+    )
+    if len(anchors) < 2 or len(examples) < 4:
         return {"error": "insufficient_examples"}
 
     hits: list[int] = []
     same_sims: list[float] = []
     rank_negative_sims: list[float] = []
 
-    for entry in examples:
+    for entry in anchors:
         positive_best = None
         negative_best = None
         overall_best_label: str | None = None
@@ -1034,7 +1053,7 @@ def _relation_over_rank_control_metrics(examples: list[dict[str, Any]]) -> dict[
             hits.append(int(overall_best_label == "same_relation"))
 
     return {
-        "n_examples": len(examples),
+        "n_examples": len(anchors),
         "nn_accuracy": _mean(hits),
         "same_relation_cosine_mean": _mean(same_sims),
         "same_rank_other_relation_cosine_mean": _mean(rank_negative_sims),
@@ -1044,15 +1063,24 @@ def _relation_over_rank_control_metrics(examples: list[dict[str, Any]]) -> dict[
     }
 
 
-def _relation_over_magnitude_control_metrics(examples: list[dict[str, Any]]) -> dict[str, Any]:
-    if len(examples) < 4:
+def _relation_over_magnitude_control_metrics(
+    examples: list[dict[str, Any]],
+    *,
+    anchor_scenario: str | None = None,
+) -> dict[str, Any]:
+    anchors = (
+        [example for example in examples if example["scenario"] == anchor_scenario]
+        if anchor_scenario is not None
+        else list(examples)
+    )
+    if len(anchors) < 2 or len(examples) < 4:
         return {"error": "insufficient_examples"}
 
     hits: list[int] = []
     same_sims: list[float] = []
     scale_negative_sims: list[float] = []
 
-    for entry in examples:
+    for entry in anchors:
         positive_best = None
         negative_best = None
         overall_best_label: str | None = None
@@ -1090,7 +1118,7 @@ def _relation_over_magnitude_control_metrics(examples: list[dict[str, Any]]) -> 
             hits.append(int(overall_best_label == "same_relation"))
 
     return {
-        "n_examples": len(examples),
+        "n_examples": len(anchors),
         "nn_accuracy": _mean(hits),
         "same_relation_cosine_mean": _mean(same_sims),
         "same_scale_other_relation_cosine_mean": _mean(scale_negative_sims),
@@ -1487,17 +1515,26 @@ def run_synthetic_market_representation_analysis(config: SyntheticMarketRepresen
                     layer=layer,
                 )
                 for scenario in relation_scenarios:
-                    scenario_examples = [example for example in examples if example["scenario"] == scenario]
                     for mode_key in ("full", "style_only", "layout_only", "roster_only", "magnitude_only"):
-                        metrics = _focal_relation_invariance_metrics(scenario_examples, mode=mode_key)
+                        metrics = _focal_relation_invariance_metrics(
+                            examples,
+                            mode=mode_key,
+                            anchor_scenario=scenario,
+                        )
                         metrics["layer"] = layer
                         relation_by_scenario_and_mode[scenario][mode_key].append(metrics)
 
-                    rank_metrics = _relation_over_rank_control_metrics(scenario_examples)
+                    rank_metrics = _relation_over_rank_control_metrics(
+                        examples,
+                        anchor_scenario=scenario,
+                    )
                     rank_metrics["layer"] = layer
                     rank_by_scenario[scenario].append(rank_metrics)
 
-                    scale_metrics = _relation_over_magnitude_control_metrics(scenario_examples)
+                    scale_metrics = _relation_over_magnitude_control_metrics(
+                        examples,
+                        anchor_scenario=scenario,
+                    )
                     scale_metrics["layer"] = layer
                     scale_by_scenario[scenario].append(scale_metrics)
 

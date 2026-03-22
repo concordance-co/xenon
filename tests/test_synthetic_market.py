@@ -257,6 +257,91 @@ def test_phase7_relation_invariance_changes_anchor_rank_context_across_rosters()
     assert all(len(rank_pairs) >= 3 for rank_pairs in by_scenario.values())
 
 
+def test_generate_phase8_contextual_relation_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase8_contextual_relation",
+        permutation_variants=3,
+        profile_surface_variants=2,
+        relation_roster_variants=4,
+        relation_scale_variants=3,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == 4 * 3 * 2 * 4 * 3
+    families = {example.family for example in examples}
+    assert families == {"relation_invariance_control"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase8_contextual_relation",
+            permutation_variants=3,
+            profile_surface_variants=2,
+            relation_roster_variants=4,
+            relation_scale_variants=3,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_050_000
+
+
+def test_phase8_contextual_relation_keeps_anchor_raw_scores_constant_across_scenarios() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase8_contextual_relation",
+            permutation_variants=1,
+            profile_surface_variants=1,
+            relation_roster_variants=1,
+            relation_scale_variants=1,
+            include_settings_variants=False,
+        )
+    )
+    anchor_signatures_by_scale: dict[float, set[tuple[float | int, ...]]] = {}
+    for example in examples:
+        asset_rows = {row["profile_id"]: row for row in example.labels["asset_rows"]}
+        scale = round(asset_rows["anchor_left"]["pct_5m"] / 5.08, 3)
+        anchor_signatures_by_scale.setdefault(scale, set()).add((
+            asset_rows["anchor_left"]["pct_5m"],
+            asset_rows["anchor_left"]["pct_1h"],
+            asset_rows["anchor_left"]["net_flow_5m"],
+            asset_rows["anchor_left"]["unique_traders_5m"],
+            asset_rows["anchor_left"]["top20_holder_pct"],
+            asset_rows["anchor_right"]["pct_5m"],
+            asset_rows["anchor_right"]["pct_1h"],
+            asset_rows["anchor_right"]["net_flow_5m"],
+            asset_rows["anchor_right"]["unique_traders_5m"],
+            asset_rows["anchor_right"]["top20_holder_pct"],
+            asset_rows["anchor_left"]["attractiveness_score"],
+            asset_rows["anchor_right"]["attractiveness_score"],
+        ))
+    assert len(anchor_signatures_by_scale) >= 2
+    assert all(len(signatures) == 1 for signatures in anchor_signatures_by_scale.values())
+
+
+def test_phase8_contextual_relation_changes_anchor_rank_contexts() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase8_contextual_relation",
+            permutation_variants=1,
+            profile_surface_variants=1,
+            relation_roster_variants=4,
+            relation_scale_variants=1,
+            include_settings_variants=False,
+        )
+    )
+    rank_pairs = set()
+    for example in examples:
+        asset_rows = {row["profile_id"]: row for row in example.labels["asset_rows"]}
+        rank_pairs.add((
+            int(asset_rows["anchor_left"]["attractiveness_rank"]),
+            int(asset_rows["anchor_right"]["attractiveness_rank"]),
+        ))
+    assert len(rank_pairs) >= 3
+
+
 def test_rank_context_tradeoff_preserves_focal_pair_across_backgrounds() -> None:
     examples = generate_dataset(
         SyntheticMarketConfig(

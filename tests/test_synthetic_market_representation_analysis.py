@@ -346,6 +346,16 @@ def test_focal_relation_invariance_detects_same_scenario_across_roster_and_scale
             "vec": np.asarray([0.97, 0.03], dtype=np.float32),
         },
         {
+            "example_id": "relation_inv_00_00_00_01_01",
+            "scenario": "momentum_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 1,
+            "scale_idx": 1,
+            "rank_bucket": "2v3",
+            "vec": np.asarray([0.96, 0.04], dtype=np.float32),
+        },
+        {
             "example_id": "relation_inv_01_00_00_00_00",
             "scenario": "flow_edge_near_tie",
             "style_idx": 0,
@@ -374,6 +384,16 @@ def test_focal_relation_invariance_detects_same_scenario_across_roster_and_scale
             "scale_idx": 1,
             "rank_bucket": "1v2",
             "vec": np.asarray([0.03, 0.97], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_01_00_00_01_01",
+            "scenario": "flow_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 1,
+            "scale_idx": 1,
+            "rank_bucket": "2v3",
+            "vec": np.asarray([0.04, 0.96], dtype=np.float32),
         },
     ]
 
@@ -485,3 +505,112 @@ def test_relation_scale_control_prefers_same_relation_over_same_scale_bucket() -
     assert metrics["nn_accuracy"] == 1.0
     assert metrics["relation_over_scale_margin"] is not None
     assert metrics["relation_over_scale_margin"] > 0.5
+
+
+def test_relation_controls_can_anchor_one_scenario_against_full_pool() -> None:
+    examples = [
+        {
+            "example_id": "relation_inv_00_00_00_00_00",
+            "scenario": "momentum_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 0,
+            "scale_idx": 0,
+            "rank_bucket": "1v2",
+            "vec": np.asarray([1.0, 0.0], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_00_00_00_01_00",
+            "scenario": "momentum_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 1,
+            "scale_idx": 0,
+            "rank_bucket": "2v3",
+            "vec": np.asarray([0.98, 0.02], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_00_00_00_00_01",
+            "scenario": "momentum_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 0,
+            "scale_idx": 1,
+            "rank_bucket": "1v2",
+            "vec": np.asarray([0.97, 0.03], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_00_00_00_01_01",
+            "scenario": "momentum_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 1,
+            "scale_idx": 1,
+            "rank_bucket": "2v3",
+            "vec": np.asarray([0.96, 0.04], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_01_00_00_00_00",
+            "scenario": "flow_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 0,
+            "scale_idx": 0,
+            "rank_bucket": "1v2",
+            "vec": np.asarray([0.2, 0.8], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_01_00_00_01_00",
+            "scenario": "flow_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 1,
+            "scale_idx": 0,
+            "rank_bucket": "2v3",
+            "vec": np.asarray([0.18, 0.82], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_01_00_00_00_01",
+            "scenario": "flow_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 0,
+            "scale_idx": 1,
+            "rank_bucket": "1v2",
+            "vec": np.asarray([0.19, 0.81], dtype=np.float32),
+        },
+        {
+            "example_id": "relation_inv_01_00_00_01_01",
+            "scenario": "flow_edge_near_tie",
+            "style_idx": 0,
+            "perm_idx": 0,
+            "roster_idx": 1,
+            "scale_idx": 1,
+            "rank_bucket": "2v3",
+            "vec": np.asarray([0.17, 0.83], dtype=np.float32),
+        },
+    ]
+
+    inv = _focal_relation_invariance_metrics(
+        examples,
+        mode="roster_only",
+        anchor_scenario="momentum_edge_near_tie",
+    )
+    rank = _relation_over_rank_control_metrics(
+        examples,
+        anchor_scenario="momentum_edge_near_tie",
+    )
+    scale = _relation_over_magnitude_control_metrics(
+        examples,
+        anchor_scenario="momentum_edge_near_tie",
+    )
+
+    assert inv["nn_accuracy"] == 1.0
+    assert inv["relation_margin"] is not None
+    assert inv["relation_margin"] > 0.5
+    assert rank["nn_accuracy"] == 1.0
+    assert rank["relation_over_rank_margin"] is not None
+    assert rank["relation_over_rank_margin"] > 0.5
+    assert scale["nn_accuracy"] == 1.0
+    assert scale["relation_over_scale_margin"] is not None
+    assert scale["relation_over_scale_margin"] > 0.5
