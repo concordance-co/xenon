@@ -266,6 +266,13 @@ def _render_user_prompt_v4(
 ) -> str:
     rng = random.Random(phrasing_seed)
 
+    reference_reserve_eth = round(min_entry_cash_eth + rng.uniform(0.22, 0.63), 2)
+    recent_fee_burn_eth = round(rng.uniform(0.03, 0.19), 2)
+    archive_review_sessions = rng.randint(2, 7)
+    monitor_width = rng.randint(4, 9)
+    prior_slippage_bps = rng.randint(8, 34)
+    remark_window = rng.randint(2, 5)
+
     portfolio_lines = [
         [
             f"- Free cash reserve: {free_cash_eth:.2f} ETH.",
@@ -282,6 +289,11 @@ def _render_user_prompt_v4(
             f"- Current carried line: Asset {held_symbol}.",
             f"- Held duration so far: {held_age_sessions} sessions.",
         ],
+    ]
+    portfolio_noise = [
+        f"- Reference reserve target from the prior rebalance plan: {reference_reserve_eth:.2f} ETH.",
+        f"- Realized fee burn over the previous maintenance window: {recent_fee_burn_eth:.2f} ETH.",
+        f"- Desk monitoring width for this slate: {monitor_width} names.",
     ]
     constraint_lines = [
         [
@@ -300,16 +312,30 @@ def _render_user_prompt_v4(
             "- When both checks fail, record an observation.",
         ],
     ]
+    constraint_noise = [
+        f"- Reference only: the previous slippage guard fired at {prior_slippage_bps} bps.",
+        f"- Administrative review cadence remains {archive_review_sessions} sessions.",
+        f"- Archive note: the last manual remark window was {remark_window} sessions long.",
+    ]
     strategy_lines = [
         "- No high-priority strategy is currently overriding baseline action selection.",
         "- There is no active high-priority strategy changing the default decision path.",
         "- No strategy override is live; use the ordinary execution rules.",
     ]
+    strategy_noise = [
+        f"- Monitoring note: the strategy board refreshes every {remark_window} sessions.",
+        f"- Coverage note: the manual watchlist currently tracks {monitor_width} symbols.",
+        f"- Archive note: the last override review ran {archive_review_sessions} sessions ago.",
+    ]
 
     chosen_portfolio = list(rng.choice(portfolio_lines))
     chosen_constraints = list(rng.choice(constraint_lines))
+    chosen_strategy = [rng.choice(strategy_lines), rng.choice(strategy_noise)]
+    chosen_portfolio.append(rng.choice(portfolio_noise))
+    chosen_constraints.append(rng.choice(constraint_noise))
     rng.shuffle(chosen_portfolio)
     rng.shuffle(chosen_constraints)
+    rng.shuffle(chosen_strategy)
 
     lines = [
         f"## SYNTHETIC POLICY SCENARIO {_scenario_header(example_id)}",
@@ -325,7 +351,7 @@ def _render_user_prompt_v4(
         *chosen_portfolio,
         "",
         "## ACTIVE STRATEGIES",
-        rng.choice(strategy_lines),
+        *chosen_strategy,
         "",
         "## EXECUTION CONSTRAINTS",
         *chosen_constraints,
