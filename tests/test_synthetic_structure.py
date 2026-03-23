@@ -6,6 +6,7 @@ import pyarrow.parquet as pq
 from pipelines.interp.synthetic_market import SyntheticAsset, _render_user_prompt
 from pipelines.interp.synthetic_structure import (
     clear_synthetic_structure_shards,
+    find_synthetic_section_boundaries,
     find_synthetic_row_boundaries,
     merge_synthetic_structure_shards,
     select_examples_for_shard,
@@ -152,3 +153,25 @@ def test_find_synthetic_row_boundaries_handles_compact_surface_style():
     assert len(bounds) == 4
     assert [row["symbol"] for row in bounds] == ["North", "South", "East", "West"]
     assert all(row["full_start"] < row["full_end"] for row in bounds)
+
+
+def test_find_synthetic_section_boundaries_trims_market_separator():
+    assets = [
+        SyntheticAsset("North", "stable_winner", 4.4, 8.0, 1.1, 5.0, 20.0, 18, 24.0, "mature"),
+        SyntheticAsset("South", "crowded_risk", 4.5, 7.8, 1.0, 5.2, 21.0, 27, 61.0, "mid"),
+    ]
+    user_text = _render_user_prompt("boundary_test", "market_only", assets)
+    tokenizer = _FakeTokenizer()
+    rendered = tokenizer.apply_chat_template(
+        [{"role": "system", "content": "system prompt"}, {"role": "user", "content": user_text}],
+        add_generation_prompt=False,
+        tokenize=False,
+    )
+
+    boundaries = find_synthetic_section_boundaries(tokenizer, "system prompt", user_text)
+    market_start, market_end = boundaries["market"]
+    market_text = rendered[market_start:market_end]
+
+    assert "## MARKET SNAPSHOT" in market_text
+    assert "------------------------------" not in market_text
+    assert market_text.rstrip().endswith("18h") or market_text.rstrip().endswith("32h")

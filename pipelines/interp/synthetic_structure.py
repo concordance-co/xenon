@@ -21,6 +21,7 @@ from pipelines.interp.decision_structure.core import (
     _parse_messages,
     _render_chat_text,
     _save_pooled,
+    _trim_section_end_char,
     _token_offsets_for_rendered,
     pool_decision_residual,
 )
@@ -196,7 +197,7 @@ def _load_asset_rows(log_ids: list[int], *, phase_name: str) -> dict[int, list[d
 
 
 def _row_header_text(row: dict[str, Any]) -> str:
-    return f"- Asset {row['symbol']}"
+    return f"- {row['symbol']}"
 
 
 def find_synthetic_section_boundaries(
@@ -206,32 +207,39 @@ def find_synthetic_section_boundaries(
 ) -> dict[str, tuple[int, int]]:
     rendered = _render_chat_text(tokenizer, system_text, user_text)
     full_ids, offsets = _token_offsets_for_rendered(tokenizer, rendered)
-
     header_map = [
+        ("market", "## MARKET SNAPSHOT"),
+        ("active_strategies", "## ACTIVE STRATEGIES"),
         ("active_settings", "## ACTIVE SETTINGS"),
         ("portfolio", "## PORTFOLIO CONTEXT"),
-        ("active_strategies", "## ACTIVE STRATEGIES"),
-        ("constraints", "## EXECUTION CONSTRAINTS"),
-        ("market", "## MARKET SNAPSHOT"),
+        ("constraints", "## CONSTRAINTS"),
+        ("price_impact_limits", "## PRICE IMPACT LIMITS"),
         ("instruction", "Respond with the single best action for this tick:"),
     ]
 
     starts: list[tuple[str, int, int]] = []
-    search_char = 0
     for name, header in header_map:
-        idx = rendered.find(header, search_char)
+        idx = rendered.find(header)
         if idx < 0:
             continue
         span = _char_to_token_span(offsets, start_char=idx, end_char=idx + len(header))
         if span is None:
             continue
         starts.append((name, span[0], idx))
-        search_char = idx + len(header)
+    starts.sort(key=lambda item: item[2])
 
     boundaries: dict[str, tuple[int, int]] = {}
-    for i, (name, start_tok, _) in enumerate(starts):
-        end = starts[i + 1][1] if i + 1 < len(starts) else len(full_ids)
-        boundaries[name] = (start_tok, end)
+    for i, (name, _start_tok, start_char) in enumerate(starts):
+        raw_end_char = starts[i + 1][2] if i + 1 < len(starts) else len(rendered)
+        trimmed_end_char = _trim_section_end_char(
+            rendered,
+            section_start_char=start_char,
+            section_end_char=raw_end_char,
+        )
+        span = _char_to_token_span(offsets, start_char=start_char, end_char=trimmed_end_char)
+        if span is None:
+            continue
+        boundaries[name] = span
 
     first_start = starts[0][1] if starts else None
     if first_start is not None and first_start > 0:
@@ -247,15 +255,28 @@ def find_synthetic_row_boundaries(
 ) -> list[dict[str, Any]]:
     rendered = _render_chat_text(tokenizer, system_text, user_text)
     _, offsets = _token_offsets_for_rendered(tokenizer, rendered)
-    market_char = rendered.find("## MARKET SNAPSHOT")
+    market_header = "## MARKET SNAPSHOT"
+    market_char = rendered.find(market_header)
     search_char = market_char if market_char >= 0 else 0
-    instruction_char = rendered.find("Respond with the single best action for this tick:")
-    market_end_char = instruction_char if instruction_char >= 0 else len(rendered)
+    market_end_char = len(rendered)
+    if market_char >= 0:
+        rest = rendered[market_char + len(market_header):]
+        next_section = rest.find("\n## ")
+        if next_section >= 0:
+            market_end_char = market_char + len(market_header) + next_section
+        else:
+            instruction_char = rendered.find("Respond with the single best action for this tick:")
+            if instruction_char >= 0:
+                market_end_char = instruction_char
 
     located_headers: list[tuple[dict[str, Any], int]] = []
     for row in asset_rows:
-        header = _row_header_text(row)
-        row_char = rendered.find(header, search_char)
+        headers = (_row_header_text(row), f"- Asset {row['symbol']}")
+        row_char = -1
+        for header in headers:
+            row_char = rendered.find(header, search_char)
+            if row_char >= 0:
+                break
         if row_char < 0:
             print(f"WARNING: could not locate synthetic row header for {row['symbol']}")
             continue

@@ -18,11 +18,24 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 
-SYSTEM_PROMPT = (
-    "You are an autonomous trading agent. On each tick, choose exactly one action: "
-    "buy, sell, or observe. Only buy when the expected edge clearly justifies fees. "
-    "When no asset has enough edge, observe."
-)
+SYSTEM_PROMPT = """You are an autonomous trading agent in a 21-day onchain tournament. Your owner gave you ETH to deploy into tournament tokens and maximize returns. ETH sitting idle earns nothing, but overtrading burns fees, so allocate capital deliberately.
+
+Each tick, you MUST respond with exactly ONE tool call: buy_token, sell_token, or record_observation.
+Do not output any non-tool text.
+
+Decision hierarchy (resolve conflicts in this order):
+
+1) Hard constraints & tool schema (one-tool rule, available tokens only, ETH balance).
+2) ACTIVE STRATEGIES with priority HIGH:
+   - override ALL slider constraints, max trade size, and max price impact while directives are unfulfilled.
+   - if a HIGH directive is unfulfilled and feasible, execute with buy_token or sell_token now.
+   - use record_observation under HIGH only when objective is fulfilled or hard-blocked.
+   - persistent HIGH directives remain active until their explicit end condition; do not mark them complete after one action.
+3) ACTIVE STRATEGIES with priority MEDIUM - override slider preferences when they conflict, but respect TA/HS constraints.
+4) User sliders.
+5) ACTIVE STRATEGIES with priority LOW (suggestions only).
+
+Inside every tool call, include a brief reasoning note (1-2 lines). Mention the strategy or slider(s) that drove your decision and the key market signal. Keep it conversational but specific so your owner and your future self can audit decisions."""
 
 RISK_SETTING_TEXT = {
     "market_only": "No explicit settings are provided.",
@@ -101,6 +114,29 @@ AFFORDANCE_LADDER_TEXT = {
     ),
 }
 
+DX_DISCOVERY_SYMBOLS: tuple[str, ...] = ("NERA", "VEXA", "MORI", "LUMA", "KIRO", "TAVO")
+
+DISCOVERY_BACKGROUND_ROSTERS: tuple[tuple[str, str, str, str, str], ...] = (
+    ("stable_winner", "flow_backed_continuation", "crowded_risk", "mean_reverter", "illiquid_spike"),
+    ("stable_winner", "fading_leader", "flow_backed_continuation", "crowded_risk", "mean_reverter"),
+    ("flow_backed_continuation", "stable_winner", "mean_reverter", "illiquid_spike", "crowded_risk"),
+)
+
+DISCOVERY_COUPLED_SPECS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "pct_5m__net_flow_5m",
+        "anchor_archetype": "flow_backed_continuation",
+        "metric_x": ("pct_5m", -8.0, 12.0),
+        "metric_y": ("net_flow_5m", -2.0, 3.4),
+    },
+    {
+        "name": "unique_traders_5m__top20_holder_pct",
+        "anchor_archetype": "crowded_risk",
+        "metric_x": ("unique_traders_5m", 8.0, 34.0),
+        "metric_y": ("top20_holder_pct", 18.0, 72.0),
+    },
+)
+
 PHASE10_RISK_SETTING_TEXT = {
     "market_only": (
         "No explicit settings are provided. Read the market as-is and trade only when the edge clearly exceeds fees."
@@ -160,6 +196,9 @@ class SyntheticMarketConfig:
     profile_surface_variants: int = 4
     relation_roster_variants: int = 4
     relation_scale_variants: int = 3
+    discovery_scalar_steps: int = 7
+    discovery_background_variants: int = 3
+    discovery_grid_steps: int = 5
     include_settings_variants: bool = True
     dataset_preset: str = "phase1"
     scalar_background_variants: int = 1
@@ -408,6 +447,7 @@ def _age_risk_penalty(age_bucket: str) -> float:
 
 
 def _context_risk_level(context_variant: str) -> int | None:
+    context_variant = _base_context_variant(context_variant)
     if context_variant == "low_risk":
         return 1
     if context_variant == "high_risk":
@@ -422,6 +462,7 @@ def _context_risk_level(context_variant: str) -> int | None:
 
 
 def _context_portfolio_level(context_variant: str) -> int | None:
+    context_variant = _base_context_variant(context_variant)
     if not context_variant.startswith("portfolio_"):
         return None
     suffix = context_variant.removeprefix("portfolio_")
@@ -434,6 +475,7 @@ def _context_portfolio_level(context_variant: str) -> int | None:
 
 
 def _context_affordance_level(context_variant: str) -> int | None:
+    context_variant = _base_context_variant(context_variant)
     if not context_variant.startswith("affordance_"):
         return None
     suffix = context_variant.removeprefix("affordance_")
@@ -453,7 +495,21 @@ def _risk_multiplier(context_variant: str) -> float:
     return 0.55
 
 
+def _base_context_variant(context_variant: str) -> str:
+    for suffix in ("_after_market", "_before_market"):
+        if context_variant.endswith(suffix):
+            return context_variant[: -len(suffix)]
+    return context_variant
+
+
+def _section_order_for_context(context_variant: str) -> str:
+    if context_variant.endswith("_before_market"):
+        return "context_first"
+    return "market_first"
+
+
 def _settings_text(context_variant: str) -> str:
+    context_variant = _base_context_variant(context_variant)
     if context_variant in DX_RISK_LADDER_TEXT:
         return DX_RISK_LADDER_TEXT[context_variant]
     if context_variant in PORTFOLIO_LADDER_TEXT:
@@ -463,45 +519,168 @@ def _settings_text(context_variant: str) -> str:
     return RISK_SETTING_TEXT[context_variant]
 
 
-def _portfolio_context_lines(context_variant: str, assets: list[SyntheticAsset]) -> list[str]:
-    level = _context_portfolio_level(context_variant)
-    if level is None:
-        return ["- No existing positions are provided."]
-
-    held_asset = next((asset for asset in assets if asset.profile_id == "geo_alpha"), assets[0])
-    share_by_level = {1: 8, 2: 16, 3: 24, 4: 34, 5: 45}
-    eth_by_level = {1: 2.40, 2: 2.05, 3: 1.70, 4: 1.35, 5: 1.00}
-    share = share_by_level[level]
-    eth_left = eth_by_level[level]
-    return [
-        f"- Available ETH: {eth_left:.2f}",
-        f"- Existing position: Asset {held_asset.symbol} already represents about {share}% of deployed capital.",
-        f"- Position note: {held_asset.symbol} was accumulated earlier and remains active.",
-        "- Portfolio objective: avoid adding concentration unless the incremental edge is materially stronger than the alternatives.",
-    ]
+def _display_price_eth(asset: SyntheticAsset) -> float:
+    base = (
+        0.00000120
+        + 0.00000005 * max(asset.pct_1h, -15.0)
+        + 0.00000003 * max(asset.net_flow_5m, -3.0)
+        + 0.00000001 * max(asset.unique_traders_5m, 1)
+    )
+    return round(_clamp(base, 0.00000045, 0.00000450), 8)
 
 
-def _affordance_context_lines(context_variant: str, assets: list[SyntheticAsset]) -> list[str]:
-    level = _context_affordance_level(context_variant)
-    if level is None:
-        return ["- No hard execution constraints are supplied."]
+def _time_since_launch(asset: SyntheticAsset) -> str:
+    if asset.age_bucket == "fresh":
+        return "2h"
+    if asset.age_bucket == "mature":
+        return "32h"
+    return "18h"
 
-    top = next((asset for asset in assets if asset.profile_id == "geo_alpha"), assets[0])
-    second = next((asset for asset in assets if asset.profile_id == "geo_beta"), assets[min(1, len(assets) - 1)])
-    third = next((asset for asset in assets if asset.profile_id == "geo_gamma"), assets[min(2, len(assets) - 1)])
-    fourth = next((asset for asset in assets if asset.profile_id == "geo_delta"), assets[min(3, len(assets) - 1)])
 
+def _active_settings_values(context_variant: str) -> tuple[int, int, int, int, int]:
+    risk_level = _context_risk_level(context_variant)
+    if risk_level is None:
+        risk_level = 2
+    return (5, risk_level, 3, 2, 4)
+
+
+def _active_settings_lines(context_variant: str, *, note_override: str | None = None) -> list[str]:
+    ta, risk, size, hold, div = _active_settings_values(context_variant)
     lines = [
-        f"- Buy constraint: Asset {top.symbol} is capped for new adds this tick.",
+        f"- Trading Activity (TA): {ta} / 5 - How often you trade when there is fresh edge (1=very patient, 5=highly active). TA does NOT require a trade every tick.",
+        f"- Asset Risk Preference (Risk): {risk} / 5 - Which tokens you consider (1=prefer least volatile available, 5=embrace high volatility). Risk determines which tokens to consider, not whether to trade at all.",
+        f"- Trade Size (Size): {size} / 5 - Maximum position sizing per trade (1=up to ~15%, 2=up to ~30%, 3=up to ~50%, 4=up to ~70%, 5=up to ~90% of available ETH). These are UPPER BOUNDS, not minimums.",
+        f"- Holding Style (Hold): {hold} / 5 - Minimum hold time before considering an exit (1=about ~30 minutes minimum; 2=about ~1 hour; 3=hours; 4=many hours; 5=days).",
+        f"- Diversification (Div): {div} / 5 - Portfolio spread (1=concentrated in 1-2 tokens; 2=focused 2-3; 3=balanced 3-5; 4=spread 4-6; 5=wide 5+).",
     ]
-    if level >= 2:
-        lines.append(f"- Routing note: Asset {second.symbol} is in confirmation-only mode after an execution warning.")
-    if level >= 3:
-        lines.append(f"- Hard block: Assets {top.symbol} and {second.symbol} should not be increased this tick.")
-    if level >= 4:
-        lines.append(f"- Size cap: Asset {third.symbol} can only be added in small size.")
-    if level >= 5:
-        lines.append(f"- Open route: Asset {fourth.symbol} is the only fully unrestricted add path.")
+    if note_override:
+        lines.extend(["", f"**Context note:** {note_override}"])
+    return lines
+
+
+def _held_asset_for_context(context_variant: str, assets: list[SyntheticAsset]) -> SyntheticAsset | None:
+    if not assets:
+        return None
+    affordance_level = _context_affordance_level(context_variant)
+    if affordance_level is not None:
+        return next((asset for asset in assets if asset.profile_id == "geo_gamma"), assets[min(2, len(assets) - 1)])
+    portfolio_level = _context_portfolio_level(context_variant)
+    if portfolio_level is not None:
+        return next((asset for asset in assets if asset.profile_id == "geo_alpha"), assets[0])
+    return None
+
+
+def _available_eth_balance(context_variant: str) -> float:
+    affordance_level = _context_affordance_level(context_variant)
+    if affordance_level is not None:
+        return {
+            1: 0.160000,
+            2: 0.100000,
+            3: 0.050000,
+            4: 0.006000,
+            5: 0.003000,
+        }.get(affordance_level, 0.240000)
+    portfolio_level = _context_portfolio_level(context_variant)
+    if portfolio_level is not None:
+        return {
+            1: 0.210000,
+            2: 0.180000,
+            3: 0.150000,
+            4: 0.110000,
+            5: 0.080000,
+        }.get(portfolio_level, 0.240000)
+    return 0.240000
+
+
+def _portfolio_context_lines(context_variant: str, assets: list[SyntheticAsset]) -> list[str]:
+    held_asset = _held_asset_for_context(context_variant, assets)
+    eth_balance = _available_eth_balance(context_variant)
+    if held_asset is None:
+        return [
+            f"- ETH: Balance: {eth_balance:.6f}",
+            "- No current token holdings.",
+        ]
+
+    portfolio_level = _context_portfolio_level(context_variant)
+    if portfolio_level is None:
+        portfolio_level = 3
+    shares = {1: 8, 2: 16, 3: 24, 4: 34, 5: 45}
+    share = shares.get(portfolio_level, 24)
+    return [
+        f"- ETH: Balance: {eth_balance:.6f}",
+        (
+            f"- {held_asset.symbol}: Balance: 18422000.000 | Avg Entry: {_display_price_eth(held_asset) * 0.89:.8f} ETH | "
+            f"Unrealized PnL: +4.90% | Time Since Last Interaction: 35m | Time Held: 2h 10m"
+        ),
+        (
+            f"- Position note: {held_asset.symbol} already represents about {share}% of deployed capital, "
+            "so additional adds should clear a higher bar."
+        ),
+    ]
+
+
+def _max_trade_amount_pct(context_variant: str) -> float:
+    affordance_level = _context_affordance_level(context_variant)
+    if affordance_level is not None:
+        return {
+            1: 60.0,
+            2: 30.0,
+            3: 20.0,
+            4: 12.0,
+            5: 8.0,
+        }.get(affordance_level, 100.0)
+    return 100.0
+
+
+def _price_impact_limit_bps(context_variant: str) -> int:
+    affordance_level = _context_affordance_level(context_variant)
+    if affordance_level is not None:
+        return {
+            1: 900,
+            2: 700,
+            3: 550,
+            4: 400,
+            5: 300,
+        }.get(affordance_level, 1500)
+    return 1500
+
+
+def _price_impact_lines(context_variant: str, assets: list[SyntheticAsset]) -> list[str]:
+    held_asset = _held_asset_for_context(context_variant, assets)
+    affordance_level = _context_affordance_level(context_variant)
+    top = next((asset for asset in assets if asset.profile_id == "geo_alpha"), assets[0] if assets else None)
+    second = next((asset for asset in assets if asset.profile_id == "geo_beta"), assets[min(1, len(assets) - 1)] if assets else None)
+    third = next((asset for asset in assets if asset.profile_id == "geo_gamma"), assets[min(2, len(assets) - 1)] if assets else None)
+    fourth = next((asset for asset in assets if asset.profile_id == "geo_delta"), assets[min(3, len(assets) - 1)] if assets else None)
+
+    buy_limits = {asset.symbol: 100.0 for asset in assets}
+    if affordance_level is not None and top is not None:
+        if affordance_level >= 1:
+            buy_limits[top.symbol] = 12.0
+        if affordance_level >= 2 and second is not None:
+            buy_limits[top.symbol] = 0.0
+            buy_limits[second.symbol] = 12.0
+        if affordance_level >= 3 and second is not None:
+            buy_limits[second.symbol] = 0.0
+            if third is not None:
+                buy_limits[third.symbol] = 20.0
+        if affordance_level >= 4:
+            for symbol in list(buy_limits):
+                buy_limits[symbol] = 0.0
+            if third is not None:
+                buy_limits[third.symbol] = 12.0
+        if affordance_level >= 5:
+            for symbol in list(buy_limits):
+                buy_limits[symbol] = 0.0
+            if fourth is not None:
+                buy_limits[fourth.symbol] = 30.0
+
+    lines: list[str] = []
+    for asset in assets:
+        base = f"- {asset.symbol}: BUY max {buy_limits[asset.symbol]:.2f}% of ETH"
+        if held_asset is not None and asset.symbol == held_asset.symbol:
+            base += f", SELL max 100.00% of {held_asset.symbol}"
+        lines.append(base)
     return lines
 
 
@@ -632,57 +811,59 @@ def _compute_labels(example_id: str, family: str, family_variant: str, context_v
 
 
 def _render_asset_lines(asset: SyntheticAsset, *, surface_style: str = "canonical") -> list[str]:
+    price_eth = _display_price_eth(asset)
+    launch_age = _time_since_launch(asset)
     if surface_style == "canonical":
         return [
-            f"- Asset {asset.symbol}",
-            f"  - Archetype: {asset.archetype}",
+            f"- {asset.symbol}",
+            f"  - Price: {price_eth:.8f} ETH",
             f"  - 5m change: {asset.pct_5m:+.1f}%",
             f"  - 1h change: {asset.pct_1h:+.1f}%",
-            f"  - Net flow 5m: {asset.net_flow_5m:+.2f}",
-            f"  - Volume 5m: {asset.vol_5m:.2f}",
-            f"  - Volume 1h: {asset.vol_1h:.2f}",
+            f"  - Net flow 5m: {asset.net_flow_5m:+.2f} ETH",
+            f"  - Volume 5m: {asset.vol_5m:.2f} ETH",
+            f"  - Volume 1h: {asset.vol_1h:.2f} ETH",
             f"  - Unique traders 5m: {asset.unique_traders_5m}",
             f"  - Top 20 holder pct: {asset.top20_holder_pct:.1f}%",
-            f"  - Age bucket: {asset.age_bucket}",
+            f"  - Time since launch: {launch_age}",
         ]
     if surface_style == "reordered":
         return [
-            f"- Asset {asset.symbol}",
-            f"  - Holder concentration (top 20): {asset.top20_holder_pct:.1f}%",
-            f"  - Active traders over 5m: {asset.unique_traders_5m}",
-            f"  - Recent net flow (5m): {asset.net_flow_5m:+.2f}",
-            f"  - 1h move: {asset.pct_1h:+.1f}%",
-            f"  - 5m move: {asset.pct_5m:+.1f}%",
-            f"  - Archetype family: {asset.archetype}",
-            f"  - 1h volume: {asset.vol_1h:.2f}",
-            f"  - 5m volume: {asset.vol_5m:.2f}",
-            f"  - Age cohort: {asset.age_bucket}",
+            f"- {asset.symbol}",
+            f"  - Top 20 holder pct: {asset.top20_holder_pct:.1f}%",
+            f"  - Unique traders 5m: {asset.unique_traders_5m}",
+            f"  - Net flow 5m: {asset.net_flow_5m:+.2f} ETH",
+            f"  - 1h change: {asset.pct_1h:+.1f}%",
+            f"  - 5m change: {asset.pct_5m:+.1f}%",
+            f"  - Volume 1h: {asset.vol_1h:.2f} ETH",
+            f"  - Volume 5m: {asset.vol_5m:.2f} ETH",
+            f"  - Price: {price_eth:.8f} ETH",
+            f"  - Time since launch: {launch_age}",
         ]
     if surface_style == "compact":
         return [
-            f"- Asset {asset.symbol}",
+            f"- {asset.symbol}",
             "  - Snapshot: "
+            f"price={price_eth:.8f}ETH; "
             f"5m={asset.pct_5m:+.1f}%; "
             f"1h={asset.pct_1h:+.1f}%; "
-            f"flow5m={asset.net_flow_5m:+.2f}; "
+            f"flow5m={asset.net_flow_5m:+.2f}ETH; "
             f"traders5m={asset.unique_traders_5m}; "
             f"top20={asset.top20_holder_pct:.1f}%; "
-            f"vol5m={asset.vol_5m:.2f}; "
-            f"vol1h={asset.vol_1h:.2f}; "
-            f"age={asset.age_bucket}; "
-            f"archetype={asset.archetype}",
+            f"vol5m={asset.vol_5m:.2f}ETH; "
+            f"vol1h={asset.vol_1h:.2f}ETH; "
+            f"launch={launch_age}",
         ]
     if surface_style == "analyst":
         return [
-            f"- Asset {asset.symbol}",
-            f"  - Short-horizon price move: {asset.pct_5m:+.1f}% over 5m",
+            f"- {asset.symbol}",
+            f"  - Price: {price_eth:.8f} ETH",
+            f"  - Short-horizon move: {asset.pct_5m:+.1f}% over 5m",
             f"  - Hourly continuation: {asset.pct_1h:+.1f}% over 1h",
             f"  - Participation pulse: {asset.unique_traders_5m} traders in 5m",
             f"  - Concentration check: top-20 holders own {asset.top20_holder_pct:.1f}%",
-            f"  - Flow tape: {asset.net_flow_5m:+.2f} net over 5m",
-            f"  - Liquidity tape: {asset.vol_5m:.2f} / {asset.vol_1h:.2f} volume",
-            f"  - Lifecycle bucket: {asset.age_bucket}",
-            f"  - Archetype read: {asset.archetype}",
+            f"  - Flow tape: {asset.net_flow_5m:+.2f} ETH over 5m",
+            f"  - Liquidity tape: {asset.vol_5m:.2f} ETH / {asset.vol_1h:.2f} ETH",
+            f"  - Time since launch: {launch_age}",
         ]
     raise ValueError(f"Unsupported surface_style: {surface_style}")
 
@@ -696,37 +877,78 @@ def _render_user_prompt(
     settings_text_override: str | None = None,
     portfolio_lines: list[str] | None = None,
     constraints_lines: list[str] | None = None,
+    section_order: str | None = None,
 ) -> str:
-    lines = [
-        f"## SYNTHETIC MARKET SCENARIO {example_id}",
-        "",
-        "These assets are neutral synthetic placeholders, not real tickers.",
-        "",
-        "## ACTIVE SETTINGS",
-        f"- {settings_text_override or _settings_text(context_variant)}",
+    active_settings = _active_settings_lines(context_variant, note_override=settings_text_override)
+    portfolio_block = portfolio_lines if portfolio_lines is not None else _portfolio_context_lines(context_variant, assets)
+    constraints_block = constraints_lines if constraints_lines is not None else [
+        f"- Max Trade Amount (Percent): {_max_trade_amount_pct(context_variant):.2f}% of available ETH",
     ]
-    if portfolio_lines:
-        lines.extend([
-            "",
-            "## PORTFOLIO CONTEXT",
-            *portfolio_lines,
-        ])
-    if constraints_lines:
-        lines.extend([
-            "",
-            "## CONSTRAINTS",
-            *constraints_lines,
-        ])
-    lines.extend([
-        "",
-        "## MARKET SNAPSHOT",
-    ])
+    price_impact_lines = _price_impact_lines(context_variant, assets)
+    market_block = ["## MARKET SNAPSHOT"]
     for asset in assets:
-        lines.extend(_render_asset_lines(asset, surface_style=surface_style))
-    lines.extend([
+        market_block.extend(_render_asset_lines(asset, surface_style=surface_style))
+    active_strategies_block = [
+        "## ACTIVE STRATEGIES (CURRENT ONLY)",
         "",
-        "Respond with the single best action for this tick: buy, sell, or observe.",
-    ])
+        "No active strategies.",
+    ]
+    active_settings_block = ["## ACTIVE SETTINGS", "", *active_settings]
+    portfolio_section = ["## PORTFOLIO CONTEXT", "", *portfolio_block]
+    constraints_section = ["## CONSTRAINTS", "", *constraints_block]
+    price_impact_section = [
+        f"## PRICE IMPACT LIMITS (max {_price_impact_limit_bps(context_variant)} bps)",
+        "",
+        *price_impact_lines,
+    ]
+
+    section_order = section_order or _section_order_for_context(context_variant)
+    if section_order == "market_first":
+        lines = [
+            *market_block,
+            "",
+            "------------------------------",
+            "",
+            *active_strategies_block,
+            "",
+            "------------------------------",
+            "",
+            *active_settings_block,
+            "",
+            "------------------------------",
+            "",
+            *portfolio_section,
+            "",
+            *constraints_section,
+            "",
+            *price_impact_section,
+            "",
+            "Respond with the single best action for this tick: buy, sell, or observe.",
+        ]
+    elif section_order == "context_first":
+        lines = [
+            *active_strategies_block,
+            "",
+            "------------------------------",
+            "",
+            *active_settings_block,
+            "",
+            "------------------------------",
+            "",
+            *portfolio_section,
+            "",
+            *constraints_section,
+            "",
+            *price_impact_section,
+            "",
+            "------------------------------",
+            "",
+            *market_block,
+            "",
+            "Respond with the single best action for this tick: buy, sell, or observe.",
+        ]
+    else:
+        raise ValueError(f"Unsupported section_order: {section_order}")
     return "\n".join(lines)
 
 
@@ -2702,10 +2924,6 @@ def generate_set_geometry_affordance_ladder_controls(config: SyntheticMarketConf
                 for scale_idx, (_, scale_factor) in enumerate(scale_variants):
                     scaled_assets = [_scale_market_magnitude(asset, scale_factor) for asset in permuted_assets]
                     example_id = f"set_geom_aff_{scenario_idx:02d}_{style_idx:02d}_{perm_idx:02d}_{scale_idx:02d}"
-                    constraints_lines_by_context = {
-                        context_variant: _affordance_context_lines(context_variant, scaled_assets)
-                        for context_variant in affordance_contexts
-                    }
                     examples.extend(
                         _apply_context_variants(
                             example_id,
@@ -2716,7 +2934,6 @@ def generate_set_geometry_affordance_ladder_controls(config: SyntheticMarketConf
                             surface_style=style_name,
                             settings_text_by_context=AFFORDANCE_LADDER_TEXT,
                             context_variants=affordance_contexts,
-                            constraints_lines_by_context=constraints_lines_by_context,
                         )
                     )
     return examples
@@ -2744,7 +2961,183 @@ def generate_archetype_families(config: SyntheticMarketConfig) -> list[Synthetic
     return examples
 
 
+def generate_market_basis_discovery_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    steps = max(5, int(config.discovery_scalar_steps))
+    backgrounds = DISCOVERY_BACKGROUND_ROSTERS[: max(1, min(config.discovery_background_variants, len(DISCOVERY_BACKGROUND_ROSTERS)))]
+    alphas = [(-1.0 + 2.0 * idx / (steps - 1)) for idx in range(steps)]
+    symbols = DX_DISCOVERY_SYMBOLS
+
+    scalar_specs: tuple[tuple[str, str, float, float], ...] = (
+        ("pct_5m", "momentum_burst", -8.0, 12.0),
+        ("net_flow_5m", "flow_backed_continuation", -2.0, 3.4),
+        ("unique_traders_5m", "stable_winner", 8.0, 34.0),
+        ("top20_holder_pct", "crowded_risk", 18.0, 72.0),
+    )
+    for metric_name, anchor_archetype, lower, upper in scalar_specs:
+        for roster_idx, distractors in enumerate(backgrounds):
+            for step_idx, alpha in enumerate(alphas):
+                value = lower + (upper - lower) * ((alpha + 1.0) / 2.0)
+                anchor = _make_asset(symbols[0], anchor_archetype, jitter_index=90_000 + 100 * roster_idx + step_idx)
+                anchor = _override_metric(anchor, metric_name, value)
+                base_assets = [anchor]
+                for offset, distractor in enumerate(distractors, start=1):
+                    base_assets.append(
+                        _make_asset(
+                            symbols[offset],
+                            distractor,
+                            jitter_index=90_000 + 100 * roster_idx + 11 * offset + step_idx,
+                        )
+                    )
+                example_id = f"basis_scalar_{metric_name}_r{roster_idx:02d}_s{step_idx:02d}"
+                examples.extend(
+                    _apply_context_variants(
+                        example_id,
+                        family="market_basis_scalar",
+                        family_variant=metric_name,
+                        base_assets=base_assets,
+                        include_settings_variants=False,
+                    )
+                )
+
+    grid_steps = max(3, int(config.discovery_grid_steps))
+    values_by_spec: dict[str, tuple[list[float], list[float]]] = {}
+    for spec in DISCOVERY_COUPLED_SPECS:
+        metric_x, lower_x, upper_x = spec["metric_x"]
+        metric_y, lower_y, upper_y = spec["metric_y"]
+        values_by_spec[str(spec["name"])] = (
+            _linspace(float(lower_x), float(upper_x), grid_steps),
+            _linspace(float(lower_y), float(upper_y), grid_steps),
+        )
+    for spec in DISCOVERY_COUPLED_SPECS:
+        metric_x, _, _ = spec["metric_x"]
+        metric_y, _, _ = spec["metric_y"]
+        values_x, values_y = values_by_spec[str(spec["name"])]
+        for roster_idx, distractors in enumerate(backgrounds[:2]):
+            for x_idx, value_x in enumerate(values_x):
+                for y_idx, value_y in enumerate(values_y):
+                    jitter = 91_000 + 300 * roster_idx + 17 * x_idx + y_idx
+                    anchor = _make_asset(symbols[0], spec["anchor_archetype"], jitter_index=jitter)
+                    anchor = _override_metric(anchor, metric_x, value_x)
+                    anchor = _override_metric(anchor, metric_y, value_y)
+                    base_assets = [anchor]
+                    for offset, distractor in enumerate(distractors, start=1):
+                        base_assets.append(
+                            _make_asset(
+                                symbols[offset],
+                                distractor,
+                                jitter_index=jitter + 19 * offset,
+                            )
+                        )
+                    example_id = f"basis_coupled_{spec['name']}_r{roster_idx:02d}_x{x_idx:02d}_y{y_idx:02d}"
+                    examples.extend(
+                        _apply_context_variants(
+                            example_id,
+                            family="market_basis_coupled",
+                            family_variant=str(spec["name"]),
+                            base_assets=base_assets,
+                            include_settings_variants=False,
+                        )
+                    )
+
+    return examples
+
+
+def generate_market_context_order_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    examples: list[SyntheticMarketExample] = []
+    steps = max(3, int(config.discovery_scalar_steps))
+    backgrounds = DISCOVERY_BACKGROUND_ROSTERS[: max(1, min(config.discovery_background_variants, len(DISCOVERY_BACKGROUND_ROSTERS)))]
+    alphas = [(-1.0 + 2.0 * idx / (steps - 1)) for idx in range(steps)]
+    symbols = DX_DISCOVERY_SYMBOLS
+    context_variants = [
+        "market_only",
+        "risk_5_after_market",
+        "risk_5_before_market",
+        "affordance_5_after_market",
+        "affordance_5_before_market",
+    ]
+
+    scalar_specs: tuple[tuple[str, str, float, float], ...] = (
+        ("pct_5m", "momentum_burst", -8.0, 12.0),
+        ("net_flow_5m", "flow_backed_continuation", -2.0, 3.4),
+        ("unique_traders_5m", "stable_winner", 8.0, 34.0),
+        ("top20_holder_pct", "crowded_risk", 18.0, 72.0),
+    )
+    for metric_name, anchor_archetype, lower, upper in scalar_specs:
+        for roster_idx, distractors in enumerate(backgrounds):
+            for step_idx, alpha in enumerate(alphas):
+                value = lower + (upper - lower) * ((alpha + 1.0) / 2.0)
+                anchor = _make_asset(symbols[0], anchor_archetype, jitter_index=92_000 + 100 * roster_idx + step_idx)
+                anchor = _override_metric(anchor, metric_name, value)
+                base_assets = [anchor]
+                for offset, distractor in enumerate(distractors, start=1):
+                    base_assets.append(
+                        _make_asset(
+                            symbols[offset],
+                            distractor,
+                            jitter_index=92_000 + 100 * roster_idx + 11 * offset + step_idx,
+                        )
+                    )
+                example_id = f"context_scalar_{metric_name}_r{roster_idx:02d}_s{step_idx:02d}"
+                examples.extend(
+                    _apply_context_variants(
+                        example_id,
+                        family="market_context_order_scalar",
+                        family_variant=metric_name,
+                        base_assets=base_assets,
+                        include_settings_variants=False,
+                        context_variants=context_variants,
+                    )
+                )
+
+    grid_steps = max(3, int(config.discovery_grid_steps))
+    values_by_spec: dict[str, tuple[list[float], list[float]]] = {}
+    for spec in DISCOVERY_COUPLED_SPECS:
+        metric_x, lower_x, upper_x = spec["metric_x"]
+        metric_y, lower_y, upper_y = spec["metric_y"]
+        values_by_spec[str(spec["name"])] = (
+            _linspace(float(lower_x), float(upper_x), grid_steps),
+            _linspace(float(lower_y), float(upper_y), grid_steps),
+        )
+    for spec in DISCOVERY_COUPLED_SPECS:
+        metric_x, _, _ = spec["metric_x"]
+        metric_y, _, _ = spec["metric_y"]
+        values_x, values_y = values_by_spec[str(spec["name"])]
+        for roster_idx, distractors in enumerate(backgrounds[:2]):
+            for x_idx, value_x in enumerate(values_x):
+                for y_idx, value_y in enumerate(values_y):
+                    jitter = 93_000 + 300 * roster_idx + 17 * x_idx + y_idx
+                    anchor = _make_asset(symbols[0], spec["anchor_archetype"], jitter_index=jitter)
+                    anchor = _override_metric(anchor, metric_x, value_x)
+                    anchor = _override_metric(anchor, metric_y, value_y)
+                    base_assets = [anchor]
+                    for offset, distractor in enumerate(distractors, start=1):
+                        base_assets.append(
+                            _make_asset(
+                                symbols[offset],
+                                distractor,
+                                jitter_index=jitter + 19 * offset,
+                            )
+                        )
+                    example_id = f"context_coupled_{spec['name']}_r{roster_idx:02d}_x{x_idx:02d}_y{y_idx:02d}"
+                    examples.extend(
+                        _apply_context_variants(
+                            example_id,
+                            family="market_context_order_coupled",
+                            family_variant=str(spec["name"]),
+                            base_assets=base_assets,
+                            include_settings_variants=False,
+                            context_variants=context_variants,
+                        )
+                    )
+    return examples
+
+
 def generate_dataset(config: SyntheticMarketConfig) -> list[SyntheticMarketExample]:
+    if config.dataset_preset == "phase15_market_basis_discovery":
+        return generate_market_basis_discovery_dataset(config)
+    if config.dataset_preset == "phase16_context_order":
+        return generate_market_context_order_dataset(config)
     if config.dataset_preset == "phase2_geometry":
         examples = []
         examples.extend(generate_dense_scalar_sweeps(config))
@@ -2801,6 +3194,8 @@ def _default_log_id_base(dataset_preset: str) -> int:
         "phase11_set_geometry_risk_ladder": 2_147_200_000,
         "phase13_set_geometry_portfolio_ladder": 2_147_240_000,
         "phase14_set_geometry_affordance_ladder": 2_147_250_000,
+        "phase15_market_basis_discovery": 2_147_260_000,
+        "phase16_context_order": 2_147_270_000,
     }.get(dataset_preset, 2_140_000_000)
 
 

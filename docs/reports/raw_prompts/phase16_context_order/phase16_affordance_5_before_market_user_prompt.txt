@@ -1,0 +1,100 @@
+## ACTIVE STRATEGIES (CURRENT ONLY)
+
+No active strategies.
+
+------------------------------
+
+## ACTIVE SETTINGS
+
+- Trading Activity (TA): 5 / 5 - How often you trade when there is fresh edge (1=very patient, 5=highly active). TA does NOT require a trade every tick.
+- Asset Risk Preference (Risk): 2 / 5 - Which tokens you consider (1=prefer least volatile available, 5=embrace high volatility). Risk determines which tokens to consider, not whether to trade at all.
+- Trade Size (Size): 3 / 5 - Maximum position sizing per trade (1=up to ~15%, 2=up to ~30%, 3=up to ~50%, 4=up to ~70%, 5=up to ~90% of available ETH). These are UPPER BOUNDS, not minimums.
+- Holding Style (Hold): 2 / 5 - Minimum hold time before considering an exit (1=about ~30 minutes minimum; 2=about ~1 hour; 3=hours; 4=many hours; 5=days).
+- Diversification (Div): 4 / 5 - Portfolio spread (1=concentrated in 1-2 tokens; 2=focused 2-3; 3=balanced 3-5; 4=spread 4-6; 5=wide 5+).
+
+------------------------------
+
+## PORTFOLIO CONTEXT
+
+- ETH: Balance: 0.003000
+- MORI: Balance: 18422000.000 | Avg Entry: 0.00000188 ETH | Unrealized PnL: +4.90% | Time Since Last Interaction: 35m | Time Held: 2h 10m
+- Position note: MORI already represents about 24% of deployed capital, so additional adds should clear a higher bar.
+
+## CONSTRAINTS
+
+- Max Trade Amount (Percent): 8.00% of available ETH
+
+## PRICE IMPACT LIMITS (max 300 bps)
+
+- NERA: BUY max 0.00% of ETH
+- VEXA: BUY max 0.00% of ETH
+- MORI: BUY max 0.00% of ETH, SELL max 100.00% of MORI
+- LUMA: BUY max 30.00% of ETH
+- KIRO: BUY max 0.00% of ETH
+- TAVO: BUY max 0.00% of ETH
+
+------------------------------
+
+## MARKET SNAPSHOT
+- NERA
+  - Price: 0.00000195 ETH
+  - 5m change: -8.0%
+  - 1h change: +12.2%
+  - Net flow 5m: -2.00 ETH
+  - Volume 5m: 5.24 ETH
+  - Volume 1h: 24.09 ETH
+  - Unique traders 5m: 20
+  - Top 20 holder pct: 31.1%
+  - Time since launch: 18h
+- VEXA
+  - Price: 0.00000195 ETH
+  - 5m change: +3.1%
+  - 1h change: +10.2%
+  - Net flow 5m: +1.82 ETH
+  - Volume 5m: 5.55 ETH
+  - Volume 1h: 28.14 ETH
+  - Unique traders 5m: 18
+  - Top 20 holder pct: 28.1%
+  - Time since launch: 32h
+- MORI
+  - Price: 0.00000211 ETH
+  - 5m change: +4.2%
+  - 1h change: +12.3%
+  - Net flow 5m: +3.03 ETH
+  - Volume 5m: 5.27 ETH
+  - Volume 1h: 24.18 ETH
+  - Unique traders 5m: 20
+  - Top 20 holder pct: 31.1%
+  - Time since launch: 18h
+- LUMA
+  - Price: 0.00000171 ETH
+  - 5m change: +2.7%
+  - 1h change: +7.4%
+  - Net flow 5m: +0.83 ETH
+  - Volume 5m: 3.88 ETH
+  - Volume 1h: 16.21 ETH
+  - Unique traders 5m: 11
+  - Top 20 holder pct: 67.2%
+  - Time since launch: 18h
+- KIRO
+  - Price: 0.00000095 ETH
+  - 5m change: -4.2%
+  - 1h change: -8.5%
+  - Net flow 5m: +1.14 ETH
+  - Volume 5m: 4.50 ETH
+  - Volume 1h: 15.24 ETH
+  - Unique traders 5m: 14
+  - Top 20 holder pct: 33.2%
+  - Time since launch: 32h
+- TAVO
+  - Price: 0.00000148 ETH
+  - 5m change: +7.3%
+  - 1h change: +4.5%
+  - Net flow 5m: +0.34 ETH
+  - Volume 5m: 1.51 ETH
+  - Volume 1h: 4.47 ETH
+  - Unique traders 5m: 4
+  - Top 20 holder pct: 58.2%
+  - Time since launch: 2h
+
+Respond with the single best action for this tick: buy, sell, or observe.

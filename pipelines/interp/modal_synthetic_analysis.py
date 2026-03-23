@@ -306,6 +306,90 @@ def run_synthetic_market_transform_analysis_modal(
     return result
 
 
+@app.function(
+    volumes={"/data": synthetic_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=8,
+    memory=32 * 1024,
+    secrets=[neon_secret],
+)
+def run_synthetic_market_discovery_analysis_modal(
+    phase_name: str = "phase15_market_basis_discovery_v1",
+    analysis_tag: str = "",
+    layers: str = "",
+    num_workers: int = 8,
+    residualize_nuisance: bool = False,
+) -> dict:
+    from pathlib import Path
+
+    from pipelines.interp.synthetic_market_discovery_analysis import (
+        SyntheticMarketDiscoveryConfig,
+        run_synthetic_market_discovery_analysis,
+    )
+
+    parsed_layers = [int(token) for token in layers.split(",") if token.strip()] or None
+    config = SyntheticMarketDiscoveryConfig(
+        structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
+        output_dir=(
+            Path(f"/data/analysis_results/synthetic_market_discovery/{phase_name}") / analysis_tag
+            if analysis_tag
+            else Path(f"/data/analysis_results/synthetic_market_discovery/{phase_name}")
+        ),
+        phase_name=phase_name,
+        layers=parsed_layers,
+        num_workers=num_workers,
+        residualize_nuisance=residualize_nuisance,
+    )
+    result = run_synthetic_market_discovery_analysis(config)
+    synthetic_volume.commit()
+    return result
+
+
+@app.function(
+    volumes={"/data": synthetic_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=8,
+    memory=32 * 1024,
+    secrets=[neon_secret],
+)
+def run_synthetic_market_context_order_analysis_modal(
+    phase_name: str = "phase16_context_order_v1",
+    analysis_tag: str = "",
+    layers: str = "",
+    num_workers: int = 8,
+) -> dict:
+    from pathlib import Path
+
+    from pipelines.interp.synthetic_market_context_order_analysis import (
+        SyntheticMarketContextOrderConfig,
+        run_synthetic_market_context_order_analysis,
+    )
+
+    parsed_layers = [int(token) for token in layers.split(",") if token.strip()] or None
+    config = SyntheticMarketContextOrderConfig(
+        structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
+        output_dir=(
+            Path(f"/data/analysis_results/synthetic_market_context_order/{phase_name}") / analysis_tag
+            if analysis_tag
+            else Path(f"/data/analysis_results/synthetic_market_context_order/{phase_name}")
+        ),
+        phase_name=phase_name,
+        basis_npz_path=Path(
+            "/data/analysis_results/synthetic_market_discovery/phase15_market_basis_discovery_v1/residualized_nuisance_v1/pca_basis.npz"
+        ),
+        basis_results_path=Path(
+            "/data/analysis_results/synthetic_market_discovery/phase15_market_basis_discovery_v1/residualized_nuisance_v1/results.json"
+        ),
+        layers=parsed_layers,
+        num_workers=num_workers,
+    )
+    result = run_synthetic_market_context_order_analysis(config)
+    synthetic_volume.commit()
+    return result
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "synthetic-structure",
@@ -322,6 +406,7 @@ def main(
     family_allowlist: str = "",
     scalar_family_name: str = "scalar_sweep",
     analysis_tag: str = "",
+    residualize_nuisance: bool = False,
 ):
     if mode == "synthetic-structure":
         if num_shards > 1:
@@ -378,6 +463,23 @@ def main(
         result = run_synthetic_market_transform_analysis_modal.remote(
             phase_name=phase_name,
             analysis_tag=analysis_tag,
+            num_workers=num_workers,
+        )
+        print(result)
+    elif mode == "synthetic-discovery":
+        result = run_synthetic_market_discovery_analysis_modal.remote(
+            phase_name=phase_name,
+            analysis_tag=analysis_tag,
+            layers=layers,
+            num_workers=num_workers,
+            residualize_nuisance=residualize_nuisance,
+        )
+        print(result)
+    elif mode == "synthetic-context-order":
+        result = run_synthetic_market_context_order_analysis_modal.remote(
+            phase_name=phase_name,
+            analysis_tag=analysis_tag,
+            layers=layers,
             num_workers=num_workers,
         )
         print(result)

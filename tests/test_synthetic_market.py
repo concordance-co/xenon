@@ -209,6 +209,113 @@ def test_generate_phase14_set_geometry_affordance_ladder_dataset_expected_counts
     assert min(row["log_id"] for row in tick_rows) >= 2_147_250_000
 
 
+def test_generate_phase15_market_basis_discovery_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase15_market_basis_discovery",
+        discovery_scalar_steps=5,
+        discovery_background_variants=2,
+        discovery_grid_steps=3,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == (4 * 2 * 5) + (2 * 2 * 9)
+    families = {example.family for example in examples}
+    assert families == {"market_basis_scalar", "market_basis_coupled"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {"market_only"}
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase15_market_basis_discovery",
+            discovery_scalar_steps=5,
+            discovery_background_variants=2,
+            discovery_grid_steps=3,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_260_000
+
+
+def test_generate_phase16_context_order_dataset_expected_counts(tmp_path) -> None:
+    config = SyntheticMarketConfig(
+        dataset_preset="phase16_context_order",
+        discovery_scalar_steps=5,
+        discovery_background_variants=2,
+        discovery_grid_steps=3,
+        include_settings_variants=False,
+    )
+    examples = generate_dataset(config)
+    assert len(examples) == ((4 * 2 * 5) + (2 * 2 * 9)) * 5
+    families = {example.family for example in examples}
+    assert families == {"market_context_order_scalar", "market_context_order_coupled"}
+    contexts = {example.context_variant for example in examples}
+    assert contexts == {
+        "market_only",
+        "risk_5_after_market",
+        "risk_5_before_market",
+        "affordance_5_after_market",
+        "affordance_5_before_market",
+    }
+
+    build_synthetic_market_dataset(
+        SyntheticMarketConfig(
+            output_dir=tmp_path,
+            dataset_preset="phase16_context_order",
+            discovery_scalar_steps=5,
+            discovery_background_variants=2,
+            discovery_grid_steps=3,
+            include_settings_variants=False,
+        )
+    )
+    tick_rows = pq.read_table(tmp_path / "synthetic_market_tick_records.parquet").to_pylist()
+    assert min(row["log_id"] for row in tick_rows) >= 2_147_270_000
+
+
+def test_phase15_market_basis_discovery_uses_dx_like_prompt_surface() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase15_market_basis_discovery",
+            discovery_scalar_steps=3,
+            discovery_background_variants=1,
+            discovery_grid_steps=3,
+            include_settings_variants=False,
+        )
+    )
+    prompt = examples[0].user_prompt
+    assert "synthetic market scenario" not in prompt.lower()
+    assert "archetype:" not in prompt.lower()
+    assert "## market snapshot" in prompt.lower()
+    assert "## active strategies (current only)" in prompt.lower()
+    assert "## active settings" in prompt.lower()
+    assert "## portfolio context" in prompt.lower()
+    assert "## constraints" in prompt.lower()
+    assert "## price impact limits" in prompt.lower()
+    assert "- nera" in prompt.lower()
+
+
+def test_phase16_context_order_variants_reorder_prompt_sections() -> None:
+    examples = generate_dataset(
+        SyntheticMarketConfig(
+            dataset_preset="phase16_context_order",
+            discovery_scalar_steps=3,
+            discovery_background_variants=1,
+            discovery_grid_steps=3,
+            include_settings_variants=False,
+        )
+    )
+    by_context = {example.context_variant: example.user_prompt for example in examples[:5]}
+
+    after_prompt = by_context["risk_5_after_market"]
+    before_prompt = by_context["risk_5_before_market"]
+
+    assert after_prompt.index("## MARKET SNAPSHOT") < after_prompt.index("## ACTIVE SETTINGS")
+    assert before_prompt.index("## ACTIVE SETTINGS") < before_prompt.index("## MARKET SNAPSHOT")
+    assert "Asset Risk Preference (Risk): 5 / 5" in after_prompt
+    assert "Asset Risk Preference (Risk): 5 / 5" in before_prompt
+
+
 def test_generate_phase4_market_representation_dataset_expected_counts(tmp_path) -> None:
     config = SyntheticMarketConfig(
         dataset_preset="phase4_market_representation",
@@ -335,7 +442,9 @@ def test_phase10_set_geometry_context_uses_stronger_settings_language() -> None:
     for example in examples:
         prompts.setdefault(example.context_variant, example.user_prompt)
     assert "edge clearly exceeds fees" in prompts["market_only"].lower()
+    assert "asset risk preference (risk): 1 / 5" in prompts["low_risk"].lower()
     assert "lower holder concentration" in prompts["low_risk"].lower()
+    assert "asset risk preference (risk): 5 / 5" in prompts["high_risk"].lower()
     assert "fresh momentum and thinner participation are acceptable" in prompts["high_risk"].lower()
 
 
@@ -352,9 +461,9 @@ def test_phase11_set_geometry_risk_ladder_uses_dx_native_settings_language() -> 
     prompts = {}
     for example in examples:
         prompts.setdefault(example.context_variant, example.user_prompt)
-    assert "asset risk preference: 1 / 5" in prompts["risk_1"].lower()
-    assert "asset risk preference: 3 / 5" in prompts["risk_3"].lower()
-    assert "asset risk preference: 5 / 5" in prompts["risk_5"].lower()
+    assert "asset risk preference (risk): 1 / 5" in prompts["risk_1"].lower()
+    assert "asset risk preference (risk): 3 / 5" in prompts["risk_3"].lower()
+    assert "asset risk preference (risk): 5 / 5" in prompts["risk_5"].lower()
 
 
 def test_phase13_set_geometry_portfolio_ladder_uses_portfolio_context_language() -> None:
@@ -371,8 +480,7 @@ def test_phase13_set_geometry_portfolio_ladder_uses_portfolio_context_language()
     for example in examples:
         prompts.setdefault(example.context_variant, example.user_prompt)
     assert "## portfolio context" in prompts["market_only"].lower()
-    assert "no existing positions are provided" in prompts["market_only"].lower()
-    assert "existing position" in prompts["portfolio_3"].lower()
+    assert "no current token holdings" in prompts["market_only"].lower()
     assert "already represents about 24% of deployed capital" in prompts["portfolio_3"].lower()
     assert "very large position" in prompts["portfolio_5"].lower()
 
@@ -392,9 +500,10 @@ def test_phase14_set_geometry_affordance_ladder_uses_constraint_language() -> No
         prompts.setdefault(example.context_variant, example.user_prompt)
     assert "## constraints" in prompts["market_only"].lower()
     assert "no hard execution constraints are supplied" in prompts["market_only"].lower()
-    assert "capped for new adds" in prompts["affordance_1"].lower()
-    assert "confirmation-only mode" in prompts["affordance_2"].lower()
-    assert "only fully unrestricted add path" in prompts["affordance_5"].lower()
+    assert "## price impact limits (max 900 bps)" in prompts["affordance_1"].lower()
+    assert "buy max 12.00% of eth".lower() in prompts["affordance_1"].lower()
+    assert "buy max 0.00% of eth".lower() in prompts["affordance_2"].lower()
+    assert "buy max 30.00% of eth".lower() in prompts["affordance_5"].lower()
 
 
 def test_phase6_profile_invariance_emits_distinct_surface_styles() -> None:
@@ -408,8 +517,8 @@ def test_phase6_profile_invariance_emits_distinct_surface_styles() -> None:
     )
     prompts = [example.user_prompt for example in examples if example.family_variant == "participation_concentration_tiebreak"]
     assert any("Snapshot:" in prompt for prompt in prompts)
-    assert any("Holder concentration (top 20)" in prompt for prompt in prompts)
-    assert any("Short-horizon price move" in prompt for prompt in prompts)
+    assert any("Top 20 holder pct" in prompt for prompt in prompts)
+    assert any("Short-horizon move" in prompt for prompt in prompts)
 
 
 def test_phase7_relation_invariance_preserves_anchor_order_across_controls() -> None:
@@ -682,8 +791,8 @@ def test_prompts_use_neutral_asset_symbols() -> None:
     )
     examples = generate_dataset(config)
     prompt = examples[0].user_prompt
-    assert "Asset A" in prompt
-    assert "Asset B" in prompt
+    assert "- A" in prompt
+    assert "- B" in prompt
     assert "POOPCOIN" not in prompt
     assert "HOTDOGZ" not in prompt
 
