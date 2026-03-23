@@ -210,17 +210,57 @@ The interpretation is straightforward:
 
 #align(center)[#image("../../data/report_assets/synthetic_market_phase16_context_order/phase16_basis_shift.png", width: 100%)]
 #text(size: 8pt, fill: rgb("#888"))[
-At the best corrected `market_eos` layer for each group, the same context moved after the market barely changes the Phase 15 market PCs. The same context moved before the market shifts those same discovered PCs much more strongly.
+At the best corrected `market_eos` layer for each group, the same context moved after the market barely changes the native Phase 15 `market_eos` PCs. The same context moved before the market shifts those PCs much more strongly.
 ]
 
-The Phase 15 residualized discovery basis helps interpret the warp. At the strongest corrected `market_eos` layers:
+On the native `market_eos` basis, the Phase 15 residualized discovery basis helps interpret the warp. At the strongest corrected `market_eos` layers:
 
 - #text(weight: "medium")[Risk at `L42`]
   the big `A -> C` movement lands on PCs tied to `pct_1h_std`, `pct_5m_max`, and `net_flow_5m_max`
 - #text(weight: "medium")[Affordance at `L40`]
   the big `A -> C` movement lands on PCs tied to `pct_5m_max`, `pct_1h_std`, and `pct_5m_std`
 
-So this is not just a generic “the vectors moved” result. The shift is living inside the same market-linked directions discovered in Phase 15.
+So this is not just a generic “the vectors moved” result. The shift is living inside market-linked directions discovered in Phase 15.
+
+#align(center)[#image("../../data/report_assets/synthetic_market_phase16_context_order/phase16_cross_basis_compare.png", width: 100%)]
+#text(size: 8pt, fill: rgb("#888"))[
+The same corrected `market_eos` warp can be read in two different Phase 15 bases. On the native `market_eos` basis, the dominant shifted axes are more local and end-of-section-like. On the `market_mean` basis, the same warp is re-expressed in broader roster-summary directions.
+]
+
+This cross-basis rerun changes the interpretation in an important way.
+
+When the corrected `market_eos` activations are instead:
+
+- nuisance-residualized in the same way
+- centered with the Phase 15 `market_mean` mean and scale
+- projected onto the Phase 15 `market_mean` PCs at the same layer
+
+the warp is still strong, but the named axes change.
+
+For #text(weight: "medium")[risk at `L42`]:
+
+- native `market_eos` basis: the largest `A -> C` shift is `pct_1h_std`
+- `market_mean` basis: the largest `A -> C` shift moves to `pct_1h_gap`, with `pct_1h_std` still large but no longer dominant
+
+For #text(weight: "medium")[affordance at `L40`]:
+
+- native `market_eos` basis: the largest `A -> C` shift is `pct_5m_std`
+- `market_mean` basis: the largest `A -> C` shift moves to `pct_1h_gap`, with `pct_1h_max` and `pct_1h_std` also large
+
+So the robust part of the result is:
+
+- `A -> C` is much larger than `A -> B`
+- the corrected `market_eos` warp is real
+
+But the non-robust part is:
+
+- the exact #emph[name] of the dominant axis depends on which Phase 15 basis we choose
+
+That means the safest interpretation is:
+
+- context-before-market causes a real market-perception warp
+- the warp projects partly onto local end-of-section axes and partly onto broader roster-summary axes
+- the basis labels are descriptive tools, not proof that the model uses one unique semantic coordinate system
 
 
 = Downstream Integration: Do B And C Converge Again?

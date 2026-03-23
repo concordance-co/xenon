@@ -10,6 +10,9 @@ import numpy as np
 RESULTS_PATH = Path(
     "data/analysis_results/synthetic_market_context_order/phase16_context_order_v1/results.json"
 )
+MEAN_CROSS_RESULTS_PATH = Path(
+    "data/analysis_results/synthetic_market_context_order/phase16_context_order_v1/market_mean_cross_basis_v1_results.json"
+)
 PROMPTS_PATH = Path(
     "data/interp_exports/synthetic_market_phase16_context_order/synthetic_market_prompts.jsonl"
 )
@@ -64,6 +67,7 @@ def _write_raw_prompts(prompt_rows: dict[tuple[str, str], dict]) -> None:
 def build_assets() -> None:
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     results = _load_results()
+    cross_results = json.loads(MEAN_CROSS_RESULTS_PATH.read_text())
     prompt_rows = _load_prompts()
     _write_raw_prompts(prompt_rows)
 
@@ -139,6 +143,34 @@ def build_assets() -> None:
         ax.set_title(f"{group_name.title()}: corrected market_eos basis shift at L{best_layer}")
     axes[0].legend(frameon=False, fontsize=8)
     fig.savefig(ASSET_DIR / "phase16_basis_shift.png", dpi=220)
+    plt.close(fig)
+
+    fig, axes = plt.subplots(2, 2, figsize=(12.8, 8.2), constrained_layout=True)
+    for row_idx, group_name in enumerate(["risk", "affordance"]):
+        native_payload = results["groups"][group_name]["state_results"]["market_eos"]
+        cross_payload = cross_results["groups"][group_name]["state_results"]["market_eos"]
+        best_layer, native_row = _best_gap_layer(native_payload)
+        cross_row = cross_payload[str(best_layer)]["cross_basis_projection"]
+        native_features = [row["feature"] or f"PC {idx + 1}" for idx, row in enumerate(native_row["pc_shift"])]
+        cross_features = [row["feature"] or f"PC {idx + 1}" for idx, row in enumerate(cross_row["pc_shift"])]
+
+        for col_idx, (title, payload_row, features) in enumerate([
+            ("Phase 15 market_eos basis", native_row, native_features),
+            ("Phase 15 market_mean basis", cross_row, cross_features),
+        ]):
+            ax = axes[row_idx, col_idx]
+            shifts = payload_row["pc_shift"]
+            ab_vals = [row["ab_abs_mean"] for row in shifts]
+            ac_vals = [row["ac_abs_mean"] for row in shifts]
+            xpos = np.arange(len(features))
+            width = 0.34
+            ax.bar(xpos - width / 2, ab_vals, width, color="#c87533", label="A -> B")
+            ax.bar(xpos + width / 2, ac_vals, width, color="#b33a2a", label="A -> C")
+            ax.set_xticks(xpos, [feature.replace("_", "\n") for feature in features])
+            ax.set_ylabel("Mean abs shift")
+            ax.set_title(f"{group_name.title()} L{best_layer}: {title}")
+    axes[0, 0].legend(frameon=False, fontsize=8)
+    fig.savefig(ASSET_DIR / "phase16_cross_basis_compare.png", dpi=220)
     plt.close(fig)
 
 
