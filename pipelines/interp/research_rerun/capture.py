@@ -59,6 +59,11 @@ def load_prompts_from_db(
                 CASE p.variant
                     WHEN 'original' THEN 0
                     WHEN 'clear_strategies' THEN 1
+                    WHEN 'risk_1' THEN 1
+                    WHEN 'risk_2' THEN 2
+                    WHEN 'risk_3' THEN 3
+                    WHEN 'risk_4' THEN 4
+                    WHEN 'risk_5' THEN 5
                     WHEN 'settings_all1' THEN 1
                     WHEN 'settings_all5' THEN 2
                     ELSE 9
@@ -121,4 +126,3 @@ def load_prompts_from_db(
         f"(experiment_id={experiment_id}, experiment_group={experiment_group or 'all'})"
     )
     return capture_prompts
-
