@@ -359,6 +359,8 @@ def run_synthetic_market_context_order_analysis_modal(
     analysis_tag: str = "",
     layers: str = "",
     num_workers: int = 8,
+    cross_basis_overrides: str = "",
+    cross_basis_layers: str = "40,42",
 ) -> dict:
     from pathlib import Path
 
@@ -368,6 +370,14 @@ def run_synthetic_market_context_order_analysis_modal(
     )
 
     parsed_layers = [int(token) for token in layers.split(",") if token.strip()] or None
+    parsed_cross_basis_overrides: dict[str, str] = {}
+    for token in cross_basis_overrides.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        src, dst = token.split(":", 1)
+        parsed_cross_basis_overrides[src.strip()] = dst.strip()
+    parsed_cross_basis_layers = tuple(int(token) for token in cross_basis_layers.split(",") if token.strip())
     config = SyntheticMarketContextOrderConfig(
         structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
         output_dir=(
@@ -384,6 +394,8 @@ def run_synthetic_market_context_order_analysis_modal(
         ),
         layers=parsed_layers,
         num_workers=num_workers,
+        cross_basis_overrides=parsed_cross_basis_overrides or None,
+        cross_basis_layers=parsed_cross_basis_layers,
     )
     result = run_synthetic_market_context_order_analysis(config)
     synthetic_volume.commit()
@@ -407,6 +419,8 @@ def main(
     scalar_family_name: str = "scalar_sweep",
     analysis_tag: str = "",
     residualize_nuisance: bool = False,
+    cross_basis_overrides: str = "",
+    cross_basis_layers: str = "40,42",
 ):
     if mode == "synthetic-structure":
         if num_shards > 1:
@@ -481,6 +495,8 @@ def main(
             analysis_tag=analysis_tag,
             layers=layers,
             num_workers=num_workers,
+            cross_basis_overrides=cross_basis_overrides,
+            cross_basis_layers=cross_basis_layers,
         )
         print(result)
     else:

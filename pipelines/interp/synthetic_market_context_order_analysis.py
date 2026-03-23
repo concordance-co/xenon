@@ -119,6 +119,8 @@ class SyntheticMarketContextOrderConfig:
     integration_state_keys: tuple[str, ...] = ("last_token", "active_settings_eos", "portfolio_eos", "constraints_eos")
     layers: list[int] | None = None
     num_workers: int = 8
+    cross_basis_overrides: dict[str, str] | None = None
+    cross_basis_layers: tuple[int, ...] = (40, 42)
 
 
 def run_synthetic_market_context_order_analysis(config: SyntheticMarketContextOrderConfig) -> dict[str, Any]:
@@ -149,8 +151,12 @@ def run_synthetic_market_context_order_analysis(config: SyntheticMarketContextOr
         "phase_name": config.phase_name,
         "basis_phase_name": basis_results.get("phase_name"),
         "basis_residualize_nuisance": basis_results.get("residualize_nuisance", False),
+        "cross_basis_overrides": config.cross_basis_overrides or {},
+        "cross_basis_layers": list(config.cross_basis_layers),
         "groups": {},
     }
+    cross_basis_overrides = config.cross_basis_overrides or {}
+    cross_basis_layers = set(int(layer) for layer in config.cross_basis_layers)
 
     for group_name in CONTEXT_GROUPS:
         matched = _matched_examples(tick_rows, group_name)
@@ -231,6 +237,41 @@ def run_synthetic_market_context_order_analysis(config: SyntheticMarketContextOr
                             "ab_abs_mean": float(np.mean(np.abs(A_scores[:, pc_idx] - B_scores[:, pc_idx]))),
                             "ac_abs_mean": float(np.mean(np.abs(A_scores[:, pc_idx] - C_scores[:, pc_idx]))),
                         })
+                override_state = cross_basis_overrides.get(state_key)
+                if override_state and layer in cross_basis_layers:
+                    override_prefix = f"{override_state}_layer_{layer}"
+                    override_comp_key = f"{override_prefix}__components"
+                    if override_comp_key in basis:
+                        override_mean = basis[f"{override_prefix}__mean"]
+                        override_scale = basis[f"{override_prefix}__scale"]
+                        override_components = basis[override_comp_key]
+                        A_override = _projection_scores(
+                            A_resid, mean=override_mean, scale=override_scale, components=override_components
+                        )
+                        B_override = _projection_scores(
+                            B_resid, mean=override_mean, scale=override_scale, components=override_components
+                        )
+                        C_override = _projection_scores(
+                            C_resid, mean=override_mean, scale=override_scale, components=override_components
+                        )
+                        override_basis_layer = basis_results.get("states", {}).get(override_state, {}).get(str(layer), {})
+                        override_pcs = override_basis_layer.get("pcs", [])
+                        row["cross_basis_projection"] = {
+                            "basis_state": override_state,
+                            "ab_pc_l2_mean": _mean_l2_rows(A_override[:, :3], B_override[:, :3]),
+                            "ac_pc_l2_mean": _mean_l2_rows(A_override[:, :3], C_override[:, :3]),
+                            "pc_shift": [],
+                        }
+                        for pc_idx in range(min(3, A_override.shape[1])):
+                            feature = ""
+                            if pc_idx < len(override_pcs) and override_pcs[pc_idx].get("top_market_correlations"):
+                                feature = override_pcs[pc_idx]["top_market_correlations"][0]["feature"]
+                            row["cross_basis_projection"]["pc_shift"].append({
+                                "pc_index": pc_idx + 1,
+                                "feature": feature,
+                                "ab_abs_mean": float(np.mean(np.abs(A_override[:, pc_idx] - B_override[:, pc_idx]))),
+                                "ac_abs_mean": float(np.mean(np.abs(A_override[:, pc_idx] - C_override[:, pc_idx]))),
+                            })
                 state_payload[str(layer)] = row
             group_result["state_results"][state_key] = state_payload
 
@@ -284,12 +325,30 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--layers", default="")
     parser.add_argument("--num-workers", type=int, default=8)
+    parser.add_argument(
+        "--cross-basis-overrides",
+        default="",
+        help="Comma-separated state overrides like market_eos:market_mean",
+    )
+    parser.add_argument(
+        "--cross-basis-layers",
+        default="40,42",
+        help="Comma-separated layers for cross-basis projections",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _build_parser().parse_args(argv)
     layers = [int(token) for token in args.layers.split(",") if token.strip()] or None
+    cross_basis_overrides = {}
+    for token in args.cross_basis_overrides.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        src, dst = token.split(":", 1)
+        cross_basis_overrides[src.strip()] = dst.strip()
+    cross_basis_layers = tuple(int(token) for token in args.cross_basis_layers.split(",") if token.strip())
     result = run_synthetic_market_context_order_analysis(
         SyntheticMarketContextOrderConfig(
             structure_dir=args.structure_dir,
@@ -299,6 +358,8 @@ def main(argv: list[str] | None = None) -> None:
             basis_results_path=args.basis_results_path,
             layers=layers,
             num_workers=args.num_workers,
+            cross_basis_overrides=cross_basis_overrides or None,
+            cross_basis_layers=cross_basis_layers,
         )
     )
     print(json.dumps(result, indent=2))
