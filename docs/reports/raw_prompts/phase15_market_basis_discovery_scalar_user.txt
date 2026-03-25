@@ -1,0 +1,99 @@
+## MARKET SNAPSHOT
+- NERA
+  - Price: 0.00000193 ETH
+  - 5m change: +3.8%
+  - 1h change: +11.7%
+  - Net flow 5m: -2.00 ETH
+  - Volume 5m: 5.14 ETH
+  - Volume 1h: 23.85 ETH
+  - Unique traders 5m: 20
+  - Top 20 holder pct: 30.9%
+  - Time since launch: 18h
+- VEXA
+  - Price: 0.00000196 ETH
+  - 5m change: +3.3%
+  - 1h change: +10.5%
+  - Net flow 5m: +1.85 ETH
+  - Volume 5m: 5.61 ETH
+  - Volume 1h: 28.27 ETH
+  - Unique traders 5m: 18
+  - Top 20 holder pct: 28.2%
+  - Time since launch: 32h
+- MORI
+  - Price: 0.00000211 ETH
+  - 5m change: +4.2%
+  - 1h change: +12.3%
+  - Net flow 5m: +3.03 ETH
+  - Volume 5m: 5.26 ETH
+  - Volume 1h: 24.16 ETH
+  - Unique traders 5m: 20
+  - Top 20 holder pct: 31.1%
+  - Time since launch: 18h
+- LUMA
+  - Price: 0.00000166 ETH
+  - 5m change: +2.2%
+  - 1h change: +6.5%
+  - Net flow 5m: +0.76 ETH
+  - Volume 5m: 3.69 ETH
+  - Volume 1h: 15.73 ETH
+  - Unique traders 5m: 11
+  - Top 20 holder pct: 66.8%
+  - Time since launch: 18h
+- KIRO
+  - Price: 0.00000091 ETH
+  - 5m change: -4.7%
+  - 1h change: -9.3%
+  - Net flow 5m: +1.07 ETH
+  - Volume 5m: 4.34 ETH
+  - Volume 1h: 14.84 ETH
+  - Unique traders 5m: 14
+  - Top 20 holder pct: 32.9%
+  - Time since launch: 32h
+- TAVO
+  - Price: 0.00000148 ETH
+  - 5m change: +7.3%
+  - 1h change: +4.5%
+  - Net flow 5m: +0.34 ETH
+  - Volume 5m: 1.50 ETH
+  - Volume 1h: 4.47 ETH
+  - Unique traders 5m: 4
+  - Top 20 holder pct: 58.2%
+  - Time since launch: 2h
+
+------------------------------
+
+## ACTIVE STRATEGIES (CURRENT ONLY)
+
+No active strategies.
+
+------------------------------
+
+## ACTIVE SETTINGS
+
+- Trading Activity (TA): 5 / 5 - How often you trade when there is fresh edge (1=very patient, 5=highly active). TA does NOT require a trade every tick.
+- Asset Risk Preference (Risk): 2 / 5 - Which tokens you consider (1=prefer least volatile available, 5=embrace high volatility). Risk determines which tokens to consider, not whether to trade at all.
+- Trade Size (Size): 3 / 5 - Maximum position sizing per trade (1=up to ~15%, 2=up to ~30%, 3=up to ~50%, 4=up to ~70%, 5=up to ~90% of available ETH). These are UPPER BOUNDS, not minimums.
+- Holding Style (Hold): 2 / 5 - Minimum hold time before considering an exit (1=about ~30 minutes minimum; 2=about ~1 hour; 3=hours; 4=many hours; 5=days).
+- Diversification (Div): 4 / 5 - Portfolio spread (1=concentrated in 1-2 tokens; 2=focused 2-3; 3=balanced 3-5; 4=spread 4-6; 5=wide 5+).
+
+------------------------------
+
+## PORTFOLIO CONTEXT
+
+- ETH: Balance: 0.240000
+- No current token holdings.
+
+## CONSTRAINTS
+
+- Max Trade Amount (Percent): 100.00% of available ETH
+
+## PRICE IMPACT LIMITS (max 1500 bps)
+
+- NERA: BUY max 100.00% of ETH
+- VEXA: BUY max 100.00% of ETH
+- MORI: BUY max 100.00% of ETH
+- LUMA: BUY max 100.00% of ETH
+- KIRO: BUY max 100.00% of ETH
+- TAVO: BUY max 100.00% of ETH
+
+Respond with the single best action for this tick: buy, sell, or observe.

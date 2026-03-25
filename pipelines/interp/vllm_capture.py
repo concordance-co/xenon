@@ -139,6 +139,72 @@ def _collect_router_logits_from_model(llm: Any) -> dict[int, Any]:
     return _apply_to_model(llm, collect_router_logits)
 
 
+def _setup_market_patching(model: Any) -> bool:
+    """Top-level function for apply_model — initialise residual patch wrappers."""
+    from pipelines.interp.vllm_market_patch import init_market_patching
+
+    init_market_patching(model)
+    return True
+
+
+def _register_market_patch_basis(model: Any, basis_payload: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    from pipelines.interp.vllm_market_patch import register_patch_basis
+
+    return register_patch_basis(model, basis_payload)
+
+
+def _set_market_patch_spec(model: Any, patch_spec: dict[str, Any]) -> dict[str, Any]:
+    from pipelines.interp.vllm_market_patch import set_patch_spec
+
+    return set_patch_spec(model, patch_spec)
+
+
+def _clear_market_patch_spec(model: Any) -> None:
+    from pipelines.interp.vllm_market_patch import clear_patch_spec
+
+    clear_patch_spec(model)
+
+
+def _collect_market_patch_stats(model: Any) -> dict[int, dict[str, Any]]:
+    from pipelines.interp.vllm_market_patch import collect_patch_stats
+
+    return collect_patch_stats(model)
+
+
+def _init_market_patching_on_model(llm: Any) -> bool:
+    """Initialise market patching wrappers on the model inside vLLM workers."""
+    return _apply_to_model(llm, _setup_market_patching)
+
+
+def _register_market_patch_basis_on_model(
+    llm: Any,
+    basis_payload: dict[int, dict[str, Any]],
+) -> dict[str, Any]:
+    """Register market patch basis tensors on the model inside vLLM workers."""
+    from functools import partial
+
+    func = partial(_register_market_patch_basis, basis_payload=basis_payload)
+    return _apply_to_model(llm, func)
+
+
+def _set_market_patch_spec_on_model(llm: Any, patch_spec: dict[str, Any]) -> dict[str, Any]:
+    """Activate a market patch spec for the next request on the worker model."""
+    from functools import partial
+
+    func = partial(_set_market_patch_spec, patch_spec=patch_spec)
+    return _apply_to_model(llm, func)
+
+
+def _clear_market_patch_spec_on_model(llm: Any) -> None:
+    """Disable any active market patch spec on the worker model."""
+    _apply_to_model(llm, _clear_market_patch_spec)
+
+
+def _collect_market_patch_stats_from_model(llm: Any) -> dict[int, dict[str, Any]]:
+    """Collect patch statistics from the worker-side model."""
+    return _apply_to_model(llm, _collect_market_patch_stats)
+
+
 def _reset_router_buffers_on_model(llm: Any) -> None:
     """Reset router capture buffers on the model inside vLLM workers."""
     from pipelines.interp.vllm_qwen3_moe import reset_router_buffers
@@ -232,6 +298,7 @@ def _capture_one_vllm(
     messages: list[dict[str, str]],
     config: VLLMCaptureConfig,
     log_id: str | int,
+    patch_spec: dict[str, Any] | None = None,
     skip_residual_save: bool = False,
 ) -> tuple[Any, Any, Any, Any]:
     """Run a single prompt through vLLM and capture activations.
@@ -267,10 +334,16 @@ def _capture_one_vllm(
 
     # Run through vLLM -- single prompt, max_tokens=1 (prefill only)
     sampling_params = SamplingParams(max_tokens=1)
-    outputs = llm.generate(
-        prompts=[{"prompt_token_ids": input_ids}],
-        sampling_params=sampling_params,
-    )
+    if patch_spec is not None:
+        _set_market_patch_spec_on_model(llm, patch_spec)
+    try:
+        outputs = llm.generate(
+            prompts=[{"prompt_token_ids": input_ids}],
+            sampling_params=sampling_params,
+        )
+    finally:
+        if patch_spec is not None:
+            _clear_market_patch_spec_on_model(llm)
 
     seq_len = len(input_ids)
 

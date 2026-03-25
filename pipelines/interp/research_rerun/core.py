@@ -52,6 +52,20 @@ def replace_section_body(user_text: str, header: str, body: str) -> str:
     raise ValueError(f"Section header not found: {header}")
 
 
+def get_section_body(user_text: str, header: str) -> str:
+    """Return the body text for a top-level ## section."""
+    eol = _detect_eol(user_text)
+    for section_header, start, end in find_section_spans(user_text):
+        if not section_header.startswith(header):
+            continue
+        body = user_text[start:end]
+        prefix = f"{section_header}{eol}"
+        if body.startswith(prefix):
+            body = body[len(prefix):]
+        return body.strip()
+    raise ValueError(f"Section header not found: {header}")
+
+
 def clear_active_strategies(user_text: str) -> str:
     """Remove strategy directives while preserving section structure."""
     return replace_section_body(user_text, ACTIVE_STRATEGIES_HEADER, "No active strategies.")

@@ -402,6 +402,49 @@ def run_synthetic_market_context_order_analysis_modal(
     return result
 
 
+@app.function(
+    volumes={"/data": synthetic_volume},
+    image=image,
+    timeout=12 * 3600,
+    cpu=8,
+    memory=32 * 1024,
+    secrets=[neon_secret],
+)
+def run_synthetic_market_axis_decomposition_analysis_modal(
+    phase_name: str = "phase15_market_basis_discovery_v1",
+    analysis_tag: str = "",
+    context_variant: str = "market_only",
+    num_workers: int = 8,
+) -> dict:
+    from pathlib import Path
+
+    from pipelines.interp.synthetic_market_axis_decomposition_analysis import (
+        SyntheticMarketAxisDecompositionConfig,
+        run_synthetic_market_axis_decomposition_analysis,
+    )
+
+    config = SyntheticMarketAxisDecompositionConfig(
+        structure_dir=Path(f"/data/activations/synthetic_structure/{phase_name}"),
+        output_dir=(
+            Path(f"/data/analysis_results/synthetic_market_axis_decomposition/{phase_name}") / analysis_tag
+            if analysis_tag
+            else Path(f"/data/analysis_results/synthetic_market_axis_decomposition/{phase_name}")
+        ),
+        phase_name=phase_name,
+        context_variant=context_variant,
+        basis_npz_path=Path(
+            "/data/analysis_results/synthetic_market_discovery/phase15_market_basis_discovery_v1/residualized_nuisance_v1/pca_basis.npz"
+        ),
+        basis_results_path=Path(
+            "/data/analysis_results/synthetic_market_discovery/phase15_market_basis_discovery_v1/residualized_nuisance_v1/results.json"
+        ),
+        num_workers=num_workers,
+    )
+    result = run_synthetic_market_axis_decomposition_analysis(config)
+    synthetic_volume.commit()
+    return result
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "synthetic-structure",
@@ -497,6 +540,14 @@ def main(
             num_workers=num_workers,
             cross_basis_overrides=cross_basis_overrides,
             cross_basis_layers=cross_basis_layers,
+        )
+        print(result)
+    elif mode == "synthetic-axis-decomposition":
+        result = run_synthetic_market_axis_decomposition_analysis_modal.remote(
+            phase_name=phase_name,
+            analysis_tag=analysis_tag,
+            context_variant=context_variant,
+            num_workers=num_workers,
         )
         print(result)
     else:

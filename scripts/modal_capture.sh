@@ -188,6 +188,7 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     echo "  $0 decision-structure-analyze --layers 16,24,32"
     echo "  $0 modal-ingest --top-n 10 --selection random"
     echo "  $0 modal-prep"
+    echo "  $0 modal-prep --full-rebuild --incremental-rebuild   # fast SQL upsert for missing/stale rows"
     echo "  $0 manifold-export --output-dir data/interp_exports/manifolds --limit 1000"
     echo "  $0 counterfactual-analyze --questions all"
     echo "  $0 counterfactual-structure --experiment-id init --layers 16,24,32"

@@ -15,7 +15,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from pipelines.db import connect_neon
-from pipelines.interp.capture_manifest import (
+from pipelines.interp.decision_structure.manifest import (
     CohortRule,
     ManifestPlan,
     manifest_summary,

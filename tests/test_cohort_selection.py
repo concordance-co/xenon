@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pipelines.interp.cohort_selection import (
+from pipelines.interp.decision_structure.cohorts import (
     build_interp_example_query,
     cohort_order_by_sql,
     validate_order_mode,

@@ -107,6 +107,7 @@ def run_prep(
     limit: int = -1,
     include_all_decisions: bool = False,
     full_rebuild: bool = False,
+    incremental_rebuild: bool = False,
 ) -> dict:
     """Run data prep on Modal, reading/writing Neon Postgres."""
     from pipelines.interp.prepare import PrepareConfig, run_prepare
@@ -115,6 +116,7 @@ def run_prep(
         limit=limit if limit >= 0 else 50_000,
         only_focus_decisions=not include_all_decisions,
         full_rebuild=full_rebuild,
+        incremental_rebuild=incremental_rebuild,
     )
 
     stats = run_prepare(config)
@@ -269,6 +271,7 @@ def main(
     limit: int = -1,
     include_all_decisions: bool = False,
     full_rebuild: bool = False,
+    incremental_rebuild: bool = False,
     # Outcomes args
     outcomes_limit: int = -1,
     timeout_s: int = 30,
@@ -294,6 +297,7 @@ def main(
             limit=limit,
             include_all_decisions=include_all_decisions,
             full_rebuild=full_rebuild,
+            incremental_rebuild=incremental_rebuild,
         )
         print(f"\nPrep result: {result}")
 

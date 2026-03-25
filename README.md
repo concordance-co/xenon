@@ -61,6 +61,30 @@ uv run -m pipelines.interp.analysis \
 
 Useful downstream targets on that export include `executed_valence`, `forced_observe`, `decision_type`, `trade_side`, and `asset` (which falls back to `target_asset` when needed).
 
+To build the first synthetic market-manifold dataset described in `MARKET_COUNTING_MANIFOLDS_PLAN.md`:
+
+```bash
+uv run python scripts/build_synthetic_market_dataset.py \
+  --output-dir data/interp_exports/synthetic_market
+```
+
+This writes:
+
+- `synthetic_market_prompts.jsonl`
+- `synthetic_market_tick_records.parquet`
+- `synthetic_market_asset_records.parquet`
+- `synthetic_market_pairwise_records.parquet`
+- `synthetic_market_summary.json`
+
+The initial scaffold includes:
+
+- scalar sweep families
+- pairwise tradeoff families
+- archetype families
+- a minimal settings ladder: `market_only`, `low_risk`, `high_risk`
+
+All assets use neutral symbols like `A/B/C/D` rather than real token identities.
+
 For real-decision section/row timing on full-sequence captures:
 
 ```bash

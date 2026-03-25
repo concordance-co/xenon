@@ -12,7 +12,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.interp.cohort_selection import build_interp_example_query
+from pipelines.interp.decision_structure.cohorts import build_interp_example_query
 
 
 @dataclass(slots=True)

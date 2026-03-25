@@ -517,7 +517,7 @@ class CounterfactualCaptureWorker:
         from datetime import UTC, datetime
         from pathlib import Path
 
-        from pipelines.interp.counterfactual_capture import (
+        from pipelines.interp.counterfactual.capture import (
             CounterfactualCaptureConfig,
             capture_one_counterfactual,
             _save_pooled,
@@ -620,7 +620,7 @@ def run_counterfactual_capture(
     import pyarrow as pa
     import pyarrow.parquet as pq_
 
-    from pipelines.interp.counterfactual_capture import load_prompts_from_db
+    from pipelines.interp.counterfactual.capture import load_prompts_from_db
     from transformers import AutoTokenizer
 
     # Step 1: Load tokenizer

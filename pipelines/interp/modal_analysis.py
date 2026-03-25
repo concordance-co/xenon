@@ -496,6 +496,41 @@ def run_research_risk_geometry_analysis_modal(
     return results
 
 
+@app.function(
+    volumes={"/data": volume, "/research": research_volume},
+    image=image,
+    timeout=7200,
+    cpu=16,
+    memory=64 * 1024,
+    secrets=[neon_secret],
+)
+def run_research_postmarket_geometry_analysis_modal(
+    experiment_id: str = "real_postmarket_geometry_bridge_v1",
+    seed: int = 42,
+    test_fraction: float = 0.2,
+    num_workers: int = 16,
+) -> dict:
+    """Analyze real DX post-market risk and affordance ladders."""
+    from pathlib import Path
+
+    from pipelines.interp.research_rerun.postmarket_geometry import (
+        PostMarketGeometryConfig,
+        run_postmarket_geometry_analysis,
+    )
+
+    config = PostMarketGeometryConfig(
+        research_activations_dir=Path("/research/activations/research_rerun"),
+        output_dir=Path("/research/analysis_results/research_postmarket_geometry"),
+        experiment_id=experiment_id,
+        seed=seed,
+        test_fraction=test_fraction,
+        num_workers=num_workers,
+    )
+    results = run_postmarket_geometry_analysis(config)
+    research_volume.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     mode: str = "probe",
@@ -599,6 +634,14 @@ def main(
             num_workers=num_workers,
         )
         print(f"\nResearch risk geometry analysis complete. Results keys: {list(results.keys())}")
+    elif mode == "research-postmarket-geometry-analysis":
+        results = run_research_postmarket_geometry_analysis_modal.remote(
+            experiment_id=experiment_id,
+            seed=seed,
+            test_fraction=test_fraction,
+            num_workers=num_workers,
+        )
+        print(f"\nResearch post-market geometry analysis complete. Results keys: {list(results.keys())}")
     else:
         results = run_analysis.remote(
             mode=mode,

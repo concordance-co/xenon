@@ -57,13 +57,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--tick-labels-path",
         type=Path,
-        default=Path("data/tick_labels.parquet"),
+        default=Path("data/activations/decision_structure/tick_labels.parquet"),
         help="Path to pooled tick labels parquet.",
     )
     parser.add_argument(
         "--asset-labels-path",
         type=Path,
-        default=Path("data/asset_labels.parquet"),
+        default=Path("data/activations/decision_structure/asset_labels.parquet"),
         help="Path to pooled asset labels parquet.",
     )
     parser.add_argument(
