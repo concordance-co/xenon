@@ -167,7 +167,7 @@ Add these modules:
 
 Optional later:
 
-- `scripts/prepare_synthetic_market_phase18_patching.py`
+- `scripts/datasets/synthetic_market/prepare_phase18_patching.py`
 
 
 ## `vllm_market_patch.py`

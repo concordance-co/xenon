@@ -105,11 +105,11 @@ if len(rows) > 10: print(f'    ... and {len(rows)-10} more')
     ;;
   migrate-to-neon)
     echo "Migrating SQLite → Neon Postgres (one-time)..."
-    uv run --extra interp --extra modal modal run scripts/migrate_sqlite_to_neon.py "$@"
+    uv run --extra interp --extra modal modal run scripts/db/migrate_sqlite_to_neon.py "$@"
     ;;
   migrate-metadata)
     echo "Migrating capture metadata from Modal volume → Neon..."
-    uv run --extra interp --extra modal modal run scripts/migrate_metadata_to_neon.py "$@"
+    uv run --extra interp --extra modal modal run scripts/db/migrate_metadata_to_neon.py "$@"
     ;;
   reset-cursors)
     echo "Resetting ingest cursors (next run re-paginates from start)..."

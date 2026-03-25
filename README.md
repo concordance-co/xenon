@@ -23,8 +23,8 @@ uv run -m pipelines.ingest --top-n 3
 Verify with the Neon query tool:
 
 ```bash
-uv run python scripts/neon_query.py tables
-uv run python scripts/neon_query.py sample vaults
+uv run python scripts/db/neon_query.py tables
+uv run python scripts/db/neon_query.py sample vaults
 ```
 
 ### Phase 2: Interp data prep (Neon → Neon)
@@ -64,7 +64,7 @@ Useful downstream targets on that export include `executed_valence`, `forced_obs
 To build the first synthetic market-manifold dataset described in `MARKET_COUNTING_MANIFOLDS_PLAN.md`:
 
 ```bash
-uv run python scripts/build_synthetic_market_dataset.py \
+uv run python scripts/datasets/synthetic_market/build_synthetic_market_dataset.py \
   --output-dir data/interp_exports/synthetic_market
 ```
 
@@ -112,9 +112,9 @@ This writes `data/analysis_results/decision_structure/decision_structure_results
 To make capture selection cohort-aware instead of pulling the earliest generic slice, install the decision cohort views in Neon:
 
 ```bash
-uv run python scripts/apply_decision_cohort_views.py apply
-uv run python scripts/apply_decision_cohort_views.py stats
-uv run python scripts/apply_decision_cohort_views.py refresh
+uv run python scripts/db/apply_decision_cohort_views.py apply
+uv run python scripts/db/apply_decision_cohort_views.py stats
+uv run python scripts/db/apply_decision_cohort_views.py refresh
 ```
 
 This creates:
@@ -146,8 +146,8 @@ uv run --extra interp --extra modal modal run pipelines/interp/modal_vllm_captur
 To build a balanced full-sequence decision-capture manifest for the next probe run:
 
 ```bash
-uv run python scripts/build_decision_capture_manifest.py build
-uv run python scripts/build_decision_capture_manifest.py stats
+uv run python scripts/manifests/build_decision_capture_manifest.py build
+uv run python scripts/manifests/build_decision_capture_manifest.py stats
 ```
 
 The default manifest publishes `decision_capture_manifest_v1` with a quota/diversity plan tuned for the decision-structure probes:
