@@ -5,10 +5,21 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
+.mplconfig/
+.uv-cache/
 .env
+
+# OS-generated files
+.DS_Store
 
 # Virtual environments
 .venv
+
+# Local repo noise
+.codex/
+.agents/
+tmp/
 
 # Local ingestion artifacts
 data/
