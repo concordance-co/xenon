@@ -7,6 +7,7 @@ from pipelines.interp.vllm_market_patch import (
     PATCH_MODE_ADD_DIRECTION,
     PATCH_MODE_PROJECT_OUT,
     PATCH_MODE_RANDOM_CONTROL,
+    PATCH_MODE_SWAP_COMPONENTS,
     PATCH_MODE_SWAP_MEAN,
     MarketPatchSpec,
     clear_patch_spec,
@@ -81,6 +82,36 @@ def test_project_out_removes_selected_mean_components():
     restore_original_forwards(model)
 
 
+def test_project_out_strength_scales_delta():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+
+    set_patch_spec(
+        model,
+        MarketPatchSpec(
+            mode=PATCH_MODE_PROJECT_OUT,
+            target_layers=(0,),
+            token_span=(0, 2),
+            component_indices_by_layer={0: (0,)},
+            strength=0.5,
+        ),
+    )
+    hidden = torch.tensor(
+        [
+            [4.0, 1.0, 0.0, 0.0],
+            [4.0, 1.0, 0.0, 0.0],
+        ],
+        dtype=torch.float32,
+    )
+
+    patched = model.model.layers[0].forward(hidden)
+    market_mean = patched[:2].mean(dim=0)
+
+    assert torch.allclose(market_mean, torch.tensor([2.0, 1.0, 0.0, 0.0]), atol=1e-5)
+    restore_original_forwards(model)
+
+
 def test_add_direction_moves_market_mean_in_named_direction():
     model = _FakeModel()
     init_market_patching(model)
@@ -134,6 +165,68 @@ def test_swap_mean_sets_market_mean_to_donor_mean():
         torch.tensor([9.0, 8.0, 7.0, 6.0]),
         atol=1e-5,
     )
+    restore_original_forwards(model)
+
+
+def test_swap_mean_strength_scales_toward_donor_mean():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+
+    set_patch_spec(
+        model,
+        MarketPatchSpec(
+            mode=PATCH_MODE_SWAP_MEAN,
+            target_layers=(0,),
+            token_span=(0, 2),
+            strength=0.5,
+            donor_mean_by_layer={0: np.asarray([9.0, 8.0, 7.0, 6.0], dtype=np.float32)},
+        ),
+    )
+    hidden = torch.tensor(
+        [
+            [1.0, 2.0, 3.0, 4.0],
+            [1.0, 2.0, 3.0, 4.0],
+        ],
+        dtype=torch.float32,
+    )
+
+    patched = model.model.layers[0].forward(hidden)
+    assert torch.allclose(
+        patched[:2].mean(dim=0),
+        torch.tensor([5.0, 5.0, 5.0, 5.0]),
+        atol=1e-5,
+    )
+    restore_original_forwards(model)
+
+
+def test_swap_components_only_replaces_selected_subspace_coefficients():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+
+    set_patch_spec(
+        model,
+        MarketPatchSpec(
+            mode=PATCH_MODE_SWAP_COMPONENTS,
+            target_layers=(0,),
+            token_span=(0, 2),
+            component_indices_by_layer={0: (0,)},
+            donor_mean_by_layer={0: np.asarray([10.0, 99.0, 0.0, 0.0], dtype=np.float32)},
+        ),
+    )
+    hidden = torch.tensor(
+        [
+            [2.0, 4.0, 3.0, 5.0],
+            [2.0, 4.0, 3.0, 5.0],
+        ],
+        dtype=torch.float32,
+    )
+
+    patched = model.model.layers[0].forward(hidden)
+    market_mean = patched[:2].mean(dim=0)
+
+    assert torch.allclose(market_mean, torch.tensor([10.0, 4.0, 3.0, 5.0]), atol=1e-5)
     restore_original_forwards(model)
 
 
@@ -198,4 +291,40 @@ def test_only_targeted_layer_is_patched_and_clear_resets_state():
     assert collect_patch_stats(model) == stats_before_clear
     restored = model.model.layers[0].forward(hidden)
     assert torch.allclose(restored, hidden)
+    restore_original_forwards(model)
+
+
+def test_generation_followup_calls_do_not_overwrite_successful_prefill_stats():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+
+    set_patch_spec(
+        model,
+        MarketPatchSpec(
+            mode=PATCH_MODE_PROJECT_OUT,
+            target_layers=(0,),
+            token_span=(0, 2),
+            component_indices_by_layer={0: (0, 1)},
+        ),
+    )
+
+    prefill_hidden = torch.tensor(
+        [
+            [2.0, 4.0, 7.0, 9.0],
+            [2.0, 4.0, 5.0, 11.0],
+            [10.0, 20.0, 30.0, 40.0],
+        ],
+        dtype=torch.float32,
+    )
+    decode_hidden = torch.tensor([[1.0, 2.0, 3.0, 4.0]], dtype=torch.float32)
+
+    _ = model.model.layers[0].forward(prefill_hidden)
+    stats_after_prefill = collect_patch_stats(model)[0].copy()
+    decode_out = model.model.layers[0].forward(decode_hidden)
+    stats_after_decode = collect_patch_stats(model)[0]
+
+    assert "status" not in stats_after_prefill
+    assert stats_after_decode == stats_after_prefill
+    assert torch.allclose(decode_out, decode_hidden)
     restore_original_forwards(model)

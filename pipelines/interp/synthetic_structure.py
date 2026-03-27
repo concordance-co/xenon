@@ -204,8 +204,17 @@ def find_synthetic_section_boundaries(
     tokenizer: Any,
     system_text: str,
     user_text: str,
+    *,
+    tools: list[dict[str, Any]] | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
 ) -> dict[str, tuple[int, int]]:
-    rendered = _render_chat_text(tokenizer, system_text, user_text)
+    rendered = _render_chat_text(
+        tokenizer,
+        system_text,
+        user_text,
+        tools=tools,
+        chat_template_kwargs=chat_template_kwargs,
+    )
     full_ids, offsets = _token_offsets_for_rendered(tokenizer, rendered)
     header_map = [
         ("market", "## MARKET SNAPSHOT"),

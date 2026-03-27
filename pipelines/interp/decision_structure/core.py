@@ -268,11 +268,25 @@ def _chat_messages(system_text: str, user_text: str) -> list[dict[str, str]]:
     return messages
 
 
-def _render_chat_text(tokenizer: Any, system_text: str, user_text: str) -> str:
+def _render_chat_text(
+    tokenizer: Any,
+    system_text: str,
+    user_text: str,
+    *,
+    tools: list[dict[str, Any]] | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
+) -> str:
+    kwargs: dict[str, Any] = {
+        "add_generation_prompt": False,
+        "tokenize": False,
+    }
+    if tools is not None:
+        kwargs["tools"] = tools
+    if chat_template_kwargs:
+        kwargs.update(chat_template_kwargs)
     rendered = tokenizer.apply_chat_template(
         _chat_messages(system_text, user_text),
-        add_generation_prompt=False,
-        tokenize=False,
+        **kwargs,
     )
     if not isinstance(rendered, str):
         raise TypeError("Tokenizer did not return rendered chat text")

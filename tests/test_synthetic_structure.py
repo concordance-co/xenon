@@ -112,8 +112,10 @@ def test_clear_synthetic_structure_shards_removes_shard_and_canonical_tables(tmp
 
 
 class _FakeTokenizer:
-    def apply_chat_template(self, messages, add_generation_prompt=False, tokenize=False):
+    def apply_chat_template(self, messages, add_generation_prompt=False, tokenize=False, tools=None):
         parts = []
+        if tools:
+            parts.append(f"TOOLS:{len(tools)}")
         for message in messages:
             parts.append(f"{message['role'].upper()}:\n{message['content']}")
         return "\n\n".join(parts)
@@ -175,3 +177,30 @@ def test_find_synthetic_section_boundaries_trims_market_separator():
     assert "## MARKET SNAPSHOT" in market_text
     assert "------------------------------" not in market_text
     assert market_text.rstrip().endswith("18h") or market_text.rstrip().endswith("32h")
+
+
+def test_find_synthetic_section_boundaries_handles_tool_augmented_template():
+    assets = [
+        SyntheticAsset("North", "stable_winner", 4.4, 8.0, 1.1, 5.0, 20.0, 18, 24.0, "mature"),
+        SyntheticAsset("South", "crowded_risk", 4.5, 7.8, 1.0, 5.2, 21.0, 27, 61.0, "mid"),
+    ]
+    user_text = _render_user_prompt("boundary_test_tools", "market_only", assets)
+    tokenizer = _FakeTokenizer()
+
+    without_tools = find_synthetic_section_boundaries(tokenizer, "system prompt", user_text)["market"]
+    with_tools = find_synthetic_section_boundaries(
+        tokenizer,
+        "system prompt",
+        user_text,
+        tools=[{"type": "function", "function": {"name": "record_observation"}}],
+    )["market"]
+
+    assert with_tools[0] > without_tools[0]
+    rendered = tokenizer.apply_chat_template(
+        [{"role": "system", "content": "system prompt"}, {"role": "user", "content": user_text}],
+        add_generation_prompt=False,
+        tokenize=False,
+        tools=[{"type": "function", "function": {"name": "record_observation"}}],
+    )
+    market_text = rendered[with_tools[0]:with_tools[1]]
+    assert "## MARKET SNAPSHOT" in market_text

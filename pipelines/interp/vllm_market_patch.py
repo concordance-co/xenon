@@ -20,11 +20,13 @@ import numpy as np
 PATCH_MODE_PROJECT_OUT = "project_out"
 PATCH_MODE_ADD_DIRECTION = "add_direction"
 PATCH_MODE_SWAP_MEAN = "swap_mean"
+PATCH_MODE_SWAP_COMPONENTS = "swap_components"
 PATCH_MODE_RANDOM_CONTROL = "random_control"
 ALLOWED_PATCH_MODES = (
     PATCH_MODE_PROJECT_OUT,
     PATCH_MODE_ADD_DIRECTION,
     PATCH_MODE_SWAP_MEAN,
+    PATCH_MODE_SWAP_COMPONENTS,
     PATCH_MODE_RANDOM_CONTROL,
 )
 
@@ -69,8 +71,8 @@ class MarketPatchSpec:
 
         if self.mode == PATCH_MODE_ADD_DIRECTION and not self.direction_weights_by_layer:
             raise ValueError("add_direction requires direction_weights_by_layer")
-        if self.mode == PATCH_MODE_SWAP_MEAN and not self.donor_mean_by_layer:
-            raise ValueError("swap_mean requires donor_mean_by_layer")
+        if self.mode in {PATCH_MODE_SWAP_MEAN, PATCH_MODE_SWAP_COMPONENTS} and not self.donor_mean_by_layer:
+            raise ValueError(f"{self.mode} requires donor_mean_by_layer")
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -276,7 +278,7 @@ def _patch_hidden_states_for_layer(
         selected_projected_std = torch.zeros_like(centered_std)
 
     if spec.mode == PATCH_MODE_PROJECT_OUT:
-        delta_std = -selected_projected_std
+        delta_std = -float(spec.strength) * selected_projected_std
     elif spec.mode == PATCH_MODE_ADD_DIRECTION:
         weights = spec.direction_weights_by_layer.get(layer_idx)
         if weights is None:
@@ -319,7 +321,7 @@ def _patch_hidden_states_for_layer(
                 f"donor_mean shape mismatch for layer {layer_idx}: "
                 f"{donor_mean_t.shape} vs {mu.shape}"
             )
-        delta_raw = donor_mean_t - mu
+        delta_raw = float(spec.strength) * (donor_mean_t - mu)
         hidden_f32[start:end] = section + delta_raw
         patched_mu = hidden_f32[start:end].mean(dim=0)
         stats = {
@@ -329,9 +331,43 @@ def _patch_hidden_states_for_layer(
             "delta_norm_raw": float(torch.linalg.norm(delta_raw).item()),
             "mean_norm_before": float(torch.linalg.norm(mu).item()),
             "mean_norm_after": float(torch.linalg.norm(patched_mu).item()),
+            "mean_std_norm_before": float(torch.linalg.norm(centered_std).item()),
+            "mean_std_norm_after": float(torch.linalg.norm((patched_mu - mean) / safe_scale).item()),
+            "strength": float(spec.strength),
         }
         patched = hidden_f32.to(original_dtype)
         return (patched.squeeze(0) if is_1d else patched), stats
+    elif spec.mode == PATCH_MODE_SWAP_COMPONENTS:
+        donor_mean = spec.donor_mean_by_layer.get(layer_idx)
+        if donor_mean is None:
+            return (
+                hidden_states.squeeze(0) if is_1d else hidden_states,
+                {
+                    "layer": int(layer_idx),
+                    "mode": spec.mode,
+                    "token_span": [int(start), int(end)],
+                    "status": "skipped",
+                    "reason": "missing_donor_mean",
+                },
+            )
+        donor_mean_t = torch.as_tensor(donor_mean, device=hidden_f32.device, dtype=torch.float32)
+        if donor_mean_t.shape != mu.shape:
+            raise ValueError(
+                f"donor_mean shape mismatch for layer {layer_idx}: "
+                f"{donor_mean_t.shape} vs {mu.shape}"
+            )
+        donor_centered_std = (donor_mean_t - mean) / safe_scale
+        donor_selected_coeff = (
+            donor_centered_std @ selected_rows.T
+            if selected_rows.numel() > 0
+            else torch.empty((0,), device=hidden_f32.device)
+        )
+        donor_selected_projected_std = (
+            donor_selected_coeff @ selected_rows
+            if selected_rows.numel() > 0
+            else torch.zeros_like(centered_std)
+        )
+        delta_std = float(spec.strength) * (donor_selected_projected_std - selected_projected_std)
     elif spec.mode == PATCH_MODE_RANDOM_CONTROL:
         num_rows = max(1, int(selected_rows.shape[0]))
         random_rows = _random_orthogonal_rows(
@@ -348,7 +384,7 @@ def _patch_hidden_states_for_layer(
             random_norm = float(torch.linalg.norm(random_projected_std).item())
             if random_norm > 1e-8 and selected_proj_norm > 0.0:
                 random_projected_std = random_projected_std * (selected_proj_norm / random_norm)
-        delta_std = -random_projected_std
+        delta_std = -float(spec.strength) * random_projected_std
     else:
         raise ValueError(f"Unsupported patch mode: {spec.mode}")
 
@@ -370,6 +406,8 @@ def _patch_hidden_states_for_layer(
         "delta_norm_std": float(torch.linalg.norm(delta_std).item()),
         "mean_norm_before": float(torch.linalg.norm(mu).item()),
         "mean_norm_after": float(torch.linalg.norm(patched_mu).item()),
+        "mean_std_norm_before": float(torch.linalg.norm(centered_std).item()),
+        "mean_std_norm_after": float(torch.linalg.norm(patched_centered_std).item()),
         "selected_proj_norm_before": float(selected_proj_norm),
         "selected_coeff_before": (
             selected_coeff_before.detach().cpu().tolist()
@@ -377,6 +415,7 @@ def _patch_hidden_states_for_layer(
             else []
         ),
         "selected_coeff_after": selected_coeff_after.detach().cpu().tolist(),
+        "strength": float(spec.strength),
     }
 
     patched = hidden_f32.to(original_dtype)
@@ -390,6 +429,9 @@ def _make_patched_forward(model: Any, layer_idx: int, layer: Any) -> Any:
         output = original_forward(*args, **kwargs)
         spec = getattr(model, "_market_patch_spec", None)
         if spec is None or layer_idx not in spec.target_layers:
+            return output
+        applied_layers = getattr(model, "_market_patch_applied_layers", None)
+        if isinstance(applied_layers, set) and layer_idx in applied_layers:
             return output
         basis = getattr(model, "_market_patch_basis", None)
         if not isinstance(basis, dict) or layer_idx not in basis:
@@ -420,6 +462,12 @@ def _make_patched_forward(model: Any, layer_idx: int, layer: Any) -> Any:
                 patch_stats = {}
                 model._market_patch_last_stats = patch_stats
             patch_stats[int(layer_idx)] = stats
+            if stats.get("status") != "skipped":
+                applied_layers = getattr(model, "_market_patch_applied_layers", None)
+                if not isinstance(applied_layers, set):
+                    applied_layers = set()
+                    model._market_patch_applied_layers = applied_layers
+                applied_layers.add(int(layer_idx))
         return _replace_hidden_tensor(output, patched_hidden)
 
     return patched_forward
@@ -440,6 +488,7 @@ def init_market_patching(model: Any) -> None:
     model._market_patch_basis = {}
     model._market_patch_spec = None
     model._market_patch_last_stats = {}
+    model._market_patch_applied_layers = set()
 
 
 def register_patch_basis(model: Any, basis_payload: dict[int, dict[str, Any]]) -> dict[str, Any]:
@@ -479,6 +528,7 @@ def set_patch_spec(model: Any, patch_spec: MarketPatchSpec | dict[str, Any]) -> 
     spec = patch_spec if isinstance(patch_spec, MarketPatchSpec) else MarketPatchSpec(**patch_spec)
     model._market_patch_spec = spec
     model._market_patch_last_stats = {}
+    model._market_patch_applied_layers = set()
     return {
         "mode": spec.mode,
         "target_layers": list(spec.target_layers),
@@ -488,6 +538,7 @@ def set_patch_spec(model: Any, patch_spec: MarketPatchSpec | dict[str, Any]) -> 
 
 def clear_patch_spec(model: Any) -> None:
     model._market_patch_spec = None
+    model._market_patch_applied_layers = set()
 
 
 def collect_patch_stats(model: Any) -> dict[int, dict[str, Any]]:
@@ -510,6 +561,7 @@ def restore_original_forwards(model: Any) -> None:
         "_market_patch_basis",
         "_market_patch_spec",
         "_market_patch_last_stats",
+        "_market_patch_applied_layers",
     ):
         if hasattr(model, attr):
             delattr(model, attr)

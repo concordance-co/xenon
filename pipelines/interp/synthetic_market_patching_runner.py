@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +38,8 @@ from pipelines.interp.vllm_capture import (
 )
 from pipelines.interp.vllm_market_patch import (
     PATCH_MODE_ADD_DIRECTION,
+    PATCH_MODE_SWAP_COMPONENTS,
+    PATCH_MODE_SWAP_MEAN,
     MarketPatchSpec,
 )
 
@@ -50,11 +53,13 @@ class SyntheticMarketPatchingConfig:
     model_id: str = "Qwen/Qwen3-30B-A3B"
     context_variant: str = "market_only"
     order_mode: str = "selection_rank_asc"
+    selection_strategy: str = "ordered"
     limit: int | None = None
     family_allowlist: tuple[str, ...] = ()
     patch_mode: str = "project_out"
     target_layers: tuple[int, ...] = (4,)
     components_per_layer: int = 4
+    component_indices_by_layer: dict[int, tuple[int, ...]] = field(default_factory=dict)
     direction_name: str = ""
     strength: float = 1.0
     random_seed: int = 42
@@ -69,11 +74,121 @@ class SyntheticMarketPatchingConfig:
     )
 
 
+_ROSTER_KEY_RE = re.compile(r"_r(\d+)_")
+
+
+def _extract_roster_key(example_id: str) -> str:
+    match = _ROSTER_KEY_RE.search(str(example_id))
+    if match is None:
+        return "unknown"
+    return f"r{match.group(1)}"
+
+
+def _selection_bucket_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row.get("family", "")),
+        str(row.get("family_variant", "")),
+        _extract_roster_key(str(row.get("example_id", ""))),
+    )
+
+
+def _parse_component_indices_spec(
+    spec_text: str,
+    *,
+    target_layers: tuple[int, ...],
+) -> dict[int, tuple[int, ...]]:
+    text = str(spec_text).strip()
+    if not text:
+        return {}
+
+    def _parse_index_list(raw: str) -> tuple[int, ...]:
+        values = [int(token.strip()) for token in raw.split(",") if token.strip()]
+        deduped: list[int] = []
+        seen: set[int] = set()
+        for value in values:
+            if value < 0 or value in seen:
+                continue
+            deduped.append(value)
+            seen.add(value)
+        return tuple(deduped)
+
+    if "=" not in text and ":" not in text:
+        indices = _parse_index_list(text)
+        return {int(layer): indices for layer in target_layers} if indices else {}
+
+    assignments = re.split(r"[;|]", text)
+    parsed: dict[int, tuple[int, ...]] = {}
+    for assignment in assignments:
+        chunk = assignment.strip()
+        if not chunk:
+            continue
+        if "=" in chunk:
+            layer_text, index_text = chunk.split("=", 1)
+        elif ":" in chunk:
+            layer_text, index_text = chunk.split(":", 1)
+        else:
+            raise ValueError(
+                f"Invalid component index assignment {assignment!r}. "
+                "Expected '0,1,2' or '4=0,1;35=0,1'."
+            )
+        layer = int(layer_text.strip())
+        indices = _parse_index_list(index_text)
+        if indices:
+            parsed[layer] = indices
+    return parsed
+
+
+def _apply_selection_strategy(
+    rows: list[dict[str, Any]],
+    *,
+    strategy: str,
+    limit: int | None,
+) -> list[dict[str, Any]]:
+    if limit is None or limit <= 0:
+        return rows
+    text = str(strategy).strip().lower() or "ordered"
+    if text == "ordered":
+        return rows[:limit]
+    if text != "stratified_family_variant_roster":
+        raise ValueError(
+            f"Unknown selection strategy: {strategy!r}. "
+            "Expected 'ordered' or 'stratified_family_variant_roster'."
+        )
+
+    buckets: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    bucket_order: list[tuple[str, str, str]] = []
+    for row in rows:
+        key = _selection_bucket_key(row)
+        if key not in buckets:
+            buckets[key] = []
+            bucket_order.append(key)
+        buckets[key].append(row)
+
+    selected: list[dict[str, Any]] = []
+    bucket_indices = {key: 0 for key in bucket_order}
+    while len(selected) < limit:
+        progressed = False
+        for key in bucket_order:
+            idx = bucket_indices[key]
+            bucket = buckets[key]
+            if idx >= len(bucket):
+                continue
+            selected.append(bucket[idx])
+            bucket_indices[key] = idx + 1
+            progressed = True
+            if len(selected) >= limit:
+                break
+        if not progressed:
+            break
+    return selected
+
+
 def _load_examples(
     *,
     phase_name: str,
     context_variant: str,
     order_mode: str,
+    selection_strategy: str,
     limit: int | None,
     family_allowlist: tuple[str, ...],
 ) -> list[dict[str, Any]]:
@@ -93,18 +208,18 @@ def _load_examples(
           {"AND family = ANY(%s)" if family_allowlist else ""}
         ORDER BY
           {"selection_rank ASC NULLS LAST, log_id" if order_mode == "selection_rank_asc" else "log_id"}
-        {("LIMIT %s" if limit is not None else "")}
     """
     params: list[Any] = [phase_name, context_variant]
     if family_allowlist:
         params.append(list(family_allowlist))
-    if limit is not None:
-        params.append(int(limit))
 
     conn = connect_neon()
     try:
         rows = conn.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+        loaded = [dict(row) for row in rows]
+        for row in loaded:
+            row["roster_key"] = _extract_roster_key(str(row.get("example_id", "")))
+        return _apply_selection_strategy(loaded, strategy=selection_strategy, limit=limit)
     finally:
         conn.close()
 
@@ -147,12 +262,28 @@ def _build_patch_spec(
     config: SyntheticMarketPatchingConfig,
     market_span: tuple[int, int],
     basis_payload: dict[int, dict[str, Any]],
+    donor_mean_by_layer: dict[int, Any] | None = None,
 ) -> MarketPatchSpec:
-    component_indices = {
-        int(layer): tuple(range(min(config.components_per_layer, basis_payload[int(layer)]["components"].shape[0])))
-        for layer in config.target_layers
-        if int(layer) in basis_payload
-    }
+    component_indices: dict[int, tuple[int, ...]] = {}
+    for layer in config.target_layers:
+        payload = basis_payload.get(int(layer))
+        if payload is None:
+            continue
+        explicit_indices = config.component_indices_by_layer.get(int(layer))
+        if explicit_indices:
+            component_indices[int(layer)] = tuple(int(index) for index in explicit_indices)
+        elif config.direction_name:
+            named_components = dict(payload.get("named_components", {}))
+            if config.direction_name not in named_components:
+                raise KeyError(
+                    f"Direction {config.direction_name!r} not available at layer {layer}. "
+                    f"Known directions: {sorted(named_components)}"
+                )
+            component_indices[int(layer)] = (int(named_components[config.direction_name]),)
+        else:
+            component_indices[int(layer)] = tuple(
+                range(min(config.components_per_layer, payload["components"].shape[0]))
+            )
 
     if config.patch_mode == PATCH_MODE_ADD_DIRECTION:
         if not config.direction_name:
@@ -180,6 +311,18 @@ def _build_patch_spec(
             random_seed=int(config.random_seed),
         )
 
+    if config.patch_mode in {PATCH_MODE_SWAP_MEAN, PATCH_MODE_SWAP_COMPONENTS}:
+        if not donor_mean_by_layer:
+            raise ValueError(f"{config.patch_mode} requires donor_mean_by_layer")
+        return MarketPatchSpec(
+            mode=config.patch_mode,
+            target_layers=tuple(int(layer) for layer in config.target_layers),
+            token_span=market_span,
+            strength=float(config.strength),
+            donor_mean_by_layer=donor_mean_by_layer,
+            random_seed=int(config.random_seed),
+        )
+
     return MarketPatchSpec(
         mode=config.patch_mode,
         target_layers=tuple(int(layer) for layer in config.target_layers),
@@ -204,6 +347,7 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
         phase_name=config.phase_name,
         context_variant=config.context_variant,
         order_mode=config.order_mode,
+        selection_strategy=config.selection_strategy,
         limit=config.limit,
         family_allowlist=config.family_allowlist,
     )
@@ -230,6 +374,7 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
             capture_residual=True,
             tensor_parallel_size=int(config.tensor_parallel_size),
             gpu_memory_utilization=float(config.gpu_memory_utilization),
+            enable_prefix_caching=False,
         )
     )
     _init_market_patching_on_model(llm)
@@ -242,6 +387,7 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
         capture_residual=True,
         tensor_parallel_size=int(config.tensor_parallel_size),
         gpu_memory_utilization=float(config.gpu_memory_utilization),
+        enable_prefix_caching=False,
     )
 
     metadata_rows: list[dict[str, Any]] = []
@@ -299,6 +445,7 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
             "family": row["family"],
             "family_variant": row["family_variant"],
             "context_variant": row["context_variant"],
+            "roster_key": row.get("roster_key") or "",
             "capture_timestamp": datetime.now(UTC).isoformat(),
             "seq_len": int(len(input_ids)),
             "n_rows": len(row_boundaries),
@@ -307,7 +454,12 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
             "patch_mode": config.patch_mode,
             "target_layers": ",".join(str(int(layer)) for layer in config.target_layers),
             "components_per_layer": int(config.components_per_layer),
+            "component_indices_by_layer": {
+                str(layer): [int(index) for index in indices]
+                for layer, indices in config.component_indices_by_layer.items()
+            },
             "direction_name": config.direction_name,
+            "selection_strategy": config.selection_strategy,
             "strength": float(config.strength),
             "patch_stats_json": json.dumps(patch_stats),
         })
@@ -327,7 +479,12 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
         "patch_mode": config.patch_mode,
         "target_layers": [int(layer) for layer in config.target_layers],
         "components_per_layer": int(config.components_per_layer),
+        "component_indices_by_layer": {
+            str(layer): [int(index) for index in indices]
+            for layer, indices in config.component_indices_by_layer.items()
+        },
         "direction_name": config.direction_name,
+        "selection_strategy": config.selection_strategy,
     }
     (config.output_dir / "results.json").write_text(json.dumps(result, indent=2))
     return result
@@ -344,11 +501,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-id", default="Qwen/Qwen3-30B-A3B")
     parser.add_argument("--context-variant", default="market_only")
     parser.add_argument("--order-mode", default="selection_rank_asc")
+    parser.add_argument("--selection-strategy", default="ordered")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--family-allowlist", default="")
     parser.add_argument("--patch-mode", default="project_out")
     parser.add_argument("--target-layers", default="4")
     parser.add_argument("--components-per-layer", type=int, default=4)
+    parser.add_argument("--component-indices", default="")
     parser.add_argument("--direction-name", default="")
     parser.add_argument("--strength", type=float, default=1.0)
     parser.add_argument("--random-seed", type=int, default=42)
@@ -358,6 +517,10 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = _build_parser().parse_args(argv)
     target_layers = tuple(int(token) for token in args.target_layers.split(",") if token.strip())
+    component_indices_by_layer = _parse_component_indices_spec(
+        args.component_indices,
+        target_layers=target_layers or (4,),
+    )
     family_allowlist = tuple(token.strip() for token in args.family_allowlist.split(",") if token.strip())
     result = run_synthetic_market_patching(
         SyntheticMarketPatchingConfig(
@@ -366,11 +529,13 @@ def main(argv: list[str] | None = None) -> None:
             model_id=args.model_id,
             context_variant=args.context_variant,
             order_mode=args.order_mode,
+            selection_strategy=args.selection_strategy,
             limit=args.limit if args.limit > 0 else None,
             family_allowlist=family_allowlist,
             patch_mode=args.patch_mode,
             target_layers=target_layers or (4,),
             components_per_layer=args.components_per_layer,
+            component_indices_by_layer=component_indices_by_layer,
             direction_name=args.direction_name,
             strength=args.strength,
             random_seed=args.random_seed,

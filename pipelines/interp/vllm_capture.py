@@ -60,6 +60,7 @@ class VLLMCaptureConfig:
     max_model_len: int | None = None
     max_num_seqs: int = 1  # >1 enables batched prefill (router capture requires 1)
     max_tokens_buffer: int = 8192  # pre-allocated router buffer size
+    enable_prefix_caching: bool = True
 
     # Router capture knobs
     router_top_k: int = 8  # top-k indices to save alongside full logits
@@ -240,6 +241,7 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         "enforce_eager": True,
         "max_num_seqs": config.max_num_seqs,
         "enable_chunked_prefill": False,
+        "enable_prefix_caching": config.enable_prefix_caching,
         "tensor_parallel_size": config.tensor_parallel_size,
         "gpu_memory_utilization": config.gpu_memory_utilization,
     }
@@ -276,11 +278,21 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
             },
         }
         print(f"Creating vLLM engine: {config.model_id}")
-        print(f"  enforce_eager=True, max_num_seqs={config.max_num_seqs}, enable_chunked_prefill=False")
+        print(
+            "  enforce_eager=True, "
+            f"max_num_seqs={config.max_num_seqs}, "
+            "enable_chunked_prefill=False, "
+            f"enable_prefix_caching={config.enable_prefix_caching}"
+        )
         print(f"  Residual capture: {len(layer_ids)} layers -> {storage_path}")
     else:
         print(f"Creating vLLM engine: {config.model_id}")
-        print(f"  enforce_eager=True, max_num_seqs={config.max_num_seqs}, enable_chunked_prefill=False")
+        print(
+            "  enforce_eager=True, "
+            f"max_num_seqs={config.max_num_seqs}, "
+            "enable_chunked_prefill=False, "
+            f"enable_prefix_caching={config.enable_prefix_caching}"
+        )
         print(f"  Residual capture: disabled")
 
     llm = LLM(**kwargs)
@@ -290,6 +302,103 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
 # ---------------------------------------------------------------------------
 # Single-prompt capture
 # ---------------------------------------------------------------------------
+
+def _tokenize_chat_messages(
+    *,
+    tokenizer: Any,
+    messages: list[dict[str, str]],
+    add_generation_prompt: bool,
+    tools: list[dict[str, Any]] | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
+) -> list[int]:
+    """Tokenize chat messages through the HF chat template and normalize to a list[int]."""
+    kwargs: dict[str, Any] = {
+        "tokenize": True,
+        "add_generation_prompt": add_generation_prompt,
+    }
+    if tools is not None:
+        kwargs["tools"] = tools
+    if chat_template_kwargs:
+        kwargs.update(chat_template_kwargs)
+    input_ids = tokenizer.apply_chat_template(messages, **kwargs)
+    if not isinstance(input_ids, list):
+        if hasattr(input_ids, "tolist"):
+            input_ids = input_ids.squeeze().tolist()
+        elif hasattr(input_ids, "input_ids"):
+            input_ids = input_ids.input_ids
+            if hasattr(input_ids, "tolist"):
+                input_ids = input_ids.squeeze().tolist()
+    return [int(token) for token in input_ids]
+
+
+def _generate_one_vllm(
+    *,
+    llm: Any,
+    tokenizer: Any,
+    messages: list[dict[str, str]],
+    config: VLLMCaptureConfig,
+    max_tokens: int,
+    temperature: float = 0.0,
+    top_p: float = 1.0,
+    top_k: int = -1,
+    patch_spec: dict[str, Any] | None = None,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run a single prompt through vLLM generation, optionally under a patch spec."""
+    from vllm import SamplingParams
+
+    chat_template_kwargs: dict[str, Any] | None = None
+    if tool_choice is not None:
+        chat_template_kwargs = {"tool_choice": tool_choice}
+
+    input_ids = _tokenize_chat_messages(
+        tokenizer=tokenizer,
+        messages=messages,
+        add_generation_prompt=config.add_generation_prompt,
+        tools=tools,
+        chat_template_kwargs=chat_template_kwargs,
+    )
+
+    sampling_params = SamplingParams(
+        max_tokens=int(max_tokens),
+        temperature=float(temperature),
+        top_p=float(top_p),
+        top_k=int(top_k),
+    )
+    if patch_spec is not None:
+        _set_market_patch_spec_on_model(llm, patch_spec)
+    try:
+        if tools is not None:
+            outputs = llm.chat(
+                messages=messages,
+                sampling_params=sampling_params,
+                tools=tools,
+                chat_template_kwargs=chat_template_kwargs,
+            )
+        else:
+            outputs = llm.generate(
+                prompts=[{"prompt_token_ids": input_ids}],
+                sampling_params=sampling_params,
+            )
+    finally:
+        if patch_spec is not None:
+            _clear_market_patch_spec_on_model(llm)
+
+    request_output = outputs[0]
+    completion = request_output.outputs[0] if getattr(request_output, "outputs", None) else None
+    generated_token_ids = [int(token) for token in getattr(completion, "token_ids", [])] if completion is not None else []
+    generated_text = str(getattr(completion, "text", "")) if completion is not None else ""
+    finish_reason = getattr(completion, "finish_reason", None) if completion is not None else None
+
+    return {
+        "input_ids": input_ids,
+        "generated_token_ids": generated_token_ids,
+        "generated_text": generated_text,
+        "finish_reason": str(finish_reason) if finish_reason is not None else "",
+        "patch_stats": _collect_market_patch_stats_from_model(llm) if patch_spec is not None else {},
+    }
+
 
 def _capture_one_vllm(
     *,
@@ -313,20 +422,12 @@ def _capture_one_vllm(
     import torch
     from vllm import SamplingParams
 
-    # Tokenize via the HF tokenizer (same as HF pipeline for consistency)
-    input_ids = tokenizer.apply_chat_template(
-        messages,
-        tokenize=True,
+    input_ids = _tokenize_chat_messages(
+        tokenizer=tokenizer,
+        messages=messages,
         add_generation_prompt=config.add_generation_prompt,
+        tools=None,
     )
-    if not isinstance(input_ids, list):
-        # Handle tensor/encoding returns
-        if hasattr(input_ids, "tolist"):
-            input_ids = input_ids.squeeze().tolist()
-        elif hasattr(input_ids, "input_ids"):
-            input_ids = input_ids.input_ids
-            if hasattr(input_ids, "tolist"):
-                input_ids = input_ids.squeeze().tolist()
 
     # Reset router buffers before each request
     if config.capture_router:
