@@ -15,6 +15,7 @@ from pipelines.interp.vllm_market_patch import (
     init_market_patching,
     register_patch_basis,
     restore_original_forwards,
+    set_batch_patch_specs,
     set_patch_spec,
 )
 
@@ -327,4 +328,171 @@ def test_generation_followup_calls_do_not_overwrite_successful_prefill_stats():
     assert "status" not in stats_after_prefill
     assert stats_after_decode == stats_after_prefill
     assert torch.allclose(decode_out, decode_hidden)
+    restore_original_forwards(model)
+
+
+def test_batch_patch_specs_apply_per_request_and_stats_can_be_collected_by_base_id():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+
+    req1 = MarketPatchSpec(
+        mode=PATCH_MODE_PROJECT_OUT,
+        target_layers=(0,),
+        token_span=(0, 2),
+        component_indices_by_layer={0: (0, 1)},
+    ).to_payload()
+    req2 = MarketPatchSpec(
+        mode=PATCH_MODE_ADD_DIRECTION,
+        target_layers=(0,),
+        token_span=(2, 4),
+        component_indices_by_layer={0: (0,)},
+        direction_weights_by_layer={0: np.asarray([1.0, 0.0], dtype=np.float32)},
+        strength=1.0,
+    ).to_payload()
+
+    set_batch_patch_specs(
+        model,
+        [
+            {
+                "req_id": "base-abc",
+                "patch_spec": req1,
+                "target_span": [0, 2],
+                "chunk_abs_span": [0, 2],
+                "overlap_abs_span": [0, 2],
+                "query_span": [0, 2],
+                "prefill_chunk_len": 2,
+            },
+            {
+                "req_id": "other-xyz",
+                "patch_spec": req2,
+                "target_span": [0, 2],
+                "chunk_abs_span": [0, 2],
+                "overlap_abs_span": [0, 2],
+                "query_span": [2, 4],
+                "prefill_chunk_len": 2,
+            },
+        ],
+    )
+
+    hidden = torch.tensor(
+        [
+            [2.0, 4.0, 7.0, 9.0],
+            [2.0, 4.0, 5.0, 11.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+        ],
+        dtype=torch.float32,
+    )
+    patched = model.model.layers[0].forward(hidden)
+
+    assert torch.allclose(patched[:2].mean(dim=0)[:2], torch.zeros((2,), dtype=torch.float32), atol=1e-5)
+    assert torch.allclose(patched[2:4].mean(dim=0), torch.tensor([1.0, 0.0, 0.0, 0.0]), atol=1e-5)
+
+    stats_base = collect_patch_stats(model, "base")[0]
+    stats_other = collect_patch_stats(model, "other-xyz")[0]
+    assert stats_base["req_id"] == "base-abc"
+    assert stats_base["query_span"] == [0, 2]
+    assert stats_base["coverage_fraction"] == 1.0
+    assert stats_other["req_id"] == "other-xyz"
+    assert stats_other["query_span"] == [2, 4]
+    assert stats_other["coverage_fraction"] == 1.0
+    restore_original_forwards(model)
+
+
+def test_batch_patch_stats_survive_followup_decode_steps():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+
+    patch_payload = MarketPatchSpec(
+        mode=PATCH_MODE_PROJECT_OUT,
+        target_layers=(0,),
+        token_span=(0, 2),
+        component_indices_by_layer={0: (0, 1)},
+    ).to_payload()
+
+    set_batch_patch_specs(
+        model,
+        [
+            {
+                "req_id": "base-abc",
+                "patch_spec": patch_payload,
+                "target_span": [0, 2],
+                "chunk_abs_span": [0, 3],
+                "overlap_abs_span": [0, 2],
+                "query_span": [0, 3],
+                "prefill_chunk_len": 3,
+            }
+        ],
+    )
+    prefill_hidden = torch.tensor(
+        [
+            [2.0, 4.0, 7.0, 9.0],
+            [2.0, 4.0, 5.0, 11.0],
+            [10.0, 20.0, 30.0, 40.0],
+        ],
+        dtype=torch.float32,
+    )
+    _ = model.model.layers[0].forward(prefill_hidden)
+    stats_after_prefill = collect_patch_stats(model, "base")[0].copy()
+
+    set_batch_patch_specs(model, [])
+    decode_hidden = torch.tensor([[1.0, 2.0, 3.0, 4.0]], dtype=torch.float32)
+    _ = model.model.layers[0].forward(decode_hidden)
+    stats_after_decode = collect_patch_stats(model, "base")[0]
+
+    assert stats_after_prefill == stats_after_decode
+    restore_original_forwards(model)
+
+
+def test_batch_patch_stats_accumulate_chunk_coverage_across_multiple_steps():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+
+    patch_payload = MarketPatchSpec(
+        mode=PATCH_MODE_PROJECT_OUT,
+        target_layers=(0,),
+        token_span=(0, 1),
+        component_indices_by_layer={0: (0,)},
+    ).to_payload()
+
+    set_batch_patch_specs(
+        model,
+        [
+            {
+                "req_id": "base-abc",
+                "patch_spec": patch_payload,
+                "target_span": [0, 2],
+                "chunk_abs_span": [0, 1],
+                "overlap_abs_span": [0, 1],
+                "query_span": [0, 1],
+                "prefill_chunk_len": 1,
+            }
+        ],
+    )
+    _ = model.model.layers[0].forward(torch.tensor([[2.0, 0.0, 0.0, 0.0]], dtype=torch.float32))
+
+    set_batch_patch_specs(
+        model,
+        [
+            {
+                "req_id": "base-abc",
+                "patch_spec": patch_payload,
+                "target_span": [0, 2],
+                "chunk_abs_span": [1, 2],
+                "overlap_abs_span": [1, 2],
+                "query_span": [0, 1],
+                "prefill_chunk_len": 1,
+            }
+        ],
+    )
+    _ = model.model.layers[0].forward(torch.tensor([[3.0, 0.0, 0.0, 0.0]], dtype=torch.float32))
+
+    stats = collect_patch_stats(model, "base")[0]
+    assert stats["covered_abs_spans"] == [[0, 2]]
+    assert stats["covered_abs_tokens"] == 2
+    assert stats["target_abs_tokens"] == 2
+    assert stats["coverage_fraction"] == 1.0
     restore_original_forwards(model)

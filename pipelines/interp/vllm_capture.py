@@ -58,9 +58,14 @@ class VLLMCaptureConfig:
     tensor_parallel_size: int = 1
     gpu_memory_utilization: float = 0.90
     max_model_len: int | None = None
+    max_num_batched_tokens: int | None = None
     max_num_seqs: int = 1  # >1 enables batched prefill (router capture requires 1)
     max_tokens_buffer: int = 8192  # pre-allocated router buffer size
     enable_prefix_caching: bool = True
+    enable_chunked_prefill: bool = False
+    async_scheduling: bool | None = None
+    worker_cls: str = ""
+    request_scoped_patching: bool = False
 
     # Router capture knobs
     router_top_k: int = 8  # top-k indices to save alongside full logits
@@ -166,10 +171,13 @@ def _clear_market_patch_spec(model: Any) -> None:
     clear_patch_spec(model)
 
 
-def _collect_market_patch_stats(model: Any) -> dict[int, dict[str, Any]]:
+def _collect_market_patch_stats(
+    model: Any,
+    req_id: str | None = None,
+) -> dict[int, dict[str, Any]]:
     from pipelines.interp.vllm_market_patch import collect_patch_stats
 
-    return collect_patch_stats(model)
+    return collect_patch_stats(model, req_id=req_id)
 
 
 def _init_market_patching_on_model(llm: Any) -> bool:
@@ -201,9 +209,15 @@ def _clear_market_patch_spec_on_model(llm: Any) -> None:
     _apply_to_model(llm, _clear_market_patch_spec)
 
 
-def _collect_market_patch_stats_from_model(llm: Any) -> dict[int, dict[str, Any]]:
+def _collect_market_patch_stats_from_model(
+    llm: Any,
+    req_id: str | None = None,
+) -> dict[int, dict[str, Any]]:
     """Collect patch statistics from the worker-side model."""
-    return _apply_to_model(llm, _collect_market_patch_stats)
+    from functools import partial
+
+    func = partial(_collect_market_patch_stats, req_id=req_id)
+    return _apply_to_model(llm, func)
 
 
 def _reset_router_buffers_on_model(llm: Any) -> None:
@@ -240,14 +254,20 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         "model": config.model_id,
         "enforce_eager": True,
         "max_num_seqs": config.max_num_seqs,
-        "enable_chunked_prefill": False,
+        "enable_chunked_prefill": bool(config.enable_chunked_prefill),
         "enable_prefix_caching": config.enable_prefix_caching,
         "tensor_parallel_size": config.tensor_parallel_size,
         "gpu_memory_utilization": config.gpu_memory_utilization,
     }
+    if config.worker_cls:
+        kwargs["worker_cls"] = config.worker_cls
+    if config.async_scheduling is not None:
+        kwargs["async_scheduling"] = bool(config.async_scheduling)
 
     if config.max_model_len is not None:
         kwargs["max_model_len"] = config.max_model_len
+    if config.max_num_batched_tokens is not None:
+        kwargs["max_num_batched_tokens"] = int(config.max_num_batched_tokens)
 
     # Set up extract_hidden_states for residual capture
     if config.capture_residual:
@@ -281,7 +301,7 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         print(
             "  enforce_eager=True, "
             f"max_num_seqs={config.max_num_seqs}, "
-            "enable_chunked_prefill=False, "
+            f"enable_chunked_prefill={config.enable_chunked_prefill}, "
             f"enable_prefix_caching={config.enable_prefix_caching}"
         )
         print(f"  Residual capture: {len(layer_ids)} layers -> {storage_path}")
@@ -290,7 +310,7 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         print(
             "  enforce_eager=True, "
             f"max_num_seqs={config.max_num_seqs}, "
-            "enable_chunked_prefill=False, "
+            f"enable_chunked_prefill={config.enable_chunked_prefill}, "
             f"enable_prefix_caching={config.enable_prefix_caching}"
         )
         print(f"  Residual capture: disabled")
@@ -366,7 +386,14 @@ def _generate_one_vllm(
         top_p=float(top_p),
         top_k=int(top_k),
     )
-    if patch_spec is not None:
+    use_request_scoped_patch = bool(config.request_scoped_patching and patch_spec is not None)
+    if use_request_scoped_patch:
+        extra_args = getattr(sampling_params, "extra_args", None)
+        if not isinstance(extra_args, dict):
+            extra_args = {}
+        extra_args["market_patch_spec"] = dict(patch_spec)
+        sampling_params.extra_args = extra_args
+    elif patch_spec is not None:
         _set_market_patch_spec_on_model(llm, patch_spec)
     try:
         if tools is not None:
@@ -382,7 +409,7 @@ def _generate_one_vllm(
                 sampling_params=sampling_params,
             )
     finally:
-        if patch_spec is not None:
+        if patch_spec is not None and not use_request_scoped_patch:
             _clear_market_patch_spec_on_model(llm)
 
     request_output = outputs[0]
@@ -390,14 +417,98 @@ def _generate_one_vllm(
     generated_token_ids = [int(token) for token in getattr(completion, "token_ids", [])] if completion is not None else []
     generated_text = str(getattr(completion, "text", "")) if completion is not None else ""
     finish_reason = getattr(completion, "finish_reason", None) if completion is not None else None
+    request_id = getattr(request_output, "request_id", None)
 
     return {
         "input_ids": input_ids,
         "generated_token_ids": generated_token_ids,
         "generated_text": generated_text,
         "finish_reason": str(finish_reason) if finish_reason is not None else "",
-        "patch_stats": _collect_market_patch_stats_from_model(llm) if patch_spec is not None else {},
+        "patch_stats": (
+            _collect_market_patch_stats_from_model(llm, req_id=str(request_id) if request_id is not None else None)
+            if patch_spec is not None
+            else {}
+        ),
     }
+
+
+def _generate_batch_vllm(
+    *,
+    llm: Any,
+    tokenizer: Any,
+    batch_requests: list[dict[str, Any]],
+    config: VLLMCaptureConfig,
+    max_tokens: int,
+    temperature: float = 0.0,
+    top_p: float = 1.0,
+    top_k: int = -1,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    from vllm import SamplingParams
+
+    chat_template_kwargs: dict[str, Any] | None = None
+    if tool_choice is not None:
+        chat_template_kwargs = {"tool_choice": tool_choice}
+
+    prompts: list[dict[str, Any]] = []
+    sampling_params_list: list[Any] = []
+    input_ids_list: list[list[int]] = []
+
+    for item in batch_requests:
+        input_ids = _tokenize_chat_messages(
+            tokenizer=tokenizer,
+            messages=item["messages"],
+            add_generation_prompt=config.add_generation_prompt,
+            tools=tools,
+            chat_template_kwargs=chat_template_kwargs,
+        )
+        sampling_params = SamplingParams(
+            max_tokens=int(max_tokens),
+            temperature=float(temperature),
+            top_p=float(top_p),
+            top_k=int(top_k),
+        )
+        patch_spec = item.get("patch_spec")
+        if patch_spec is not None:
+            if not config.request_scoped_patching:
+                raise ValueError("Batched generation requires request_scoped_patching=True when patch_spec is present")
+            extra_args = getattr(sampling_params, "extra_args", None)
+            if not isinstance(extra_args, dict):
+                extra_args = {}
+            extra_args["market_patch_spec"] = dict(patch_spec)
+            sampling_params.extra_args = extra_args
+        prompts.append({"prompt_token_ids": input_ids})
+        sampling_params_list.append(sampling_params)
+        input_ids_list.append(input_ids)
+
+    outputs = llm.generate(prompts=prompts, sampling_params=sampling_params_list)
+
+    results: list[dict[str, Any]] = []
+    for input_ids, item, request_output in zip(input_ids_list, batch_requests, outputs, strict=False):
+        completion = request_output.outputs[0] if getattr(request_output, "outputs", None) else None
+        generated_token_ids = [int(token) for token in getattr(completion, "token_ids", [])] if completion is not None else []
+        generated_text = str(getattr(completion, "text", "")) if completion is not None else ""
+        finish_reason = getattr(completion, "finish_reason", None) if completion is not None else None
+        request_id = getattr(request_output, "request_id", None)
+        patch_spec = item.get("patch_spec")
+        results.append(
+            {
+                "input_ids": input_ids,
+                "generated_token_ids": generated_token_ids,
+                "generated_text": generated_text,
+                "finish_reason": str(finish_reason) if finish_reason is not None else "",
+                "patch_stats": (
+                    _collect_market_patch_stats_from_model(
+                        llm,
+                        req_id=str(request_id) if request_id is not None else None,
+                    )
+                    if patch_spec is not None
+                    else {}
+                ),
+            }
+        )
+    return results
 
 
 def _capture_one_vllm(

@@ -27,6 +27,7 @@ from pipelines.interp.vllm_capture import (
     VLLMCaptureConfig,
     _capture_one_vllm,
     _create_llm,
+    _generate_batch_vllm,
     _generate_one_vllm,
     _init_market_patching_on_model,
     _register_market_patch_basis_on_model,
@@ -50,6 +51,7 @@ class SyntheticMarketBehaviorConfig:
     min_pair_gap: float = 0.0
     generate_source_behavior: bool = False
     donor_means_path: Path | None = None
+    batch_size: int = 1
     patch_mode: str = ""
     target_layers: tuple[int, ...] = (4,)
     components_per_layer: int = 4
@@ -66,6 +68,7 @@ class SyntheticMarketBehaviorConfig:
     add_generation_prompt: bool = True
     tensor_parallel_size: int = 1
     gpu_memory_utilization: float = 0.85
+    enable_chunked_prefill: bool = False
     basis_npz_path: Path = Path(
         "data/analysis_results/synthetic_market_discovery/phase15_market_basis_discovery_v1/residualized_nuisance_v1/pca_basis.npz"
     )
@@ -87,6 +90,11 @@ def _flush_table(path: Path, rows: list[dict[str, Any]]) -> None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.Table.from_pylist(rows), path)
+
+
+def _chunk_list(items: list[Any], chunk_size: int) -> list[list[Any]]:
+    size = max(1, int(chunk_size))
+    return [items[i : i + size] for i in range(0, len(items), size)]
 
 
 def _decode_first_token(tokenizer: Any, token_ids: list[int]) -> str:
@@ -369,16 +377,80 @@ def prepare_synthetic_market_behavior_donors(config: SyntheticMarketBehaviorConf
     }
     (config.output_dir / "donor_results.json").write_text(json.dumps(result, indent=2))
     return result
-    del llm
-    gc.collect()
-    try:
-        import torch
 
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
-    except Exception:
-        pass
+
+def _build_generation_config(config: SyntheticMarketBehaviorConfig) -> VLLMCaptureConfig:
+    batch_size = max(1, int(config.batch_size))
+    use_request_scoped_patching = bool(config.patch_enabled)
+    max_num_batched_tokens = None
+    if batch_size > 1:
+        max_num_batched_tokens = max(40960, batch_size * 4096)
+    return VLLMCaptureConfig(
+        output_dir=config.output_dir / "_tmp_capture",
+        model_id=config.model_id,
+        capture_router=False,
+        capture_residual=False,
+        add_generation_prompt=bool(config.add_generation_prompt),
+        tensor_parallel_size=int(config.tensor_parallel_size),
+        gpu_memory_utilization=float(config.gpu_memory_utilization),
+        max_num_batched_tokens=max_num_batched_tokens,
+        max_num_seqs=batch_size,
+        enable_prefix_caching=False,
+        enable_chunked_prefill=bool(config.enable_chunked_prefill),
+        async_scheduling=(False if use_request_scoped_patching and batch_size > 1 else None),
+        worker_cls=(
+            "pipelines.interp.vllm_request_patch_worker.MarketPatchGPUWorker"
+            if use_request_scoped_patching
+            else ""
+        ),
+        request_scoped_patching=use_request_scoped_patching,
+    )
+
+
+def _run_generation_batch(
+    *,
+    llm: Any,
+    tokenizer: Any,
+    requests: list[dict[str, Any]],
+    config: VLLMCaptureConfig,
+    max_tokens: int,
+    temperature: float,
+    top_p: float,
+    top_k: int,
+    tools: list[dict[str, Any]] | None,
+    tool_choice: str | None,
+) -> list[dict[str, Any]]:
+    if not requests:
+        return []
+    if len(requests) == 1:
+        request = requests[0]
+        return [
+            _generate_one_vllm(
+                llm=llm,
+                tokenizer=tokenizer,
+                messages=request["messages"],
+                config=config,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                patch_spec=request.get("patch_spec"),
+                tools=tools,
+                tool_choice=tool_choice,
+            )
+        ]
+    return _generate_batch_vllm(
+        llm=llm,
+        tokenizer=tokenizer,
+        batch_requests=requests,
+        config=config,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
 
 
 def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict[str, Any]:
@@ -443,18 +515,8 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
         finally:
             _destroy_llm(llm_capture)
 
-    llm_generate = _create_llm(
-        VLLMCaptureConfig(
-            output_dir=config.output_dir / "_tmp_capture",
-            model_id=config.model_id,
-            capture_router=False,
-            capture_residual=False,
-            add_generation_prompt=bool(config.add_generation_prompt),
-            tensor_parallel_size=int(config.tensor_parallel_size),
-            gpu_memory_utilization=float(config.gpu_memory_utilization),
-            enable_prefix_caching=False,
-        )
-    )
+    generate_cfg = _build_generation_config(config)
+    llm_generate = _create_llm(generate_cfg)
 
     basis_payload: dict[int, dict[str, Any]] = {}
     if config.patch_enabled:
@@ -468,150 +530,208 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
         _init_market_patching_on_model(llm_generate)
         _register_market_patch_basis_on_model(llm_generate, basis_payload)
 
-    generate_cfg = VLLMCaptureConfig(
-        output_dir=config.output_dir / "_tmp_capture",
-        model_id=config.model_id,
-        capture_router=False,
-        capture_residual=False,
-        add_generation_prompt=bool(config.add_generation_prompt),
-        tensor_parallel_size=int(config.tensor_parallel_size),
-        gpu_memory_utilization=float(config.gpu_memory_utilization),
-        enable_prefix_caching=False,
-    )
     source_behavior_cache: dict[int, dict[str, Any]] = {}
-
     metadata_rows: list[dict[str, Any]] = []
     processed = 0
-    for prepared in prepared_rows:
-        row = prepared["row"]
-        messages = prepared["messages"]
-        market_span = prepared["market_span"]
-        source_log_id = prepared["source_log_id"]
-        source_row_messages = prepared["source_row_messages"]
-        source_market_span = prepared["source_market_span"]
+    try:
+        if config.generate_source_behavior:
+            unique_source_requests: list[dict[str, Any]] = []
+            seen_source_log_ids: set[int] = set()
+            for prepared in prepared_rows:
+                source_log_id = prepared["source_log_id"]
+                source_row_messages = prepared["source_row_messages"]
+                if source_log_id is None or source_row_messages is None or source_log_id in seen_source_log_ids:
+                    continue
+                seen_source_log_ids.add(int(source_log_id))
+                unique_source_requests.append(
+                    {
+                        "source_log_id": int(source_log_id),
+                        "messages": source_row_messages,
+                    }
+                )
 
-        pair_metric_name = row.get("pair_metric_name")
-        pair_metric_value = row.get("base_pair_metric_value", row.get("pair_metric_value"))
-        source_pair_metric_value = row.get("source_pair_metric_value")
-        pair_metric_gap = row.get("pair_metric_gap")
-        source_behavior_fields: dict[str, Any] = {}
-
-        patch_spec = None
-        if config.patch_enabled:
-            if config.patch_mode in {"swap_mean", "swap_components"}:
-                if not config.paired_mode_enabled or source_row_messages is None or source_market_span is None or source_log_id is None:
-                    raise ValueError(f"{config.patch_mode} behavior runs require paired mode with a valid source row")
-                donor_mean_by_layer = donor_mean_cache.get(source_log_id)
-                if donor_mean_by_layer is None:
-                    raise RuntimeError(f"Missing donor mean cache for source log_id={source_log_id}")
-                patch_spec = _build_patch_spec(
-                    config=config,  # type: ignore[arg-type]
-                    market_span=market_span,
-                    basis_payload=basis_payload,
-                    donor_mean_by_layer=donor_mean_by_layer,
-                ).to_payload()
-            else:
-                patch_spec = _build_patch_spec(
-                    config=config,  # type: ignore[arg-type]
-                    market_span=market_span,
-                    basis_payload=basis_payload,
-                ).to_payload()
-
-        if config.generate_source_behavior and source_row_messages is not None and source_log_id is not None:
-            cached_source = source_behavior_cache.get(source_log_id)
-            if cached_source is None:
-                source_output = _generate_one_vllm(
+            for source_chunk in _chunk_list(unique_source_requests, int(config.batch_size)):
+                requests = [{"messages": item["messages"]} for item in source_chunk]
+                outputs = _run_generation_batch(
                     llm=llm_generate,
                     tokenizer=tokenizer,
-                    messages=source_row_messages,
+                    requests=requests,
                     config=generate_cfg,
                     max_tokens=int(config.max_tokens),
                     temperature=float(config.temperature),
                     top_p=float(config.top_p),
                     top_k=int(config.top_k),
-                    patch_spec=None,
                     tools=tools,
                     tool_choice=tool_choice,
                 )
-                source_generated_token_ids = [int(token) for token in source_output["generated_token_ids"]]
-                source_tool_fields = _extract_first_tool_call_fields(str(source_output["generated_text"]))
-                cached_source = {
-                    "source_generated_text": source_output["generated_text"],
-                    "source_generated_token_count": len(source_generated_token_ids),
-                    "source_first_generated_token_id": source_generated_token_ids[0] if source_generated_token_ids else None,
-                    "source_first_generated_token_text": _decode_first_token(tokenizer, source_generated_token_ids),
-                    **{f"source_{key}": value for key, value in source_tool_fields.items()},
-                }
-                source_behavior_cache[source_log_id] = cached_source
-            source_behavior_fields = dict(cached_source)
-
-        output = _generate_one_vllm(
-            llm=llm_generate,
-            tokenizer=tokenizer,
-            messages=messages,
-            config=generate_cfg,
-            max_tokens=int(config.max_tokens),
-            temperature=float(config.temperature),
-            top_p=float(config.top_p),
-            top_k=int(config.top_k),
-            patch_spec=patch_spec,
-            tools=tools,
-            tool_choice=tool_choice,
-        )
-        generated_token_ids = [int(token) for token in output["generated_token_ids"]]
-        tool_fields = _extract_first_tool_call_fields(str(output["generated_text"]))
-        metadata_rows.append(
-            {
-                "log_id": int(row["log_id"]),
-                "phase_name": row["phase_name"],
-                "example_id": row["example_id"],
-                "family": row["family"],
-                "family_variant": row["family_variant"],
-                "context_variant": row["context_variant"],
-                "roster_key": row.get("roster_key") or "",
-                "pair_metric_name": pair_metric_name or None,
-                "pair_mode": row.get("pair_mode") or None,
-                "pair_id": row.get("pair_id"),
-                "pair_metric_value": float(pair_metric_value) if pair_metric_value is not None else None,
-                "source_pair_metric_value": float(source_pair_metric_value) if source_pair_metric_value is not None else None,
-                "pair_metric_gap": float(pair_metric_gap) if pair_metric_gap is not None else None,
-                "source_log_id": source_log_id,
-                "source_example_id": row.get("source_example_id"),
-                "source_family_variant": row.get("source_family_variant"),
-                "source_roster_key": row.get("source_roster_key"),
-                "capture_timestamp": datetime.now(UTC).isoformat(),
-                "seq_len": int(len(output["input_ids"])),
-                "max_tokens": int(config.max_tokens),
-                "temperature": float(config.temperature),
-                "top_p": float(config.top_p),
-                "top_k": int(config.top_k),
-                "tool_schema_mode": config.tool_schema_mode,
-                "tool_choice": config.tool_choice,
-                "tool_count": len(tools) if tools is not None else 0,
-                "patch_mode": config.patch_mode,
-                "target_layers": ",".join(str(int(layer)) for layer in config.target_layers),
-                "components_per_layer": int(config.components_per_layer),
-                "component_indices_by_layer_json": json.dumps(
-                    {
-                        str(layer): [int(index) for index in indices]
-                        for layer, indices in config.component_indices_by_layer.items()
+                for item, source_output in zip(source_chunk, outputs, strict=False):
+                    source_generated_token_ids = [int(token) for token in source_output["generated_token_ids"]]
+                    source_tool_fields = _extract_first_tool_call_fields(str(source_output["generated_text"]))
+                    source_behavior_cache[int(item["source_log_id"])] = {
+                        "source_generated_text": source_output["generated_text"],
+                        "source_generated_token_count": len(source_generated_token_ids),
+                        "source_first_generated_token_id": (
+                            source_generated_token_ids[0] if source_generated_token_ids else None
+                        ),
+                        "source_first_generated_token_text": _decode_first_token(tokenizer, source_generated_token_ids),
+                        **{f"source_{key}": value for key, value in source_tool_fields.items()},
                     }
-                ),
-                "direction_name": config.direction_name,
-                "selection_strategy": config.selection_strategy,
-                "strength": float(config.strength),
-                "generated_token_ids_json": json.dumps(generated_token_ids),
-                "generated_token_count": len(generated_token_ids),
-                "first_generated_token_id": generated_token_ids[0] if generated_token_ids else None,
-                "first_generated_token_text": _decode_first_token(tokenizer, generated_token_ids),
-                "generated_text": output["generated_text"],
-                "finish_reason": output["finish_reason"],
-                **tool_fields,
-                **source_behavior_fields,
-                "patch_stats_json": json.dumps(output["patch_stats"]),
-            }
-        )
-        processed += 1
+
+        for prepared_chunk in _chunk_list(prepared_rows, int(config.batch_size)):
+            batch_requests: list[dict[str, Any]] = []
+            chunk_context: list[dict[str, Any]] = []
+            for prepared in prepared_chunk:
+                row = prepared["row"]
+                messages = prepared["messages"]
+                market_span = prepared["market_span"]
+                source_log_id = prepared["source_log_id"]
+                source_row_messages = prepared["source_row_messages"]
+                source_market_span = prepared["source_market_span"]
+
+                pair_metric_name = row.get("pair_metric_name")
+                pair_metric_value = row.get("base_pair_metric_value", row.get("pair_metric_value"))
+                source_pair_metric_value = row.get("source_pair_metric_value")
+                pair_metric_gap = row.get("pair_metric_gap")
+                source_behavior_fields: dict[str, Any] = {}
+                if config.generate_source_behavior and source_log_id is not None:
+                    source_behavior_fields = dict(source_behavior_cache.get(int(source_log_id), {}))
+
+                patch_spec = None
+                if config.patch_enabled:
+                    if config.patch_mode in {"swap_mean", "swap_components"}:
+                        if (
+                            not config.paired_mode_enabled
+                            or source_row_messages is None
+                            or source_market_span is None
+                            or source_log_id is None
+                        ):
+                            raise ValueError(
+                                f"{config.patch_mode} behavior runs require paired mode with a valid source row"
+                            )
+                        donor_mean_by_layer = donor_mean_cache.get(int(source_log_id))
+                        if donor_mean_by_layer is None:
+                            raise RuntimeError(f"Missing donor mean cache for source log_id={source_log_id}")
+                        patch_spec = _build_patch_spec(
+                            config=config,  # type: ignore[arg-type]
+                            market_span=market_span,
+                            basis_payload=basis_payload,
+                            donor_mean_by_layer=donor_mean_by_layer,
+                        ).to_payload()
+                    else:
+                        patch_spec = _build_patch_spec(
+                            config=config,  # type: ignore[arg-type]
+                            market_span=market_span,
+                            basis_payload=basis_payload,
+                        ).to_payload()
+
+                batch_requests.append(
+                    {
+                        "messages": messages,
+                        "patch_spec": patch_spec,
+                    }
+                )
+                chunk_context.append(
+                    {
+                        "row": row,
+                        "pair_metric_name": pair_metric_name,
+                        "pair_metric_value": pair_metric_value,
+                        "source_pair_metric_value": source_pair_metric_value,
+                        "pair_metric_gap": pair_metric_gap,
+                        "source_log_id": source_log_id,
+                        "source_behavior_fields": source_behavior_fields,
+                    }
+                )
+
+            outputs = _run_generation_batch(
+                llm=llm_generate,
+                tokenizer=tokenizer,
+                requests=batch_requests,
+                config=generate_cfg,
+                max_tokens=int(config.max_tokens),
+                temperature=float(config.temperature),
+                top_p=float(config.top_p),
+                top_k=int(config.top_k),
+                tools=tools,
+                tool_choice=tool_choice,
+            )
+
+            for context, output in zip(chunk_context, outputs, strict=False):
+                row = context["row"]
+                generated_token_ids = [int(token) for token in output["generated_token_ids"]]
+                tool_fields = _extract_first_tool_call_fields(str(output["generated_text"]))
+                metadata_rows.append(
+                    {
+                        "log_id": int(row["log_id"]),
+                        "phase_name": row["phase_name"],
+                        "example_id": row["example_id"],
+                        "family": row["family"],
+                        "family_variant": row["family_variant"],
+                        "context_variant": row["context_variant"],
+                        "roster_key": row.get("roster_key") or "",
+                        "pair_metric_name": context["pair_metric_name"] or None,
+                        "pair_mode": row.get("pair_mode") or None,
+                        "pair_id": row.get("pair_id"),
+                        "pair_metric_value": (
+                            float(context["pair_metric_value"])
+                            if context["pair_metric_value"] is not None
+                            else None
+                        ),
+                        "source_pair_metric_value": (
+                            float(context["source_pair_metric_value"])
+                            if context["source_pair_metric_value"] is not None
+                            else None
+                        ),
+                        "pair_metric_gap": (
+                            float(context["pair_metric_gap"]) if context["pair_metric_gap"] is not None else None
+                        ),
+                        "source_log_id": context["source_log_id"],
+                        "source_example_id": row.get("source_example_id"),
+                        "source_family_variant": row.get("source_family_variant"),
+                        "source_roster_key": row.get("source_roster_key"),
+                        "capture_timestamp": datetime.now(UTC).isoformat(),
+                        "seq_len": int(len(output["input_ids"])),
+                        "max_tokens": int(config.max_tokens),
+                        "temperature": float(config.temperature),
+                        "top_p": float(config.top_p),
+                        "top_k": int(config.top_k),
+                        "tool_schema_mode": config.tool_schema_mode,
+                        "tool_choice": config.tool_choice,
+                        "tool_count": len(tools) if tools is not None else 0,
+                        "patch_mode": config.patch_mode,
+                        "target_layers": ",".join(str(int(layer)) for layer in config.target_layers),
+                        "components_per_layer": int(config.components_per_layer),
+                        "component_indices_by_layer_json": json.dumps(
+                            {
+                                str(layer): [int(index) for index in indices]
+                                for layer, indices in config.component_indices_by_layer.items()
+                            }
+                        ),
+                        "direction_name": config.direction_name,
+                        "selection_strategy": config.selection_strategy,
+                        "strength": float(config.strength),
+                        "generated_token_ids_json": json.dumps(generated_token_ids),
+                        "generated_token_count": len(generated_token_ids),
+                        "first_generated_token_id": generated_token_ids[0] if generated_token_ids else None,
+                        "first_generated_token_text": _decode_first_token(tokenizer, generated_token_ids),
+                        "generated_text": output["generated_text"],
+                        "finish_reason": output["finish_reason"],
+                        **tool_fields,
+                        **context["source_behavior_fields"],
+                        "patch_stats_json": json.dumps(output["patch_stats"]),
+                    }
+                )
+                processed += 1
+    finally:
+        _destroy_llm(llm_generate)
+        gc.collect()
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
+        except Exception:
+            pass
 
     _flush_table(metadata_path, metadata_rows)
 
@@ -625,6 +745,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
         "pair_metric": config.pair_metric,
         "pair_mode": config.pair_mode,
         "generate_source_behavior": bool(config.generate_source_behavior),
+        "batch_size": max(1, int(config.batch_size)),
         "target_layers": [int(layer) for layer in config.target_layers],
         "components_per_layer": int(config.components_per_layer),
         "component_indices_by_layer": {
@@ -657,6 +778,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pair-mode", default="")
     parser.add_argument("--min-pair-gap", type=float, default=0.0)
     parser.add_argument("--generate-source-behavior", action="store_true")
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--patch-mode", default="")
     parser.add_argument("--target-layers", default="4")
     parser.add_argument("--components-per-layer", type=int, default=4)
@@ -672,6 +794,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tool-choice", default="")
     parser.add_argument("--add-generation-prompt", action="store_true")
     parser.add_argument("--donor-means-path", type=Path, default=None)
+    parser.add_argument("--enable-chunked-prefill", action="store_true")
     return parser
 
 
@@ -697,6 +820,7 @@ def main(argv: list[str] | None = None) -> None:
             pair_mode=args.pair_mode,
             min_pair_gap=args.min_pair_gap,
             generate_source_behavior=bool(args.generate_source_behavior),
+            batch_size=max(1, int(args.batch_size)),
             patch_mode=args.patch_mode,
             target_layers=target_layers or (4,),
             components_per_layer=args.components_per_layer,
@@ -712,6 +836,7 @@ def main(argv: list[str] | None = None) -> None:
             tool_choice=args.tool_choice,
             add_generation_prompt=bool(args.add_generation_prompt),
             donor_means_path=args.donor_means_path,
+            enable_chunked_prefill=bool(args.enable_chunked_prefill),
         )
     )
     print(json.dumps(result, indent=2))

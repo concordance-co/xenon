@@ -197,6 +197,7 @@ def run_synthetic_market_behavior_modal(
     pair_mode: str = "",
     min_pair_gap: float = 0.0,
     generate_source_behavior: bool = False,
+    batch_size: int = 1,
     patch_mode: str = "",
     target_layers: str = "4",
     components_per_layer: int = 4,
@@ -213,6 +214,7 @@ def run_synthetic_market_behavior_modal(
     add_generation_prompt: bool = True,
     gpu_memory_utilization: float = 0.85,
     donor_means_run_name: str = "",
+    enable_chunked_prefill: bool = False,
 ) -> dict:
     from pipelines.interp.synthetic_market_behavior_runner import (
         SyntheticMarketBehaviorConfig,
@@ -245,6 +247,7 @@ def run_synthetic_market_behavior_modal(
             pair_mode=pair_mode,
             min_pair_gap=float(min_pair_gap),
             generate_source_behavior=bool(generate_source_behavior),
+            batch_size=max(1, int(batch_size)),
             patch_mode=patch_mode,
             target_layers=target_layer_tuple or (4,),
             components_per_layer=components_per_layer,
@@ -261,6 +264,7 @@ def run_synthetic_market_behavior_modal(
             add_generation_prompt=bool(add_generation_prompt),
             gpu_memory_utilization=gpu_memory_utilization,
             donor_means_path=donor_means_path,
+            enable_chunked_prefill=bool(enable_chunked_prefill),
             basis_npz_path=Path(BASIS_NPZ_REMOTE),
             basis_results_path=Path(BASIS_RESULTS_REMOTE),
         )

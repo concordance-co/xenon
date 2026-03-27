@@ -427,6 +427,96 @@ def _make_patched_forward(model: Any, layer_idx: int, layer: Any) -> Any:
 
     def patched_forward(*args: Any, **kwargs: Any) -> Any:
         output = original_forward(*args, **kwargs)
+        batch_specs = getattr(model, "_market_patch_batch_specs", None)
+        if isinstance(batch_specs, list) and batch_specs:
+            basis = getattr(model, "_market_patch_basis", None)
+            if not isinstance(basis, dict) or layer_idx not in basis:
+                return output
+            hidden = _extract_hidden_tensor(output)
+            if hidden is None:
+                return output
+            patched_hidden = hidden
+            stats_by_req = getattr(model, "_market_patch_last_stats_by_req", None)
+            if not isinstance(stats_by_req, dict):
+                stats_by_req = {}
+                model._market_patch_last_stats_by_req = stats_by_req
+            coverage_by_req = getattr(model, "_market_patch_coverage_by_req", None)
+            if not isinstance(coverage_by_req, dict):
+                coverage_by_req = {}
+                model._market_patch_coverage_by_req = coverage_by_req
+            for batch_spec in batch_specs:
+                req_id = str(batch_spec.get("req_id"))
+                payload = batch_spec.get("patch_spec")
+                if not isinstance(payload, dict):
+                    continue
+                spec = MarketPatchSpec(**payload)
+                if layer_idx not in spec.target_layers:
+                    continue
+                patched_hidden, stats = _patch_hidden_states_for_layer(
+                    patched_hidden,
+                    basis_layer=basis[layer_idx],
+                    spec=spec,
+                    layer_idx=layer_idx,
+                )
+                if stats is not None:
+                    stats["req_id"] = req_id
+                    for meta_key in (
+                        "target_span",
+                        "chunk_abs_span",
+                        "overlap_abs_span",
+                        "query_span",
+                        "prefill_chunk_len",
+                    ):
+                        if meta_key in batch_spec:
+                            stats[meta_key] = batch_spec[meta_key]
+                    layer_coverage = coverage_by_req.setdefault(req_id, {}).setdefault(int(layer_idx), [])
+                    overlap_abs_span = batch_spec.get("overlap_abs_span")
+                    if (
+                        stats.get("status") != "skipped"
+                        and isinstance(overlap_abs_span, (list, tuple))
+                        and len(overlap_abs_span) == 2
+                    ):
+                        start = int(overlap_abs_span[0])
+                        end = int(overlap_abs_span[1])
+                        if end > start:
+                            layer_coverage.append((start, end))
+                            layer_coverage.sort()
+                            merged: list[tuple[int, int]] = []
+                            for span_start, span_end in layer_coverage:
+                                if not merged or span_start > merged[-1][1]:
+                                    merged.append((span_start, span_end))
+                                else:
+                                    merged[-1] = (merged[-1][0], max(merged[-1][1], span_end))
+                            coverage_by_req[req_id][int(layer_idx)] = merged
+                            layer_coverage = merged
+                    existing_stats = stats_by_req.setdefault(req_id, {}).get(int(layer_idx))
+                    if isinstance(existing_stats, dict):
+                        merged_stats = dict(existing_stats)
+                        merged_stats.update(stats)
+                    else:
+                        merged_stats = dict(stats)
+                    if layer_coverage:
+                        merged_stats["covered_abs_spans"] = [
+                            [int(span_start), int(span_end)]
+                            for span_start, span_end in layer_coverage
+                        ]
+                        target_span = merged_stats.get("target_span")
+                        if isinstance(target_span, (list, tuple)) and len(target_span) == 2:
+                            target_start = int(target_span[0])
+                            target_end = int(target_span[1])
+                            covered = 0
+                            for span_start, span_end in layer_coverage:
+                                covered += max(
+                                    0,
+                                    min(span_end, target_end) - max(span_start, target_start),
+                                )
+                            total = max(1, target_end - target_start)
+                            merged_stats["covered_abs_tokens"] = int(covered)
+                            merged_stats["target_abs_tokens"] = int(target_end - target_start)
+                            merged_stats["coverage_fraction"] = float(covered / total)
+                    stats_by_req[req_id][int(layer_idx)] = merged_stats
+            return _replace_hidden_tensor(output, patched_hidden)
+
         spec = getattr(model, "_market_patch_spec", None)
         if spec is None or layer_idx not in spec.target_layers:
             return output
@@ -489,6 +579,9 @@ def init_market_patching(model: Any) -> None:
     model._market_patch_spec = None
     model._market_patch_last_stats = {}
     model._market_patch_applied_layers = set()
+    model._market_patch_batch_specs = []
+    model._market_patch_last_stats_by_req = {}
+    model._market_patch_coverage_by_req = {}
 
 
 def register_patch_basis(model: Any, basis_payload: dict[int, dict[str, Any]]) -> dict[str, Any]:
@@ -541,7 +634,36 @@ def clear_patch_spec(model: Any) -> None:
     model._market_patch_applied_layers = set()
 
 
-def collect_patch_stats(model: Any) -> dict[int, dict[str, Any]]:
+def set_batch_patch_specs(model: Any, batch_specs: list[dict[str, Any]]) -> None:
+    model._market_patch_batch_specs = [dict(spec) for spec in batch_specs]
+    if not isinstance(getattr(model, "_market_patch_last_stats_by_req", None), dict):
+        model._market_patch_last_stats_by_req = {}
+    if not isinstance(getattr(model, "_market_patch_coverage_by_req", None), dict):
+        model._market_patch_coverage_by_req = {}
+
+
+def clear_batch_patch_specs(model: Any) -> None:
+    model._market_patch_batch_specs = []
+
+
+def collect_patch_stats(model: Any, req_id: str | None = None) -> dict[Any, dict[str, Any]]:
+    if req_id is not None:
+        stats_by_req = getattr(model, "_market_patch_last_stats_by_req", {})
+        req_key = str(req_id)
+        req_stats = stats_by_req.get(req_key)
+        if req_stats is None and "-" in req_key:
+            req_stats = stats_by_req.get(req_key.rsplit("-", 1)[0])
+        if req_stats is None:
+            for candidate_key, candidate_stats in stats_by_req.items():
+                if candidate_key.rsplit("-", 1)[0] == req_key:
+                    req_stats = candidate_stats
+                    break
+        if req_stats is None:
+            req_stats = {}
+        return {
+            int(layer): dict(payload)
+            for layer, payload in req_stats.items()
+        }
     stats = getattr(model, "_market_patch_last_stats", {})
     return {
         int(layer): dict(payload)
@@ -562,6 +684,9 @@ def restore_original_forwards(model: Any) -> None:
         "_market_patch_spec",
         "_market_patch_last_stats",
         "_market_patch_applied_layers",
+        "_market_patch_batch_specs",
+        "_market_patch_last_stats_by_req",
+        "_market_patch_coverage_by_req",
     ):
         if hasattr(model, attr):
             delattr(model, attr)
