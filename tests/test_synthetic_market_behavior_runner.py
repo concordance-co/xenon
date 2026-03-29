@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import numpy as np
+import pyarrow.parquet as pq
+import transformers
+
 from pipelines.interp.synthetic_market_behavior_runner import (
     SyntheticMarketBehaviorConfig,
     _build_generation_config,
     _run_generation_batch,
+    run_synthetic_market_behavior,
 )
 
 
@@ -24,6 +29,34 @@ def test_build_generation_config_uses_request_scoped_worker_for_patched_runs():
     assert cfg.max_num_batched_tokens == 40960
 
 
+def test_build_generation_config_disables_async_scheduling_for_batched_baseline_runs():
+    cfg = _build_generation_config(
+        SyntheticMarketBehaviorConfig(
+            patch_mode="",
+            batch_size=4,
+        )
+    )
+
+    assert cfg.max_num_seqs == 4
+    assert cfg.request_scoped_patching is True
+    assert cfg.worker_cls == "pipelines.interp.vllm_request_patch_worker.MarketPatchGPUWorker"
+    assert cfg.async_scheduling is False
+
+
+def test_build_generation_config_keeps_single_request_baseline_on_default_worker():
+    cfg = _build_generation_config(
+        SyntheticMarketBehaviorConfig(
+            patch_mode="",
+            batch_size=1,
+        )
+    )
+
+    assert cfg.max_num_seqs == 1
+    assert cfg.request_scoped_patching is False
+    assert cfg.worker_cls == ""
+    assert cfg.async_scheduling is None
+
+
 def test_build_generation_config_can_enable_chunked_prefill():
     cfg = _build_generation_config(
         SyntheticMarketBehaviorConfig(
@@ -36,6 +69,32 @@ def test_build_generation_config_can_enable_chunked_prefill():
     assert cfg.max_num_seqs == 8
     assert cfg.enable_chunked_prefill is True
     assert cfg.request_scoped_patching is True
+
+
+def test_build_generation_config_can_enable_observability_flags():
+    cfg = _build_generation_config(
+        SyntheticMarketBehaviorConfig(
+            patch_mode="project_out",
+            batch_size=4,
+            enable_logging_iteration_details=True,
+            enable_mfu_metrics=True,
+        )
+    )
+
+    assert cfg.enable_logging_iteration_details is True
+    assert cfg.enable_mfu_metrics is True
+
+
+def test_build_generation_config_can_disable_enforce_eager():
+    cfg = _build_generation_config(
+        SyntheticMarketBehaviorConfig(
+            patch_mode="project_out",
+            batch_size=4,
+            enforce_eager=False,
+        )
+    )
+
+    assert cfg.enforce_eager is False
 
 
 def test_run_generation_batch_uses_single_prompt_path_for_single_request(monkeypatch):
@@ -100,3 +159,162 @@ def test_run_generation_batch_uses_batched_path_for_multiple_requests(monkeypatc
 
     assert calls == ["batch"]
     assert len(out) == 2
+
+
+class _FakeTokenizer:
+    def decode(self, token_ids):
+        return f"tok{int(token_ids[0])}" if token_ids else ""
+
+
+class _FakeBasis:
+    def to_payload(self):
+        return {4: {"components": [[1.0], [0.0], [0.0], [0.0]], "mean": [0.0]}}
+
+
+class _FakePatchSpec:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def to_payload(self):
+        return dict(self._payload)
+
+
+def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp_path):
+    import pipelines.interp.synthetic_market_behavior_runner as behavior_runner
+
+    events: list[str] = []
+    basis_calls: list[dict[str, object]] = []
+
+    cfg = SyntheticMarketBehaviorConfig(
+        output_dir=tmp_path / "behavior",
+        model_id="fake-model",
+        pair_metric="vol_1h_max",
+        pair_mode="denoise",
+        patch_mode="swap_components",
+        batch_size=1,
+        max_tokens=8,
+        tool_schema_mode="trading_v1",
+        tool_choice="required",
+        target_layers=(4,),
+        components_per_layer=4,
+        basis_state_key="market_eos",
+    )
+
+    monkeypatch.setattr(
+        behavior_runner,
+        "resolve_tool_schema_mode",
+        lambda _mode: [{"type": "function", "function": {"name": "buy_token"}}],
+    )
+    monkeypatch.setattr(
+        transformers.AutoTokenizer,
+        "from_pretrained",
+        staticmethod(lambda *_args, **_kwargs: _FakeTokenizer()),
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "_prepare_behavior_rows",
+        lambda **_kwargs: (
+            [
+                {
+                    "row": {
+                        "log_id": 1,
+                        "phase_name": cfg.phase_name,
+                        "example_id": "ex-1",
+                        "family": "fam",
+                        "family_variant": "var",
+                        "context_variant": cfg.context_variant,
+                        "roster_key": "r00",
+                        "pair_metric_name": cfg.pair_metric,
+                        "pair_metric_value": 1.0,
+                        "pair_mode": cfg.pair_mode,
+                        "pair_id": 0,
+                        "source_log_id": 10,
+                        "source_example_id": "src",
+                        "source_family_variant": "srcvar",
+                        "source_roster_key": "r00",
+                    },
+                    "messages": [{"role": "user", "content": "prompt"}],
+                    "market_span": (0, 2),
+                    "source_log_id": 10,
+                    "source_row_messages": [{"role": "user", "content": "source"}],
+                    "source_market_span": (0, 2),
+                }
+            ],
+            0,
+        ),
+    )
+    monkeypatch.setattr(behavior_runner, "_build_generation_config", lambda cfg: cfg)
+
+    def fake_create_llm(config):
+        kind = "capture" if bool(getattr(config, "capture_residual", False)) else "generate"
+        events.append(f"create_{kind}")
+        return {"kind": kind}
+
+    monkeypatch.setattr(behavior_runner, "_create_llm", fake_create_llm)
+    monkeypatch.setattr(
+        behavior_runner,
+        "_compute_donor_mean_by_layer",
+        lambda **_kwargs: {4: np.asarray([0.0], dtype=np.float32)},
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "default_phase17_market_patch_basis",
+        lambda **kwargs: basis_calls.append(dict(kwargs)) or _FakeBasis(),
+    )
+    monkeypatch.setattr(behavior_runner, "_init_market_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(behavior_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(
+        behavior_runner,
+        "_build_patch_spec",
+        lambda *, config, market_span, basis_payload, donor_mean_by_layer=None: _FakePatchSpec(
+            {
+                "patch_mode": config.patch_mode,
+                "market_span": list(market_span),
+                "donor": donor_mean_by_layer is not None,
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "_destroy_llm",
+        lambda llm: events.append(f"destroy_{llm['kind']}"),
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "_cleanup_cuda_memory",
+        lambda: events.append("cleanup"),
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "_run_generation_batch",
+        lambda **_kwargs: [
+            {
+                "input_ids": [1, 2, 3],
+                "generated_token_ids": [151],
+                "generated_text": "patched",
+                "finish_reason": "stop",
+                "request_id": "req-0",
+                "patch_stats": {"4": {"status": "applied"}},
+                "all_patch_stats": {},
+            }
+        ],
+    )
+
+    result = run_synthetic_market_behavior(cfg)
+
+    assert result["processed"] == 1
+    assert events[:4] == ["create_capture", "destroy_capture", "cleanup", "create_generate"]
+    assert events[-2:] == ["destroy_generate", "cleanup"]
+    assert basis_calls == [
+        {
+            "basis_npz_path": cfg.basis_npz_path,
+            "results_json_path": cfg.basis_results_path,
+            "state_key": "market_eos",
+            "layers": (4,),
+            "components_per_layer": 4,
+        }
+    ]
+    assert result["basis_state_key"] == "market_eos"
+    metadata_rows = pq.read_table(tmp_path / "behavior" / "metadata.parquet").to_pylist()
+    assert metadata_rows[0]["patch_mode"] == "swap_components"
+    assert metadata_rows[0]["basis_state_key"] == "market_eos"

@@ -57,6 +57,7 @@ class VLLMCaptureConfig:
     # vLLM engine knobs
     tensor_parallel_size: int = 1
     gpu_memory_utilization: float = 0.90
+    enforce_eager: bool = True
     max_model_len: int | None = None
     max_num_batched_tokens: int | None = None
     max_num_seqs: int = 1  # >1 enables batched prefill (router capture requires 1)
@@ -66,6 +67,8 @@ class VLLMCaptureConfig:
     async_scheduling: bool | None = None
     worker_cls: str = ""
     request_scoped_patching: bool = False
+    enable_logging_iteration_details: bool = False
+    enable_mfu_metrics: bool = False
 
     # Router capture knobs
     router_top_k: int = 8  # top-k indices to save alongside full logits
@@ -252,7 +255,7 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
 
     kwargs: dict[str, Any] = {
         "model": config.model_id,
-        "enforce_eager": True,
+        "enforce_eager": bool(config.enforce_eager),
         "max_num_seqs": config.max_num_seqs,
         "enable_chunked_prefill": bool(config.enable_chunked_prefill),
         "enable_prefix_caching": config.enable_prefix_caching,
@@ -261,8 +264,19 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
     }
     if config.worker_cls:
         kwargs["worker_cls"] = config.worker_cls
+        if (
+            not config.enforce_eager
+            and "vllm_request_patch_worker" in str(config.worker_cls)
+        ):
+            kwargs["compilation_config"] = {
+                "custom_ops": ["none", "+market_patch_hidden_states"],
+            }
     if config.async_scheduling is not None:
         kwargs["async_scheduling"] = bool(config.async_scheduling)
+    if config.enable_logging_iteration_details:
+        kwargs["enable_logging_iteration_details"] = True
+    if config.enable_mfu_metrics:
+        kwargs["enable_mfu_metrics"] = True
 
     if config.max_model_len is not None:
         kwargs["max_model_len"] = config.max_model_len
@@ -299,7 +313,7 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         }
         print(f"Creating vLLM engine: {config.model_id}")
         print(
-            "  enforce_eager=True, "
+            f"  enforce_eager={config.enforce_eager}, "
             f"max_num_seqs={config.max_num_seqs}, "
             f"enable_chunked_prefill={config.enable_chunked_prefill}, "
             f"enable_prefix_caching={config.enable_prefix_caching}"
@@ -308,7 +322,7 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
     else:
         print(f"Creating vLLM engine: {config.model_id}")
         print(
-            "  enforce_eager=True, "
+            f"  enforce_eager={config.enforce_eager}, "
             f"max_num_seqs={config.max_num_seqs}, "
             f"enable_chunked_prefill={config.enable_chunked_prefill}, "
             f"enable_prefix_caching={config.enable_prefix_caching}"
@@ -424,8 +438,14 @@ def _generate_one_vllm(
         "generated_token_ids": generated_token_ids,
         "generated_text": generated_text,
         "finish_reason": str(finish_reason) if finish_reason is not None else "",
+        "request_id": str(request_id) if request_id is not None else "",
         "patch_stats": (
             _collect_market_patch_stats_from_model(llm, req_id=str(request_id) if request_id is not None else None)
+            if patch_spec is not None
+            else {}
+        ),
+        "all_patch_stats": (
+            _collect_market_patch_stats_from_model(llm)
             if patch_spec is not None
             else {}
         ),
@@ -498,11 +518,17 @@ def _generate_batch_vllm(
                 "generated_token_ids": generated_token_ids,
                 "generated_text": generated_text,
                 "finish_reason": str(finish_reason) if finish_reason is not None else "",
+                "request_id": str(request_id) if request_id is not None else "",
                 "patch_stats": (
                     _collect_market_patch_stats_from_model(
                         llm,
                         req_id=str(request_id) if request_id is not None else None,
                     )
+                    if patch_spec is not None
+                    else {}
+                ),
+                "all_patch_stats": (
+                    _collect_market_patch_stats_from_model(llm)
                     if patch_spec is not None
                     else {}
                 ),

@@ -36,8 +36,9 @@ class _FakeSubmodule:
         self.weight = torch.zeros((1,), dtype=torch.float32)
 
 
-class _FakeLayer:
+class _FakeLayer(torch.nn.Module):
     def __init__(self, offset: float = 0.0):
+        super().__init__()
         self.offset = offset
         self.input_layernorm = _FakeSubmodule()
 
@@ -47,7 +48,14 @@ class _FakeLayer:
 
 class _FakeModel:
     def __init__(self):
-        self.model = type("Inner", (), {"layers": [_FakeLayer(0.0), _FakeLayer(3.0)]})()
+        self.model = type(
+            "Inner",
+            (torch.nn.Module,),
+            {
+                "__init__": lambda inner: torch.nn.Module.__init__(inner)
+                or setattr(inner, "layers", torch.nn.ModuleList([_FakeLayer(0.0), _FakeLayer(3.0)]))
+            },
+        )()
 
 
 def test_project_out_removes_selected_mean_components():
@@ -496,3 +504,82 @@ def test_batch_patch_stats_accumulate_chunk_coverage_across_multiple_steps():
     assert stats["target_abs_tokens"] == 2
     assert stats["coverage_fraction"] == 1.0
     restore_original_forwards(model)
+
+
+def test_swap_components_batch_op_replaces_selected_coefficients():
+    hidden = torch.tensor(
+        [
+            [2.0, 4.0, 3.0, 5.0],
+            [2.0, 4.0, 3.0, 5.0],
+        ],
+        dtype=torch.float32,
+    )
+    mean = torch.zeros((4,), dtype=torch.float32)
+    scale = torch.ones((4,), dtype=torch.float32)
+    safe_scale = torch.ones((4,), dtype=torch.float32)
+    batch_selected_rows = torch.tensor([[[1.0, 0.0, 0.0, 0.0]]], dtype=torch.float32)
+    batch_donor_means = torch.tensor([[10.0, 99.0, 0.0, 0.0]], dtype=torch.float32)
+    row_counts = torch.tensor([1], dtype=torch.int32)
+    token_spans = torch.tensor([[0, 2]], dtype=torch.int32)
+    strengths = torch.tensor([1.0], dtype=torch.float32)
+    active = torch.tensor([1], dtype=torch.int32)
+    valid = torch.zeros((1,), dtype=torch.int32)
+    scalars = torch.zeros((1, 8), dtype=torch.float32)
+    coeff_before = torch.zeros((1, 1), dtype=torch.float32)
+    coeff_after = torch.zeros((1, 1), dtype=torch.float32)
+
+    patched = torch.ops.xenon_market_patch.swap_components_batch(
+        hidden,
+        mean,
+        scale,
+        safe_scale,
+        batch_selected_rows,
+        batch_donor_means,
+        row_counts,
+        token_spans,
+        strengths,
+        active,
+        valid,
+        scalars,
+        coeff_before,
+        coeff_after,
+    )
+
+    assert torch.allclose(patched[:2].mean(dim=0), torch.tensor([10.0, 4.0, 3.0, 5.0]), atol=1e-5)
+    assert int(valid[0].item()) == 1
+    assert torch.allclose(coeff_before[0], torch.tensor([2.0]), atol=1e-5)
+    assert torch.allclose(coeff_after[0], torch.tensor([10.0]), atol=1e-5)
+
+
+def test_compiled_batch_runtime_state_supports_swap_components():
+    model = _FakeModel()
+    init_market_patching(model)
+    register_patch_basis(model, _basis_payload())
+    model._market_patch_force_custom_op_presence = True
+
+    patch_payload = MarketPatchSpec(
+        mode=PATCH_MODE_SWAP_COMPONENTS,
+        target_layers=(0,),
+        token_span=(0, 2),
+        component_indices_by_layer={0: (0,)},
+        donor_mean_by_layer={0: np.asarray([10.0, 99.0, 0.0, 0.0], dtype=np.float32)},
+    ).to_payload()
+
+    set_batch_patch_specs(
+        model,
+        [
+            {
+                "req_id": "base-abc",
+                "patch_spec": patch_payload,
+                "target_span": [0, 2],
+                "chunk_abs_span": [0, 2],
+                "overlap_abs_span": [0, 2],
+                "query_span": [0, 2],
+                "prefill_chunk_len": 2,
+            }
+        ],
+    )
+
+    runtime_state = model._market_patch_batch_runtime_state[0]
+    assert model._market_patch_compiled_batch_modes[0] == PATCH_MODE_SWAP_COMPONENTS
+    assert torch.allclose(runtime_state["donor_means"][0], torch.tensor([10.0, 99.0, 0.0, 0.0]))

@@ -73,6 +73,81 @@ def _parse_patch_stats(raw: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _mean_or_none(values: list[float]) -> float | None:
+    return float(np.mean(values)) if values else None
+
+
+def _median_or_none(values: list[float]) -> float | None:
+    return float(np.median(values)) if values else None
+
+
+def _bucket_values(rows: list[dict[str, Any]], key: str) -> list[float]:
+    values: list[float] = []
+    for row in rows:
+        value = row.get(key)
+        if value is None:
+            continue
+        values.append(float(value))
+    return values
+
+
+def _summarize_bucket(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    count = len(rows)
+    if count <= 0:
+        return {"count": 0}
+    return {
+        "count": count,
+        "tool_name_change_rate": float(np.mean(_bucket_values(rows, "tool_name_changed"))),
+        "tool_token_change_rate": float(np.mean(_bucket_values(rows, "tool_token_changed"))),
+        "mean_generated_token_count_delta": float(np.mean(_bucket_values(rows, "generated_token_count_delta"))),
+        "mean_pair_metric_gap": _mean_or_none(_bucket_values(rows, "pair_metric_gap")),
+        "source_tool_name_match_rate_baseline": _mean_or_none(_bucket_values(rows, "source_tool_name_match_baseline")),
+        "source_tool_name_match_rate_intervention": _mean_or_none(
+            _bucket_values(rows, "source_tool_name_match_intervention")
+        ),
+        "source_tool_name_restoration_rate": _mean_or_none(_bucket_values(rows, "source_tool_name_restored")),
+        "source_tool_name_backfire_rate": _mean_or_none(_bucket_values(rows, "source_tool_name_backfire")),
+        "source_tool_token_match_rate_baseline": _mean_or_none(
+            _bucket_values(rows, "source_tool_token_match_baseline")
+        ),
+        "source_tool_token_match_rate_intervention": _mean_or_none(
+            _bucket_values(rows, "source_tool_token_match_intervention")
+        ),
+        "source_tool_token_restoration_rate": _mean_or_none(_bucket_values(rows, "source_tool_token_restored")),
+        "source_tool_token_backfire_rate": _mean_or_none(_bucket_values(rows, "source_tool_token_backfire")),
+        "mean_source_tool_spend_pct_gap_baseline": _mean_or_none(
+            _bucket_values(rows, "source_tool_spend_pct_gap_baseline")
+        ),
+        "mean_source_tool_spend_pct_gap_intervention": _mean_or_none(
+            _bucket_values(rows, "source_tool_spend_pct_gap_intervention")
+        ),
+        "source_tool_spend_pct_improvement_rate": _mean_or_none(
+            _bucket_values(rows, "source_tool_spend_pct_improved")
+        ),
+        "source_tool_spend_pct_backfire_rate": _mean_or_none(
+            _bucket_values(rows, "source_tool_spend_pct_backfired")
+        ),
+        "mean_source_tool_spend_pct_normalized_restoration": _mean_or_none(
+            _bucket_values(rows, "source_tool_spend_pct_normalized_restoration")
+        ),
+        "mean_source_generated_token_count_gap_baseline": _mean_or_none(
+            _bucket_values(rows, "source_generated_token_count_gap_baseline")
+        ),
+        "mean_source_generated_token_count_gap_intervention": _mean_or_none(
+            _bucket_values(rows, "source_generated_token_count_gap_intervention")
+        ),
+        "source_generated_token_count_improvement_rate": _mean_or_none(
+            _bucket_values(rows, "source_generated_token_count_improved")
+        ),
+        "source_generated_token_count_backfire_rate": _mean_or_none(
+            _bucket_values(rows, "source_generated_token_count_backfired")
+        ),
+        "mean_source_generated_token_count_normalized_restoration": _mean_or_none(
+            _bucket_values(rows, "source_generated_token_count_normalized_restoration")
+        ),
+    }
+
+
 def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalysisConfig) -> dict[str, Any]:
     baseline_rows = {int(row["log_id"]): row for row in _load_rows(config.baseline_dir)}
     intervention_rows = {int(row["log_id"]): row for row in _load_rows(config.intervention_dir)}
@@ -89,10 +164,25 @@ def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalys
     spend_deltas: list[float] = []
     source_tool_name_match_baseline: list[float] = []
     source_tool_name_match_intervention: list[float] = []
+    source_tool_name_restoration_flags: list[float] = []
+    source_tool_name_backfire_flags: list[float] = []
     source_tool_token_match_baseline: list[float] = []
     source_tool_token_match_intervention: list[float] = []
+    source_tool_token_restoration_flags: list[float] = []
+    source_tool_token_backfire_flags: list[float] = []
     source_spend_delta_baseline: list[float] = []
     source_spend_delta_intervention: list[float] = []
+    source_spend_improvement_flags: list[float] = []
+    source_spend_full_restoration_flags: list[float] = []
+    source_spend_backfire_flags: list[float] = []
+    source_spend_normalized_restoration_values: list[float] = []
+    source_generated_token_delta_baseline: list[float] = []
+    source_generated_token_delta_intervention: list[float] = []
+    source_generated_token_improvement_flags: list[float] = []
+    source_generated_token_full_restoration_flags: list[float] = []
+    source_generated_token_backfire_flags: list[float] = []
+    source_generated_token_normalized_restoration_values: list[float] = []
+    pair_metric_gap_values: list[float] = []
 
     patch_applied_flags: list[float] = []
     patch_skipped_flags: list[float] = []
@@ -103,10 +193,12 @@ def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalys
 
     rows: list[dict[str, Any]] = []
     family_variant_rows: dict[str, list[dict[str, Any]]] = {}
+    pair_mode_rows: dict[str, list[dict[str, Any]]] = {}
 
     for log_id in common_ids:
         baseline = baseline_rows[log_id]
         intervention = intervention_rows[log_id]
+        pair_mode = str(intervention.get("pair_mode") or baseline.get("pair_mode") or "").strip().lower() or None
         baseline_has_tool = bool(baseline.get("has_tool_call"))
         intervention_has_tool = bool(intervention.get("has_tool_call"))
 
@@ -132,21 +224,106 @@ def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalys
         source_tool_name = intervention.get("source_first_tool_name")
         source_tool_token = intervention.get("source_first_tool_token")
         source_spend = _safe_float(intervention.get("source_first_tool_spend_pct"))
+        source_generated_token_count = intervention.get("source_generated_token_count")
+        pair_metric_gap = _safe_float(intervention.get("pair_metric_gap"))
+        if pair_metric_gap is not None:
+            pair_metric_gap_values.append(pair_metric_gap)
         spend_delta = None
         if baseline_spend is not None and intervention_spend is not None:
             spend_delta = abs(intervention_spend - baseline_spend)
             spend_deltas.append(float(spend_delta))
+        source_tool_name_match_baseline_value: float | None = None
+        source_tool_name_match_intervention_value: float | None = None
+        source_tool_name_restored_value: float | None = None
+        source_tool_name_backfire_value: float | None = None
         if source_tool_name is not None:
-            source_tool_name_match_baseline.append(float(baseline.get("first_tool_name") == source_tool_name))
-            source_tool_name_match_intervention.append(float(intervention.get("first_tool_name") == source_tool_name))
+            baseline_name_match = baseline.get("first_tool_name") == source_tool_name
+            intervention_name_match = intervention.get("first_tool_name") == source_tool_name
+            source_tool_name_match_baseline_value = float(baseline_name_match)
+            source_tool_name_match_intervention_value = float(intervention_name_match)
+            source_tool_name_match_baseline.append(source_tool_name_match_baseline_value)
+            source_tool_name_match_intervention.append(source_tool_name_match_intervention_value)
+            if not baseline_name_match:
+                source_tool_name_restored_value = float(intervention_name_match)
+                source_tool_name_restoration_flags.append(source_tool_name_restored_value)
+            else:
+                source_tool_name_backfire_value = float(not intervention_name_match)
+                source_tool_name_backfire_flags.append(source_tool_name_backfire_value)
+        source_tool_token_match_baseline_value: float | None = None
+        source_tool_token_match_intervention_value: float | None = None
+        source_tool_token_restored_value: float | None = None
+        source_tool_token_backfire_value: float | None = None
         if source_tool_token is not None:
-            source_tool_token_match_baseline.append(float(baseline.get("first_tool_token") == source_tool_token))
-            source_tool_token_match_intervention.append(float(intervention.get("first_tool_token") == source_tool_token))
+            baseline_token_match = baseline.get("first_tool_token") == source_tool_token
+            intervention_token_match = intervention.get("first_tool_token") == source_tool_token
+            source_tool_token_match_baseline_value = float(baseline_token_match)
+            source_tool_token_match_intervention_value = float(intervention_token_match)
+            source_tool_token_match_baseline.append(source_tool_token_match_baseline_value)
+            source_tool_token_match_intervention.append(source_tool_token_match_intervention_value)
+            if not baseline_token_match:
+                source_tool_token_restored_value = float(intervention_token_match)
+                source_tool_token_restoration_flags.append(source_tool_token_restored_value)
+            else:
+                source_tool_token_backfire_value = float(not intervention_token_match)
+                source_tool_token_backfire_flags.append(source_tool_token_backfire_value)
+        source_spend_gap_baseline: float | None = None
+        source_spend_gap_intervention: float | None = None
+        source_spend_improved_value: float | None = None
+        source_spend_restored_value: float | None = None
+        source_spend_backfire_value: float | None = None
+        source_spend_normalized_restoration: float | None = None
         if source_spend is not None:
             if baseline_spend is not None:
-                source_spend_delta_baseline.append(abs(baseline_spend - source_spend))
+                source_spend_gap_baseline = abs(baseline_spend - source_spend)
+                source_spend_delta_baseline.append(source_spend_gap_baseline)
             if intervention_spend is not None:
-                source_spend_delta_intervention.append(abs(intervention_spend - source_spend))
+                source_spend_gap_intervention = abs(intervention_spend - source_spend)
+                source_spend_delta_intervention.append(source_spend_gap_intervention)
+            if source_spend_gap_baseline is not None and source_spend_gap_intervention is not None:
+                if source_spend_gap_baseline > 0.0:
+                    source_spend_improved_value = float(source_spend_gap_intervention < source_spend_gap_baseline)
+                    source_spend_restored_value = float(source_spend_gap_intervention == 0.0)
+                    source_spend_backfire_value = float(source_spend_gap_intervention > source_spend_gap_baseline)
+                    source_spend_normalized_restoration = float(
+                        (source_spend_gap_baseline - source_spend_gap_intervention) / source_spend_gap_baseline
+                    )
+                    source_spend_improvement_flags.append(source_spend_improved_value)
+                    source_spend_full_restoration_flags.append(source_spend_restored_value)
+                    source_spend_backfire_flags.append(source_spend_backfire_value)
+                    source_spend_normalized_restoration_values.append(source_spend_normalized_restoration)
+                else:
+                    source_spend_backfire_value = float(source_spend_gap_intervention > 0.0)
+                    source_spend_backfire_flags.append(source_spend_backfire_value)
+        source_generated_gap_baseline: float | None = None
+        source_generated_gap_intervention: float | None = None
+        source_generated_improved_value: float | None = None
+        source_generated_restored_value: float | None = None
+        source_generated_backfire_value: float | None = None
+        source_generated_normalized_restoration: float | None = None
+        if source_generated_token_count is not None:
+            baseline_generated_count = int(baseline.get("generated_token_count", 0))
+            intervention_generated_count = int(intervention.get("generated_token_count", 0))
+            source_generated_count = int(source_generated_token_count)
+            source_generated_gap_baseline = abs(baseline_generated_count - source_generated_count)
+            source_generated_gap_intervention = abs(intervention_generated_count - source_generated_count)
+            source_generated_token_delta_baseline.append(float(source_generated_gap_baseline))
+            source_generated_token_delta_intervention.append(float(source_generated_gap_intervention))
+            if source_generated_gap_baseline > 0:
+                source_generated_improved_value = float(source_generated_gap_intervention < source_generated_gap_baseline)
+                source_generated_restored_value = float(source_generated_gap_intervention == 0)
+                source_generated_backfire_value = float(
+                    source_generated_gap_intervention > source_generated_gap_baseline
+                )
+                source_generated_normalized_restoration = float(
+                    (source_generated_gap_baseline - source_generated_gap_intervention) / source_generated_gap_baseline
+                )
+                source_generated_token_improvement_flags.append(source_generated_improved_value)
+                source_generated_token_full_restoration_flags.append(source_generated_restored_value)
+                source_generated_token_backfire_flags.append(source_generated_backfire_value)
+                source_generated_token_normalized_restoration_values.append(source_generated_normalized_restoration)
+            else:
+                source_generated_backfire_value = float(source_generated_gap_intervention > 0)
+                source_generated_token_backfire_flags.append(source_generated_backfire_value)
 
         patch_entries = _parse_patch_stats(intervention.get("patch_stats_json"))
         patch_applied = any(entry.get("status") != "skipped" for entry in patch_entries)
@@ -175,6 +352,9 @@ def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalys
             "family": baseline.get("family"),
             "family_variant": baseline.get("family_variant"),
             "roster_key": baseline.get("roster_key") or intervention.get("roster_key") or "",
+            "pair_mode": pair_mode,
+            "pair_metric_name": intervention.get("pair_metric_name") or baseline.get("pair_metric_name"),
+            "pair_metric_gap": pair_metric_gap,
             "baseline_has_tool_call": baseline_has_tool,
             "intervention_has_tool_call": intervention_has_tool,
             "baseline_first_tool_name": baseline.get("first_tool_name"),
@@ -186,6 +366,9 @@ def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalys
             "baseline_first_tool_spend_pct": baseline_spend,
             "intervention_first_tool_spend_pct": intervention_spend,
             "source_first_tool_spend_pct": source_spend,
+            "source_generated_token_count": (
+                int(source_generated_token_count) if source_generated_token_count is not None else None
+            ),
             "baseline_first_token_id": baseline.get("first_generated_token_id"),
             "intervention_first_token_id": intervention.get("first_generated_token_id"),
             "baseline_first_token_text": baseline.get("first_generated_token_text"),
@@ -201,24 +384,42 @@ def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalys
             "tool_token_changed": bool(tool_token_changed_flag),
             "patch_applied": bool(patch_applied),
             "patch_skipped": bool(patch_skipped),
+            "source_tool_name_match_baseline": source_tool_name_match_baseline_value,
+            "source_tool_name_match_intervention": source_tool_name_match_intervention_value,
+            "source_tool_name_restored": source_tool_name_restored_value,
+            "source_tool_name_backfire": source_tool_name_backfire_value,
+            "source_tool_token_match_baseline": source_tool_token_match_baseline_value,
+            "source_tool_token_match_intervention": source_tool_token_match_intervention_value,
+            "source_tool_token_restored": source_tool_token_restored_value,
+            "source_tool_token_backfire": source_tool_token_backfire_value,
+            "source_tool_spend_pct_gap_baseline": source_spend_gap_baseline,
+            "source_tool_spend_pct_gap_intervention": source_spend_gap_intervention,
+            "source_tool_spend_pct_improved": source_spend_improved_value,
+            "source_tool_spend_pct_restored": source_spend_restored_value,
+            "source_tool_spend_pct_backfired": source_spend_backfire_value,
+            "source_tool_spend_pct_normalized_restoration": source_spend_normalized_restoration,
+            "source_generated_token_count_gap_baseline": source_generated_gap_baseline,
+            "source_generated_token_count_gap_intervention": source_generated_gap_intervention,
+            "source_generated_token_count_improved": source_generated_improved_value,
+            "source_generated_token_count_restored": source_generated_restored_value,
+            "source_generated_token_count_backfired": source_generated_backfire_value,
+            "source_generated_token_count_normalized_restoration": source_generated_normalized_restoration,
         }
         rows.append(row_payload)
         family_variant_rows.setdefault(str(row_payload["family_variant"]), []).append(row_payload)
+        if pair_mode:
+            pair_mode_rows.setdefault(pair_mode, []).append(row_payload)
 
     config.output_dir.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.Table.from_pylist(rows), config.output_dir / "metadata.parquet")
 
     family_variant_summary: dict[str, dict[str, Any]] = {}
     for family_variant, bucket in sorted(family_variant_rows.items()):
-        size = len(bucket)
-        family_variant_summary[family_variant] = {
-            "count": size,
-            "tool_name_change_rate": float(sum(int(row["tool_name_changed"]) for row in bucket) / size),
-            "tool_token_change_rate": float(sum(int(row["tool_token_changed"]) for row in bucket) / size),
-            "mean_generated_token_count_delta": float(
-                sum(float(row["generated_token_count_delta"]) for row in bucket) / size
-            ),
-        }
+        family_variant_summary[family_variant] = _summarize_bucket(bucket)
+
+    pair_mode_summary: dict[str, dict[str, Any]] = {}
+    for pair_mode, bucket in sorted(pair_mode_rows.items()):
+        pair_mode_summary[pair_mode] = _summarize_bucket(bucket)
 
     result = {
         "baseline_dir": str(config.baseline_dir),
@@ -291,24 +492,108 @@ def run_synthetic_market_behavior_analysis(config: SyntheticMarketBehaviorAnalys
         "mean_patch_mean_std_norm_ratio": (
             float(np.mean(mean_std_norm_ratio_values)) if mean_std_norm_ratio_values else None
         ),
+        "paired_row_count": int(sum(1 for row in rows if row.get("pair_mode"))),
+        "pair_modes_present": sorted(pair_mode_summary),
+        "mean_pair_metric_gap": _mean_or_none(pair_metric_gap_values),
         "source_tool_name_match_rate_baseline": (
             float(np.mean(source_tool_name_match_baseline)) if source_tool_name_match_baseline else None
         ),
         "source_tool_name_match_rate_intervention": (
             float(np.mean(source_tool_name_match_intervention)) if source_tool_name_match_intervention else None
         ),
+        "source_tool_name_match_rate_delta": (
+            float(np.mean(source_tool_name_match_intervention) - np.mean(source_tool_name_match_baseline))
+            if source_tool_name_match_baseline and source_tool_name_match_intervention
+            else None
+        ),
+        "source_tool_name_restorable_count": len(source_tool_name_restoration_flags),
+        "source_tool_name_restoration_rate": _mean_or_none(source_tool_name_restoration_flags),
+        "source_tool_name_restoration_rate_ci95": (
+            _bootstrap_interval(
+                source_tool_name_restoration_flags,
+                reducer=lambda arr: float(np.mean(arr)),
+                samples=config.bootstrap_samples,
+                seed=config.bootstrap_seed + 7,
+            )
+            if source_tool_name_restoration_flags
+            else None
+        ),
+        "source_tool_name_backfire_rate": _mean_or_none(source_tool_name_backfire_flags),
         "source_tool_token_match_rate_baseline": (
             float(np.mean(source_tool_token_match_baseline)) if source_tool_token_match_baseline else None
         ),
         "source_tool_token_match_rate_intervention": (
             float(np.mean(source_tool_token_match_intervention)) if source_tool_token_match_intervention else None
         ),
+        "source_tool_token_match_rate_delta": (
+            float(np.mean(source_tool_token_match_intervention) - np.mean(source_tool_token_match_baseline))
+            if source_tool_token_match_baseline and source_tool_token_match_intervention
+            else None
+        ),
+        "source_tool_token_restorable_count": len(source_tool_token_restoration_flags),
+        "source_tool_token_restoration_rate": _mean_or_none(source_tool_token_restoration_flags),
+        "source_tool_token_restoration_rate_ci95": (
+            _bootstrap_interval(
+                source_tool_token_restoration_flags,
+                reducer=lambda arr: float(np.mean(arr)),
+                samples=config.bootstrap_samples,
+                seed=config.bootstrap_seed + 8,
+            )
+            if source_tool_token_restoration_flags
+            else None
+        ),
+        "source_tool_token_backfire_rate": _mean_or_none(source_tool_token_backfire_flags),
         "mean_source_tool_spend_pct_delta_baseline": (
             float(np.mean(source_spend_delta_baseline)) if source_spend_delta_baseline else None
         ),
         "mean_source_tool_spend_pct_delta_intervention": (
             float(np.mean(source_spend_delta_intervention)) if source_spend_delta_intervention else None
         ),
+        "source_tool_spend_pct_improvement_rate": _mean_or_none(source_spend_improvement_flags),
+        "source_tool_spend_pct_full_restoration_rate": _mean_or_none(source_spend_full_restoration_flags),
+        "source_tool_spend_pct_backfire_rate": _mean_or_none(source_spend_backfire_flags),
+        "mean_source_tool_spend_pct_normalized_restoration": _mean_or_none(
+            source_spend_normalized_restoration_values
+        ),
+        "mean_source_tool_spend_pct_normalized_restoration_ci95": (
+            _bootstrap_interval(
+                source_spend_normalized_restoration_values,
+                reducer=lambda arr: float(np.mean(arr)),
+                samples=config.bootstrap_samples,
+                seed=config.bootstrap_seed + 9,
+            )
+            if source_spend_normalized_restoration_values
+            else None
+        ),
+        "median_source_tool_spend_pct_normalized_restoration": _median_or_none(
+            source_spend_normalized_restoration_values
+        ),
+        "mean_source_generated_token_count_delta_baseline": _mean_or_none(source_generated_token_delta_baseline),
+        "mean_source_generated_token_count_delta_intervention": _mean_or_none(
+            source_generated_token_delta_intervention
+        ),
+        "source_generated_token_count_improvement_rate": _mean_or_none(source_generated_token_improvement_flags),
+        "source_generated_token_count_full_restoration_rate": _mean_or_none(
+            source_generated_token_full_restoration_flags
+        ),
+        "source_generated_token_count_backfire_rate": _mean_or_none(source_generated_token_backfire_flags),
+        "mean_source_generated_token_count_normalized_restoration": _mean_or_none(
+            source_generated_token_normalized_restoration_values
+        ),
+        "mean_source_generated_token_count_normalized_restoration_ci95": (
+            _bootstrap_interval(
+                source_generated_token_normalized_restoration_values,
+                reducer=lambda arr: float(np.mean(arr)),
+                samples=config.bootstrap_samples,
+                seed=config.bootstrap_seed + 10,
+            )
+            if source_generated_token_normalized_restoration_values
+            else None
+        ),
+        "median_source_generated_token_count_normalized_restoration": _median_or_none(
+            source_generated_token_normalized_restoration_values
+        ),
+        "pair_mode_summary": pair_mode_summary,
         "family_variant_summary": family_variant_summary,
     }
     (config.output_dir / "results.json").write_text(json.dumps(result, indent=2))

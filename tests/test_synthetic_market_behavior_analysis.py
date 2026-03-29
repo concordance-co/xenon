@@ -90,9 +90,11 @@ def test_behavior_analysis_computes_change_rates(tmp_path):
             "family": "fam",
             "family_variant": "v1",
             "roster_key": "r00",
+            "pair_mode": "denoise",
             "source_first_tool_name": "buy_token",
             "source_first_tool_token": "VEXA",
             "source_first_tool_spend_pct": 25.0,
+            "source_generated_token_count": 4,
             "first_generated_token_id": 10,
             "first_generated_token_text": "A",
             "generated_text": "alpha changed",
@@ -121,9 +123,11 @@ def test_behavior_analysis_computes_change_rates(tmp_path):
             "family": "fam",
             "family_variant": "v2",
             "roster_key": "r01",
+            "pair_mode": "denoise",
             "source_first_tool_name": "record_observation",
             "source_first_tool_token": None,
             "source_first_tool_spend_pct": None,
+            "source_generated_token_count": 1,
             "first_generated_token_id": 21,
             "first_generated_token_text": "C",
             "generated_text": "beta",
@@ -171,10 +175,30 @@ def test_behavior_analysis_computes_change_rates(tmp_path):
     assert result["tool_token_change_rate_ci95"] is not None
     assert result["source_tool_name_match_rate_baseline"] == 0.5
     assert result["source_tool_name_match_rate_intervention"] == 1.0
+    assert result["source_tool_name_match_rate_delta"] == 0.5
+    assert result["source_tool_name_restorable_count"] == 1
+    assert result["source_tool_name_restoration_rate"] == 1.0
+    assert result["source_tool_name_backfire_rate"] == 0.0
     assert result["source_tool_token_match_rate_baseline"] == 0.0
     assert result["source_tool_token_match_rate_intervention"] == 1.0
+    assert result["source_tool_token_match_rate_delta"] == 1.0
+    assert result["source_tool_token_restorable_count"] == 1
+    assert result["source_tool_token_restoration_rate"] == 1.0
     assert result["mean_source_tool_spend_pct_delta_baseline"] == 25.0
     assert result["mean_source_tool_spend_pct_delta_intervention"] == 0.0
+    assert result["source_tool_spend_pct_improvement_rate"] == 1.0
+    assert result["source_tool_spend_pct_full_restoration_rate"] == 1.0
+    assert result["source_tool_spend_pct_backfire_rate"] == 0.0
+    assert result["mean_source_tool_spend_pct_normalized_restoration"] == 1.0
+    assert result["mean_source_generated_token_count_delta_baseline"] == 2.0
+    assert result["mean_source_generated_token_count_delta_intervention"] == 0.0
+    assert result["source_generated_token_count_improvement_rate"] == 1.0
+    assert result["source_generated_token_count_full_restoration_rate"] == 1.0
+    assert result["source_generated_token_count_backfire_rate"] == 0.0
+    assert result["mean_source_generated_token_count_normalized_restoration"] == 1.0
+    assert result["paired_row_count"] == 2
+    assert result["pair_modes_present"] == ["denoise"]
+    assert result["pair_mode_summary"]["denoise"]["source_tool_token_restoration_rate"] == 1.0
 
     saved = json.loads((output_dir / "results.json").read_text())
     assert saved["count"] == 2

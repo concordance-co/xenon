@@ -122,11 +122,175 @@ class MarketPatchGPUModelRunner(GPUModelRunner):
         super().__init__(*args, **kwargs)
         self.market_patch_request_helper = MarketPatchRequestHelper()
 
-    def load_model(self, *args: Any, **kwargs: Any) -> None:
-        super().load_model(*args, **kwargs)
-        from pipelines.interp.vllm_market_patch import init_market_patching
+    def load_model(self, load_dummy_weights: bool = False) -> None:
+        import torch
+        import vllm.v1.worker.gpu_model_runner as gm
 
-        init_market_patching(self.model)
+        from pipelines.interp.vllm_market_patch import (
+            init_market_patching,
+            install_qwen3_moe_market_patch_hooks,
+        )
+
+        gm.logger.info_once(
+            "Starting to load model %s...",
+            self.model_config.model,
+            scope="global",
+        )
+        if self.parallel_config.enable_eplb:
+            self.eplb_state = gm.EplbState(self.parallel_config, self.device)
+
+        try:
+            with gm.DeviceMemoryProfiler() as m:
+                time_before_load = gm.time.perf_counter()
+                if load_dummy_weights:
+                    self.load_config.load_format = "dummy"
+                if not self.vllm_config.model_config.enforce_eager:
+                    install_qwen3_moe_market_patch_hooks()
+                model_loader = gm.get_model_loader(self.load_config)
+                self.model = model_loader.load_model(
+                    vllm_config=self.vllm_config, model_config=self.model_config
+                )
+                if self.lora_config:
+                    self.model = self.load_lora_model(
+                        self.model, self.vllm_config, self.device
+                    )
+                if hasattr(self, "drafter"):
+                    gm.logger.info_once("Loading drafter model...")
+                    self.drafter.load_model(self.model)
+                    if (
+                        hasattr(self.drafter, "model")
+                        and gm.is_mixture_of_experts(self.drafter.model)
+                        and self.parallel_config.enable_eplb
+                    ):
+                        assert not self.parallel_config.enable_elastic_ep, (
+                            "Elastic EP is not supported with drafter model."
+                        )
+                        spec_config = self.vllm_config.speculative_config
+                        assert spec_config is not None
+                        assert spec_config.draft_model_config is not None
+                        gm.logger.info_once(
+                            "EPLB is enabled for drafter model %s.",
+                            spec_config.draft_model_config.model,
+                        )
+                        if self.eplb_state is None:
+                            self.eplb_state = gm.EplbState(
+                                self.parallel_config, self.device
+                            )
+                        self.eplb_state.add_model(
+                            self.drafter.model,
+                            spec_config.draft_model_config,
+                        )
+                if self.use_aux_hidden_state_outputs:
+                    if not gm.supports_eagle3(self.get_model()):
+                        raise RuntimeError(
+                            "Model does not support EAGLE3 interface but "
+                            "aux_hidden_state_outputs was requested"
+                        )
+                    aux_layers = self._get_eagle3_aux_layers_from_config()
+                    if aux_layers:
+                        gm.logger.info(
+                            "Using auxiliary layers from speculative config: %s",
+                            aux_layers,
+                        )
+                    else:
+                        aux_layers = (
+                            self.model.get_eagle3_default_aux_hidden_state_layers()
+                        )
+                    self.model.set_aux_hidden_state_layers(aux_layers)
+
+                # Install patching while still inside vLLM's model-init context so
+                # compile/custom-op discovery can see the modified model graph.
+                init_market_patching(self.model)
+                self.model._market_patch_force_custom_op_presence = not bool(
+                    self.vllm_config.model_config.enforce_eager
+                )
+                time_after_load = gm.time.perf_counter()
+
+            self.model_memory_usage = m.consumed_memory
+        except torch.cuda.OutOfMemoryError as e:
+            msg = (
+                "Failed to load model - not enough GPU memory. "
+                "Try lowering --gpu-memory-utilization to free memory for weights, "
+                "increasing --tensor-parallel-size, or using --quantization. "
+                "See https://docs.vllm.ai/en/latest/configuration/conserving_memory/ "
+                "for more tips."
+            )
+            gm.logger.error(f"{msg} (original error: {e})")
+            raise e
+
+        gm.logger.info_once(
+            "Model loading took %s GiB memory and %.6f seconds",
+            gm.format_gib(self.model_memory_usage),
+            time_after_load - time_before_load,
+            scope="local",
+        )
+        if not load_dummy_weights:
+            gm.prepare_communication_buffer_for_model(self.model)
+            if (drafter := getattr(self, "drafter", None)) and (
+                drafter_model := getattr(drafter, "model", None)
+            ):
+                gm.prepare_communication_buffer_for_model(drafter_model)
+        mm_config = self.model_config.multimodal_config
+        self.is_multimodal_pruning_enabled = (
+            gm.supports_multimodal_pruning(self.get_model())
+            and mm_config is not None
+            and mm_config.is_multimodal_pruning_enabled()
+        )
+        self.requires_sequential_video_encoding = hasattr(
+            self.get_model(), "requires_sequential_video_encoding"
+        )
+        if (
+            gm.is_mixture_of_experts(self.model)
+            and self.parallel_config.enable_eplb
+            and not load_dummy_weights
+        ):
+            gm.logger.info_once(
+                "EPLB is enabled for model %s.", self.model_config.model
+            )
+            assert self.eplb_state is not None
+            self.eplb_state.add_model(
+                self.model,
+                self.model_config,
+            )
+            if self.eplb_state.is_async:
+                self.eplb_state.start_async_loop()
+        if (
+            self.vllm_config.compilation_config.mode
+            == gm.CompilationMode.STOCK_TORCH_COMPILE
+        ):
+            backend = self.vllm_config.compilation_config.init_backend(
+                self.vllm_config
+            )
+            from vllm.compilation.counter import compilation_counter
+
+            compilation_counter.stock_torch_compile_count += 1
+            self.model.compile(fullgraph=True, backend=backend)
+            return
+        cudagraph_mode = self.compilation_config.cudagraph_mode
+        assert cudagraph_mode is not None
+        if (
+            cudagraph_mode.has_full_cudagraphs()
+            and not self.parallel_config.use_ubatching
+        ):
+            self.model = gm.CUDAGraphWrapper(
+                self.model, self.vllm_config, runtime_mode=gm.CUDAGraphMode.FULL
+            )
+        elif self.parallel_config.use_ubatching:
+            if cudagraph_mode.has_full_cudagraphs():
+                self.model = gm.UBatchWrapper(
+                    self.model,
+                    self.vllm_config,
+                    gm.CUDAGraphMode.FULL,
+                    self.device,
+                )
+            else:
+                self.model = gm.UBatchWrapper(
+                    self.model,
+                    self.vllm_config,
+                    gm.CUDAGraphMode.NONE,
+                    self.device,
+                )
+        gm.get_offloader().post_init()
 
     def _update_states(self, scheduler_output: SchedulerOutput) -> None:
         super()._update_states(scheduler_output)
@@ -161,10 +325,18 @@ class MarketPatchGPUModelRunner(GPUModelRunner):
         scheduler_output: SchedulerOutput,
         intermediate_tensors: IntermediateTensors | None = None,
     ) -> Any:
-        from pipelines.interp.vllm_market_patch import clear_batch_patch_specs
+        from pipelines.interp.vllm_market_patch import (
+            clear_batch_patch_specs,
+            harvest_batch_tensor_stats,
+        )
 
         try:
-            return super().execute_model(scheduler_output, intermediate_tensors)
+            result = super().execute_model(scheduler_output, intermediate_tensors)
+            harvest_batch_tensor_stats(
+                self.model,
+                list(self.market_patch_request_helper.current_step_specs),
+            )
+            return result
         finally:
             clear_batch_patch_specs(self.model)
 

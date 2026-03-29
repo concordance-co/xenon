@@ -68,7 +68,11 @@ class SyntheticMarketBehaviorConfig:
     add_generation_prompt: bool = True
     tensor_parallel_size: int = 1
     gpu_memory_utilization: float = 0.85
+    enforce_eager: bool = True
     enable_chunked_prefill: bool = False
+    enable_logging_iteration_details: bool = False
+    enable_mfu_metrics: bool = False
+    basis_state_key: str = "market_mean"
     basis_npz_path: Path = Path(
         "data/analysis_results/synthetic_market_discovery/phase15_market_basis_discovery_v1/residualized_nuisance_v1/pca_basis.npz"
     )
@@ -201,6 +205,18 @@ def _destroy_llm(llm: Any | None) -> None:
         shutdown = getattr(llm_engine, "shutdown", None)
         if callable(shutdown):
             shutdown()
+    except Exception:
+        pass
+
+
+def _cleanup_cuda_memory() -> None:
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
     except Exception:
         pass
 
@@ -363,6 +379,7 @@ def prepare_synthetic_market_behavior_donors(config: SyntheticMarketBehaviorConf
             )
     finally:
         _destroy_llm(llm_capture)
+        _cleanup_cuda_memory()
 
     _save_donor_mean_cache(donor_path, donor_mean_cache)
     result = {
@@ -381,10 +398,20 @@ def prepare_synthetic_market_behavior_donors(config: SyntheticMarketBehaviorConf
 
 def _build_generation_config(config: SyntheticMarketBehaviorConfig) -> VLLMCaptureConfig:
     batch_size = max(1, int(config.batch_size))
-    use_request_scoped_patching = bool(config.patch_enabled)
+    # Keep batched behavior runs on the same vLLM worker path across baseline,
+    # project-out, and random-control conditions. Patched requests carry
+    # `market_patch_spec` in SamplingParams.extra_args; baseline requests leave
+    # it empty but still benefit from the same scheduler / runner codepath.
+    use_request_scoped_patching = batch_size > 1
     max_num_batched_tokens = None
     if batch_size > 1:
         max_num_batched_tokens = max(40960, batch_size * 4096)
+    async_scheduling = None
+    if batch_size > 1:
+        # Keep batched experiment conditions aligned across baseline and
+        # patched runs. vLLM 0.17 can auto-enable async scheduling when left
+        # unset, which changes scheduler behavior and throughput.
+        async_scheduling = False
     return VLLMCaptureConfig(
         output_dir=config.output_dir / "_tmp_capture",
         model_id=config.model_id,
@@ -393,17 +420,20 @@ def _build_generation_config(config: SyntheticMarketBehaviorConfig) -> VLLMCaptu
         add_generation_prompt=bool(config.add_generation_prompt),
         tensor_parallel_size=int(config.tensor_parallel_size),
         gpu_memory_utilization=float(config.gpu_memory_utilization),
+        enforce_eager=bool(config.enforce_eager),
         max_num_batched_tokens=max_num_batched_tokens,
         max_num_seqs=batch_size,
         enable_prefix_caching=False,
         enable_chunked_prefill=bool(config.enable_chunked_prefill),
-        async_scheduling=(False if use_request_scoped_patching and batch_size > 1 else None),
+        async_scheduling=async_scheduling,
         worker_cls=(
             "pipelines.interp.vllm_request_patch_worker.MarketPatchGPUWorker"
             if use_request_scoped_patching
             else ""
         ),
         request_scoped_patching=use_request_scoped_patching,
+        enable_logging_iteration_details=bool(config.enable_logging_iteration_details),
+        enable_mfu_metrics=bool(config.enable_mfu_metrics),
     )
 
 
@@ -514,6 +544,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                 )
         finally:
             _destroy_llm(llm_capture)
+            _cleanup_cuda_memory()
 
     generate_cfg = _build_generation_config(config)
     llm_generate = _create_llm(generate_cfg)
@@ -523,6 +554,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
         basis = default_phase17_market_patch_basis(
             basis_npz_path=config.basis_npz_path,
             results_json_path=config.basis_results_path,
+            state_key=config.basis_state_key,
             layers=tuple(int(layer) for layer in config.target_layers),
             components_per_layer=int(config.components_per_layer),
         )
@@ -706,6 +738,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                                 for layer, indices in config.component_indices_by_layer.items()
                             }
                         ),
+                        "basis_state_key": config.basis_state_key,
                         "direction_name": config.direction_name,
                         "selection_strategy": config.selection_strategy,
                         "strength": float(config.strength),
@@ -715,23 +748,17 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                         "first_generated_token_text": _decode_first_token(tokenizer, generated_token_ids),
                         "generated_text": output["generated_text"],
                         "finish_reason": output["finish_reason"],
+                        "request_id": output.get("request_id") or None,
                         **tool_fields,
                         **context["source_behavior_fields"],
                         "patch_stats_json": json.dumps(output["patch_stats"]),
+                        "all_patch_stats_json": json.dumps(output.get("all_patch_stats", {})),
                     }
                 )
                 processed += 1
     finally:
         _destroy_llm(llm_generate)
-        gc.collect()
-        try:
-            import torch
-
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.ipc_collect()
-        except Exception:
-            pass
+        _cleanup_cuda_memory()
 
     _flush_table(metadata_path, metadata_rows)
 
@@ -754,6 +781,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
         },
         "max_tokens": int(config.max_tokens),
         "selection_strategy": config.selection_strategy,
+        "basis_state_key": config.basis_state_key,
         "donor_means_path": str(config.donor_means_path) if config.donor_means_path is not None else None,
     }
     (config.output_dir / "results.json").write_text(json.dumps(result, indent=2))
@@ -794,7 +822,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tool-choice", default="")
     parser.add_argument("--add-generation-prompt", action="store_true")
     parser.add_argument("--donor-means-path", type=Path, default=None)
+    parser.add_argument("--no-enforce-eager", action="store_true")
     parser.add_argument("--enable-chunked-prefill", action="store_true")
+    parser.add_argument("--enable-logging-iteration-details", action="store_true")
+    parser.add_argument("--enable-mfu-metrics", action="store_true")
+    parser.add_argument("--basis-state-key", default="market_mean")
     return parser
 
 
@@ -836,7 +868,11 @@ def main(argv: list[str] | None = None) -> None:
             tool_choice=args.tool_choice,
             add_generation_prompt=bool(args.add_generation_prompt),
             donor_means_path=args.donor_means_path,
+            enforce_eager=not bool(args.no_enforce_eager),
             enable_chunked_prefill=bool(args.enable_chunked_prefill),
+            enable_logging_iteration_details=bool(args.enable_logging_iteration_details),
+            enable_mfu_metrics=bool(args.enable_mfu_metrics),
+            basis_state_key=args.basis_state_key,
         )
     )
     print(json.dumps(result, indent=2))
