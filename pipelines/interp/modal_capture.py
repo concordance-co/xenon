@@ -517,10 +517,10 @@ class CounterfactualCaptureWorker:
         from datetime import UTC, datetime
         from pathlib import Path
 
+        from pipelines.interp.capture_utils import _save_pooled
         from pipelines.interp.counterfactual.capture import (
             CounterfactualCaptureConfig,
             capture_one_counterfactual,
-            _save_pooled,
         )
 
         config = CounterfactualCaptureConfig(

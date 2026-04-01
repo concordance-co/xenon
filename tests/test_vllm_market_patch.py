@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from pipelines.interp.vllm_market_patch import (
+from pipelines.interp.patching.market_patch import (
     PATCH_MODE_ADD_DIRECTION,
     PATCH_MODE_PROJECT_OUT,
     PATCH_MODE_RANDOM_CONTROL,

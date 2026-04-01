@@ -1,4 +1,8 @@
-"""Modal backend API for querying Xenon data in Neon Postgres.
+"""Legacy Modal backend API for querying Xenon data in Neon Postgres.
+
+This surface is no longer the canonical operator path. Use
+`uv run -m pipelines.cli ...` for spec, dataset, capture, analysis, and report
+workflows. The backend remains as a legacy read/query surface only.
 
 Usage:
     uv run --extra modal modal serve pipelines/backend/app.py    # dev
@@ -18,10 +22,13 @@ Endpoints:
     GET  /activations/meta          Activations metadata.parquet summary
     POST /profile/dataset           Read-only dataset profiling
     POST /label/preview             Label-method and split viability preview
-    GET  /prep-targets              List shared prep target specs
-    GET  /prep-targets/{id}         Get one shared prep target spec
-    POST /prep-targets              Create or update a shared prep target spec
-    DELETE /prep-targets/{id}       Delete a shared prep target spec
+    GET  /specs                     List workflow specs
+    GET  /specs/{id}                Get one workflow spec
+    POST /specs                     Create or update a workflow spec
+    DELETE /specs/{id}              Delete a workflow spec
+    GET  /runs                      List workflow runs
+    GET  /runs/{id}                 Get one workflow run
+    GET  /publications              List dataset publications
     POST /reload                    Force volume refresh
 """
 
@@ -30,7 +37,6 @@ from __future__ import annotations
 import json
 import re
 import time
-import uuid
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -402,6 +408,15 @@ def web_app():
     import psycopg_pool
 
     from pipelines.db import require_neon_dsn
+    from pipelines.workflows import (
+        delete_workflow_spec,
+        get_workflow_run,
+        get_workflow_spec,
+        list_publications,
+        list_workflow_runs,
+        list_workflow_specs,
+        upsert_workflow_spec,
+    )
 
     api = FastAPI(title="Xenon Backend", version="0.4.0")
     api.add_middleware(
@@ -811,116 +826,73 @@ def web_app():
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-    @api.get("/prep-targets")
-    def prep_targets_list():
+    @api.get("/specs")
+    def workflow_specs_list():
         try:
             with pool.connection() as conn:
-                rows = conn.execute(
-                    "SELECT id, name, description, spec_json, created_at, updated_at "
-                    "FROM prep_target_specs ORDER BY updated_at DESC"
-                ).fetchall()
-                specs = []
-                for r in rows:
-                    spec = dict(r.get("spec_json") or {})
-                    spec["id"] = r["id"]
-                    spec["name"] = r["name"]
-                    spec["description"] = r.get("description")
-                    spec["created_at"] = r["created_at"]
-                    spec["updated_at"] = r["updated_at"]
-                    specs.append(spec)
-                return {"specs": specs}
-        except psycopg.Error as e:
+                return {"specs": list_workflow_specs(conn)}
+        except (psycopg.Error, ValueError) as e:
             raise HTTPException(status_code=503, detail=f"Database error: {e}")
 
-    @api.get("/prep-targets/{spec_id}")
-    def prep_targets_get(spec_id: str):
+    @api.get("/specs/{spec_id}")
+    def workflow_specs_get(spec_id: str):
         try:
             with pool.connection() as conn:
-                row = conn.execute(
-                    "SELECT id, name, description, spec_json, created_at, updated_at "
-                    "FROM prep_target_specs WHERE id = %s",
-                    [spec_id],
-                ).fetchone()
-                if not row:
+                spec = get_workflow_spec(conn, spec_id)
+                if spec is None:
                     raise HTTPException(status_code=404, detail=f"Spec not found: {spec_id}")
-                spec = dict(row.get("spec_json") or {})
-                spec["id"] = row["id"]
-                spec["name"] = row["name"]
-                spec["description"] = row.get("description")
-                spec["created_at"] = row["created_at"]
-                spec["updated_at"] = row["updated_at"]
                 return {"spec": spec}
         except psycopg.Error as e:
             raise HTTPException(status_code=503, detail=f"Database error: {e}")
 
-    @api.post("/prep-targets")
-    def prep_targets_upsert(spec: dict[str, Any]):
+    @api.post("/specs")
+    def workflow_specs_upsert(spec: dict[str, Any]):
         if not isinstance(spec, dict):
             raise HTTPException(status_code=400, detail="Request body must be an object")
-        if not isinstance(spec.get("name"), str) or not str(spec.get("name")).strip():
-            raise HTTPException(status_code=400, detail="spec.name is required")
-        if not isinstance(spec.get("source"), dict):
-            raise HTTPException(status_code=400, detail="spec.source is required")
-        if not isinstance(spec.get("label"), dict):
-            raise HTTPException(status_code=400, detail="spec.label is required")
-        if not isinstance(spec.get("split"), dict):
-            raise HTTPException(status_code=400, detail="spec.split is required")
-
-        spec_id = spec.get("id") or uuid.uuid4().hex[:12]
-        now = _now_iso()
-        name = spec["name"]
-        description = spec.get("description")
-
-        # Build spec_json: everything except the top-level columns
-        top_keys = {"id", "name", "description", "created_at", "updated_at"}
-        spec_json = {k: v for k, v in spec.items() if k not in top_keys}
-
         try:
             with pool.connection() as conn:
-                # Check if exists to preserve created_at
-                existing = conn.execute(
-                    "SELECT created_at FROM prep_target_specs WHERE id = %s",
-                    [spec_id],
-                ).fetchone()
-                created_at = existing["created_at"] if existing else (spec.get("created_at") or now)
-
-                conn.execute(
-                    "INSERT INTO prep_target_specs (id, name, description, spec_json, created_at, updated_at) "
-                    "VALUES (%s, %s, %s, %s::jsonb, %s, %s) "
-                    "ON CONFLICT (id) DO UPDATE SET "
-                    "name = EXCLUDED.name, description = EXCLUDED.description, "
-                    "spec_json = EXCLUDED.spec_json, updated_at = EXCLUDED.updated_at",
-                    [spec_id, name, description, json.dumps(spec_json), created_at, now],
-                )
-
-                # Read back the full spec
-                prepared = dict(spec_json)
-                prepared["id"] = spec_id
-                prepared["name"] = name
-                prepared["description"] = description
-                prepared["created_at"] = created_at
-                prepared["updated_at"] = now
-
-                count_row = conn.execute("SELECT COUNT(*) AS n FROM prep_target_specs").fetchone()
-                total = count_row["n"] if count_row else 0
-
-                return {"spec": prepared, "count": total}
+                saved = upsert_workflow_spec(conn, spec)
+                return {"spec": saved}
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         except psycopg.Error as e:
             raise HTTPException(status_code=503, detail=f"Database error: {e}")
 
-    @api.delete("/prep-targets/{spec_id}")
-    def prep_targets_delete(spec_id: str):
+    @api.delete("/specs/{spec_id}")
+    def workflow_specs_delete(spec_id: str):
         try:
             with pool.connection() as conn:
-                result = conn.execute(
-                    "DELETE FROM prep_target_specs WHERE id = %s RETURNING id",
-                    [spec_id],
-                ).fetchone()
-                if not result:
+                deleted = delete_workflow_spec(conn, spec_id)
+                if not deleted:
                     raise HTTPException(status_code=404, detail=f"Spec not found: {spec_id}")
-                count_row = conn.execute("SELECT COUNT(*) AS n FROM prep_target_specs").fetchone()
-                total = count_row["n"] if count_row else 0
-                return {"status": "deleted", "id": spec_id, "count": total}
+                return {"status": "deleted", "id": spec_id}
+        except psycopg.Error as e:
+            raise HTTPException(status_code=503, detail=f"Database error: {e}")
+
+    @api.get("/runs")
+    def workflow_runs_list():
+        try:
+            with pool.connection() as conn:
+                return {"runs": list_workflow_runs(conn)}
+        except psycopg.Error as e:
+            raise HTTPException(status_code=503, detail=f"Database error: {e}")
+
+    @api.get("/runs/{run_id}")
+    def workflow_runs_get(run_id: str):
+        try:
+            with pool.connection() as conn:
+                run = get_workflow_run(conn, run_id)
+                if run is None:
+                    raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+                return {"run": run}
+        except psycopg.Error as e:
+            raise HTTPException(status_code=503, detail=f"Database error: {e}")
+
+    @api.get("/publications")
+    def workflow_publications_list(spec_id: str | None = Query(default=None)):
+        try:
+            with pool.connection() as conn:
+                return {"publications": list_publications(conn, spec_id=spec_id)}
         except psycopg.Error as e:
             raise HTTPException(status_code=503, detail=f"Database error: {e}")
 

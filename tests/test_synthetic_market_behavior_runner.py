@@ -4,7 +4,7 @@ import numpy as np
 import pyarrow.parquet as pq
 import transformers
 
-from pipelines.interp.synthetic_market_behavior_runner import (
+from research.synthetic_market.synthetic_market_behavior_runner import (
     SyntheticMarketBehaviorConfig,
     _build_generation_config,
     _run_generation_batch,
@@ -22,7 +22,7 @@ def test_build_generation_config_uses_request_scoped_worker_for_patched_runs():
 
     assert cfg.max_num_seqs == 4
     assert cfg.request_scoped_patching is True
-    assert cfg.worker_cls == "pipelines.interp.vllm_request_patch_worker.MarketPatchGPUWorker"
+    assert cfg.worker_cls == "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
     assert cfg.enable_chunked_prefill is False
     assert cfg.enable_prefix_caching is False
     assert cfg.async_scheduling is False
@@ -39,7 +39,7 @@ def test_build_generation_config_disables_async_scheduling_for_batched_baseline_
 
     assert cfg.max_num_seqs == 4
     assert cfg.request_scoped_patching is True
-    assert cfg.worker_cls == "pipelines.interp.vllm_request_patch_worker.MarketPatchGPUWorker"
+    assert cfg.worker_cls == "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
     assert cfg.async_scheduling is False
 
 
@@ -105,7 +105,7 @@ def test_run_generation_batch_uses_single_prompt_path_for_single_request(monkeyp
         return {"generated_token_ids": [], "generated_text": "", "finish_reason": "", "input_ids": [], "patch_stats": {}}
 
     monkeypatch.setattr(
-        "pipelines.interp.synthetic_market_behavior_runner._generate_one_vllm",
+        "research.synthetic_market.synthetic_market_behavior_runner._generate_one_vllm",
         fake_generate_one_vllm,
     )
 
@@ -137,7 +137,7 @@ def test_run_generation_batch_uses_batched_path_for_multiple_requests(monkeypatc
         ]
 
     monkeypatch.setattr(
-        "pipelines.interp.synthetic_market_behavior_runner._generate_batch_vllm",
+        "research.synthetic_market.synthetic_market_behavior_runner._generate_batch_vllm",
         fake_generate_batch_vllm,
     )
 
@@ -180,7 +180,7 @@ class _FakePatchSpec:
 
 
 def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp_path):
-    import pipelines.interp.synthetic_market_behavior_runner as behavior_runner
+    import research.synthetic_market.synthetic_market_behavior_runner as behavior_runner
 
     events: list[str] = []
     basis_calls: list[dict[str, object]] = []

@@ -1,6 +1,13 @@
 # Scripts
 
-The `scripts/` tree is organized by job type rather than by phase number.
+The `scripts/` tree is for one-off helpers, dataset builders, manifest builders,
+and research-specific chart generation.
+
+The canonical operator surface is not `scripts/`; it is:
+
+```bash
+uv run -m pipelines.cli ...
+```
 
 ## Layout
 
@@ -9,24 +16,15 @@ The `scripts/` tree is organized by job type rather than by phase number.
 - `scripts/manifests/`
   - capture manifest builders and reconciliation helpers
 - `scripts/research/`
-  - real-data research payload builders
-- `scripts/datasets/synthetic_market/`
-  - synthetic market dataset builders and per-phase prep entrypoints
-- `scripts/reports/actionability/`
-  - actionability report chart generators
-- `scripts/reports/decision_structure/`
-  - decision-structure report chart generators
-- `scripts/reports/research/`
-  - real-DX / postmarket / research report chart generators
-- `scripts/reports/synthetic/`
-  - early synthetic phase report chart generators
-- `scripts/reports/synthetic_market/`
-  - synthetic market phase report chart generators
+  - effort-specific research payload builders
+- `scripts/archive/`
+  - archived phase runners, historical dataset prep helpers, and old chart/report generators
 
-## Kept At Top Level
+## Top-Level Scripts
 
 - `scripts/modal_capture.sh`
+  - legacy wrapper around parts of the runtime surface
 - `scripts/modal_restore_db.sh`
+  - restore helper
 - `scripts/xenon_backend.sh`
-
-Those stay at the top because they are operator-facing entrypoints used directly in docs, the dashboard, and shell workflows.
+  - legacy backend helper, not the recommended path

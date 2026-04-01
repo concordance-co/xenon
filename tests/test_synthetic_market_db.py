@@ -3,7 +3,7 @@ from __future__ import annotations
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.interp.synthetic_market_db import (
+from pipelines.interp.synthetic.db import (
     build_synthetic_example_query,
     capture_view_name,
     context_ladder_view_name,

@@ -519,12 +519,12 @@ def _build_benchmark_patch_artifacts(
     components_per_layer: int,
     strength: float,
 ) -> dict[str, Any]:
-    from pipelines.interp.decision_structure.core import (
+    from pipelines.interp.pooling import (
         _char_to_token_span,
         _token_offsets_for_rendered,
     )
-    from pipelines.interp.market_patch_basis import default_phase17_market_patch_basis
-    from pipelines.interp.vllm_market_patch import MarketPatchSpec
+    from pipelines.interp.patching.basis import default_phase17_market_patch_basis
+    from pipelines.interp.patching.market_patch import MarketPatchSpec
 
     rendered = tokenizer.apply_chat_template(
         list(benchmark_messages),
@@ -594,7 +594,7 @@ def run_customop_vllm_benchmark(
 ) -> dict[str, Any]:
     from transformers import AutoTokenizer
 
-    from pipelines.interp.synthetic_market_behavior_runner import _destroy_llm
+    from research.synthetic_market.synthetic_market_behavior_runner import _destroy_llm
     from pipelines.interp.vllm_capture import (
         VLLMCaptureConfig,
         _create_llm,
@@ -622,7 +622,7 @@ def run_customop_vllm_benchmark(
         enable_chunked_prefill=bool(enable_chunked_prefill),
         async_scheduling=False if int(max_num_seqs) > 1 else None,
         worker_cls=(
-            "pipelines.interp.vllm_request_patch_worker.MarketPatchGPUWorker"
+            "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
             if use_custom_worker
             else ""
         ),

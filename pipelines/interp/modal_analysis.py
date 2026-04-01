@@ -441,7 +441,7 @@ def run_research_rerun_analysis_modal(
     """Analyze real-prompt rerun captures against real decision-structure probes."""
     from pathlib import Path
 
-    from pipelines.interp.research_rerun.analysis import (
+    from research.research_rerun.analysis import (
         ResearchRerunAnalysisConfig,
         run_research_rerun_analysis,
     )
@@ -478,7 +478,7 @@ def run_research_risk_geometry_analysis_modal(
     """Analyze real DX risk-ladder reruns with the set-geometry lens."""
     from pathlib import Path
 
-    from pipelines.interp.research_rerun.geometry import (
+    from research.research_rerun.geometry import (
         ResearchRiskGeometryConfig,
         run_research_risk_geometry_analysis,
     )
@@ -513,7 +513,7 @@ def run_research_postmarket_geometry_analysis_modal(
     """Analyze real DX post-market risk and affordance ladders."""
     from pathlib import Path
 
-    from pipelines.interp.research_rerun.postmarket_geometry import (
+    from research.research_rerun.postmarket_geometry import (
         PostMarketGeometryConfig,
         run_postmarket_geometry_analysis,
     )

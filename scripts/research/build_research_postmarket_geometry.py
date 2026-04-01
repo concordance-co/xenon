@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 
 from pipelines.db import connect_neon
-from pipelines.interp.research_rerun.core import save_prompt_payload
-from pipelines.interp.research_rerun.postmarket import build_postmarket_geometry_payload
+from research.research_rerun.core import save_prompt_payload
+from research.research_rerun.postmarket import build_postmarket_geometry_payload
 
 
 def main() -> None:

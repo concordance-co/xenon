@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Xenon backend API — serve, deploy, query
+# Legacy Xenon backend helper. The canonical operator surface is pipelines.cli.
 set -euo pipefail
 
 CMD="${1:-help}"
@@ -7,10 +7,12 @@ shift || true
 
 case "$CMD" in
   serve)
+    echo "Legacy surface: prefer uv run -m pipelines.cli ..."
     echo "Starting dev server (hot-reload)..."
     uv run --extra modal modal serve pipelines/backend/app.py
     ;;
   deploy)
+    echo "Legacy surface: prefer uv run -m pipelines.cli ..."
     echo "Deploying backend..."
     uv run --extra modal modal deploy pipelines/backend/app.py
     echo ""
@@ -53,6 +55,9 @@ case "$CMD" in
   *)
     cat <<'USAGE'
 Usage: xenon_backend.sh <command> [args]
+
+Legacy helper for the deprecated backend/query surface.
+Use `uv run -m pipelines.cli ...` for workflow execution.
 
 Server:
   serve                Start dev server with hot-reload

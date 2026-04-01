@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pipelines.interp.research_rerun.geometry import (
+from research.research_rerun.geometry import (
     _context_deformation_metrics,
     _context_realignment_metrics,
     _deformation_pairs,

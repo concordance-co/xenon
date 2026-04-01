@@ -4,7 +4,7 @@ import json
 
 import numpy as np
 
-from pipelines.interp.market_patch_basis import load_market_patch_basis
+from pipelines.interp.patching.basis import load_market_patch_basis
 
 
 def test_load_market_patch_basis_reads_named_phase17_axes(tmp_path):

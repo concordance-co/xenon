@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from pipelines.interp.research_rerun.postmarket import (
+from research.research_rerun.postmarket import (
     build_affordance_edited_variant,
 )
-from pipelines.interp.research_rerun.postmarket_geometry import (
+from research.research_rerun.postmarket_geometry import (
     AFFORDANCE_GROUP,
     RISK_GROUP,
     _evaluate_geometry_predictions,

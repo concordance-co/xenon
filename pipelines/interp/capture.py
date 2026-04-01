@@ -12,12 +12,13 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.interp.decision_structure.cohorts import build_interp_example_query
+from pipelines.interp.cohort_selection import build_interp_example_query, validate_relation_name
 
 
 @dataclass(slots=True)
 class CaptureConfig:
     output_dir: Path = field(default_factory=lambda: Path("data/activations"))
+    parquet_path: Path | None = None
     model_id: str = "Qwen/Qwen3-8B"
     device: str = "mps"
     limit: int | None = None
@@ -30,6 +31,7 @@ class CaptureConfig:
     pool_on_capture: str | None = None  # None = full sequence, "last_token", "mean_pool"
     router_dtype: str = "float16"  # "float16" or "float32" for router logits storage
     metadata_flush_interval: int = 10  # write metadata.parquet every N examples
+    source_relation: str | None = None
     cohort_view: str | None = None
     order_mode: str = "log_id"
 
@@ -62,6 +64,7 @@ def _load_existing_metadata(output_dir: Path) -> list[dict[str, Any]]:
 def _load_examples_from_neon(
     *,
     limit: int | None = None,
+    source_relation: str | None = None,
     cohort_view: str | None = None,
     order_mode: str = "log_id",
 ) -> list[dict[str, Any]]:
@@ -70,20 +73,45 @@ def _load_examples_from_neon(
     from psycopg.rows import dict_row
     from pipelines.db import require_neon_dsn
 
-    query, params = build_interp_example_query(
-        select_columns=["ie.log_id", "ie.prompt_messages_json"],
-        require_market_snapshot=False,
-        cohort_view=cohort_view,
-        order_mode=order_mode,
-        limit=limit,
-    )
+    validated_source = validate_relation_name(source_relation)
+    if validated_source and validated_source != "interp_examples_v0":
+        query = f"SELECT log_id, prompt_messages_json FROM {validated_source} ORDER BY log_id"
+        params: list[Any] = []
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+        source = validated_source
+    else:
+        query, params = build_interp_example_query(
+            select_columns=["ie.log_id", "ie.prompt_messages_json"],
+            require_market_snapshot=False,
+            cohort_view=cohort_view,
+            order_mode=order_mode,
+            limit=limit,
+        )
+        source = f"interp_examples_v0 joined to {cohort_view}" if cohort_view else "interp_examples_v0"
 
     with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
         rows = conn.execute(query, params).fetchall()
 
-    source = f"interp_examples_v0 joined to {cohort_view}" if cohort_view else "interp_examples_v0"
     print(f"Loaded {len(rows)} examples from Neon ({source})")
     return [dict(r) for r in rows]
+
+
+def _load_examples(config: CaptureConfig) -> list[dict[str, Any]]:
+    if config.parquet_path is not None:
+        if not config.parquet_path.exists():
+            raise FileNotFoundError(config.parquet_path)
+        table = pq.read_table(config.parquet_path)
+        rows = table.to_pylist()
+        return rows[: config.limit] if config.limit is not None else rows
+
+    return _load_examples_from_neon(
+        limit=config.limit,
+        source_relation=config.source_relation,
+        cohort_view=config.cohort_view,
+        order_mode=config.order_mode,
+    )
 
 
 def _parse_messages(row: dict[str, Any]) -> list[dict[str, str]]:
@@ -385,11 +413,7 @@ def _save_router(
 def run_capture(config: CaptureConfig) -> dict[str, Any]:
     import torch
 
-    examples = _load_examples_from_neon(
-        limit=config.limit,
-        cohort_view=config.cohort_view,
-        order_mode=config.order_mode,
-    )
+    examples = _load_examples(config)
     if not examples:
         print("No examples to process.")
         return {"processed": 0, "skipped": 0, "errors": 0}
@@ -547,9 +571,16 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/activations"),
     )
+    parser.add_argument(
+        "--parquet-path",
+        type=Path,
+        default=None,
+        help="Optional local parquet source for capture rows. Defaults to loading examples from Neon.",
+    )
     parser.add_argument("--model-id", default="Qwen/Qwen3-8B")
     parser.add_argument("--device", default="mps")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--source-relation", default=None)
     parser.add_argument("--cohort-view", default=None)
     parser.add_argument(
         "--order-mode",
@@ -617,6 +648,7 @@ def main(argv: list[str] | None = None) -> int:
 
     cfg = CaptureConfig(
         output_dir=args.output_dir,
+        parquet_path=args.parquet_path,
         model_id=args.model_id,
         device=args.device,
         limit=args.limit,
@@ -629,6 +661,7 @@ def main(argv: list[str] | None = None) -> int:
         pool_on_capture=args.pool_on_capture,
         router_dtype=args.router_dtype,
         metadata_flush_interval=args.metadata_flush_interval,
+        source_relation=args.source_relation,
         cohort_view=args.cohort_view,
         order_mode=args.order_mode,
     )

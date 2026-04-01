@@ -138,6 +138,19 @@ def _encode_labels(
                 labels.append(asset_set[asset])
         class_names = list(asset_set.keys())
 
+    elif target == "workflow_label":
+        label_set: dict[str, int] = {}
+        for r in rows:
+            label = r.get("workflow_label")
+            if label is None:
+                continue
+            label_text = str(label)
+            if label_text not in label_set:
+                label_set[label_text] = len(label_set)
+            filtered.append(r)
+            labels.append(label_set[label_text])
+        class_names = list(label_set.keys())
+
     else:
         raise ValueError(f"Unknown target: {target}")
 
@@ -178,6 +191,10 @@ class AnalysisDataset:
         """Load label columns from a local parquet export."""
         table = pq.read_table(path)
         rows = table.to_pylist()
+        if not rows:
+            return []
+        if "label_quality" not in rows[0]:
+            return [dict(row) for row in rows]
         filtered = []
         for row in rows:
             quality = row.get("label_quality")

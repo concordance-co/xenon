@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pipelines.interp.synthetic_market_discovery_analysis import (
+from research.synthetic_market.synthetic_market_discovery_analysis import (
     _nuisance_matrix,
     _residualize_activations,
 )

@@ -13,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from pipelines.db import connect_neon
 from pipelines.interp.decision_structure.manifest import manifest_summary, select_manifest_rows
-from pipelines.interp.research_kickoff import (
+from research.research_kickoff.core import (
     annotate_kickoff_row,
     blocked_valence_manifest_plan,
     roadmap_as_dicts,

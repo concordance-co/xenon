@@ -724,7 +724,7 @@ class CounterfactualVLLMCaptureWorker:
         from datetime import UTC, datetime
         from pathlib import Path
 
-        from pipelines.interp.counterfactual.capture import (
+        from pipelines.interp.capture_utils import (
             _save_pooled,
             pool_per_row,
             pool_router_per_row,
@@ -1082,7 +1082,7 @@ class ResearchRerunVLLMCaptureWorker:
         from datetime import UTC, datetime
         from pathlib import Path
 
-        from pipelines.interp.counterfactual.capture import (
+        from pipelines.interp.capture_utils import (
             _save_pooled,
             pool_per_row,
             pool_router_per_row,
@@ -1211,7 +1211,7 @@ def run_research_rerun_capture(
     from transformers import AutoTokenizer
 
     from pipelines.db import connect_neon
-    from pipelines.interp.research_rerun.capture import load_prompts_from_db
+    from research.research_rerun.capture import load_prompts_from_db
 
     tokenizer = AutoTokenizer.from_pretrained(f"/models/{model_id}")
     capture_prompts = load_prompts_from_db(

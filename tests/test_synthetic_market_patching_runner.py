@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from pipelines.interp.synthetic_market_patching_runner import (
+from research.synthetic_market.synthetic_market_patching_runner import (
     SyntheticMarketPatchingConfig,
     _apply_selection_strategy,
     _build_patch_spec,
     _extract_roster_key,
     _parse_component_indices_spec,
 )
-from pipelines.interp.vllm_market_patch import (
+from pipelines.interp.patching.market_patch import (
     PATCH_MODE_PROJECT_OUT,
     PATCH_MODE_RANDOM_CONTROL,
     PATCH_MODE_SWAP_MEAN,

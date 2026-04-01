@@ -6,12 +6,12 @@ from dataclasses import replace
 import pyarrow.parquet as pq
 import transformers
 
-from pipelines.interp.synthetic_market_behavior_battery import SyntheticMarketBehaviorPlanItem
-from pipelines.interp.synthetic_market_behavior_matrix_runner import (
+from research.synthetic_market.synthetic_market_behavior_battery import SyntheticMarketBehaviorPlanItem
+from research.synthetic_market.synthetic_market_behavior_matrix_runner import (
     SyntheticMarketBehaviorMatrixConfig,
     run_synthetic_market_behavior_matrix,
 )
-from pipelines.interp.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
+from research.synthetic_market.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
 
 
 class _FakeTokenizer:
@@ -33,7 +33,7 @@ class _FakePatchSpec:
 
 
 def test_matrix_runner_executes_multiple_cells_in_one_run(monkeypatch, tmp_path):
-    import pipelines.interp.synthetic_market_behavior_matrix_runner as matrix_runner
+    import research.synthetic_market.synthetic_market_behavior_matrix_runner as matrix_runner
 
     create_llm_calls: list[bool] = []
     prepare_calls: list[str] = []
@@ -186,7 +186,7 @@ def test_matrix_runner_executes_multiple_cells_in_one_run(monkeypatch, tmp_path)
 
 
 def test_matrix_runner_uses_eager_fallback_for_random_control(monkeypatch, tmp_path):
-    import pipelines.interp.synthetic_market_behavior_matrix_runner as matrix_runner
+    import research.synthetic_market.synthetic_market_behavior_matrix_runner as matrix_runner
 
     create_llm_calls: list[bool] = []
     batch_patch_specs: list[list[dict | None]] = []

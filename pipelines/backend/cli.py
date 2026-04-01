@@ -1,4 +1,7 @@
-"""Local CLI for querying the Xenon backend API.
+"""Legacy local CLI for querying the Xenon backend API.
+
+This is not the canonical Xenon operator surface. Use `uv run -m pipelines.cli`
+for workflow execution.
 
 Usage:
     uv run -m pipelines.backend query "SELECT COUNT(*) FROM vaults"

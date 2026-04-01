@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pipelines.interp.research_rerun.analysis import (
+from research.research_rerun.analysis import (
     _blocked_pair_rows,
     _score_prompt_rows,
     _settings_layer_metrics,

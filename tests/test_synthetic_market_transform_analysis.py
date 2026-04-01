@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pipelines.interp.synthetic_market_transform_analysis import (
+from research.synthetic_market.synthetic_market_transform_analysis import (
     _compose_matrices,
     _evaluate_transform,
     _fit_diagonal,

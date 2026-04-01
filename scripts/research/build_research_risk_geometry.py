@@ -11,7 +11,7 @@ import pyarrow.parquet as pq
 
 from pipelines.db import connect_neon
 from pipelines.interp.counterfactual import build_settings_edited_variant, build_market_rows, parse_market_section
-from pipelines.interp.research_rerun.core import _build_example_record, _load_source_examples, save_prompt_payload
+from research.research_rerun.core import _build_example_record, _load_source_examples, save_prompt_payload
 
 
 RISK_LEVELS = (1, 2, 3, 4, 5)

@@ -150,26 +150,26 @@ def _collect_router_logits_from_model(llm: Any) -> dict[int, Any]:
 
 def _setup_market_patching(model: Any) -> bool:
     """Top-level function for apply_model — initialise residual patch wrappers."""
-    from pipelines.interp.vllm_market_patch import init_market_patching
+    from pipelines.interp.patching.market_patch import init_market_patching
 
     init_market_patching(model)
     return True
 
 
 def _register_market_patch_basis(model: Any, basis_payload: dict[int, dict[str, Any]]) -> dict[str, Any]:
-    from pipelines.interp.vllm_market_patch import register_patch_basis
+    from pipelines.interp.patching.market_patch import register_patch_basis
 
     return register_patch_basis(model, basis_payload)
 
 
 def _set_market_patch_spec(model: Any, patch_spec: dict[str, Any]) -> dict[str, Any]:
-    from pipelines.interp.vllm_market_patch import set_patch_spec
+    from pipelines.interp.patching.market_patch import set_patch_spec
 
     return set_patch_spec(model, patch_spec)
 
 
 def _clear_market_patch_spec(model: Any) -> None:
-    from pipelines.interp.vllm_market_patch import clear_patch_spec
+    from pipelines.interp.patching.market_patch import clear_patch_spec
 
     clear_patch_spec(model)
 
@@ -178,7 +178,7 @@ def _collect_market_patch_stats(
     model: Any,
     req_id: str | None = None,
 ) -> dict[int, dict[str, Any]]:
-    from pipelines.interp.vllm_market_patch import collect_patch_stats
+    from pipelines.interp.patching.market_patch import collect_patch_stats
 
     return collect_patch_stats(model, req_id=req_id)
 
