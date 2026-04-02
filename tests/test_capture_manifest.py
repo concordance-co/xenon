@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from pipelines.interp.decision_structure.manifest import CohortRule, ManifestPlan, manifest_summary, select_manifest_rows
+from pipelines.ingest.manifest import CohortRule, ManifestPlan, manifest_summary, select_manifest_rows
 
 
 def _row(

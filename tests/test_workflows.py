@@ -137,3 +137,10 @@ def test_build_workflow_report_writes_summary_and_typst(tmp_path: Path, monkeypa
     summary = json.loads(Path(result["summary_path"]).read_text())
     assert summary["spec"]["id"] == "spec1"
     assert summary["publication"]["row_count"] == 42
+    assert summary["analysis"]["artifacts"]["results_json"] == "data/analysis_results/demo/results.json"
+    assert summary["analysis"]["result_summary"]["best_layer"] == 0
+    report_text = Path(result["report_path"]).read_text()
+    assert "Executive Read" in report_text
+    assert "Top Layers" in report_text
+    assert "Results JSON" in report_text
+    assert "Result JSON" not in report_text

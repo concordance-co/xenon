@@ -22,9 +22,6 @@ uv run -m pipelines.cli ...
 
 ## Top-Level Scripts
 
-- `scripts/modal_capture.sh`
-  - legacy wrapper around parts of the runtime surface
-- `scripts/modal_restore_db.sh`
-  - restore helper
-- `scripts/xenon_backend.sh`
-  - legacy backend helper, not the recommended path
+There are no supported top-level operator scripts anymore.
+
+Anything under `scripts/archive/` is historical only and should be treated as effectively deleted unless you are explicitly digging through old work.

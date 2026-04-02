@@ -79,7 +79,7 @@ class SyntheticMarketBehaviorMatrixWorker:
             SyntheticMarketBehaviorConfig,
             _build_generation_config,
         )
-        from pipelines.interp.vllm_capture import (
+        from pipelines.interp.modal_vllm_engine import (
             _create_llm,
             _init_market_patching_on_model,
             _register_market_patch_basis_on_model,
@@ -133,7 +133,7 @@ class SyntheticMarketBehaviorMatrixWorker:
             _run_generation_batch,
         )
 
-        from pipelines.interp.decision_tools import resolve_tool_schema_mode
+        from pipelines.interp.tool_schemas import resolve_tool_schema_mode
 
         tools = resolve_tool_schema_mode(self.tool_schema_mode)
         return _run_generation_batch(
@@ -603,7 +603,7 @@ def run_synthetic_market_behavior_matrix_modal(
         _flush_table,
         _prepare_behavior_rows,
     )
-    from pipelines.interp.decision_tools import resolve_tool_schema_mode
+    from pipelines.interp.tool_schemas import resolve_tool_schema_mode
     from research.synthetic_market.synthetic_market_patching_runner import _parse_component_indices_spec
     from research.synthetic_market.synthetic_market_patching_runner import _build_patch_spec
 
@@ -1005,7 +1005,7 @@ def benchmark_standard_vllm_serve_modal(
     bench_max_concurrency: int = 32,
     benchmark_messages_json: str = "",
 ) -> dict:
-    from pipelines.interp.vllm_serve_benchmark import (
+    from pipelines.interp.patching.serve_benchmark import (
         DEFAULT_BENCHMARK_MESSAGES,
         run_standard_vllm_serve_benchmark,
     )
@@ -1073,7 +1073,7 @@ def benchmark_customop_vs_stock_vllm_modal(
     strength: float = 1.0,
     benchmark_messages_json: str = "",
 ) -> dict:
-    from pipelines.interp.vllm_serve_benchmark import (
+    from pipelines.interp.patching.serve_benchmark import (
         DEFAULT_BENCHMARK_MESSAGES,
         run_customop_vs_stock_vllm_benchmark,
     )
@@ -1144,7 +1144,7 @@ def benchmark_direct_vllm_variant_modal(
     strength: float = 1.0,
     benchmark_messages_json: str = "",
 ) -> dict:
-    from pipelines.interp.vllm_serve_benchmark import (
+    from pipelines.interp.patching.serve_benchmark import (
         DEFAULT_BENCHMARK_MESSAGES,
         run_customop_vllm_benchmark,
     )

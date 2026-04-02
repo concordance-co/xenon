@@ -14,8 +14,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from pipelines.db import connect_neon
-from pipelines.interp.counterfactual.analysis import linear_cka, preload_all_activations, train_probe
-from pipelines.interp.decision_structure.analysis import (
+from research.counterfactual.analysis import linear_cka, preload_all_activations, train_probe
+from research.decision_structure.analysis import (
     _evaluate_target_groups,
     _load_structure_labels,
     _preload_pooled_residuals,

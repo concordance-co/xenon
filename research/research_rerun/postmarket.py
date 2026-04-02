@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 
 from pipelines.db import connect_neon
-from pipelines.interp.counterfactual import build_market_rows, build_settings_edited_variant, parse_market_section
+from research.counterfactual import build_market_rows, build_settings_edited_variant, parse_market_section
 
 from .core import _build_example_record, _load_source_examples, replace_section_body
 

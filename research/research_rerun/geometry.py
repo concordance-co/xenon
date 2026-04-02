@@ -10,7 +10,7 @@ import numpy as np
 from scipy.stats import spearmanr
 
 from pipelines.db import connect_neon
-from pipelines.interp.counterfactual.analysis import orthogonal_procrustes, preload_all_activations
+from research.counterfactual.analysis import orthogonal_procrustes, preload_all_activations
 from research.synthetic_market.synthetic_manifold_analysis import _evaluate_regression_probe, _train_regression_probe
 
 

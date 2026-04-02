@@ -1,3 +1,11 @@
+"""Helpers for pooled capture outputs.
+
+These utilities convert full-sequence residual/router captures into pooled
+row-level and section-level tensors and save them in safetensors format.
+They are reused by specialized capture and analysis paths and are not a
+workflow entrypoint on their own.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path

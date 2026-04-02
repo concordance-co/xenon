@@ -10,7 +10,7 @@
 ## Step 1: Run Capture
 
 ```bash
-uv run --extra modal modal run pipelines/interp/modal_vllm_capture.py --mode conflict-probe --experiment-id conflict_probe_v0 --batch-size 10 --gpu A100-80GB
+uv run --extra modal modal run pipelines/interp/modal_vllm_orchestrator.py --mode conflict-probe --experiment-id conflict_probe_v0 --batch-size 10 --gpu A100-80GB
 ```
 
 375 examples × last_token pooling × all 48 layers. Output: `(48, 2048)` per example on `xenon-data` volume at `/data/activations/conflict_probe/conflict_probe_v0/`.

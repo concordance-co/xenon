@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pipelines.interp.counterfactual.structure import (
+from research.counterfactual.structure import (
     _align_three_matrices_by_id,
     analyze_position_subspace,
     collect_concat_groups,

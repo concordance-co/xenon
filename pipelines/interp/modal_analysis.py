@@ -1,19 +1,14 @@
-"""Modal wrapper for running analysis on the xenon-data volume.
+"""Canonical Modal analysis orchestrator.
 
-Mounts the volume read-only, runs probes/expert analysis/PCA on cheap CPU instances.
-Results are saved to /data/analysis_results/ on the volume.
-
-Usage (via wrapper script):
-    ./scripts/modal_capture.sh analyze --mode probe --target decision_type
-    ./scripts/modal_capture.sh analyze --mode all --target decision_type
-
-Or directly:
-    uv run --extra analysis --extra modal modal run pipelines/interp/modal_analysis.py \
-        --mode probe --target decision_type
+This module runs the shared analysis engine against activation artifacts stored
+on the Modal volume, writes analysis outputs back to the volume, and exports
+workflow labels from Neon when needed. It is the execution-plane counterpart to
+the local engine in ``pipelines.interp.analysis``.
 """
 
 import asyncio
 import inspect
+from pathlib import Path
 
 import modal
 
@@ -58,19 +53,43 @@ def run_analysis(
     n_folds: int = 5,
     seed: int = 42,
     limit: int = 0,
+    relation_name: str = "",
+    activations_subdir: str = "",
+    output_subdir: str = "",
+    labels_subdir: str = "",
 ) -> dict:
     """Run analysis on Modal with volume-mounted activations."""
-    from pathlib import Path
-
     from pipelines.interp.analysis import AnalysisConfig, dispatch
+    from pipelines.db import connect_neon, ensure_schema
+    from pipelines.workflows import export_publication_labels
 
     parsed_layers: list[int] | None = None
     if layers_csv:
         parsed_layers = [int(x.strip()) for x in layers_csv.split(",")]
 
+    activations_dir = Path("/data/activations")
+    if activations_subdir:
+        activations_dir = activations_dir / activations_subdir
+
+    output_dir = Path("/data/analysis_results")
+    if output_subdir:
+        output_dir = output_dir / output_subdir
+
+    labels_path: Path | None = None
+    if relation_name:
+        labels_path = Path("/data/workflow_labels")
+        if labels_subdir:
+            labels_path = labels_path / labels_subdir
+        labels_path.mkdir(parents=True, exist_ok=True)
+        labels_path = labels_path / f"{relation_name}.parquet"
+        with connect_neon(autocommit=True) as conn:
+            ensure_schema(conn)
+            export_publication_labels(conn, relation_name=relation_name, output_path=labels_path)
+
     config = AnalysisConfig(
-        activations_dir=Path("/data/activations"),
-        output_dir=Path("/data/analysis_results"),
+        activations_dir=activations_dir,
+        labels_path=labels_path,
+        output_dir=output_dir,
         mode=mode,
         target=target,
         data_source=data_source,
@@ -108,7 +127,7 @@ def run_counterfactual_analysis(
     """
     from pathlib import Path
 
-    from pipelines.interp.counterfactual.analysis import (
+    from research.counterfactual.analysis import (
         CounterfactualAnalysisConfig,
         apply_decision_rules,
         run_experiment_a,
@@ -203,7 +222,7 @@ def run_counterfactual_structure_analysis(
     """Run pre/post counterfactual structure analysis on Modal."""
     from pathlib import Path
 
-    from pipelines.interp.counterfactual.structure import (
+    from research.counterfactual.structure import (
         CounterfactualStructureConfig,
         run_counterfactual_structure,
     )
@@ -250,7 +269,7 @@ def run_decision_structure_pooling(
     """Pool full-sequence real-decision captures into row/section structure states."""
     from pathlib import Path
 
-    from pipelines.interp.decision_structure import (
+    from research.decision_structure import (
         DecisionStructureConfig,
         run_decision_structure_pooling as _run_pooling,
     )
@@ -294,7 +313,7 @@ def run_decision_structure_pooling_parallel(
 
     from modal.functions import FunctionCall
 
-    from pipelines.interp.decision_structure import (
+    from research.decision_structure import (
         clear_decision_structure_shards,
         merge_decision_structure_shards,
     )
@@ -366,7 +385,7 @@ def run_decision_structure_analysis_modal(
     """Analyze pooled real-decision structure activations on Modal."""
     from pathlib import Path
 
-    from pipelines.interp.decision_structure.analysis import (
+    from research.decision_structure.analysis import (
         DecisionStructureAnalysisConfig,
         run_decision_structure_analysis,
     )
@@ -405,7 +424,7 @@ def run_decision_structure_sanity_modal(
     """Run a probe-vs-raw-metric sanity check on intact Modal pooled residuals."""
     from pathlib import Path
 
-    from pipelines.interp.decision_structure.sanity import (
+    from research.decision_structure.sanity import (
         DecisionStructureSanityConfig,
         run_decision_structure_sanity,
     )
@@ -541,6 +560,10 @@ def main(
     n_folds: int = 5,
     seed: int = 42,
     limit: int = 0,
+    relation_name: str = "",
+    activations_subdir: str = "",
+    output_subdir: str = "",
+    labels_subdir: str = "",
     # Counterfactual args
     experiment_id: str = "default",
     n_bootstrap: int = 1000,
@@ -652,6 +675,10 @@ def main(
             n_folds=n_folds,
             seed=seed,
             limit=limit,
+            relation_name=relation_name,
+            activations_subdir=activations_subdir,
+            output_subdir=output_subdir,
+            labels_subdir=labels_subdir,
         )
         print(f"\nAnalysis complete. Results: {results}")
 

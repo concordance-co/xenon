@@ -1,20 +1,17 @@
-"""Phase 4: Analysis of captured MoE router logits and residual stream activations.
+"""Shared analysis engine for captured activations.
 
-Runs linear probes, expert specialization analysis, and PCA visualization to decode
-trading decisions, risk tolerance, and profitability from Qwen3's routing patterns.
-
-Core logic is path-agnostic — works with local paths or Modal volume mounts.
-
-Usage (local, after downloading activations):
-    uv run --extra analysis -m pipelines.interp.analysis --mode probe --target decision_type
-    uv run --extra analysis -m pipelines.interp.analysis --mode experts --target decision_type
-    uv run --extra analysis -m pipelines.interp.analysis --mode pca --target decision_type
-    uv run --extra analysis -m pipelines.interp.analysis --mode all --target decision_type
+This module loads activation tensors plus labels and runs generic analysis
+methods such as linear probes, expert summaries, and PCA. It is intentionally
+path-agnostic so the same engine can be used:
+- locally for debugging or ad hoc analysis
+- on Modal via ``pipelines.interp.modal_analysis``
+- by workflow-driven CLI runs
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -39,6 +36,7 @@ class AnalysisConfig:
     layers: list[int] | None = None
     limit: int | None = None
     run_subdir: bool = False
+    seed: int = 42
 
     def run_dir(self) -> Path:
         """Per-run output directory: output_dir / YYYYMMDD_HHMMSS_{target}_{mode}"""
@@ -46,7 +44,6 @@ class AnalysisConfig:
         ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         name = f"{ts}_{self.target}_{self.mode}"
         return self.output_dir / name
-    seed: int = 42
 
 
 # ---------------------------------------------------------------------------
@@ -1116,6 +1113,13 @@ def _needs_compact(config: AnalysisConfig) -> bool:
     return not any(compact_dir.glob(pattern))
 
 
+def _write_results_json(output_dir: Path, results: dict) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_path = output_dir / "results.json"
+    out_path.write_text(json.dumps(results, indent=2, default=str))
+    return out_path
+
+
 def dispatch(config: AnalysisConfig) -> dict:
     """Run analysis based on config.mode. Returns results dict."""
     # Compact writes to the base output_dir; everything else gets a per-run subdir
@@ -1127,6 +1131,7 @@ def dispatch(config: AnalysisConfig) -> dict:
 
     if config.mode == "compact":
         results["compact"] = run_compact(config)
+        _write_results_json(config.output_dir, results)
         return results
 
     # Auto-compact if compact files don't exist yet
@@ -1144,6 +1149,7 @@ def dispatch(config: AnalysisConfig) -> dict:
         run_pca(config)
         results["pca"] = True
 
+    _write_results_json(config.output_dir, results)
     return results
 
 

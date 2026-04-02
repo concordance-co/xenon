@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from pipelines.interp.decision_structure.manifest import CohortRule, ManifestPlan
+from pipelines.ingest.manifest import CohortRule, ManifestPlan
 
 
 @dataclass(slots=True)

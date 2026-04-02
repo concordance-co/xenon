@@ -11,7 +11,7 @@ from scipy.stats import spearmanr
 from sklearn.linear_model import Ridge
 
 from pipelines.db import connect_neon
-from pipelines.interp.counterfactual.analysis import preload_all_activations
+from research.counterfactual.analysis import preload_all_activations
 
 
 STATE_KEYS = (

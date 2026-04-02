@@ -14,7 +14,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from pipelines.interp.pooling import _extract_system_user, _parse_messages
-from pipelines.interp.decision_tools import resolve_tool_schema_mode
+from pipelines.interp.tool_schemas import resolve_tool_schema_mode
 from pipelines.interp.patching.basis import default_phase17_market_patch_basis
 from pipelines.interp.synthetic.pairing import build_matched_metric_examples
 from research.synthetic_market.synthetic_market_patching_runner import (
@@ -23,7 +23,7 @@ from research.synthetic_market.synthetic_market_patching_runner import (
     _parse_component_indices_spec,
 )
 from pipelines.interp.synthetic.structure import find_synthetic_section_boundaries
-from pipelines.interp.vllm_capture import (
+from pipelines.interp.modal_vllm_engine import (
     VLLMCaptureConfig,
     _capture_one_vllm,
     _create_llm,

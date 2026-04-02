@@ -21,6 +21,91 @@ def _json_literal(value: Any) -> str:
     return json.dumps(value, default=str)
 
 
+def _format_float(value: Any, digits: int = 3) -> str:
+    if value is None:
+        return "n/a"
+    try:
+        return f"{float(value):.{digits}f}"
+    except (TypeError, ValueError):
+        return "n/a"
+
+
+def _probe_result_summary(results: dict[str, Any]) -> dict[str, Any] | None:
+    probe_rows = results.get("probe")
+    if not isinstance(probe_rows, list) or not probe_rows:
+        return None
+
+    normalized: list[dict[str, Any]] = []
+    for row in probe_rows:
+        if not isinstance(row, dict):
+            continue
+        if row.get("accuracy_mean") is None:
+            continue
+        normalized.append(row)
+    if not normalized:
+        return None
+
+    ranked = sorted(normalized, key=lambda row: float(row.get("accuracy_mean", float("-inf"))), reverse=True)
+    best = ranked[0]
+    baseline_majority = best.get("baseline_majority")
+    accuracy_mean = best.get("accuracy_mean")
+    lift_vs_majority = None
+    if baseline_majority is not None and accuracy_mean is not None:
+        lift_vs_majority = float(accuracy_mean) - float(baseline_majority)
+
+    if lift_vs_majority is None:
+        main_read = "The best layer is reported below, but a majority-baseline comparison is unavailable."
+    elif lift_vs_majority > 0:
+        main_read = (
+            "The best probe layer beats the majority baseline, so this setup carries a usable linear signal "
+            "for the workflow label."
+        )
+    else:
+        main_read = (
+            "The best probe layer does not beat the majority baseline, so this run does not support a useful "
+            "linear readout for the workflow label."
+        )
+
+    return {
+        "kind": "probe",
+        "n_layers": len(normalized),
+        "main_read": main_read,
+        "best_layer": best.get("layer"),
+        "best_accuracy_mean": accuracy_mean,
+        "best_accuracy_std": best.get("accuracy_std"),
+        "best_balanced_accuracy": best.get("balanced_accuracy"),
+        "baseline_majority": baseline_majority,
+        "lift_vs_majority": lift_vs_majority,
+        "top_layers": [
+            {
+                "layer": row.get("layer"),
+                "accuracy_mean": row.get("accuracy_mean"),
+                "accuracy_std": row.get("accuracy_std"),
+                "balanced_accuracy": row.get("balanced_accuracy"),
+                "selectivity": row.get("selectivity"),
+            }
+            for row in ranked[:8]
+        ],
+    }
+
+
+def _analysis_artifacts(analysis_config: dict[str, Any], analysis_result: dict[str, Any]) -> dict[str, Any]:
+    output_dir = analysis_result.get("output_dir")
+    if not output_dir:
+        return {}
+
+    output_path = Path(str(output_dir))
+    artifacts = {
+        "results_json": str(output_path / "results.json"),
+    }
+    if analysis_config.get("mode") == "probe":
+        target = analysis_config.get("target")
+        data_source = analysis_config.get("data_source")
+        if target and data_source:
+            artifacts["primary_parquet"] = str(output_path / f"probe_{target}_{data_source}.parquet")
+    return artifacts
+
+
 def _default_report_dir(spec: dict[str, Any], analysis_run: dict[str, Any]) -> Path:
     return Path("data/reports/workflows") / str(spec["id"]) / str(analysis_run["id"])
 
@@ -111,6 +196,7 @@ def _build_summary(
         },
         "capture": {
             "activations_dir": capture_result.get("activations_dir") or analysis_config.get("activations_dir"),
+            "remote_activations_path": capture_result.get("remote_activations_path"),
             "publication": capture_result.get("publication") or analysis_result.get("publication"),
         },
         "analysis": {
@@ -122,7 +208,10 @@ def _build_summary(
             "layers": analysis_config.get("layers"),
             "labels_path": analysis_result.get("labels_path"),
             "output_dir": analysis_result.get("output_dir"),
+            "remote_output_path": analysis_result.get("remote_output_path"),
             "results": analysis_result.get("results"),
+            "result_summary": _probe_result_summary(dict(analysis_result.get("results") or {})),
+            "artifacts": _analysis_artifacts(analysis_config, analysis_result),
         },
     }
 
@@ -132,6 +221,81 @@ def _write_typst_report(report_path: Path, summary: dict[str, Any]) -> None:
     publication = dict(summary.get("publication") or {})
     analysis = dict(summary.get("analysis") or {})
     runs = dict(summary.get("runs") or {})
+    result_summary = dict(analysis.get("result_summary") or {})
+    artifacts = dict(analysis.get("artifacts") or {})
+
+    probe_summary_section = ""
+    if result_summary.get("kind") == "probe":
+        top_rows = []
+        for row in result_summary.get("top_layers") or []:
+            top_rows.extend(
+                [
+                    f'  [`{_safe_text(row.get("layer") or "n/a")}`],',
+                    f' [`{_safe_text(_format_float(row.get("accuracy_mean")))}`],',
+                    f' [`{_safe_text(_format_float(row.get("accuracy_std")))}`],',
+                    f' [`{_safe_text(_format_float(row.get("balanced_accuracy")))}`],',
+                    f' [`{_safe_text(_format_float(row.get("selectivity")))}`],',
+                ]
+            )
+        top_rows_text = "\n".join(top_rows)
+        probe_summary_section = f"""
+= Executive Read
+
+#block(
+  width: 100%,
+  inset: (left: 14pt, top: 12pt, bottom: 12pt, right: 12pt),
+  stroke: (left: 3pt + rgb("#B56662"), top: none, right: none, bottom: none),
+  fill: rgb("#FAF5F3"),
+)[
+  #text(size: 7.5pt, fill: rgb("#B56662"), weight: "bold", tracking: 0.08em)[MAIN READ]
+  #v(0.3em)
+  #text(size: 12.5pt, weight: "medium")[{_safe_text(result_summary.get("main_read") or "n/a")}]
+]
+
+= Main Quantitative Findings
+
+#grid(
+  columns: (1fr, 1fr, 1fr, 1fr),
+  gutter: 8pt,
+  stat("Best Layer", "{_safe_text(result_summary.get("best_layer") or "n/a")}"),
+  stat("Best Accuracy", "{_safe_text(_format_float(result_summary.get("best_accuracy_mean")))}"),
+  stat("Majority Baseline", "{_safe_text(_format_float(result_summary.get("baseline_majority")))}"),
+  stat("Lift vs Baseline", "{_safe_text(_format_float(result_summary.get("lift_vs_majority")))}"),
+)
+
+#v(8pt)
+
+Why this matters:
+
+- best-layer balanced accuracy is `{_safe_text(_format_float(result_summary.get("best_balanced_accuracy")))}`
+- run covers `{_safe_text(result_summary.get("n_layers") or "n/a")}` probed layers
+- best-layer fold std is `{_safe_text(_format_float(result_summary.get("best_accuracy_std")))}`
+
+= Top Layers
+
+#table(
+  columns: (1fr, 1fr, 1fr, 1fr, 1fr),
+  align: (left, right, right, right, right),
+  inset: 6pt,
+  stroke: 0.4pt,
+  fill: (x, y) => if y == 0 {{ rgb("#DDEBF0") }} else if calc.odd(y) {{ rgb("#F8FBFC") }} else {{ white }},
+
+  [*Layer*], [*Accuracy*], [*Std*], [*Balanced*], [*Selectivity*],
+{top_rows_text}
+)
+"""
+
+    artifacts_section = ""
+    if artifacts:
+        artifact_lines = []
+        if artifacts.get("results_json"):
+            artifact_lines.append(f'- Results JSON: `{_safe_text(artifacts["results_json"])}`')
+        if artifacts.get("primary_parquet"):
+            artifact_lines.append(f'- Primary parquet: `{_safe_text(artifacts["primary_parquet"])}`')
+        if analysis.get("remote_output_path"):
+            artifact_lines.append(f'- Remote output: `{_safe_text(analysis.get("remote_output_path"))}`')
+        artifacts_section = "\n".join(["= Artifacts", "", *artifact_lines])
+
     report_text = f"""#set page(
   paper: "us-letter",
   margin: (x: 0.72in, y: 0.78in),
@@ -143,7 +307,7 @@ def _write_typst_report(report_path: Path, summary: dict[str, Any]) -> None:
 #let navy = rgb("#16324F")
 #let teal = rgb("#2E6A69")
 #let muted = rgb("#5E6F82")
-#let line = rgb("#D6DEE3")
+#let divider = rgb("#D6DEE3")
 
 #show heading.where(level: 1): it => block(
   above: 1.1em,
@@ -158,7 +322,7 @@ def _write_typst_report(report_path: Path, summary: dict[str, Any]) -> None:
 )
 
 #let stat(label, value) = block(
-  stroke: (paint: line, thickness: 0.7pt),
+  stroke: (paint: divider, thickness: 0.7pt),
   radius: 10pt,
   inset: 12pt,
   width: 100%,
@@ -168,13 +332,28 @@ def _write_typst_report(report_path: Path, summary: dict[str, Any]) -> None:
   #text(size: 17pt, fill: navy, weight: "bold")[#value]
 ]
 
-#heading(level: 1)[Workflow Report]
-
-#text(size: 11pt, fill: muted)[
-  Generated {_safe_text(summary.get("generated_at"))}
+#align(left)[
+  #text(size: 9pt, fill: rgb("#B33A2A"), tracking: 0.08em, weight: "medium")[XENON INTERPRETABILITY]
+  #v(0.3em)
+  #text(size: 22pt, weight: "bold")[{_safe_text(spec.get("name") or spec.get("id") or "Workflow Report")}]
+  #v(0.4em)
+  #text(size: 11pt, fill: muted)[
+    Workflow report generated {_safe_text(summary.get("generated_at"))}. This report summarizes the latest successful dataset, capture, and analysis chain for the selected workflow spec.
+  ]
+  #v(0.8em)
+  #line(length: 100%, stroke: 1.5pt + black)
+  #v(0.5em)
+  #grid(
+    columns: (1fr, 1fr, 1fr, 1fr),
+    gutter: 8pt,
+    [#text(size: 7.5pt, fill: muted, weight: "bold")[SPEC]\\ #text(size: 9pt)[{_safe_text(spec.get("id") or "n/a")}]],
+    [#text(size: 7.5pt, fill: muted, weight: "bold")[PUBLICATION]\\ #text(size: 9pt)[{_safe_text(publication.get("relation_name") or "n/a")}]],
+    [#text(size: 7.5pt, fill: muted, weight: "bold")[ROWS]\\ #text(size: 9pt)[{_safe_text(publication.get("row_count") or "n/a")}]],
+    [#text(size: 7.5pt, fill: muted, weight: "bold")[ANALYSIS RUN]\\ #text(size: 9pt)[{_safe_text(runs.get("analysis") or "n/a")}]],
+  )
 ]
 
-#v(10pt)
+#v(12pt)
 
 #grid(
   columns: (1fr, 1fr, 1fr),
@@ -184,7 +363,7 @@ def _write_typst_report(report_path: Path, summary: dict[str, Any]) -> None:
   stat("Rows", "{_safe_text(publication.get("row_count") or "n/a")}"),
 )
 
-#heading(level: 2)[Workflow]
+= Workflow
 
 - Spec id: `{_safe_text(spec.get("id") or "n/a")}`
 - Version: `{_safe_text(spec.get("version") or "n/a")}`
@@ -192,7 +371,7 @@ def _write_typst_report(report_path: Path, summary: dict[str, Any]) -> None:
 - Capture run: `{_safe_text(runs.get("capture") or "n/a")}`
 - Analysis run: `{_safe_text(runs.get("analysis") or "n/a")}`
 
-#heading(level: 2)[Analysis]
+= Analysis Setup
 
 - Mode: `{_safe_text(analysis.get("mode") or "n/a")}`
 - Target: `{_safe_text(analysis.get("target") or "n/a")}`
@@ -200,12 +379,8 @@ def _write_typst_report(report_path: Path, summary: dict[str, Any]) -> None:
 - Pooling: `{_safe_text(analysis.get("pooling") or "n/a")}`
 - Labels parquet: `{_safe_text(analysis.get("labels_path") or "n/a")}`
 - Output dir: `{_safe_text(analysis.get("output_dir") or "n/a")}`
-
-#heading(level: 2)[Result JSON]
-
-```json
-{_json_literal(analysis.get("results") or {})}
-```
+{probe_summary_section}
+{artifacts_section}
 """
     report_path.write_text(report_text)
 

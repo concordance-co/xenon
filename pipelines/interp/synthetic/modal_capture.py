@@ -62,7 +62,7 @@ class SyntheticVLLMCaptureWorker:
         from transformers import AutoConfig, AutoTokenizer
         from vllm import LLM
 
-        from pipelines.interp.vllm_capture import _init_router_capture_on_model
+        from pipelines.interp.modal_vllm_engine import _init_router_capture_on_model
 
         local_path = f"/models/{self.model_id}"
         print(f"Loading tokenizer from {local_path}...")
@@ -130,13 +130,13 @@ class SyntheticVLLMCaptureWorker:
         from datetime import UTC, datetime
         from pathlib import Path
 
-        from pipelines.interp.capture import (
+        from pipelines.interp.local_capture import (
             _apply_pooling,
             _parse_messages,
             _save_activations,
             _save_router,
         )
-        from pipelines.interp.vllm_capture import VLLMCaptureConfig, _capture_one_vllm
+        from pipelines.interp.modal_vllm_engine import VLLMCaptureConfig, _capture_one_vllm
 
         output_dir = Path(f"/data/activations/{phase_name}")
         residual_dir = output_dir / "residual_stream"

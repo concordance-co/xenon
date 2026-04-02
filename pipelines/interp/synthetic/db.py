@@ -8,10 +8,35 @@ from typing import Any
 import pyarrow.parquet as pq
 
 from pipelines.db import connect_neon
-from pipelines.interp.cohort_selection import (
-    validate_order_mode,
-    validate_relation_name,
-)
+
+_RELATION_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_ORDER_MODES = {
+    "log_id",
+    "created_at_desc",
+    "capture_priority_desc",
+    "selection_rank_asc",
+    "hash",
+}
+
+
+def validate_relation_name(name: str | None) -> str | None:
+    if name is None:
+        return None
+    text = name.strip()
+    if not text:
+        return None
+    if not _RELATION_NAME_RE.fullmatch(text):
+        raise ValueError(f"Invalid relation name: {name!r}")
+    return text
+
+
+def validate_order_mode(mode: str) -> str:
+    text = mode.strip().lower()
+    if text not in _ORDER_MODES:
+        raise ValueError(
+            f"Invalid order mode: {mode!r}. Expected one of {sorted(_ORDER_MODES)}"
+        )
+    return text
 
 
 SCHEMA_SQL_PATH = Path(__file__).resolve().parents[2] / "sql" / "synthetic_market_phase1.sql"

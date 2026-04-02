@@ -16,7 +16,7 @@ def load_prompts_from_db(
         raise ValueError("tokenizer is required for boundary computation")
 
     from pipelines.db import connect_neon
-    from pipelines.interp.counterfactual import (
+    from research.counterfactual import (
         CanonicalPrompt,
         Snapshot,
         build_market_rows,

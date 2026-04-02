@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pipelines.interp.manifold_dataset import (
+from pipelines.ingest.manifold_export import (
     build_asset_records,
     build_manifold_tables,
     build_pairwise_records,

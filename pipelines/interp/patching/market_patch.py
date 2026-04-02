@@ -1,6 +1,6 @@
 """Worker-side market-section patching utilities for vLLM Qwen models.
 
-This module follows the same pattern as :mod:`pipelines.interp.vllm_qwen3_moe`:
+This module follows the same pattern as :mod:`pipelines.interp.modal_qwen_moe_hooks`:
 it installs wrapped forwards inside vLLM workers in eager mode, but instead of
 recording router logits it applies tokenwise interventions to a targeted market
 token span.

@@ -28,7 +28,7 @@ from pipelines.interp.synthetic.structure import (
     find_synthetic_row_boundaries,
     find_synthetic_section_boundaries,
 )
-from pipelines.interp.vllm_capture import (
+from pipelines.interp.modal_vllm_engine import (
     VLLMCaptureConfig,
     _capture_one_vllm,
     _create_llm,

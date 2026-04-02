@@ -12,7 +12,7 @@ import numpy as np
 from safetensors.numpy import load_file
 
 from pipelines.db import connect_neon
-from pipelines.interp.counterfactual.analysis import evaluate_probe_per_snapshot, train_probe
+from research.counterfactual.analysis import evaluate_probe_per_snapshot, train_probe
 
 
 def _mean(values: list[float]) -> float | None:

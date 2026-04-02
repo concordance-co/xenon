@@ -4,6 +4,8 @@ The canonical Xenon workflow is:
 
 `workflow spec -> published Neon dataset relation -> capture run -> analysis run -> report`
 
+For real jobs, capture and analysis run on Modal. The CLI/spec layer is the control surface.
+
 ## 1. Create Or Update A Spec
 
 Checked-in spec snapshots should live under:

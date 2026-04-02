@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from pipelines.db import connect_neon
-from pipelines.interp.counterfactual import (
+from research.counterfactual import (
     MARKET_HEADER,
     build_market_rows,
     build_settings_edited_variant,

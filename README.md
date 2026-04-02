@@ -16,6 +16,8 @@ uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir data/an
 uv run -m pipelines.cli report build --analysis-run <run_id>
 ```
 
+For real jobs, capture and analysis run on Modal. The CLI/spec layer is the control surface.
+
 ## Repo Map
 
 ```text
@@ -42,6 +44,7 @@ Rules:
 - `research/` is effort-local code and deliverables.
 - Platform must not depend on `research/`.
 - Backend/UI are legacy surfaces and are no longer the documented path.
+- `archive/` folders are historical only. Treat them as effectively deleted unless you are explicitly digging through old work.
 
 ## Workflow Commands
 
@@ -101,11 +104,4 @@ XENON_NEON_DATABASE_URL=postgresql://...
 
 ## Legacy Surfaces
 
-These remain in the repo for transition or archival reasons, but are not the recommended path:
-
-- `pipelines/backend/`
-- `pipelines/dashboard-ui/`
-- `pipelines/dashboard.py`
-- `scripts/xenon_backend.sh`
-
-Use `pipelines.cli` instead.
+`pipelines.cli` is the only recommended path.

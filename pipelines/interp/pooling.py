@@ -1,3 +1,10 @@
+"""Prompt parsing and pooled-state helpers.
+
+This module reconstructs prompt sections from stored messages, renders them
+through the tokenizer, maps character spans back to token spans, and pools
+residual activations into row-level and section-level summaries.
+"""
+
 from __future__ import annotations
 
 import json

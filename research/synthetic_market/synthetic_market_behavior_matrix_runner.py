@@ -11,7 +11,7 @@ import gc
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.interp.decision_tools import resolve_tool_schema_mode
+from pipelines.interp.tool_schemas import resolve_tool_schema_mode
 from pipelines.interp.patching.basis import default_phase17_market_patch_basis
 from research.synthetic_market.synthetic_market_behavior_battery import SyntheticMarketBehaviorPlanItem
 from research.synthetic_market.synthetic_market_behavior_runner import (
@@ -28,7 +28,7 @@ from research.synthetic_market.synthetic_market_behavior_runner import (
     _run_generation_batch,
 )
 from research.synthetic_market.synthetic_market_patching_runner import _build_patch_spec
-from pipelines.interp.vllm_capture import (
+from pipelines.interp.modal_vllm_engine import (
     VLLMCaptureConfig,
     _create_llm,
     _init_market_patching_on_model,
