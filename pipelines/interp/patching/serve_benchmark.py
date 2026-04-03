@@ -594,7 +594,7 @@ def run_customop_vllm_benchmark(
 ) -> dict[str, Any]:
     from transformers import AutoTokenizer
 
-    from research.synthetic_market.synthetic_market_behavior_runner import _destroy_llm
+    from projects.synthetic_market.synthetic_market_behavior_runner import _destroy_llm
     from pipelines.interp.modal_vllm_engine import (
         VLLMCaptureConfig,
         _create_llm,

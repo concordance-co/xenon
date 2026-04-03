@@ -1,7 +1,7 @@
 # Scripts
 
 The `scripts/` tree is for one-off helpers, dataset builders, manifest builders,
-and research-specific chart generation.
+and project-specific chart generation.
 
 The canonical operator surface is not `scripts/`; it is:
 
@@ -11,14 +11,8 @@ uv run -m pipelines.cli ...
 
 ## Layout
 
-- `scripts/db/`
-  - Neon helpers and one-off DB migrations
-- `scripts/manifests/`
-  - capture manifest builders and reconciliation helpers
-- `scripts/research/`
-  - effort-specific research payload builders
 - `scripts/archive/`
-  - archived phase runners, historical dataset prep helpers, and old chart/report generators
+  - archived phase runners, old DB/admin helpers, historical dataset prep helpers, and old chart/report generators
 
 ## Top-Level Scripts
 

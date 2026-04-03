@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from research.research_kickoff.core import (
+from projects.research_kickoff.core import (
     actionability_cell,
     annotate_kickoff_row,
     blocked_valence_manifest_plan,

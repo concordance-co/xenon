@@ -20,7 +20,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.ingest.interp_query import build_interp_example_query
+from pipelines.datasets.interp_query import build_interp_example_query
 
 _RELATION_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 

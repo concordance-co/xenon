@@ -9,7 +9,7 @@ The canonical flow is:
 The canonical operator surface is the CLI:
 
 ```bash
-uv run -m pipelines.cli spec create --file research/<effort>/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
 uv run -m pipelines.cli dataset build --spec <spec_id>
 uv run -m pipelines.cli capture run --spec <spec_id> --output-dir data/activations/<run_name>
 uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir data/analysis_results/<run_name>
@@ -26,10 +26,10 @@ pipelines/
   workflows.py           # workflow spec/run/publication registry
   reporting.py           # generic workflow report builder
   ingest/                # Terminal Markets API -> Neon
-  interp/                # reusable prep/capture/analysis/runtime code
-  synthetic/             # reusable synthetic dataset builders
+  datasets/              # dataset build, labeling, publication, synthetic generation
+  interp/                # reusable capture/analysis runtime code
 
-research/
+projects/
   <effort>/
     specs/               # checked-in workflow spec snapshots
     notes/
@@ -41,8 +41,7 @@ research/
 Rules:
 
 - `pipelines/` is reusable platform code.
-- `research/` is effort-local code and deliverables.
-- Platform must not depend on `research/`.
+- `projects/` is effort-local code and deliverables.
 - Backend/UI are legacy surfaces and are no longer the documented path.
 - `archive/` folders are historical only. Treat them as effectively deleted unless you are explicitly digging through old work.
 
@@ -51,7 +50,7 @@ Rules:
 Create or update a workflow spec in Neon:
 
 ```bash
-uv run -m pipelines.cli spec create --file research/<effort>/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
 uv run -m pipelines.cli spec list
 uv run -m pipelines.cli spec show --id <spec_id>
 ```

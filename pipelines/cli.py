@@ -78,7 +78,7 @@ def _load_spec_from_args(spec_id: str | None, file_path: str | None) -> dict[str
 
 
 def _run_prepare_passthrough(argv: list[str]) -> int:
-    from pipelines.ingest.prepare import main
+    from pipelines.datasets.prepare import main
 
     return int(main(argv) or 0)
 

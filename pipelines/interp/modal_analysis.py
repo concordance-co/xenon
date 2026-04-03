@@ -15,7 +15,7 @@ import modal
 app = modal.App("xenon-analysis")
 
 volume = modal.Volume.from_name("xenon-data", create_if_missing=True)
-research_volume = modal.Volume.from_name("xenon-research-data", create_if_missing=True)
+projects_volume = modal.Volume.from_name("xenon-research-data", create_if_missing=True)
 model_volume = modal.Volume.from_name("xenon-models", create_if_missing=True)
 
 neon_secret = modal.Secret.from_name("xenon-neon")
@@ -127,7 +127,7 @@ def run_counterfactual_analysis(
     """
     from pathlib import Path
 
-    from research.counterfactual.analysis import (
+    from projects.counterfactual.analysis import (
         CounterfactualAnalysisConfig,
         apply_decision_rules,
         run_experiment_a,
@@ -222,7 +222,7 @@ def run_counterfactual_structure_analysis(
     """Run pre/post counterfactual structure analysis on Modal."""
     from pathlib import Path
 
-    from research.counterfactual.structure import (
+    from projects.counterfactual.structure import (
         CounterfactualStructureConfig,
         run_counterfactual_structure,
     )
@@ -269,7 +269,7 @@ def run_decision_structure_pooling(
     """Pool full-sequence real-decision captures into row/section structure states."""
     from pathlib import Path
 
-    from research.decision_structure import (
+    from projects.decision_structure import (
         DecisionStructureConfig,
         run_decision_structure_pooling as _run_pooling,
     )
@@ -313,7 +313,7 @@ def run_decision_structure_pooling_parallel(
 
     from modal.functions import FunctionCall
 
-    from research.decision_structure import (
+    from projects.decision_structure import (
         clear_decision_structure_shards,
         merge_decision_structure_shards,
     )
@@ -385,7 +385,7 @@ def run_decision_structure_analysis_modal(
     """Analyze pooled real-decision structure activations on Modal."""
     from pathlib import Path
 
-    from research.decision_structure.analysis import (
+    from projects.decision_structure.analysis import (
         DecisionStructureAnalysisConfig,
         run_decision_structure_analysis,
     )
@@ -424,7 +424,7 @@ def run_decision_structure_sanity_modal(
     """Run a probe-vs-raw-metric sanity check on intact Modal pooled residuals."""
     from pathlib import Path
 
-    from research.decision_structure.sanity import (
+    from projects.decision_structure.sanity import (
         DecisionStructureSanityConfig,
         run_decision_structure_sanity,
     )
@@ -444,7 +444,7 @@ def run_decision_structure_sanity_modal(
 
 
 @app.function(
-    volumes={"/data": volume, "/research": research_volume},
+    volumes={"/data": volume, "/projects": projects_volume},
     image=image,
     timeout=7200,
     cpu=16,
@@ -460,7 +460,7 @@ def run_research_rerun_analysis_modal(
     """Analyze real-prompt rerun captures against real decision-structure probes."""
     from pathlib import Path
 
-    from research.research_rerun.analysis import (
+    from projects.research_rerun.analysis import (
         ResearchRerunAnalysisConfig,
         run_research_rerun_analysis,
     )
@@ -468,20 +468,20 @@ def run_research_rerun_analysis_modal(
     config = ResearchRerunAnalysisConfig(
         decision_structure_dir=Path("/data/activations/decision_structure"),
         decision_results_path=Path("/data/analysis_results/decision_structure"),
-        research_activations_dir=Path("/research/activations/research_rerun"),
-        output_dir=Path("/research/analysis_results/research_rerun"),
+        research_activations_dir=Path("/projects/activations/research_rerun"),
+        output_dir=Path("/projects/analysis_results/research_rerun"),
         experiment_id=experiment_id,
         seed=seed,
         test_fraction=test_fraction,
         num_workers=num_workers,
     )
     results = run_research_rerun_analysis(config)
-    research_volume.commit()
+    projects_volume.commit()
     return results
 
 
 @app.function(
-    volumes={"/data": volume, "/research": research_volume},
+    volumes={"/data": volume, "/projects": projects_volume},
     image=image,
     timeout=7200,
     cpu=16,
@@ -497,26 +497,26 @@ def run_research_risk_geometry_analysis_modal(
     """Analyze real DX risk-ladder reruns with the set-geometry lens."""
     from pathlib import Path
 
-    from research.research_rerun.geometry import (
+    from projects.research_rerun.geometry import (
         ResearchRiskGeometryConfig,
         run_research_risk_geometry_analysis,
     )
 
     config = ResearchRiskGeometryConfig(
-        research_activations_dir=Path("/research/activations/research_rerun"),
-        output_dir=Path("/research/analysis_results/research_risk_geometry"),
+        research_activations_dir=Path("/projects/activations/research_rerun"),
+        output_dir=Path("/projects/analysis_results/research_risk_geometry"),
         experiment_id=experiment_id,
         seed=seed,
         test_fraction=test_fraction,
         num_workers=num_workers,
     )
     results = run_research_risk_geometry_analysis(config)
-    research_volume.commit()
+    projects_volume.commit()
     return results
 
 
 @app.function(
-    volumes={"/data": volume, "/research": research_volume},
+    volumes={"/data": volume, "/projects": projects_volume},
     image=image,
     timeout=7200,
     cpu=16,
@@ -532,21 +532,21 @@ def run_research_postmarket_geometry_analysis_modal(
     """Analyze real DX post-market risk and affordance ladders."""
     from pathlib import Path
 
-    from research.research_rerun.postmarket_geometry import (
+    from projects.research_rerun.postmarket_geometry import (
         PostMarketGeometryConfig,
         run_postmarket_geometry_analysis,
     )
 
     config = PostMarketGeometryConfig(
-        research_activations_dir=Path("/research/activations/research_rerun"),
-        output_dir=Path("/research/analysis_results/research_postmarket_geometry"),
+        research_activations_dir=Path("/projects/activations/research_rerun"),
+        output_dir=Path("/projects/analysis_results/research_postmarket_geometry"),
         experiment_id=experiment_id,
         seed=seed,
         test_fraction=test_fraction,
         num_workers=num_workers,
     )
     results = run_postmarket_geometry_analysis(config)
-    research_volume.commit()
+    projects_volume.commit()
     return results
 
 

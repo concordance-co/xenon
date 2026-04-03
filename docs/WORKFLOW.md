@@ -11,13 +11,13 @@ For real jobs, capture and analysis run on Modal. The CLI/spec layer is the cont
 Checked-in spec snapshots should live under:
 
 ```text
-research/<effort>/specs/workflow.json
+projects/<effort>/specs/workflow.json
 ```
 
 Register the spec in Neon:
 
 ```bash
-uv run -m pipelines.cli spec create --file research/<effort>/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
 uv run -m pipelines.cli spec list
 ```
 

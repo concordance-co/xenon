@@ -5,8 +5,8 @@ import json
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from research.synthetic_market.synthetic_market_behavior_runner import _extract_first_tool_call_fields
-from research.synthetic_market.synthetic_market_behavior_analysis import (
+from projects.synthetic_market.synthetic_market_behavior_runner import _extract_first_tool_call_fields
+from projects.synthetic_market.synthetic_market_behavior_analysis import (
     SyntheticMarketBehaviorAnalysisConfig,
     run_synthetic_market_behavior_analysis,
 )

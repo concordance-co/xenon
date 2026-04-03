@@ -4,8 +4,8 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from research.counterfactual import MarketRow
-from research.decision_structure import (
+from projects.counterfactual import MarketRow
+from projects.decision_structure import (
     build_asset_label_rows,
     build_tick_label_row,
     clear_decision_structure_shards,

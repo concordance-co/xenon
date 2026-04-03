@@ -1,7 +1,7 @@
 # Specs
 
 Workflow specs are canonical in Neon via `workflow_specs`, with checked-in
-snapshots stored per effort under `research/<effort>/specs/`.
+snapshots stored per effort under `projects/<effort>/specs/`.
 
 ## Shape
 
@@ -50,7 +50,7 @@ snapshots stored per effort under `research/<effort>/specs/`.
     "pooling": "last_token"
   },
   "report": {
-    "output_dir": "research/demo/reports"
+    "output_dir": "projects/demo/reports"
   }
 }
 ```

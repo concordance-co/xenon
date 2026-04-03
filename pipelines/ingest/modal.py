@@ -99,7 +99,7 @@ def run_prep(
     incremental_rebuild: bool = False,
 ) -> dict:
     """Run data prep on Modal, reading/writing Neon Postgres."""
-    from pipelines.ingest.prepare import PrepareConfig, run_prepare
+    from pipelines.datasets.prepare import PrepareConfig, run_prepare
 
     config = PrepareConfig(
         limit=limit if limit >= 0 else 50_000,
@@ -135,8 +135,8 @@ def run_outcomes(
     """Compute forward-looking PnL for swaps using Terminal Markets candle data."""
     import asyncio
 
-    from pipelines.ingest.outcomes import OutcomesConfig
-    from pipelines.ingest.outcomes import run_outcomes as _run_outcomes
+    from pipelines.datasets.outcomes import OutcomesConfig
+    from pipelines.datasets.outcomes import run_outcomes as _run_outcomes
 
     config = OutcomesConfig(
         concurrency=concurrency,

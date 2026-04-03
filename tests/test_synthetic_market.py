@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pyarrow.parquet as pq
 
-from pipelines.interp.synthetic.market import (
+from pipelines.datasets.synthetic.market import (
     ARCHETYPES,
     SET_GEOMETRY_SCENARIOS,
     SyntheticMarketConfig,

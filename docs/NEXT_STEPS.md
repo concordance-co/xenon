@@ -12,7 +12,7 @@ This is the short handoff note for the cleanup branch.
   - [pipelines/reporting.py](/Users/marshallvyletel/repos/concordance/xenon/pipelines/reporting.py)
 - Repo shape is now:
   - `pipelines/` for platform code
-  - `research/` for effort-specific work
+  - `projects/` for effort-specific work
   - `docs/` for live operator docs
   - `docs/archive/` and `scripts/archive/` for old material
 
@@ -41,14 +41,21 @@ The remaining work is to validate and tighten that connection.
    - `workflow_runs`
    - `dataset_publications`
    - local output directories
+4. Gradually remove the remaining `pipelines -> projects` import edges.
+   Today some specialized Modal paths in `pipelines/interp/modal_analysis.py`,
+   `pipelines/interp/modal_vllm_orchestrator.py`, and
+   `pipelines/interp/patching/modal.py` still dispatch directly into
+   project-specific code. That is acceptable for now, but the long-term cleanup
+   target is to keep the canonical platform surface in `pipelines/` and reduce
+   those cross-layer dependencies over time.
 
 ## Tomorrow's E2E Checklist
 
-1. Create a real spec under `research/<effort>/specs/workflow.json`.
+1. Create a real spec under `projects/<effort>/specs/workflow.json`.
 2. Register it:
 
 ```bash
-uv run -m pipelines.cli spec create --file research/<effort>/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
 ```
 
 3. Publish the dataset:

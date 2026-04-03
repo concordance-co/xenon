@@ -10,7 +10,7 @@ import modal
 app = modal.App("xenon-vllm-capture")
 
 volume = modal.Volume.from_name("xenon-data", create_if_missing=True)
-research_volume = modal.Volume.from_name("xenon-research-data", create_if_missing=True)
+projects_volume = modal.Volume.from_name("xenon-research-data", create_if_missing=True)
 model_volume = modal.Volume.from_name("xenon-models", create_if_missing=True)
 hf_secret = modal.Secret.from_name("huggingface")
 neon_secret = modal.Secret.from_name("xenon-neon")
@@ -854,7 +854,7 @@ def run_counterfactual_capture(
     import pyarrow as pa
     import pyarrow.parquet as pq_
 
-    from research.counterfactual.capture import load_prompts_from_db
+    from projects.counterfactual.capture import load_prompts_from_db
     from transformers import AutoTokenizer
 
     # Step 1: Load tokenizer for boundary computation
@@ -994,7 +994,7 @@ def run_counterfactual_capture(
 
 @app.cls(
     gpu="H200",
-    volumes={"/data": research_volume, "/models": model_volume},
+    volumes={"/data": projects_volume, "/models": model_volume},
     image=image,
     timeout=7200,
     scaledown_window=300,
@@ -1179,14 +1179,14 @@ class ResearchRerunVLLMCaptureWorker:
                 print(f"  ERROR {capture_id}: {exc}")
                 traceback.print_exc()
 
-        research_volume.commit()
+        projects_volume.commit()
         return metadata_rows
 
 
 @app.function(
     image=image,
     secrets=[neon_secret],
-    volumes={"/data": research_volume, "/models": model_volume},
+    volumes={"/data": projects_volume, "/models": model_volume},
     timeout=14400,
 )
 def run_research_rerun_capture(
@@ -1212,7 +1212,7 @@ def run_research_rerun_capture(
     from transformers import AutoTokenizer
 
     from pipelines.db import connect_neon
-    from research.research_rerun.capture import load_prompts_from_db
+    from projects.research_rerun.capture import load_prompts_from_db
 
     tokenizer = AutoTokenizer.from_pretrained(f"/models/{model_id}")
     capture_prompts = load_prompts_from_db(
@@ -1346,7 +1346,7 @@ def run_research_rerun_capture(
     all_rows = list({row["capture_id"]: row for row in existing_rows + all_metadata}.values())
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     pq_.write_table(pa.Table.from_pylist(all_rows), meta_path, compression="snappy")
-    research_volume.commit()
+    projects_volume.commit()
 
     summary = (
         f"Research rerun capture complete: {len(all_metadata)} new, "

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from research.synthetic_market.synthetic_market_patching_runner import (
+from projects.synthetic_market.synthetic_market_patching_runner import (
     SyntheticMarketPatchingConfig,
     _apply_selection_strategy,
     _build_patch_spec,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pipelines.ingest.interp_query import (
+from pipelines.datasets.interp_query import (
     cohort_order_by_sql,
     build_interp_example_query,
     validate_order_mode,

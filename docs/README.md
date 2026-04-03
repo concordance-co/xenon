@@ -1,6 +1,6 @@
 # Docs
 
-This folder is split into a small live operator surface plus archived research/planning material.
+This folder is split into a small live operator surface plus archived projects/planning material.
 
 - Keep these top-level docs live:
   - `WORKFLOW.md`

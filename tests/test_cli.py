@@ -29,7 +29,7 @@ def test_dataset_build_passthrough_dispatches(monkeypatch: pytest.MonkeyPatch) -
         seen.append(list(argv or []))
         return 7
 
-    monkeypatch.setattr("pipelines.ingest.prepare.main", _fake_main)
+    monkeypatch.setattr("pipelines.datasets.prepare.main", _fake_main)
 
     assert cli.main(["dataset", "build", "--", "--limit", "5"]) == 7
     assert seen == [["--limit", "5"]]

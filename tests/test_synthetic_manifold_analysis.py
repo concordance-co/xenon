@@ -1,6 +1,6 @@
 import numpy as np
 
-from research.synthetic_market.synthetic_manifold_analysis import (
+from projects.synthetic_market.synthetic_manifold_analysis import (
     _base_coupled_variant_name,
     _coupled_geometry_metrics,
     _scalar_geometry_metrics,
