@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from projects.synthetic_market.synthetic_policy_analysis import _resolve_tick_label
+from projects.DX_TERMINAL.phases.synthetic_market.synthetic_policy_analysis import _resolve_tick_label
 
 
 def test_resolve_tick_label_decomposes_permission_bits() -> None:

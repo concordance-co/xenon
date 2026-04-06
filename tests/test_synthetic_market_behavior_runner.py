@@ -4,7 +4,7 @@ import numpy as np
 import pyarrow.parquet as pq
 import transformers
 
-from projects.synthetic_market.synthetic_market_behavior_runner import (
+from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
     SyntheticMarketBehaviorConfig,
     _build_generation_config,
     _run_generation_batch,
@@ -105,7 +105,7 @@ def test_run_generation_batch_uses_single_prompt_path_for_single_request(monkeyp
         return {"generated_token_ids": [], "generated_text": "", "finish_reason": "", "input_ids": [], "patch_stats": {}}
 
     monkeypatch.setattr(
-        "projects.synthetic_market.synthetic_market_behavior_runner._generate_one_vllm",
+        "projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner._generate_one_vllm",
         fake_generate_one_vllm,
     )
 
@@ -137,7 +137,7 @@ def test_run_generation_batch_uses_batched_path_for_multiple_requests(monkeypatc
         ]
 
     monkeypatch.setattr(
-        "projects.synthetic_market.synthetic_market_behavior_runner._generate_batch_vllm",
+        "projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner._generate_batch_vllm",
         fake_generate_batch_vllm,
     )
 
@@ -180,7 +180,7 @@ class _FakePatchSpec:
 
 
 def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp_path):
-    import projects.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+    import projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner as behavior_runner
 
     events: list[str] = []
     basis_calls: list[dict[str, object]] = []

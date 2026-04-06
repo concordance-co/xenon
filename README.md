@@ -9,10 +9,11 @@ The canonical flow is:
 The canonical operator surface is the CLI:
 
 ```bash
-uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
+uv run -m pipelines.cli project init --project DX_TERMINAL
+uv run -m pipelines.cli spec create --file projects/<project>/phases/<phase>/specs/workflow.json
 uv run -m pipelines.cli dataset build --spec <spec_id>
-uv run -m pipelines.cli capture run --spec <spec_id> --output-dir data/activations/<run_name>
-uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir data/analysis_results/<run_name>
+uv run -m pipelines.cli capture run --spec <spec_id> --output-dir projects/<project>/phases/<phase>/outputs/<capture_run>
+uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
 uv run -m pipelines.cli report build --analysis-run <run_id>
 ```
 
@@ -30,12 +31,19 @@ pipelines/
   interp/                # reusable capture/analysis runtime code
 
 projects/
-  <effort>/
-    specs/               # checked-in workflow spec snapshots
-    notes/
-    outputs/
-    reports/
-    scripts/
+  <project>/
+    project_spec.json    # umbrella project spec
+    docs/
+    shared/
+    phases/
+      <phase>/
+        phase_spec.json
+        specs/
+          workflow.json  # checked-in executable workflow snapshot
+        notes/
+        outputs/
+        reports/
+        scripts/
 ```
 
 Rules:
@@ -47,10 +55,19 @@ Rules:
 
 ## Workflow Commands
 
+Initialize a new umbrella project and first phase:
+
+```bash
+uv run -m pipelines.cli project init --project DX_TERMINAL
+```
+
+By default this creates a starter phase at `projects/DX_TERMINAL/phases/phase_01/`.
+Pass `--phase <name>` if you want a different first phase name.
+
 Create or update a workflow spec in Neon:
 
 ```bash
-uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/<project>/phases/<phase>/specs/workflow.json
 uv run -m pipelines.cli spec list
 uv run -m pipelines.cli spec show --id <spec_id>
 ```
@@ -67,7 +84,7 @@ Run capture against the published relation:
 ```bash
 uv run -m pipelines.cli capture run \
   --spec <spec_id> \
-  --output-dir data/activations/<run_name> \
+  --output-dir projects/<project>/phases/<phase>/outputs/<capture_run> \
   --layers 16,24,32 \
   --pool-on-capture mean_pool
 ```
@@ -77,7 +94,7 @@ Run analysis using the capture run and workflow labels:
 ```bash
 uv run -m pipelines.cli analysis run \
   --capture-run <run_id> \
-  --output-dir data/analysis_results/<run_name>
+  --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
 ```
 
 Build a workflow report:

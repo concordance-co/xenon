@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from projects.synthetic_market.synthetic_market_transform_analysis import (
+from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_transform_analysis import (
     _compose_matrices,
     _evaluate_transform,
     _fit_diagonal,

@@ -1,0 +1,13 @@
+{
+  "id": "synthetic_market",
+  "name": "Synthetic Market",
+  "description": "Synthetic market generation, behavior, and patching phase.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Use controlled synthetic datasets to study market geometry, invariances, policy effects, and patching interventions.",
+  "workflow_specs": [],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/phases/synthetic_market/reports",
+    "notes": "Holds synthetic dataset analyses, behavior experiments, and patching artifacts."
+  }
+}

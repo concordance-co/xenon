@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from projects.research_rerun.geometry import (
+from projects.DX_TERMINAL.phases.research_rerun.geometry import (
     _context_deformation_metrics,
     _context_realignment_metrics,
     _deformation_pairs,

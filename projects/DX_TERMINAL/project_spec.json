@@ -1,0 +1,20 @@
+{
+  "id": "DX_TERMINAL",
+  "name": "DX_TERMINAL",
+  "description": "Umbrella project for Terminal Markets interpretability work, including prompt confusion, counterfactuals, decision structure, reruns, and synthetic market studies.",
+  "version": 1,
+  "goal": "Organize the Terminal Markets mech-interp program under one parent project while keeping executable workflow specs phase-local and Neon-backed.",
+  "phases": [
+    "prompt_confusion",
+    "counterfactual",
+    "decision_structure",
+    "research_kickoff",
+    "research_rerun",
+    "synthetic_market"
+  ],
+  "defaults": {
+    "capture_execution": "modal",
+    "analysis_execution": "modal",
+    "report_execution": "local"
+  }
+}

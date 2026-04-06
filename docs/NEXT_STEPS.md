@@ -12,7 +12,7 @@ This is the short handoff note for the cleanup branch.
   - [pipelines/reporting.py](/Users/marshallvyletel/repos/concordance/xenon/pipelines/reporting.py)
 - Repo shape is now:
   - `pipelines/` for platform code
-  - `projects/` for effort-specific work
+  - `projects/` for project and phase-specific work
   - `docs/` for live operator docs
   - `docs/archive/` and `scripts/archive/` for old material
 
@@ -51,11 +51,11 @@ The remaining work is to validate and tighten that connection.
 
 ## Tomorrow's E2E Checklist
 
-1. Create a real spec under `projects/<effort>/specs/workflow.json`.
+1. Create a real spec under `projects/<project>/phases/<phase>/specs/workflow.json`.
 2. Register it:
 
 ```bash
-uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/<project>/phases/<phase>/specs/workflow.json
 ```
 
 3. Publish the dataset:
@@ -68,13 +68,13 @@ uv run -m pipelines.cli publication list --spec <spec_id>
 4. Run capture:
 
 ```bash
-uv run -m pipelines.cli capture run --spec <spec_id> --output-dir data/activations/<run_name>
+uv run -m pipelines.cli capture run --spec <spec_id> --output-dir projects/<project>/phases/<phase>/outputs/<capture_run>
 ```
 
 5. Run analysis:
 
 ```bash
-uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir data/analysis_results/<run_name>
+uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
 ```
 
 6. Build report:

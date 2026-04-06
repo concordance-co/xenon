@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from projects.synthetic_market.synthetic_market_axis_decomposition_analysis import (
+from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_axis_decomposition_analysis import (
     _best_pair,
     _best_pair_quadratic,
     _build_visible_prompt_features,

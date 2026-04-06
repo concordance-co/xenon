@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from safetensors.numpy import save_file
 
-from projects.synthetic_market.synthetic_market_patching_analysis import (
+from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_analysis import (
     SyntheticMarketPatchingAnalysisConfig,
     classify_state_key,
     run_synthetic_market_patching_analysis,

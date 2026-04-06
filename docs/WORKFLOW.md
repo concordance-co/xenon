@@ -8,16 +8,25 @@ For real jobs, capture and analysis run on Modal. The CLI/spec layer is the cont
 
 ## 1. Create Or Update A Spec
 
+To scaffold a new umbrella project and first phase:
+
+```bash
+uv run -m pipelines.cli project init --project DX_TERMINAL
+```
+
+This creates a default first phase at `projects/DX_TERMINAL/phases/phase_01/`.
+Pass `--phase <name>` to choose a different initial phase name.
+
 Checked-in spec snapshots should live under:
 
 ```text
-projects/<effort>/specs/workflow.json
+projects/<project>/phases/<phase>/specs/workflow.json
 ```
 
 Register the spec in Neon:
 
 ```bash
-uv run -m pipelines.cli spec create --file projects/<effort>/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/<project>/phases/<phase>/specs/workflow.json
 uv run -m pipelines.cli spec list
 ```
 
@@ -38,7 +47,7 @@ published relation, not internal storage tables.
 ```bash
 uv run -m pipelines.cli capture run \
   --spec <spec_id> \
-  --output-dir data/activations/<run_name> \
+  --output-dir projects/<project>/phases/<phase>/outputs/<capture_run> \
   --layers 16,24,32
 ```
 
@@ -47,7 +56,7 @@ uv run -m pipelines.cli capture run \
 ```bash
 uv run -m pipelines.cli analysis run \
   --capture-run <run_id> \
-  --output-dir data/analysis_results/<run_name>
+  --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
 ```
 
 This exports workflow labels from the published Neon relation into a local

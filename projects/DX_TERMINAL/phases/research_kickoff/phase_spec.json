@@ -1,0 +1,13 @@
+{
+  "id": "research_kickoff",
+  "name": "Research Kickoff",
+  "description": "Kickoff planning and cohort-definition phase for follow-on real-data studies.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Define and prioritize initial real-data research tracks and balanced kickoff cohorts.",
+  "workflow_specs": [],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/phases/research_kickoff/reports",
+    "notes": "Holds kickoff plans, manifests, and summary assets."
+  }
+}

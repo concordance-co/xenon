@@ -48,6 +48,16 @@ def _load_json_if_exists(path: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text())
 
 
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def _write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+
+
 def _resolve_modal_download_dir(base_output_dir: Path, run_id: str) -> Path:
     candidate = base_output_dir / run_id
     return candidate if candidate.is_dir() else base_output_dir
@@ -180,6 +190,187 @@ def _publication_list(argv: list[str]) -> int:
     with _open_conn() as conn:
         publications = list_publications(conn, spec_id=ns.spec)
     _print_json({"publications": publications})
+    return 0
+
+
+def _project_init(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="python -m pipelines.cli project init")
+    parser.add_argument("--project", required=True)
+    parser.add_argument("--phase", default="phase_01")
+    parser.add_argument("--project-name", default=None)
+    parser.add_argument("--phase-name", default=None)
+    parser.add_argument("--description", default=None)
+    parser.add_argument("--goal", default=None)
+    parser.add_argument("--dataset-table", default="interp_examples_v0")
+    parser.add_argument("--label-sql", default="decision_type")
+    parser.add_argument("--model", default="Qwen/Qwen3-8B")
+    parser.add_argument("--layers", default="16,24,32")
+    parser.add_argument("--force", action="store_true")
+    ns = parser.parse_args(argv)
+
+    project_id = _slugify(ns.project).upper()
+    phase_id = _slugify(ns.phase)
+    project_title = ns.project_name or ns.project.strip()
+    phase_title = ns.phase_name or ns.phase.strip().replace("_", " ").title()
+    phase_goal = ns.goal or f"Define the first runnable workflow for the {phase_title} phase."
+    project_goal = ns.goal or f"Coordinate the {project_title} research program and its phase-level workflow specs."
+    layer_values = [int(token.strip()) for token in str(ns.layers).split(",") if token.strip()]
+
+    project_root = Path("projects") / project_id
+    phase_root = project_root / "phases" / phase_id
+    workflow_path = phase_root / "specs" / "workflow.json"
+    phase_spec_path = phase_root / "phase_spec.json"
+    project_spec_path = project_root / "project_spec.json"
+
+    expected_paths = [
+        project_root / "__init__.py",
+        project_root / "README.md",
+        project_root / "project_spec.json",
+        project_root / "docs",
+        project_root / "shared",
+        project_root / "outputs",
+        project_root / "reports" / "assets",
+        project_root / "reports" / "scripts",
+        project_root / "phases" / "__init__.py",
+        phase_root / "README.md",
+        phase_root / "phase_spec.json",
+        phase_root / "specs" / "workflow.json",
+        phase_root / "scripts",
+        phase_root / "outputs",
+        phase_root / "reports" / "assets",
+        phase_root / "reports" / "scripts",
+    ]
+    if not ns.force:
+        existing = [path for path in expected_paths if path.exists()]
+        if existing:
+            sample = ", ".join(str(path) for path in existing[:5])
+            suffix = "" if len(existing) <= 5 else f" (+{len(existing) - 5} more)"
+            raise SystemExit(
+                f"Project scaffolding already exists. Re-run with --force to overwrite the managed files. Existing paths: {sample}{suffix}"
+            )
+
+    for directory in [
+        project_root / "docs",
+        project_root / "shared",
+        project_root / "outputs",
+        project_root / "reports" / "assets",
+        project_root / "reports" / "scripts",
+        project_root / "phases",
+        phase_root / "specs",
+        phase_root / "scripts",
+        phase_root / "outputs",
+        phase_root / "reports" / "assets",
+        phase_root / "reports" / "scripts",
+    ]:
+        directory.mkdir(parents=True, exist_ok=True)
+
+    project_spec = {
+        "id": project_id,
+        "name": project_title,
+        "description": ns.description or f"Umbrella project for {project_title}.",
+        "version": 1,
+        "goal": project_goal,
+        "phases": [phase_id],
+        "defaults": {
+            "capture_execution": "modal",
+            "analysis_execution": "modal",
+            "report_execution": "local",
+        },
+    }
+    phase_spec = {
+        "id": phase_id,
+        "name": phase_title,
+        "description": ns.description or f"{phase_title} phase for {project_title}.",
+        "project_id": project_id,
+        "inherits": f"projects/{project_id}/project_spec.json",
+        "goal": phase_goal,
+        "workflow_specs": [f"projects/{project_id}/phases/{phase_id}/specs/workflow.json"],
+        "outputs": {
+            "output_dir": f"projects/{project_id}/phases/{phase_id}/reports",
+            "notes": "Store phase-local artifacts and final report outputs here.",
+        },
+    }
+    workflow_spec = {
+        "id": f"{project_id.lower()}_{phase_id}",
+        "name": f"{project_title} / {phase_title}",
+        "description": ns.description or f"Workflow spec for the {phase_title} phase of {project_title}.",
+        "version": 1,
+        "dataset": {
+            "source": {
+                "mode": "table",
+                "table": ns.dataset_table,
+            },
+            "filters": {},
+            "label": {
+                "mode": "direct",
+                "expression_sql": ns.label_sql,
+            },
+            "split": {
+                "mode": "random_stratified",
+                "train_pct": 70,
+                "val_pct": 15,
+                "test_pct": 15,
+            },
+            "probe_defaults": {
+                "data_source": "router",
+                "pooling": "last_token",
+                "n_folds": 5,
+            },
+            "publish_mode": "view",
+        },
+        "capture": {
+            "model": ns.model,
+            "layers": layer_values,
+            "pooling": "mean_pool",
+            "router": True,
+            "residual": True,
+            "execution": "modal",
+        },
+        "analysis": {
+            "methods": ["probe"],
+            "targets": ["workflow_label"],
+            "data_source": "router",
+            "pooling": "last_token",
+            "execution": "modal",
+        },
+        "report": {
+            "output_dir": f"projects/{project_id}/phases/{phase_id}/reports",
+        },
+    }
+
+    _write_text(project_root / "__init__.py", f'"""Project workspace for {project_id}."""\n')
+    _write_text(project_root / "phases" / "__init__.py", f'"""Phase packages for {project_id}."""\n')
+    _write_text(
+        project_root / "README.md",
+        (
+            f"# {project_id}\n\n"
+            f"{project_title} is an umbrella project workspace.\n\n"
+            "Use the checked-in phase workflow specs under `phases/<phase>/specs/workflow.json` "
+            "as the local mirror of the executable Neon-backed workflow spec.\n"
+        ),
+    )
+    _write_text(
+        phase_root / "README.md",
+        (
+            f"# {phase_title}\n\n"
+            f"This phase belongs to `{project_id}`.\n\n"
+            "Primary runnable spec:\n\n"
+            f"- `projects/{project_id}/phases/{phase_id}/specs/workflow.json`\n"
+        ),
+    )
+    _write_json(project_spec_path, project_spec)
+    _write_json(phase_spec_path, phase_spec)
+    _write_json(workflow_path, workflow_spec)
+
+    _print_json(
+        {
+            "project": project_id,
+            "phase": phase_id,
+            "project_root": str(project_root),
+            "phase_root": str(phase_root),
+            "workflow_spec": str(workflow_path),
+        }
+    )
     return 0
 
 
@@ -569,6 +760,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _resolve_handler(surface: str | None, action: str | None) -> Handler | None:
     routes: dict[tuple[str, str], Handler] = {
+        ("project", "init"): _project_init,
         ("dataset", "build"): _run_dataset_build,
         ("capture", "run"): _run_capture,
         ("analysis", "run"): _run_analysis,
