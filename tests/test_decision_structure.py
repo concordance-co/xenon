@@ -4,8 +4,8 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.interp.counterfactual import MarketRow
-from pipelines.interp.decision_structure import (
+from projects.DX_TERMINAL.counterfactual import MarketRow
+from projects.DX_TERMINAL.decision_structure import (
     build_asset_label_rows,
     build_tick_label_row,
     clear_decision_structure_shards,

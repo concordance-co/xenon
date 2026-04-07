@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pipelines.interp import synthetic_market_pairing as pairing
+from pipelines.datasets.synthetic import pairing as pairing
 
 
 def test_build_matched_metric_examples_denoise_pairs_low_base_to_high_source(monkeypatch) -> None:

@@ -5,8 +5,8 @@ import json
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.interp.synthetic_market_behavior_runner import _extract_first_tool_call_fields
-from pipelines.interp.synthetic_market_behavior_analysis import (
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import _extract_first_tool_call_fields
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_analysis import (
     SyntheticMarketBehaviorAnalysisConfig,
     run_synthetic_market_behavior_analysis,
 )
@@ -34,6 +34,18 @@ def test_extract_first_tool_call_fields_parses_plain_json_tool_call_list():
     assert fields["first_tool_name"] == "buy_token"
     assert fields["first_tool_token"] == "VEXA"
     assert fields["first_tool_spend_pct"] == 25.0
+
+
+def test_extract_first_tool_call_fields_parses_json_after_thinking():
+    fields = _extract_first_tool_call_fields(
+        '<think>alpha</think>{"name":"buy_token","arguments":{"token":"TAVO","spend_pct":50.0,"content":"z"}}'
+    )
+
+    assert fields["has_tool_call"] is True
+    assert fields["tool_call_parse_ok"] is True
+    assert fields["first_tool_name"] == "buy_token"
+    assert fields["first_tool_token"] == "TAVO"
+    assert fields["first_tool_spend_pct"] == 50.0
 
 
 def test_behavior_analysis_computes_change_rates(tmp_path):

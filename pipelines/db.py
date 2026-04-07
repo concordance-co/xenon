@@ -337,6 +337,59 @@ CREATE TABLE IF NOT EXISTS prep_target_specs (
 );
 """
 
+DDL_WORKFLOW_SPECS = """\
+CREATE TABLE IF NOT EXISTS workflow_specs (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT,
+    version     INT NOT NULL DEFAULT 1,
+    spec_json   JSONB NOT NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+"""
+
+DDL_WORKFLOW_RUNS = """\
+CREATE TABLE IF NOT EXISTS workflow_runs (
+    id                 TEXT PRIMARY KEY,
+    spec_id            TEXT NOT NULL,
+    spec_version       INT NOT NULL,
+    run_type           TEXT NOT NULL,
+    status             TEXT NOT NULL,
+    source             TEXT NOT NULL,
+    spec_snapshot_json JSONB NOT NULL,
+    config_json        JSONB NOT NULL,
+    result_json        JSONB NOT NULL,
+    error_text         TEXT,
+    created_at         TEXT NOT NULL,
+    updated_at         TEXT NOT NULL,
+    completed_at       TEXT
+);
+"""
+
+DDL_DATASET_PUBLICATIONS = """\
+CREATE TABLE IF NOT EXISTS dataset_publications (
+    id               TEXT PRIMARY KEY,
+    spec_id          TEXT NOT NULL,
+    spec_version     INT NOT NULL,
+    run_id           TEXT NOT NULL,
+    relation_name    TEXT NOT NULL,
+    publish_mode     TEXT NOT NULL,
+    row_count        BIGINT,
+    publication_json JSONB NOT NULL,
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
+);
+"""
+
+DDL_WORKFLOW_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_workflow_specs_updated_at ON workflow_specs(updated_at DESC);",
+    "CREATE INDEX IF NOT EXISTS idx_workflow_runs_spec_created ON workflow_runs(spec_id, created_at DESC);",
+    "CREATE INDEX IF NOT EXISTS idx_workflow_runs_type_status ON workflow_runs(run_type, status, created_at DESC);",
+    "CREATE INDEX IF NOT EXISTS idx_dataset_publications_spec_created ON dataset_publications(spec_id, created_at DESC);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_dataset_publications_relation_name ON dataset_publications(relation_name);",
+]
+
 # ---------------------------------------------------------------------------
 # Schema bootstrap
 # ---------------------------------------------------------------------------
@@ -352,6 +405,9 @@ TABLE_DDLS: list[str] = [
     DDL_TRADE_OUTCOMES,
     DDL_INTERP_EXAMPLES,
     DDL_PREP_TARGET_SPECS,
+    DDL_WORKFLOW_SPECS,
+    DDL_WORKFLOW_RUNS,
+    DDL_DATASET_PUBLICATIONS,
 ]
 
 INDEX_DDLS: list[str] = [
@@ -360,6 +416,7 @@ INDEX_DDLS: list[str] = [
     DDL_FULL_LOGS_IDX_VAULT,
     *DDL_SWAPS_INDEXES,
     *DDL_INTERP_EXAMPLES_INDEXES,
+    *DDL_WORKFLOW_INDEXES,
 ]
 
 _ALL_DDL: list[str] = TABLE_DDLS + INDEX_DDLS
@@ -495,4 +552,3 @@ def ensure_schema(conn: psycopg.Connection) -> None:
         conn.commit()
 
     _migrate_existing_schema(conn)
-

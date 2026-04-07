@@ -574,3 +574,4 @@ class TestCLI:
         ])
 
         assert (output_dir / "probe_decision_type_router.parquet").exists()
+        assert (output_dir / "results.json").exists()

@@ -1,0 +1,13 @@
+{
+  "id": "decision_structure",
+  "name": "Decision Structure",
+  "description": "Real-decision pooling and asset-binding analysis phase.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Localize where target-asset and action-valence signals emerge in real decision prompts.",
+  "workflow_specs": [],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/decision_structure/phase_01/reports",
+    "notes": "Holds pooled structure analyses and sanity checks."
+  }
+}

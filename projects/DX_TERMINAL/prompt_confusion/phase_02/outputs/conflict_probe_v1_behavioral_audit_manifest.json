@@ -1,0 +1,819 @@
+{
+  "table_name": "conflict_probe_examples_v1",
+  "pairs_per_family": 10,
+  "pair_count": 100,
+  "family_counts": {
+    "activity_force_observe": 10,
+    "activity_force_trade": 10,
+    "diversification_force_concentrate": 10,
+    "diversification_force_spread": 10,
+    "holding_force_exit": 10,
+    "holding_force_hold": 10,
+    "risk_force_degen": 10,
+    "risk_force_safe": 10,
+    "trade_size_force_large": 10,
+    "trade_size_force_small": 10
+  },
+  "pairs": [
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:activity_force_observe:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:activity_force_observe:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:activity_force_observe:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:activity_force_observe:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:activity_force_observe:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:activity_force_observe:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:activity_force_observe:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:activity_force_observe:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:activity_force_observe:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:activity_force_observe:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:activity_force_observe:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:activity_force_observe:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_observe:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_observe:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_observe:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_observe:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:activity_force_observe:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:activity_force_observe:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "activity_force_observe",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:activity_force_observe:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:activity_force_observe:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:activity_force_trade:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:activity_force_trade:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:activity_force_trade:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:activity_force_trade:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:activity_force_trade:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:activity_force_trade:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:activity_force_trade:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:activity_force_trade:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:activity_force_trade:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:activity_force_trade:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:activity_force_trade:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:activity_force_trade:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_trade:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_trade:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_trade:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:activity_force_trade:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:activity_force_trade:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:activity_force_trade:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "activity_force_trade",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:activity_force_trade:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:activity_force_trade:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:diversification_force_concentrate:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:diversification_force_concentrate:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:diversification_force_concentrate:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:diversification_force_concentrate:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:diversification_force_concentrate:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:diversification_force_concentrate:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:diversification_force_concentrate:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:diversification_force_concentrate:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:diversification_force_concentrate:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:diversification_force_concentrate:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:diversification_force_concentrate:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:diversification_force_concentrate:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_concentrate:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_concentrate:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_concentrate:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_concentrate:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:diversification_force_concentrate:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:diversification_force_concentrate:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "diversification_force_concentrate",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:diversification_force_concentrate:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:diversification_force_concentrate:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:diversification_force_spread:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:diversification_force_spread:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:diversification_force_spread:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:diversification_force_spread:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:diversification_force_spread:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:diversification_force_spread:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:diversification_force_spread:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:diversification_force_spread:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:diversification_force_spread:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:diversification_force_spread:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:diversification_force_spread:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:diversification_force_spread:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_spread:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_spread:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_spread:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:diversification_force_spread:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:diversification_force_spread:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:diversification_force_spread:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "diversification_force_spread",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:diversification_force_spread:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:diversification_force_spread:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:holding_force_exit:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:holding_force_exit:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:holding_force_exit:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:holding_force_exit:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:holding_force_exit:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:holding_force_exit:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:holding_force_exit:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:holding_force_exit:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:holding_force_exit:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:holding_force_exit:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:holding_force_exit:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:holding_force_exit:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_exit:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_exit:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_exit:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_exit:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:holding_force_exit:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:holding_force_exit:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "holding_force_exit",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:holding_force_exit:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:holding_force_exit:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:holding_force_hold:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:holding_force_hold:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:holding_force_hold:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:holding_force_hold:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:holding_force_hold:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:holding_force_hold:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:holding_force_hold:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:holding_force_hold:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:holding_force_hold:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:holding_force_hold:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:holding_force_hold:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:holding_force_hold:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_hold:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_hold:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_hold:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:holding_force_hold:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:holding_force_hold:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:holding_force_hold:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "holding_force_hold",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:holding_force_hold:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:holding_force_hold:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:risk_force_degen:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:risk_force_degen:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:risk_force_degen:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:risk_force_degen:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:risk_force_degen:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:risk_force_degen:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:risk_force_degen:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:risk_force_degen:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:risk_force_degen:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:risk_force_degen:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:risk_force_degen:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:risk_force_degen:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_degen:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_degen:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_degen:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_degen:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:risk_force_degen:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:risk_force_degen:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "risk_force_degen",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:risk_force_degen:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:risk_force_degen:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:risk_force_safe:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:risk_force_safe:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:risk_force_safe:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:risk_force_safe:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:risk_force_safe:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:risk_force_safe:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:risk_force_safe:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:risk_force_safe:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:risk_force_safe:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:risk_force_safe:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:risk_force_safe:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:risk_force_safe:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_safe:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_safe:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_safe:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:risk_force_safe:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:risk_force_safe:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:risk_force_safe:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "risk_force_safe",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:risk_force_safe:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:risk_force_safe:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:trade_size_force_large:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:trade_size_force_large:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:trade_size_force_large:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:trade_size_force_large:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:trade_size_force_large:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:trade_size_force_large:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:trade_size_force_large:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:trade_size_force_large:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:trade_size_force_large:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:trade_size_force_large:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:trade_size_force_large:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:trade_size_force_large:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_large:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_large:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_large:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_large:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:trade_size_force_large:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:trade_size_force_large:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "trade_size_force_large",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:trade_size_force_large:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:trade_size_force_large:v2:s2"
+    },
+    {
+      "base_context_id": "0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:trade_size_force_small:v3:s0",
+      "strong_conflict": "cpv1:0x0995c76d16d1982832382FcB9dd7a75C7cD5a0DC:1552286:trade_size_force_small:v3:s2"
+    },
+    {
+      "base_context_id": "0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:trade_size_force_small:v0:s0",
+      "strong_conflict": "cpv1:0xD0d935Cee84054BbF6b9073d017aB44B183E1FC1:1534413:trade_size_force_small:v0:s2"
+    },
+    {
+      "base_context_id": "0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:trade_size_force_small:v1:s0",
+      "strong_conflict": "cpv1:0x0f9e198a30Bc23FB7F5E514C63F9582FB0f887Cb:6789505:trade_size_force_small:v1:s2"
+    },
+    {
+      "base_context_id": "0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:trade_size_force_small:v3:s0",
+      "strong_conflict": "cpv1:0x6710AB1E4Ee8A476859975f6c81D39d9D8F76055:374723:trade_size_force_small:v3:s2"
+    },
+    {
+      "base_context_id": "0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:trade_size_force_small:v1:s0",
+      "strong_conflict": "cpv1:0x0664f681bA9E7EaFD828792cd49FE6738aa3A30D:1403747:trade_size_force_small:v1:s2"
+    },
+    {
+      "base_context_id": "0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 0,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:trade_size_force_small:v0:s0",
+      "strong_conflict": "cpv1:0x06e21431FC46220cD09573e7834CDF21c4c383bc:1199245:trade_size_force_small:v0:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 3,
+      "lexical_split": "test",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_small:v3:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_small:v3:s2"
+    },
+    {
+      "base_context_id": "0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_small:v1:s0",
+      "strong_conflict": "cpv1:0x5bA79C21e0D5BECdF3FdC24Bc401e48Ae96cFa4D:6337638:trade_size_force_small:v1:s2"
+    },
+    {
+      "base_context_id": "0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 1,
+      "lexical_split": "train",
+      "aligned": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:trade_size_force_small:v1:s0",
+      "strong_conflict": "cpv1:0xFE9d12688617F1c2a818218D8C8D7415e94F518D:876217:trade_size_force_small:v1:s2"
+    },
+    {
+      "base_context_id": "0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255",
+      "strategy_family": "trade_size_force_small",
+      "strategy_variant_id": 2,
+      "lexical_split": "val",
+      "aligned": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:trade_size_force_small:v2:s0",
+      "strong_conflict": "cpv1:0x59D584150e189e0743E757a7B9bB5aE9E36f32a6:18255:trade_size_force_small:v2:s2"
+    }
+  ]
+}

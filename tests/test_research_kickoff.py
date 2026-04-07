@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pipelines.interp.research_kickoff import (
+from projects.DX_TERMINAL.research_kickoff.core import (
     actionability_cell,
     annotate_kickoff_row,
     blocked_valence_manifest_plan,

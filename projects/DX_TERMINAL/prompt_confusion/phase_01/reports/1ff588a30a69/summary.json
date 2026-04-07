@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-04-02T19:34:44.374893+00:00",
+  "spec": {
+    "id": "conflict_probe_v0",
+    "name": "Conflict Probe v0",
+    "description": "Workflow wrapper for the legacy Neon-backed conflict probe dataset. Publishes a canonical relation with a synthetic log_id so the workflow capture/analysis path can operate on conflict_probe_examples_v0.",
+    "version": 1
+  },
+  "publication": {
+    "relation_name": "workflow_dataset_conflict_probe_v0_v1",
+    "publish_mode": "view",
+    "row_count": 375
+  },
+  "runs": {
+    "dataset": "1bdf3bed5b62",
+    "capture": "9c0467b2ea48",
+    "analysis": "1ff588a30a69"
+  },
+  "capture": {
+    "activations_dir": null,
+    "remote_activations_path": "/data/activations/workflows/conflict_probe_v0/9c0467b2ea48",
+    "publication": "workflow_dataset_conflict_probe_v0_v1"
+  },
+  "analysis": {
+    "mode": "probe",
+    "target": "workflow_label",
+    "data_source": "residual",
+    "pooling": "last_token",
+    "n_folds": 5,
+    "layers": null,
+    "labels_path": "data/workflows/conflict_probe_v0/labels/workflow_dataset_conflict_probe_v0_v1.parquet",
+    "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_01/outputs/conflict_probe_v0_analysis",
+    "remote_output_path": "/data/analysis_results/workflows/conflict_probe_v0/1ff588a30a69",
+    "results": null
+  }
+}

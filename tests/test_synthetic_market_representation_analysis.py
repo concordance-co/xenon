@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pipelines.interp.synthetic_market_representation_analysis import (
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_representation_analysis import (
     _base_rank_context_variant,
     _parse_affordance_ladder_context,
     _focal_relation_invariance_metrics,

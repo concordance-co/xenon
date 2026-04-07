@@ -3,8 +3,8 @@ from __future__ import annotations
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pipelines.interp.synthetic_market import SyntheticAsset, _render_user_prompt
-from pipelines.interp.synthetic_structure import (
+from pipelines.datasets.synthetic.market import SyntheticAsset, _render_user_prompt
+from pipelines.datasets.synthetic.structure import (
     clear_synthetic_structure_shards,
     find_synthetic_section_boundaries,
     find_synthetic_row_boundaries,

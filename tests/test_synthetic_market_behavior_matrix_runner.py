@@ -6,12 +6,12 @@ from dataclasses import replace
 import pyarrow.parquet as pq
 import transformers
 
-from pipelines.interp.synthetic_market_behavior_battery import SyntheticMarketBehaviorPlanItem
-from pipelines.interp.synthetic_market_behavior_matrix_runner import (
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_battery import SyntheticMarketBehaviorPlanItem
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_matrix_runner import (
     SyntheticMarketBehaviorMatrixConfig,
     run_synthetic_market_behavior_matrix,
 )
-from pipelines.interp.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
 
 
 class _FakeTokenizer:
@@ -33,7 +33,7 @@ class _FakePatchSpec:
 
 
 def test_matrix_runner_executes_multiple_cells_in_one_run(monkeypatch, tmp_path):
-    import pipelines.interp.synthetic_market_behavior_matrix_runner as matrix_runner
+    import projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_matrix_runner as matrix_runner
 
     create_llm_calls: list[bool] = []
     prepare_calls: list[str] = []
@@ -125,9 +125,9 @@ def test_matrix_runner_executes_multiple_cells_in_one_run(monkeypatch, tmp_path)
         "_create_llm",
         lambda cfg: create_llm_calls.append(bool(cfg.enforce_eager)) or object(),
     )
-    monkeypatch.setattr(matrix_runner, "default_phase17_market_patch_basis", lambda **_kwargs: _FakeBasis())
-    monkeypatch.setattr(matrix_runner, "_init_market_patching_on_model", lambda _llm: True)
-    monkeypatch.setattr(matrix_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(matrix_runner, "load_phase17_activation_patch_basis", lambda **_kwargs: _FakeBasis())
+    monkeypatch.setattr(matrix_runner, "_init_activation_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(matrix_runner, "_register_activation_patch_basis_on_model", lambda _llm, _payload: None)
     monkeypatch.setattr(
         matrix_runner,
         "_build_patch_spec",
@@ -186,7 +186,7 @@ def test_matrix_runner_executes_multiple_cells_in_one_run(monkeypatch, tmp_path)
 
 
 def test_matrix_runner_uses_eager_fallback_for_random_control(monkeypatch, tmp_path):
-    import pipelines.interp.synthetic_market_behavior_matrix_runner as matrix_runner
+    import projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_matrix_runner as matrix_runner
 
     create_llm_calls: list[bool] = []
     batch_patch_specs: list[list[dict | None]] = []
@@ -280,9 +280,9 @@ def test_matrix_runner_uses_eager_fallback_for_random_control(monkeypatch, tmp_p
         "_create_llm",
         lambda cfg: create_llm_calls.append(bool(cfg.enforce_eager)) or object(),
     )
-    monkeypatch.setattr(matrix_runner, "default_phase17_market_patch_basis", lambda **_kwargs: _FakeBasis())
-    monkeypatch.setattr(matrix_runner, "_init_market_patching_on_model", lambda _llm: True)
-    monkeypatch.setattr(matrix_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(matrix_runner, "load_phase17_activation_patch_basis", lambda **_kwargs: _FakeBasis())
+    monkeypatch.setattr(matrix_runner, "_init_activation_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(matrix_runner, "_register_activation_patch_basis_on_model", lambda _llm, _payload: None)
     monkeypatch.setattr(
         matrix_runner,
         "_build_patch_spec",

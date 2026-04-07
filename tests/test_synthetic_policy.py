@@ -4,7 +4,7 @@ import json
 
 import pyarrow.parquet as pq
 
-from pipelines.interp.synthetic_policy import SyntheticPolicyConfig, build_dataset, generate_dataset
+from pipelines.datasets.synthetic.policy import SyntheticPolicyConfig, build_dataset, generate_dataset
 
 
 def test_generate_policy_v4_dataset_expected_counts() -> None:
