@@ -86,30 +86,43 @@ def test_spec_create_uses_workflow_registry(
     assert "spec123" in out
 
 
-def test_project_init_scaffolds_project_and_phase(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_project_init_scaffolds_project_subproject_and_phase(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
 
-    assert cli.main(["project", "init", "--project", "DX Terminal", "--phase", "prompt_confusion"]) == 0
+    assert cli.main(
+        [
+            "project",
+            "init",
+            "--project",
+            "DX Terminal",
+            "--subproject",
+            "synthetic_market",
+            "--phase",
+            "prompt_confusion",
+        ]
+    ) == 0
 
     project_root = tmp_path / "projects" / "DX_TERMINAL"
-    phase_root = project_root / "phases" / "prompt_confusion"
+    subproject_root = project_root / "synthetic_market"
+    phase_root = subproject_root / "prompt_confusion"
     assert (project_root / "project_spec.json").is_file()
+    assert (subproject_root / "__init__.py").is_file()
     assert (phase_root / "phase_spec.json").is_file()
     assert (phase_root / "specs" / "workflow.json").is_file()
 
     project_spec = json.loads((project_root / "project_spec.json").read_text())
     assert project_spec["id"] == "DX_TERMINAL"
-    assert project_spec["phases"] == ["prompt_confusion"]
+    assert project_spec["phases"] == ["synthetic_market/prompt_confusion"]
 
     phase_spec = json.loads((phase_root / "phase_spec.json").read_text())
     assert phase_spec["inherits"] == "projects/DX_TERMINAL/project_spec.json"
-    assert phase_spec["workflow_specs"] == ["projects/DX_TERMINAL/phases/prompt_confusion/specs/workflow.json"]
+    assert phase_spec["workflow_specs"] == ["projects/DX_TERMINAL/synthetic_market/prompt_confusion/specs/workflow.json"]
 
     workflow_spec = json.loads((phase_root / "specs" / "workflow.json").read_text())
-    assert workflow_spec["id"] == "dx_terminal_prompt_confusion"
+    assert workflow_spec["id"] == "dx_terminal_synthetic_market_prompt_confusion"
     assert workflow_spec["capture"]["execution"] == "modal"
     assert workflow_spec["analysis"]["execution"] == "modal"
-    assert workflow_spec["report"]["output_dir"] == "projects/DX_TERMINAL/phases/prompt_confusion/reports"
+    assert workflow_spec["report"]["output_dir"] == "projects/DX_TERMINAL/synthetic_market/prompt_confusion/reports"
 
 
 def test_project_init_defaults_first_phase_when_not_provided(
@@ -121,11 +134,11 @@ def test_project_init_defaults_first_phase_when_not_provided(
     assert cli.main(["project", "init", "--project", "OTHER_PROJECT"]) == 0
 
     project_root = tmp_path / "projects" / "OTHER_PROJECT"
-    phase_root = project_root / "phases" / "phase_01"
+    phase_root = project_root / "subproject_01" / "phase_01"
     assert (project_root / "project_spec.json").is_file()
     assert (phase_root / "phase_spec.json").is_file()
     workflow_spec = json.loads((phase_root / "specs" / "workflow.json").read_text())
-    assert workflow_spec["id"] == "other_project_phase_01"
+    assert workflow_spec["id"] == "other_project_subproject_01_phase_01"
 
 
 def test_project_init_refuses_to_overwrite_without_force(
@@ -134,9 +147,31 @@ def test_project_init_refuses_to_overwrite_without_force(
 ) -> None:
     monkeypatch.chdir(tmp_path)
 
-    assert cli.main(["project", "init", "--project", "DX Terminal", "--phase", "prompt_confusion"]) == 0
+    assert cli.main(
+        [
+            "project",
+            "init",
+            "--project",
+            "DX Terminal",
+            "--subproject",
+            "synthetic_market",
+            "--phase",
+            "prompt_confusion",
+        ]
+    ) == 0
     with pytest.raises(SystemExit, match="Project scaffolding already exists"):
-        cli.main(["project", "init", "--project", "DX Terminal", "--phase", "prompt_confusion"])
+        cli.main(
+            [
+                "project",
+                "init",
+                "--project",
+                "DX Terminal",
+                "--subproject",
+                "synthetic_market",
+                "--phase",
+                "prompt_confusion",
+            ]
+        )
 
 
 def test_run_show_reads_registry(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

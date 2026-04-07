@@ -10,7 +10,9 @@
     "decision_structure",
     "research_kickoff",
     "research_rerun",
-    "synthetic_market"
+    "synthetic_market/dimension_exploration",
+    "synthetic_market/restoration",
+    "synthetic_market/path_validation"
   ],
   "defaults": {
     "capture_execution": "modal",

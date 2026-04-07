@@ -1,0 +1,13 @@
+{
+  "id": "dimension_exploration",
+  "name": "Dimension Exploration",
+  "description": "Discovery, context, and decomposition work for synthetic-market representations.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Identify which internal synthetic-market signals are stable, interpretable, and worth testing causally.",
+  "workflow_specs": [],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/synthetic_market/dimension_exploration/reports",
+    "notes": "Store discovery and decomposition reports here."
+  }
+}

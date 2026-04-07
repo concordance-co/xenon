@@ -11,7 +11,7 @@ from scipy.stats import spearmanr
 
 from pipelines.db import connect_neon
 from projects.DX_TERMINAL.phases.counterfactual.analysis import orthogonal_procrustes, preload_all_activations
-from projects.DX_TERMINAL.phases.synthetic_market.synthetic_manifold_analysis import _evaluate_regression_probe, _train_regression_probe
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_manifold_analysis import _evaluate_regression_probe, _train_regression_probe
 
 
 RISK_CONTEXTS = tuple(f"risk_{level}" for level in range(1, 6))

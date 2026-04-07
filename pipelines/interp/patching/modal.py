@@ -32,7 +32,7 @@ image = (
     .add_local_file(BASIS_NPZ_LOCAL, BASIS_NPZ_REMOTE)
     .add_local_file(BASIS_RESULTS_LOCAL, BASIS_RESULTS_REMOTE)
     .add_local_python_source("pipelines")
-    .add_local_python_source("research")
+    .add_local_python_source("projects")
 )
 
 GPU_WORKER_CPU = 8
@@ -76,7 +76,7 @@ class SyntheticMarketBehaviorMatrixWorker:
         from transformers import AutoTokenizer
 
         from pipelines.interp.patching.basis import default_phase17_market_patch_basis
-        from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
+        from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
             SyntheticMarketBehaviorConfig,
             _build_generation_config,
         )
@@ -130,7 +130,7 @@ class SyntheticMarketBehaviorMatrixWorker:
 
     @modal.method()
     def generate_batch(self, requests: list[dict]) -> list[dict]:
-        from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
+        from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
             _run_generation_batch,
         )
 
@@ -152,7 +152,7 @@ class SyntheticMarketBehaviorMatrixWorker:
 
     @modal.exit()
     def teardown(self) -> None:
-        from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import _destroy_llm
+        from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import _destroy_llm
 
         _destroy_llm(getattr(self, "llm", None))
 
@@ -199,7 +199,7 @@ def run_synthetic_market_patching_modal(
     random_seed: int = 42,
     gpu_memory_utilization: float = 0.85,
 ) -> dict:
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_runner import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runner import (
         SyntheticMarketPatchingConfig,
         _parse_component_indices_spec,
         run_synthetic_market_patching,
@@ -268,7 +268,7 @@ def prepare_synthetic_market_behavior_donors_modal(
     gpu_memory_utilization: float = 0.85,
     basis_state_key: str = "market_mean",
 ) -> dict:
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
         SyntheticMarketBehaviorConfig,
         prepare_synthetic_market_behavior_donors,
     )
@@ -363,11 +363,11 @@ def run_synthetic_market_behavior_modal(
     enable_mfu_metrics: bool = False,
     basis_state_key: str = "market_mean",
 ) -> dict:
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
         SyntheticMarketBehaviorConfig,
         run_synthetic_market_behavior,
     )
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_runner import _parse_component_indices_spec
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runner import _parse_component_indices_spec
 
     target_layer_tuple = tuple(int(token) for token in target_layers.split(",") if token.strip())
     secondary_target_layer_tuple = tuple(
@@ -494,11 +494,11 @@ def plan_synthetic_market_behavior_battery_modal(
     random_control_seeds: str = "11,17,23,29,31",
     include_baselines: bool = True,
 ) -> dict:
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_battery import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_battery import (
         build_behavior_robustness_payload,
     )
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_runner import _parse_component_indices_spec
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runner import _parse_component_indices_spec
 
     def _parse_float_csv(text: str) -> tuple[float, ...]:
         return tuple(float(token.strip()) for token in text.split(",") if token.strip())
@@ -623,16 +623,16 @@ def run_synthetic_market_behavior_matrix_modal(
 
     from transformers import AutoTokenizer
 
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_battery import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_battery import (
         build_behavior_robustness_matrix,
     )
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_matrix_runner import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_matrix_runner import (
         _build_union_basis_payload,
         _cell_component_count,
         _prep_group_key,
         _requires_eager_runtime,
     )
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
         SyntheticMarketBehaviorConfig,
         _chunk_list,
         _decode_first_token,
@@ -641,8 +641,8 @@ def run_synthetic_market_behavior_matrix_modal(
         _prepare_behavior_rows,
     )
     from pipelines.interp.tool_schemas import resolve_tool_schema_mode
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_runner import _parse_component_indices_spec
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_runner import _build_patch_spec
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runner import _parse_component_indices_spec
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runner import _build_patch_spec
 
     def _parse_float_csv(text: str) -> tuple[float, ...]:
         return tuple(float(token.strip()) for token in text.split(",") if token.strip())
@@ -1235,7 +1235,7 @@ def analyze_synthetic_market_patching_modal(
     basis_state_key: str = "market_mean",
     basis_components: int = 4,
 ) -> dict:
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_analysis import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_analysis import (
         SyntheticMarketPatchingAnalysisConfig,
         run_synthetic_market_patching_analysis,
     )
@@ -1274,7 +1274,7 @@ def analyze_synthetic_market_behavior_modal(
     intervention_run_name: str,
     output_name: str = "",
 ) -> dict:
-    from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_analysis import (
+    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_analysis import (
         SyntheticMarketBehaviorAnalysisConfig,
         run_synthetic_market_behavior_analysis,
     )

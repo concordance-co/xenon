@@ -196,8 +196,10 @@ def _publication_list(argv: list[str]) -> int:
 def _project_init(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="python -m pipelines.cli project init")
     parser.add_argument("--project", required=True)
+    parser.add_argument("--subproject", default="subproject_01")
     parser.add_argument("--phase", default="phase_01")
     parser.add_argument("--project-name", default=None)
+    parser.add_argument("--subproject-name", default=None)
     parser.add_argument("--phase-name", default=None)
     parser.add_argument("--description", default=None)
     parser.add_argument("--goal", default=None)
@@ -209,29 +211,30 @@ def _project_init(argv: list[str]) -> int:
     ns = parser.parse_args(argv)
 
     project_id = _slugify(ns.project).upper()
+    subproject_id = _slugify(ns.subproject)
     phase_id = _slugify(ns.phase)
     project_title = ns.project_name or ns.project.strip()
+    subproject_title = ns.subproject_name or ns.subproject.strip().replace("_", " ").title()
     phase_title = ns.phase_name or ns.phase.strip().replace("_", " ").title()
     phase_goal = ns.goal or f"Define the first runnable workflow for the {phase_title} phase."
     project_goal = ns.goal or f"Coordinate the {project_title} research program and its phase-level workflow specs."
     layer_values = [int(token.strip()) for token in str(ns.layers).split(",") if token.strip()]
+    phase_ref = f"{subproject_id}/{phase_id}"
 
     project_root = Path("projects") / project_id
-    phase_root = project_root / "phases" / phase_id
+    subproject_root = project_root / subproject_id
+    phase_root = subproject_root / phase_id
     workflow_path = phase_root / "specs" / "workflow.json"
     phase_spec_path = phase_root / "phase_spec.json"
     project_spec_path = project_root / "project_spec.json"
 
     expected_paths = [
-        project_root / "__init__.py",
-        project_root / "README.md",
-        project_root / "project_spec.json",
-        project_root / "docs",
-        project_root / "shared",
-        project_root / "outputs",
-        project_root / "reports" / "assets",
-        project_root / "reports" / "scripts",
-        project_root / "phases" / "__init__.py",
+        subproject_root / "__init__.py",
+        subproject_root / "README.md",
+        subproject_root / "shared",
+        subproject_root / "outputs",
+        subproject_root / "reports" / "assets",
+        subproject_root / "reports" / "scripts",
         phase_root / "README.md",
         phase_root / "phase_spec.json",
         phase_root / "specs" / "workflow.json",
@@ -255,7 +258,10 @@ def _project_init(argv: list[str]) -> int:
         project_root / "outputs",
         project_root / "reports" / "assets",
         project_root / "reports" / "scripts",
-        project_root / "phases",
+        subproject_root / "shared",
+        subproject_root / "outputs",
+        subproject_root / "reports" / "assets",
+        subproject_root / "reports" / "scripts",
         phase_root / "specs",
         phase_root / "scripts",
         phase_root / "outputs",
@@ -264,36 +270,42 @@ def _project_init(argv: list[str]) -> int:
     ]:
         directory.mkdir(parents=True, exist_ok=True)
 
+    existing_project_spec = _load_json_if_exists(project_spec_path) or {}
     project_spec = {
-        "id": project_id,
-        "name": project_title,
-        "description": ns.description or f"Umbrella project for {project_title}.",
-        "version": 1,
-        "goal": project_goal,
-        "phases": [phase_id],
-        "defaults": {
-            "capture_execution": "modal",
-            "analysis_execution": "modal",
-            "report_execution": "local",
-        },
+        "id": existing_project_spec.get("id", project_id),
+        "name": existing_project_spec.get("name", project_title),
+        "description": existing_project_spec.get("description", ns.description or f"Umbrella project for {project_title}."),
+        "version": existing_project_spec.get("version", 1),
+        "goal": existing_project_spec.get("goal", project_goal),
+        "phases": list(existing_project_spec.get("phases", [])),
+        "defaults": existing_project_spec.get(
+            "defaults",
+            {
+                "capture_execution": "modal",
+                "analysis_execution": "modal",
+                "report_execution": "local",
+            },
+        ),
     }
+    if phase_ref not in project_spec["phases"]:
+        project_spec["phases"].append(phase_ref)
     phase_spec = {
         "id": phase_id,
         "name": phase_title,
-        "description": ns.description or f"{phase_title} phase for {project_title}.",
+        "description": ns.description or f"{phase_title} phase for {project_title} / {subproject_title}.",
         "project_id": project_id,
         "inherits": f"projects/{project_id}/project_spec.json",
         "goal": phase_goal,
-        "workflow_specs": [f"projects/{project_id}/phases/{phase_id}/specs/workflow.json"],
+        "workflow_specs": [f"projects/{project_id}/{subproject_id}/{phase_id}/specs/workflow.json"],
         "outputs": {
-            "output_dir": f"projects/{project_id}/phases/{phase_id}/reports",
+            "output_dir": f"projects/{project_id}/{subproject_id}/{phase_id}/reports",
             "notes": "Store phase-local artifacts and final report outputs here.",
         },
     }
     workflow_spec = {
-        "id": f"{project_id.lower()}_{phase_id}",
-        "name": f"{project_title} / {phase_title}",
-        "description": ns.description or f"Workflow spec for the {phase_title} phase of {project_title}.",
+        "id": f"{project_id.lower()}_{subproject_id}_{phase_id}",
+        "name": f"{project_title} / {subproject_title} / {phase_title}",
+        "description": ns.description or f"Workflow spec for the {phase_title} phase of {project_title} / {subproject_title}.",
         "version": 1,
         "dataset": {
             "source": {
@@ -334,28 +346,39 @@ def _project_init(argv: list[str]) -> int:
             "execution": "modal",
         },
         "report": {
-            "output_dir": f"projects/{project_id}/phases/{phase_id}/reports",
+            "output_dir": f"projects/{project_id}/{subproject_id}/{phase_id}/reports",
         },
     }
 
-    _write_text(project_root / "__init__.py", f'"""Project workspace for {project_id}."""\n')
-    _write_text(project_root / "phases" / "__init__.py", f'"""Phase packages for {project_id}."""\n')
+    if ns.force or not (project_root / "__init__.py").exists():
+        _write_text(project_root / "__init__.py", f'"""Project workspace for {project_id}."""\n')
+    if ns.force or not (project_root / "README.md").exists():
+        _write_text(
+            project_root / "README.md",
+            (
+                f"# {project_id}\n\n"
+                f"{project_title} is an umbrella project workspace.\n\n"
+                "Use the checked-in phase workflow specs under `<subproject>/<phase>/specs/workflow.json` "
+                "as the local mirror of the executable Neon-backed workflow spec.\n"
+            ),
+        )
+    _write_text(subproject_root / "__init__.py", f'"""Subproject workspace for {project_id} / {subproject_id}."""\n')
     _write_text(
-        project_root / "README.md",
+        subproject_root / "README.md",
         (
-            f"# {project_id}\n\n"
-            f"{project_title} is an umbrella project workspace.\n\n"
-            "Use the checked-in phase workflow specs under `phases/<phase>/specs/workflow.json` "
-            "as the local mirror of the executable Neon-backed workflow spec.\n"
+            f"# {subproject_title}\n\n"
+            f"This subproject belongs to `{project_id}`.\n\n"
+            "Use the checked-in phase workflow specs under:\n\n"
+            f"- `projects/{project_id}/{subproject_id}/<phase>/specs/workflow.json`\n"
         ),
     )
     _write_text(
         phase_root / "README.md",
         (
             f"# {phase_title}\n\n"
-            f"This phase belongs to `{project_id}`.\n\n"
+            f"This phase belongs to `{project_id}/{subproject_id}`.\n\n"
             "Primary runnable spec:\n\n"
-            f"- `projects/{project_id}/phases/{phase_id}/specs/workflow.json`\n"
+            f"- `projects/{project_id}/{subproject_id}/{phase_id}/specs/workflow.json`\n"
         ),
     )
     _write_json(project_spec_path, project_spec)
@@ -365,8 +388,10 @@ def _project_init(argv: list[str]) -> int:
     _print_json(
         {
             "project": project_id,
+            "subproject": subproject_id,
             "phase": phase_id,
             "project_root": str(project_root),
+            "subproject_root": str(subproject_root),
             "phase_root": str(phase_root),
             "workflow_spec": str(workflow_path),
         }

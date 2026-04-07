@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from research.synthetic_market.synthetic_market_behavior_analysis import (
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_analysis import (
     SyntheticMarketBehaviorAnalysisConfig,
     run_synthetic_market_behavior_analysis,
 )

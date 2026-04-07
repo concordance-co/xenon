@@ -42,18 +42,18 @@ you are explicitly digging through old work.
   Assets needed for the project report.
 - `./projects/{project_name}/reports/scripts/`
   Scripts used to generate project-report assets.
-- `./projects/{project_name}/phases/{phase_name}/phase_spec.json`
+- `./projects/{project_name}/{subproject}/{phase_name}/phase_spec.json`
   Optional phase-level spec. This is a lightweight first-pass structure for a
   bounded sub-effort inside a project.
-- `./projects/{project_name}/phases/{phase_name}/specs/workflow.json`
+- `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
   Checked-in snapshot of the executable workflow spec for the phase.
-- `./projects/{project_name}/phases/{phase_name}/scripts/`
+- `./projects/{project_name}/{subproject}/{phase_name}/scripts/`
   Scripts needed to run or analyze that phase.
-- `./projects/{project_name}/phases/{phase_name}/reports/`
+- `./projects/{project_name}/{subproject}/{phase_name}/reports/`
   Optional phase-level Typst report outputs.
-- `./projects/{project_name}/phases/{phase_name}/reports/assets/`
+- `./projects/{project_name}/{subproject}/{phase_name}/reports/assets/`
   Assets for a phase report.
-- `./projects/{project_name}/phases/{phase_name}/reports/scripts/`
+- `./projects/{project_name}/{subproject}/{phase_name}/reports/scripts/`
   Scripts used to generate phase-report assets.
 
 # Canonical Execution Model
@@ -81,7 +81,7 @@ There are two useful forms of a spec:
 1. Neon-backed canonical workflow spec
    Stored in `workflow_specs` and used by the runtime.
 2. Checked-in phase workflow snapshot
-   Stored in `./projects/{project_name}/phases/{phase_name}/specs/workflow.json`
+   Stored in `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
    for reviewability, reproducibility, and agent onboarding.
 3. Checked-in project and phase organizational specs
    Stored as `project_spec.json` and `phase_spec.json` to describe structure,
@@ -96,7 +96,7 @@ These are not competing systems.
 The usual pattern is:
 
 1. explore the data/problem with the agent
-2. write `projects/{project_name}/phases/{phase_name}/specs/workflow.json`
+2. write `projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
 3. register it with `uv run -m pipelines.cli spec create --file ...`
 4. run dataset/capture/analysis/report from the CLI
 
@@ -104,9 +104,9 @@ The usual pattern is:
 
 1. Create `./projects/{project_name}/`
 2. Create `./projects/{project_name}/project_spec.json`
-3. Create `./projects/{project_name}/phases/{phase_name}/`
-4. Create `./projects/{project_name}/phases/{phase_name}/phase_spec.json`
-5. Create `./projects/{project_name}/phases/{phase_name}/specs/workflow.json`
+3. Create `./projects/{project_name}/{subproject}/{phase_name}/`
+4. Create `./projects/{project_name}/{subproject}/{phase_name}/phase_spec.json`
+5. Create `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
 6. Register the workflow spec in Neon
 7. Run the project through `pipelines.cli`
 8. If custom glue is needed, keep it inside the project or phase folder
@@ -118,7 +118,7 @@ uv run -m pipelines.cli project init --project {project_name}
 ```
 
 This creates a default first phase at
-`projects/{project_name}/phases/phase_01/`. Pass `--phase {phase_name}` if you
+`projects/{project_name}/{subproject}/phase_01/`. Pass `--phase {phase_name}` if you
 want a different initial phase name.
 
 Most new work should be:
@@ -136,7 +136,7 @@ Not:
 Use a phase only when the project clearly has a bounded sub-effort with its own
 inputs, scripts, or deliverables.
 
-1. Create `./projects/{project_name}/phases/{phase_name}/`
+1. Create `./projects/{project_name}/{subproject}/{phase_name}/`
 2. Create `phase_spec.json` if the phase needs its own explicit config
 3. Add phase-local `scripts/`, `reports/`, and `assets/` only as needed
 4. Keep the phase aligned with the parent project workflow spec
@@ -201,7 +201,7 @@ Recommended first-pass shape:
   "inherits": "projects/project_id/project_spec.json",
   "goal": "What this phase is trying to prove or produce",
   "workflow_specs": [
-    "projects/project_id/phases/phase_id/specs/workflow.json"
+    "projects/project_id/{subproject}/phase_id/specs/workflow.json"
   ],
   "overrides": {
     "dataset": {},
@@ -210,7 +210,7 @@ Recommended first-pass shape:
     "report": {}
   },
   "outputs": {
-    "output_dir": "projects/project_id/phases/phase_id/reports",
+    "output_dir": "projects/project_id/{subproject}/phase_id/reports",
     "notes": "Optional notes about expected artifacts"
   }
 }
@@ -239,7 +239,7 @@ The canonical execution path is through `pipelines.cli`.
 ## Register a project workflow spec
 
 ```bash
-uv run -m pipelines.cli spec create --file projects/{project_name}/phases/{phase_name}/specs/workflow.json
+uv run -m pipelines.cli spec create --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json
 ```
 
 ## Inspect registered specs
@@ -259,13 +259,13 @@ uv run -m pipelines.cli publication list --spec <spec_id>
 ## Run capture on Modal
 
 ```bash
-uv run -m pipelines.cli capture run --spec <spec_id> --output-dir projects/{project_name}/phases/{phase_name}/outputs/<run_name>
+uv run -m pipelines.cli capture run --spec <spec_id> --output-dir projects/{project_name}/{subproject}/{phase_name}/outputs/<run_name>
 ```
 
 ## Run analysis on Modal
 
 ```bash
-uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir projects/{project_name}/phases/{phase_name}/outputs/<analysis_name>
+uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir projects/{project_name}/{subproject}/{phase_name}/outputs/<analysis_name>
 ```
 
 ## Build a local report
@@ -280,7 +280,7 @@ When starting fresh on a new project:
 
 1. read `README.md`, `docs/WORKFLOW.md`, and this file
 2. inspect Neon/data sources directly
-3. create or refine `projects/{project_name}/phases/{phase_name}/specs/workflow.json`
+3. create or refine `projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
 4. register the spec in Neon
 5. run the workflow through `pipelines.cli`
 6. keep project-specific scripts, notes, and deliverables inside the project or phase folder

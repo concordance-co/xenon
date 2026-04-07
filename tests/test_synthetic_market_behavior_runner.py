@@ -5,7 +5,7 @@ import numpy as np
 import pyarrow.parquet as pq
 import transformers
 
-from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
     SyntheticMarketBehaviorConfig,
     _prepare_behavior_rows,
     _build_generation_config,
@@ -123,7 +123,7 @@ def test_run_generation_batch_uses_single_prompt_path_for_single_request(monkeyp
         return {"generated_token_ids": [], "generated_text": "", "finish_reason": "", "input_ids": [], "patch_stats": {}}
 
     monkeypatch.setattr(
-        "projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner._generate_one_vllm",
+        "projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner._generate_one_vllm",
         fake_generate_one_vllm,
     )
 
@@ -155,7 +155,7 @@ def test_run_generation_batch_uses_batched_path_for_multiple_requests(monkeypatc
         ]
 
     monkeypatch.setattr(
-        "projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner._generate_batch_vllm",
+        "projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner._generate_batch_vllm",
         fake_generate_batch_vllm,
     )
 
@@ -180,7 +180,7 @@ def test_run_generation_batch_uses_batched_path_for_multiple_requests(monkeypatc
 
 
 def test_prepare_behavior_rows_filters_exact_example_ids(monkeypatch):
-    import research.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+    import projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner as behavior_runner
 
     rows = [
         {
@@ -241,7 +241,7 @@ class _FakePatchSpec:
 
 
 def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp_path):
-    import projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+    import projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner as behavior_runner
 
     events: list[str] = []
     basis_calls: list[dict[str, object]] = []
@@ -382,7 +382,7 @@ def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp
 
 
 def test_run_behavior_builds_multi_spec_requests_for_path_validation(monkeypatch, tmp_path):
-    import research.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+    import projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner as behavior_runner
 
     requests_seen: list[list[dict[str, object]]] = []
     donor_capture_layers: list[tuple[int, ...]] = []
@@ -529,7 +529,7 @@ def test_run_behavior_builds_multi_spec_requests_for_path_validation(monkeypatch
 
 
 def test_prepare_donors_uses_batched_residual_capture(monkeypatch, tmp_path):
-    import research.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+    import projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner as behavior_runner
 
     capture_cfgs: list[object] = []
     batch_calls: list[dict[str, object]] = []

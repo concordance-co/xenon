@@ -15,7 +15,7 @@ ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / "
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from research.synthetic_market.synthetic_market_representation_analysis import SET_GEOMETRY_COORDS_BY_SCENARIO
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_representation_analysis import SET_GEOMETRY_COORDS_BY_SCENARIO
 
 RESULTS_PATH = Path("data/analysis_results/synthetic_market_representation/phase10_set_geometry_context_v1/results.json")
 OUTPUT_DIR = Path("data/report_assets/synthetic_market_phase10_geometry_deformation")

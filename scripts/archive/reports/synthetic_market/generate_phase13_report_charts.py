@@ -13,7 +13,7 @@ ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / "
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from research.synthetic_market.synthetic_market_representation_analysis import (  # noqa: E402
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_representation_analysis import (  # noqa: E402
     SET_GEOMETRY_COORDS_BY_SCENARIO,
     _ordered_set_geometry_context_variants,
     _set_geometry_context_deformation_pairs,

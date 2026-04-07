@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_battery import (
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_battery import (
     build_behavior_baseline_plan,
     build_behavior_robustness_battery,
     build_behavior_robustness_payload,
 )
-from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
+from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import SyntheticMarketBehaviorConfig
 
 
 def test_build_behavior_robustness_battery_expands_targeted_and_random_control_runs(tmp_path: Path):
