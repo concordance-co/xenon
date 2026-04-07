@@ -73,8 +73,12 @@ class VLLMCaptureConfig:
 # the same artifact format without duplicating save/parsing logic.
 from pipelines.interp.local_capture import (  # noqa: E402
     _apply_pooling,
+    _artifact_basename_for_row,
+    _build_existing_capture_index,
+    _can_reuse_capture,
     _load_examples_from_neon,
     _parse_messages,
+    _row_identity_token,
     _save_activations,
     _save_router,
 )
@@ -877,7 +881,7 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
     # --- Load or initialise metadata ---
     meta_path = config.output_dir / "metadata.parquet"
     metadata_rows = _load_existing_metadata(meta_path)
-    existing_log_ids = {r["log_id"] for r in metadata_rows}
+    existing_capture_index = _build_existing_capture_index(metadata_rows)
 
     processed = 0
     skipped = 0
@@ -890,21 +894,21 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
             print(f"  [{idx + 1}/{len(examples)}] Skipping row with no log_id")
             skipped += 1
             continue
+        artifact_id = _artifact_basename_for_row(row)
 
         # Skip if already captured
         if config.skip_existing:
-            if int(log_id) in existing_log_ids:
-                skipped += 1
-                continue
+            current_token = _row_identity_token(row)
+            existing_row = existing_capture_index.get(current_token) if current_token is not None else None
             residual_exists = (
                 not config.capture_residual
-                or (residual_dir / f"{log_id}.safetensors").exists()
+                or (residual_dir / f"{artifact_id}.safetensors").exists()
             )
             router_exists = (
                 not (config.capture_router and is_moe)
-                or (router_dir / f"{log_id}.safetensors").exists()
+                or (router_dir / f"{artifact_id}.safetensors").exists()
             )
-            if residual_exists and router_exists:
+            if _can_reuse_capture(row, existing_row) and residual_exists and router_exists:
                 print(
                     f"  [{idx + 1}/{len(examples)}] Skipping existing: {log_id}"
                 )
@@ -925,7 +929,7 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
                     tokenizer=tokenizer,
                     messages=messages,
                     config=config,
-                    log_id=log_id,
+                    log_id=artifact_id,
                 )
             )
             elapsed = time.monotonic() - t0
@@ -944,11 +948,11 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
             # _capture_one_vllm, but we may need to re-save after pooling.
             if residual is not None and config.pool_on_capture:
                 file_size += _save_activations(
-                    residual, residual_dir / f"{log_id}.safetensors"
+                    residual, residual_dir / f"{artifact_id}.safetensors"
                 )
             elif residual is not None:
                 # Already saved; compute file size
-                p = residual_dir / f"{log_id}.safetensors"
+                p = residual_dir / f"{artifact_id}.safetensors"
                 if p.exists():
                     file_size += p.stat().st_size
 
@@ -956,7 +960,7 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
                 file_size += _save_router(
                     router_logits,
                     router_indices,
-                    router_dir / f"{log_id}.safetensors",
+                    router_dir / f"{artifact_id}.safetensors",
                     router_dtype=config.router_dtype,
                 )
 
@@ -973,6 +977,12 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
 
             meta_row: dict[str, Any] = {
                 "log_id": int(log_id),
+                "row_key": row.get("row_key"),
+                "artifact_id": artifact_id,
+                "source_prompt_hash": row.get("source_prompt_hash"),
+                "source_relation": row.get("source_relation"),
+                "workflow_spec_id": row.get("workflow_spec_id"),
+                "workflow_spec_version": row.get("workflow_spec_version"),
                 "seq_len": seq_len,
                 "prompt_hash": prompt_hash,
                 "capture_timestamp": datetime.now(UTC).isoformat(),
@@ -994,7 +1004,9 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
                 meta_row["num_experts"] = int(router_logits.shape[-1])
 
             metadata_rows.append(meta_row)
-            existing_log_ids.add(int(log_id))
+            token = _row_identity_token(meta_row)
+            if token is not None:
+                existing_capture_index[token] = meta_row
             processed += 1
 
             shape_parts = []

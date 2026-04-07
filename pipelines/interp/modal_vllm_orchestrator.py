@@ -1,6 +1,7 @@
 """Canonical Modal capture orchestrator for generic workflow capture runs."""
 
 import modal
+from typing import Any
 
 app = modal.App("xenon-vllm-capture")
 
@@ -138,6 +139,7 @@ class VLLMCaptureWorker:
 
         from pipelines.interp.local_capture import (
             _apply_pooling,
+            _artifact_basename_for_row,
             _parse_messages,
             _save_activations,
             _save_router,
@@ -170,6 +172,8 @@ class VLLMCaptureWorker:
             log_id = row.get("log_id")
             if log_id is None:
                 continue
+            artifact_id = _artifact_basename_for_row(row)
+
             messages = _parse_messages(row)
             if not messages:
                 continue
@@ -180,7 +184,7 @@ class VLLMCaptureWorker:
                     tokenizer=self.tokenizer,
                     messages=messages,
                     config=config,
-                    log_id=log_id,
+                    log_id=artifact_id,
                 )
                 elapsed = time.monotonic() - t0
                 seq_len = len(input_ids)
@@ -191,16 +195,17 @@ class VLLMCaptureWorker:
 
                 file_size = 0
                 if residual is not None and pool_on_capture:
-                    file_size += _save_activations(residual, residual_dir / f"{log_id}.safetensors")
+                    file_size += _save_activations(residual, residual_dir / f"{artifact_id}.safetensors")
                 elif residual is not None:
-                    residual_path = residual_dir / f"{log_id}.safetensors"
+                    residual_path = residual_dir / f"{artifact_id}.safetensors"
                     if residual_path.exists():
                         file_size += residual_path.stat().st_size
+
                 if router_logits is not None and router_indices is not None:
                     file_size += _save_router(
                         router_logits,
                         router_indices,
-                        router_dir / f"{log_id}.safetensors",
+                        router_dir / f"{artifact_id}.safetensors",
                         router_dtype=router_dtype,
                     )
 
@@ -208,6 +213,12 @@ class VLLMCaptureWorker:
                 captured_layers = sorted(layers) if layers is not None else list(range(self.num_layers))
                 meta_row: dict = {
                     "log_id": int(log_id),
+                    "row_key": row.get("row_key"),
+                    "artifact_id": artifact_id,
+                    "source_prompt_hash": row.get("source_prompt_hash"),
+                    "source_relation": row.get("source_relation"),
+                    "workflow_spec_id": row.get("workflow_spec_id"),
+                    "workflow_spec_version": row.get("workflow_spec_version"),
                     "seq_len": seq_len,
                     "prompt_hash": prompt_hash,
                     "capture_timestamp": datetime.now(UTC).isoformat(),
@@ -290,8 +301,20 @@ def _residual_path_has_full_sequence_shape(path) -> bool:
     return len(shape) == 3
 
 
-def _limit_uncaptured_rows(rows: list[dict], completed: set[int], *, limit: int) -> list[dict]:
-    filtered = [row for row in rows if row.get("log_id") not in completed]
+def _limit_uncaptured_rows(
+    rows: list[dict],
+    completed: dict[str, dict[str, Any]],
+    *,
+    limit: int,
+) -> list[dict]:
+    from pipelines.interp.local_capture import _can_reuse_capture, _row_identity_token
+
+    filtered = []
+    for row in rows:
+        token = _row_identity_token(row)
+        existing = completed.get(token) if token is not None else None
+        if not _can_reuse_capture(row, existing):
+            filtered.append(row)
     if limit > 0:
         return filtered[:limit]
     return filtered
@@ -315,11 +338,23 @@ def write_metadata_to_volume(metadata_rows: list[dict], output_subdir: str = "")
     if meta_path.exists():
         existing_rows = pq_.read_table(meta_path).to_pylist()
 
-    by_id = {row["log_id"]: row for row in existing_rows}
-    for row in metadata_rows:
-        by_id[row["log_id"]] = row
+    from pipelines.interp.local_capture import _row_identity_token
 
-    merged = sorted(by_id.values(), key=lambda row: row["log_id"])
+    # Build lookup by stable row identity when present.
+    by_id: dict[str, dict] = {}
+    for row in existing_rows:
+        token = _row_identity_token(row)
+        if token is not None:
+            by_id[token] = row
+    for row in metadata_rows:
+        token = _row_identity_token(row)
+        if token is not None:
+            by_id[token] = row
+
+    merged = sorted(
+        by_id.values(),
+        key=lambda row: (str(row.get("row_key") or ""), int(row.get("log_id") or 0)),
+    )
     pq_.write_table(pa.Table.from_pylist(merged), meta_path, compression="snappy")
     volume.commit()
     print(f"Wrote metadata to volume: {meta_path} ({len(merged)} rows, {len(metadata_rows)} new)")
@@ -332,41 +367,49 @@ def get_completed_log_ids(
     capture_residual: bool = True,
     pool_on_capture: str | None = None,
     output_subdir: str = "",
-) -> set[int]:
-    """Return log_ids that already have captures on the volume."""
+) -> dict[str, dict]:
+    """Return reusable captured rows keyed by stable row identity."""
     from pathlib import Path
 
     import pyarrow.parquet as pq_
+
+    from pipelines.interp.local_capture import (
+        _artifact_basename_for_row,
+        _row_identity_token,
+    )
 
     base = Path("/data/activations")
     if output_subdir:
         base = base / output_subdir
     meta_path = base / "metadata.parquet"
     if not meta_path.exists():
-        return set()
+        return {}
 
     rows = pq_.read_table(meta_path).to_pylist()
-    completed: set[int] = set()
+    completed: dict[str, dict] = {}
     expected_pooling = pool_on_capture or "none"
     residual_dir = base / "residual_stream"
     router_dir = base / "router_logits"
 
     for row in rows:
-        log_id = row["log_id"]
+        artifact_id = _artifact_basename_for_row(row)
+        token = _row_identity_token(row)
+        if token is None:
+            continue
         if row.get("pooling", "none") != expected_pooling:
             continue
         if capture_router:
             if not row.get("has_router", False):
                 continue
-            if not (router_dir / f"{log_id}.safetensors").exists():
+            if not (router_dir / f"{artifact_id}.safetensors").exists():
                 continue
         if capture_residual:
-            residual_path = residual_dir / f"{log_id}.safetensors"
+            residual_path = residual_dir / f"{artifact_id}.safetensors"
             if not residual_path.exists():
                 continue
             if expected_pooling == "none" and not _residual_path_has_full_sequence_shape(residual_path):
                 continue
-        completed.add(log_id)
+        completed[token] = row
 
     return completed
 
@@ -398,8 +441,12 @@ def run_vllm_capture(
     output_subdir: str = "",
 ) -> str:
     """Load examples from Neon, fan out to GPU workers, and write metadata."""
-    from pipelines.interp.local_capture import _load_examples_from_neon
     from pipelines.db import connect_neon
+    from pipelines.interp.local_capture import (
+        _can_reuse_capture,
+        _load_examples_from_neon,
+        _row_identity_token,
+    )
 
     rows = _load_examples_from_neon(
         limit=None,
@@ -415,6 +462,7 @@ def run_vllm_capture(
         parsed_layers = [int(token.strip()) for token in layers_str.split(",") if token.strip()]
     pool_val = pool if pool else None
 
+    # Check which rows are already captured with matching config
     print("Checking for existing captures on volume...")
     completed = get_completed_log_ids.remote(
         capture_router=capture_router,
@@ -423,7 +471,12 @@ def run_vllm_capture(
         output_subdir=output_subdir,
     )
     total_rows = len(rows)
-    uncaptured = [row for row in rows if row.get("log_id") not in completed]
+    uncaptured = []
+    for row in rows:
+        token = _row_identity_token(row)
+        existing = completed.get(token) if token is not None else None
+        if not _can_reuse_capture(row, existing):
+            uncaptured.append(row)
     already_captured = total_rows - len(uncaptured)
     rows = _limit_uncaptured_rows(rows, completed, limit=limit)
     if already_captured > 0:
@@ -456,15 +509,21 @@ def run_vllm_capture(
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS capture_metadata (
-                log_id              INT PRIMARY KEY,
-                seq_len             INT NOT NULL,
-                prompt_hash         TEXT,
-                capture_timestamp   TIMESTAMPTZ NOT NULL DEFAULT now(),
-                file_size_bytes     BIGINT NOT NULL DEFAULT 0,
-                elapsed_s           REAL NOT NULL DEFAULT 0,
-                has_router          BOOLEAN NOT NULL DEFAULT false,
-                captured_layers     TEXT,
-                pooling             TEXT NOT NULL DEFAULT 'none',
+                log_id                INT PRIMARY KEY,
+                row_key               TEXT,
+                artifact_id           TEXT,
+                source_prompt_hash    TEXT,
+                source_relation       TEXT,
+                workflow_spec_id      TEXT,
+                workflow_spec_version INT,
+                seq_len               INT NOT NULL,
+                prompt_hash           TEXT,
+                capture_timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
+                file_size_bytes       BIGINT NOT NULL DEFAULT 0,
+                elapsed_s             REAL NOT NULL DEFAULT 0,
+                has_router            BOOLEAN NOT NULL DEFAULT false,
+                captured_layers       TEXT,
+                pooling               TEXT NOT NULL DEFAULT 'none',
                 num_layers_captured INT NOT NULL DEFAULT 0,
                 hidden_dim          INT NOT NULL DEFAULT 0,
                 num_experts         INT
@@ -492,11 +551,19 @@ def run_vllm_capture(
                     cur.execute(
                         """
                         INSERT INTO capture_metadata
-                            (log_id, seq_len, prompt_hash, capture_timestamp,
+                            (log_id, row_key, artifact_id, source_prompt_hash, source_relation,
+                             workflow_spec_id, workflow_spec_version,
+                             seq_len, prompt_hash, capture_timestamp,
                              file_size_bytes, elapsed_s, has_router, captured_layers,
                              pooling, num_layers_captured, hidden_dim, num_experts)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (log_id) DO UPDATE SET
+                            row_key = EXCLUDED.row_key,
+                            artifact_id = EXCLUDED.artifact_id,
+                            source_prompt_hash = EXCLUDED.source_prompt_hash,
+                            source_relation = EXCLUDED.source_relation,
+                            workflow_spec_id = EXCLUDED.workflow_spec_id,
+                            workflow_spec_version = EXCLUDED.workflow_spec_version,
                             seq_len = EXCLUDED.seq_len,
                             file_size_bytes = EXCLUDED.file_size_bytes,
                             elapsed_s = EXCLUDED.elapsed_s,
@@ -510,6 +577,12 @@ def run_vllm_capture(
                         """,
                         (
                             row["log_id"],
+                            row.get("row_key"),
+                            row.get("artifact_id"),
+                            row.get("source_prompt_hash"),
+                            row.get("source_relation"),
+                            row.get("workflow_spec_id"),
+                            row.get("workflow_spec_version"),
                             row["seq_len"],
                             row.get("prompt_hash"),
                             row["capture_timestamp"],

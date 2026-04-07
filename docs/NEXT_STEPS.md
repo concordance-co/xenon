@@ -65,6 +65,10 @@ uv run -m pipelines.cli dataset build --spec <spec_id>
 uv run -m pipelines.cli publication list --spec <spec_id>
 ```
 
+Use `dataset.identity.column` in the spec when the stable dataset row id is not
+the workflow `log_id`. Capture reuse now relies on stable row identity plus
+prompt hash.
+
 4. Run capture:
 
 ```bash

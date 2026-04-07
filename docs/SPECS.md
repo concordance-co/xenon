@@ -34,6 +34,9 @@ snapshots stored per phase under `projects/<project>/phases/<phase>/specs/`.
       "pooling": "last_token",
       "n_folds": 5
     },
+    "identity": {
+      "column": "log_id"
+    },
     "publish_mode": "view"
   },
   "capture": {
@@ -74,6 +77,10 @@ snapshots stored per phase under `projects/<project>/phases/<phase>/specs/`.
 ## Notes
 
 - Dataset build publishes a named Neon relation.
+- Workflow publications should expose a stable `workflow_row_key`; set
+  `dataset.identity.column` when `log_id` is synthetic or otherwise not durable.
+- Workflow publications also expose `workflow_prompt_hash` so capture reuse can
+  detect prompt drift.
 - Capture reads from that published relation.
 - Analysis can target `workflow_label` directly.
 - Legacy `prep-targets` are deprecated and are no longer part of the canonical model.

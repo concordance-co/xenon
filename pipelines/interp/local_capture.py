@@ -36,6 +36,97 @@ def _validate_relation_name(name: str | None) -> str | None:
     return text
 
 
+def _row_identity_token(row: dict[str, Any]) -> str | None:
+    row_key = row.get("row_key")
+    if row_key is not None and str(row_key).strip():
+        return f"row:{str(row_key).strip()}"
+    log_id = row.get("log_id")
+    if log_id is None:
+        return None
+    return f"log:{int(log_id)}"
+
+
+def _compute_source_prompt_hash(raw_prompt_messages: Any) -> str | None:
+    if raw_prompt_messages is None:
+        return None
+    if isinstance(raw_prompt_messages, str):
+        serialized = raw_prompt_messages
+    else:
+        serialized = json.dumps(
+            raw_prompt_messages,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+    return hashlib.md5(serialized.encode("utf-8")).hexdigest()
+
+
+def _resolve_row_key(row: dict[str, Any]) -> str | None:
+    for key in ("row_key", "workflow_row_key"):
+        value = row.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    log_id = row.get("log_id")
+    if log_id is None:
+        return None
+    return str(int(log_id))
+
+
+def _artifact_basename_for_row(row: dict[str, Any]) -> str:
+    artifact_id = row.get("artifact_id")
+    if artifact_id is not None and str(artifact_id).strip():
+        return str(artifact_id).strip()
+    row_key = _resolve_row_key(row)
+    if row_key is not None:
+        log_id = row.get("log_id")
+        if log_id is not None and row_key == str(int(log_id)):
+            return row_key
+        digest = hashlib.sha256(row_key.encode("utf-8")).hexdigest()[:24]
+        return f"rk_{digest}"
+    log_id = row.get("log_id")
+    if log_id is None:
+        raise ValueError("Row must include row_key or log_id")
+    return str(int(log_id))
+
+
+def _enrich_capture_row(row: dict[str, Any], *, source_relation: str | None) -> dict[str, Any]:
+    enriched = dict(row)
+    row_key = _resolve_row_key(enriched)
+    if row_key is not None:
+        enriched["row_key"] = row_key
+    source_prompt_hash = enriched.get("source_prompt_hash") or enriched.get("workflow_prompt_hash")
+    if source_prompt_hash is None:
+        source_prompt_hash = _compute_source_prompt_hash(enriched.get("prompt_messages_json"))
+    if source_prompt_hash is not None:
+        enriched["source_prompt_hash"] = str(source_prompt_hash)
+    enriched["artifact_id"] = _artifact_basename_for_row(enriched)
+    if source_relation and not enriched.get("source_relation"):
+        enriched["source_relation"] = source_relation
+    return enriched
+
+
+def _build_existing_capture_index(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        token = _row_identity_token(row)
+        if token is not None:
+            index[token] = row
+    return index
+
+
+def _can_reuse_capture(
+    current_row: dict[str, Any],
+    existing_row: dict[str, Any] | None,
+) -> bool:
+    if existing_row is None:
+        return False
+    current_hash = current_row.get("source_prompt_hash")
+    existing_hash = existing_row.get("source_prompt_hash")
+    if current_hash and existing_hash and str(current_hash) != str(existing_hash):
+        return False
+    return True
+
+
 @dataclass(slots=True)
 class CaptureConfig:
     output_dir: Path = field(default_factory=lambda: Path("data/activations"))
@@ -96,12 +187,31 @@ def _load_examples_from_neon(
 
     validated_source = _validate_relation_name(source_relation)
     if validated_source and validated_source != "interp_examples_v0":
-        query = f"SELECT log_id, prompt_messages_json FROM {validated_source} ORDER BY log_id"
+        with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
+            cols = conn.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = %s",
+                [validated_source],
+            ).fetchall()
+            available = {str(r["column_name"]) for r in cols}
+            select_columns = ["log_id", "prompt_messages_json"]
+            for optional in (
+                "workflow_row_key",
+                "workflow_prompt_hash",
+                "workflow_spec_id",
+                "workflow_spec_version",
+            ):
+                if optional in available:
+                    select_columns.append(optional)
+            query = f"SELECT {', '.join(select_columns)} FROM {validated_source} ORDER BY log_id"
+            params: list[Any] = []
+            if limit is not None:
+                query += " LIMIT %s"
+                params.append(limit)
+            fetched = conn.execute(query, params).fetchall()
         params: list[Any] = []
-        if limit is not None:
-            query += " LIMIT %s"
-            params.append(limit)
         source = validated_source
+        rows = [dict(r) for r in fetched]
     else:
         query, params = build_interp_example_query(
             select_columns=["ie.log_id", "ie.prompt_messages_json"],
@@ -111,12 +221,12 @@ def _load_examples_from_neon(
             limit=limit,
         )
         source = f"interp_examples_v0 joined to {cohort_view}" if cohort_view else "interp_examples_v0"
-
-    with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
-        rows = conn.execute(query, params).fetchall()
+        with psycopg.connect(require_neon_dsn(), row_factory=dict_row) as conn:
+            fetched = conn.execute(query, params).fetchall()
+        rows = [dict(r) for r in fetched]
 
     print(f"Loaded {len(rows)} examples from Neon ({source})")
-    return [dict(r) for r in rows]
+    return [_enrich_capture_row(row, source_relation=source) for row in rows]
 
 
 def _load_examples(config: CaptureConfig) -> list[dict[str, Any]]:
@@ -125,7 +235,8 @@ def _load_examples(config: CaptureConfig) -> list[dict[str, Any]]:
             raise FileNotFoundError(config.parquet_path)
         table = pq.read_table(config.parquet_path)
         rows = table.to_pylist()
-        return rows[: config.limit] if config.limit is not None else rows
+        limited = rows[: config.limit] if config.limit is not None else rows
+        return [_enrich_capture_row(row, source_relation=str(config.parquet_path)) for row in limited]
 
     return _load_examples_from_neon(
         limit=config.limit,
@@ -458,7 +569,7 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
 
     # Load existing metadata for resume support
     metadata_rows: list[dict[str, Any]] = _load_existing_metadata(config.output_dir)
-    existing_log_ids: set[int] = {int(r["log_id"]) for r in metadata_rows}
+    existing_capture_index = _build_existing_capture_index(metadata_rows)
 
     processed = 0
     skipped = 0
@@ -467,6 +578,7 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
 
     for idx, row in enumerate(examples):
         log_id = row.get("log_id")
+        artifact_id = _artifact_basename_for_row(row)
         if log_id is None:
             print(f"  [{idx + 1}/{len(examples)}] Skipping row with no log_id")
             skipped += 1
@@ -474,11 +586,11 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
 
         # Skip if all output files already exist
         if config.skip_existing:
-            # Check metadata-based skip (from previous partial run)
-            in_metadata = int(log_id) in existing_log_ids
-            residual_exists = not config.capture_residual or (residual_dir / f"{log_id}.safetensors").exists()
-            router_exists = not (config.capture_router and is_moe) or (router_dir / f"{log_id}.safetensors").exists()
-            if (in_metadata and residual_exists and router_exists) or (residual_exists and router_exists):
+            current_token = _row_identity_token(row)
+            existing_row = existing_capture_index.get(current_token) if current_token is not None else None
+            residual_exists = not config.capture_residual or (residual_dir / f"{artifact_id}.safetensors").exists()
+            router_exists = not (config.capture_router and is_moe) or (router_dir / f"{artifact_id}.safetensors").exists()
+            if _can_reuse_capture(row, existing_row) and residual_exists and router_exists:
                 print(f"  [{idx + 1}/{len(examples)}] Skipping existing: {log_id}")
                 skipped += 1
                 continue
@@ -509,12 +621,12 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
             file_size = 0
             if residual is not None:
                 file_size += _save_activations(
-                    residual, residual_dir / f"{log_id}.safetensors"
+                    residual, residual_dir / f"{artifact_id}.safetensors"
                 )
             if router_logits is not None and router_indices is not None:
                 file_size += _save_router(
                     router_logits, router_indices,
-                    router_dir / f"{log_id}.safetensors",
+                    router_dir / f"{artifact_id}.safetensors",
                     router_dtype=config.router_dtype,
                 )
 
@@ -527,6 +639,12 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
 
             meta_row: dict[str, Any] = {
                 "log_id": int(log_id),
+                "row_key": row.get("row_key"),
+                "artifact_id": artifact_id,
+                "source_prompt_hash": row.get("source_prompt_hash"),
+                "source_relation": row.get("source_relation"),
+                "workflow_spec_id": row.get("workflow_spec_id"),
+                "workflow_spec_version": row.get("workflow_spec_version"),
                 "seq_len": seq_len,
                 "prompt_hash": prompt_hash,
                 "capture_timestamp": datetime.now(UTC).isoformat(),
@@ -547,6 +665,9 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
                 meta_row["num_experts"] = int(router_logits.shape[-1])
 
             metadata_rows.append(meta_row)
+            token = _row_identity_token(meta_row)
+            if token is not None:
+                existing_capture_index[token] = meta_row
             flush_counter += 1
 
             # Incremental metadata flush

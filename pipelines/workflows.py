@@ -76,6 +76,20 @@ def _sql_literal(value: str) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
+def _build_row_key_sql(dataset: dict[str, Any]) -> str:
+    identity = dict(dataset.get("identity") or {})
+    identity_column = identity.get("column")
+    if isinstance(identity_column, str) and identity_column.strip():
+        column = validate_identifier(identity_column.strip(), label="dataset.identity.column")
+    else:
+        column = "log_id"
+    return f"src.{column}::text AS workflow_row_key"
+
+
+def _build_prompt_hash_sql() -> str:
+    return "md5(COALESCE(to_jsonb(src)->>'prompt_messages_json', '')) AS workflow_prompt_hash"
+
+
 def normalize_workflow_spec(spec: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(spec, dict):
         raise ValueError("Workflow spec must be an object")
@@ -94,6 +108,7 @@ def normalize_workflow_spec(spec: dict[str, Any]) -> dict[str, Any]:
             "label": dict(normalized["label"]),
             "split": dict(normalized["split"]),
             "probe_defaults": dict(normalized.get("probe_defaults") or {}),
+            "identity": dict(normalized.get("identity") or {}),
             "publish_target": normalized.get("publish_target"),
             "publish_mode": normalized.get("publish_mode") or "view",
         }
@@ -165,6 +180,11 @@ def normalize_workflow_spec(spec: dict[str, Any]) -> dict[str, Any]:
     normalized["dataset"]["label"] = label
     normalized["dataset"]["filters"] = dict(dataset.get("filters") or {})
     normalized["dataset"]["split"] = dict(dataset.get("split") or {})
+    identity = dict(dataset.get("identity") or {})
+    identity_column = identity.get("column")
+    if identity_column is not None:
+        identity["column"] = validate_identifier(str(identity_column).strip(), label="dataset.identity.column")
+    normalized["dataset"]["identity"] = identity
     normalized["dataset"]["publish_mode"] = "materialized" if str(dataset.get("publish_mode") or "").lower() == "materialized" else "view"
     normalized["version"] = int(normalized.get("version") or 1)
     normalized["id"] = str(normalized.get("id") or uuid.uuid4().hex[:12])
@@ -186,6 +206,7 @@ def serialize_legacy_prep_target(spec: dict[str, Any]) -> dict[str, Any]:
         "label": dataset["label"],
         "split": dataset.get("split") or {},
         "probe_defaults": dataset.get("probe_defaults") or {},
+        "identity": dataset.get("identity") or {},
     }
     if normalized.get("created_at"):
         legacy["created_at"] = normalized["created_at"]
@@ -412,11 +433,14 @@ def publish_dataset(conn: Any, spec: dict[str, Any], *, run_id: str) -> dict[str
     publish_mode = normalized["dataset"].get("publish_mode") or "view"
     source_sql = _build_source_sql(normalized)
     label_sql = _build_label_sql(normalized["dataset"]["label"])
+    row_key_sql = _build_row_key_sql(normalized["dataset"])
+    prompt_hash_sql = _build_prompt_hash_sql()
     spec_id = normalized["id"].replace("'", "''")
     version = int(normalized.get("version") or 1)
 
     select_sql = (
-        f"SELECT src.*, {label_sql}, '{spec_id}' AS workflow_spec_id, {version} AS workflow_spec_version "
+        f"SELECT src.*, {label_sql}, {row_key_sql}, {prompt_hash_sql}, "
+        f"'{spec_id}' AS workflow_spec_id, {version} AS workflow_spec_version "
         f"FROM ({source_sql}) src"
     )
 
@@ -424,7 +448,8 @@ def publish_dataset(conn: Any, spec: dict[str, Any], *, run_id: str) -> dict[str
         conn.execute(sql.SQL("DROP MATERIALIZED VIEW IF EXISTS {}").format(sql.Identifier(relation_name)))
         conn.execute(sql.SQL("CREATE MATERIALIZED VIEW {} AS ").format(sql.Identifier(relation_name)).as_string(conn) + select_sql)
     else:
-        conn.execute(sql.SQL("CREATE OR REPLACE VIEW {} AS ").format(sql.Identifier(relation_name)).as_string(conn) + select_sql)
+        conn.execute(sql.SQL("DROP VIEW IF EXISTS {}").format(sql.Identifier(relation_name)))
+        conn.execute(sql.SQL("CREATE VIEW {} AS ").format(sql.Identifier(relation_name)).as_string(conn) + select_sql)
 
     row = conn.execute(
         sql.SQL("SELECT COUNT(*) AS n FROM {}").format(sql.Identifier(relation_name)).as_string(conn)
@@ -441,7 +466,11 @@ def publish_dataset(conn: Any, spec: dict[str, Any], *, run_id: str) -> dict[str
     conn.execute(
         "INSERT INTO dataset_publications "
         "(id, spec_id, spec_version, run_id, relation_name, publish_mode, row_count, publication_json, created_at, updated_at) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s) "
+        "ON CONFLICT (relation_name) DO UPDATE SET "
+        "id = EXCLUDED.id, spec_id = EXCLUDED.spec_id, spec_version = EXCLUDED.spec_version, "
+        "run_id = EXCLUDED.run_id, publish_mode = EXCLUDED.publish_mode, row_count = EXCLUDED.row_count, "
+        "publication_json = EXCLUDED.publication_json, created_at = EXCLUDED.created_at, updated_at = EXCLUDED.updated_at",
         [
             publication_id,
             normalized["id"],
@@ -512,6 +541,14 @@ def export_publication_labels(
     label_col = validate_identifier(label_column, label="label column")
     columns = ["log_id", label_col]
     select_bits = ["log_id", f"{label_col} AS workflow_label"]
+    if relation_has_column(conn, relation, "workflow_row_key"):
+        select_bits.append("workflow_row_key")
+    else:
+        select_bits.append("log_id::text AS workflow_row_key")
+    if relation_has_column(conn, relation, "workflow_prompt_hash"):
+        select_bits.append("workflow_prompt_hash")
+    elif relation_has_column(conn, relation, "prompt_messages_json"):
+        select_bits.append("md5(COALESCE(prompt_messages_json, '')) AS workflow_prompt_hash")
     if relation_has_column(conn, relation, "label_quality"):
         select_bits.append("label_quality")
     else:

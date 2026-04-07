@@ -14,9 +14,16 @@ import argparse
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pyarrow.parquet as pq
+
+from pipelines.interp.local_capture import (
+    _artifact_basename_for_row,
+    _compute_source_prompt_hash,
+    _row_identity_token,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +180,9 @@ class AnalysisDataset:
         from pipelines.db import require_neon_dsn
 
         query = """
-            SELECT log_id, decision_type, trade_side, was_profitable_1h,
+            SELECT log_id, log_id::text AS workflow_row_key,
+                   md5(COALESCE(prompt_messages_json, '')) AS workflow_prompt_hash,
+                   decision_type, trade_side, was_profitable_1h,
                    vault_risk_preference, asset, label_quality
             FROM interp_examples_v0
             WHERE label_quality IN ('high', 'medium')
@@ -209,17 +218,40 @@ class AnalysisDataset:
             source_desc = "Neon (interp_examples_v0)"
         return label_rows, source_desc
 
+    @staticmethod
+    def _match_metadata_row(
+        label_row: dict[str, Any],
+        meta_by_identity: dict[str, dict],
+        meta_by_log_id: dict[int, dict],
+    ) -> tuple[dict | None, str]:
+        identity = _row_identity_token({"row_key": label_row.get("workflow_row_key")})
+        if identity is not None and identity in meta_by_identity:
+            return meta_by_identity[identity], "row_key"
+        log_id = label_row.get("log_id")
+        if log_id is None:
+            return None, "missing_log_id"
+        matched = meta_by_log_id.get(int(log_id))
+        return (matched, "log_id") if matched is not None else (None, "missing")
+
     def _load_and_join(self) -> None:
         # Load metadata (written during capture)
         meta_path = self.config.activations_dir / "metadata.parquet"
         meta_table = pq.read_table(meta_path)
         meta_rows = meta_table.to_pylist()
-        # Normalize log_id to int for consistent joining
+        # Normalize metadata for consistent joining and file lookup.
         meta_by_id: dict[int, dict] = {}
+        meta_by_identity: dict[str, dict] = {}
         for r in meta_rows:
+            artifact_id = _artifact_basename_for_row(r)
+            r["artifact_id"] = artifact_id
+            if not r.get("source_prompt_hash"):
+                r["source_prompt_hash"] = _compute_source_prompt_hash(r.get("prompt_messages_json"))
             lid = r.get("log_id")
             if lid is not None:
                 meta_by_id[int(lid)] = r
+            token = _row_identity_token(r)
+            if token is not None:
+                meta_by_identity[token] = r
         print(f"  Metadata: {len(meta_by_id)} examples from {meta_path}")
 
         # Load labels from the configured source
@@ -229,19 +261,38 @@ class AnalysisDataset:
         # Inner join on log_id (normalize to int)
         joined = []
         missed_id = 0
+        stale_prompt = 0
+        row_key_matches = 0
+        log_id_matches = 0
         for lr in label_rows:
-            lid = lr.get("log_id")
-            if lid is None:
-                continue
-            lid_int = int(lid)
-            if lid_int not in meta_by_id:
+            matched_meta, join_mode = self._match_metadata_row(
+                lr,
+                meta_by_identity,
+                meta_by_id,
+            )
+            if matched_meta is None:
                 missed_id += 1
                 continue
-            merged = {**lr, **meta_by_id[lid_int]}
+            label_prompt_hash = lr.get("workflow_prompt_hash")
+            meta_prompt_hash = matched_meta.get("source_prompt_hash")
+            if label_prompt_hash and meta_prompt_hash and str(label_prompt_hash) != str(meta_prompt_hash):
+                stale_prompt += 1
+                continue
+            if join_mode == "row_key":
+                row_key_matches += 1
+            elif join_mode == "log_id":
+                log_id_matches += 1
+            merged = {**lr, **matched_meta}
             joined.append(merged)
 
         print(f"  Joined: {len(joined)} examples "
               f"(missed: {missed_id} no activation)")
+        if stale_prompt:
+            print(f"  Skipped: {stale_prompt} stale activations with prompt-hash mismatch")
+        if row_key_matches:
+            print(f"  Join mode: {row_key_matches} via row_key")
+        if log_id_matches:
+            print(f"  Join mode: {log_id_matches} via legacy log_id fallback")
 
         # Check for activation files using a single directory listing
         # instead of N individual stat() calls (much faster on NAS).
@@ -254,7 +305,7 @@ class AnalysisDataset:
             existing_files = set()
         files_found = sum(
             1 for r in joined
-            if f"{r['log_id']}.safetensors" in existing_files
+            if f"{r.get('artifact_id') or _artifact_basename_for_row(r)}.safetensors" in existing_files
         )
         print(f"  Activation files ({subdir}): {files_found}/{len(joined)} found")
 
@@ -429,8 +480,8 @@ class AnalysisDataset:
         self._valid_mask: list[bool] = []
 
         for row in self.rows:
-            log_id = row["log_id"]
-            path = self.config.activations_dir / subdir / f"{log_id}.safetensors"
+            artifact_id = row.get("artifact_id") or _artifact_basename_for_row(row)
+            path = self.config.activations_dir / subdir / f"{artifact_id}.safetensors"
 
             if not path.exists():
                 self._valid_mask.append(False)
@@ -453,7 +504,7 @@ class AnalysisDataset:
             # Only open a separate file when source != router and we need
             # router_indices from the router_logits directory
             if include_router_indices and not ri_same_file:
-                ri_path = self.config.activations_dir / "router_logits" / f"{log_id}.safetensors"
+                ri_path = self.config.activations_dir / "router_logits" / f"{artifact_id}.safetensors"
                 if ri_path.exists():
                     with safe_open(str(ri_path), framework="numpy") as rf:
                         ri_tensor = rf.get_tensor("router_indices")
@@ -987,7 +1038,8 @@ def run_compact(config: AnalysisConfig) -> dict:
 
         for i, row in enumerate(meta_rows):
             log_id = int(row["log_id"])
-            path = config.activations_dir / subdir / f"{log_id}.safetensors"
+            artifact_id = row.get("artifact_id") or _artifact_basename_for_row(row)
+            path = config.activations_dir / subdir / f"{artifact_id}.safetensors"
 
             if not path.exists():
                 skipped += 1

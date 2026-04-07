@@ -1,12 +1,12 @@
 {
-  "id": "conflict_probe_v0",
-  "name": "Conflict Probe v0",
-  "description": "Workflow wrapper for the legacy Neon-backed conflict probe dataset. Publishes a canonical relation with a synthetic log_id so the workflow capture/analysis path can operate on conflict_probe_examples_v0.",
+  "id": "conflict_probe_v1",
+  "name": "Conflict Probe v1",
+  "description": "Workflow wrapper for the phase_02 conflict-probe dataset. Publishes the Neon-backed conflict_probe_examples_v1 table as a canonical workflow relation with a synthetic log_id and stable example_id identity.",
   "version": 1,
   "dataset": {
     "source": {
       "mode": "sql",
-      "sql": "WITH ranked AS ( SELECT row_number() OVER (ORDER BY example_id) AS log_id, example_id, source_log_id, source_example_id, strategy_key, strategy_text, strategy_priority, conflicting_slider, swept_slider, swept_value, trade_size, trading_activity, holding_style, diversification, risk_preference, conflict, conflict_strength, system_text, user_text, prompt_messages_json, config_snapshot_json, market_context_hash, built_at FROM conflict_probe_examples_v0 ) SELECT * FROM ranked"
+      "sql": "WITH ranked AS ( SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.* FROM conflict_probe_examples_v1 src ) SELECT * FROM ranked"
     },
     "filters": {},
     "label": {
@@ -57,6 +57,6 @@
     "n_folds": 5
   },
   "report": {
-    "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_01/reports"
+    "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_02/reports"
   }
 }

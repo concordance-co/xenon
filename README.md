@@ -79,6 +79,11 @@ uv run -m pipelines.cli dataset build --spec <spec_id>
 uv run -m pipelines.cli publication list --spec <spec_id>
 ```
 
+When defining a workflow dataset, set `dataset.identity.column` if the source
+uses a durable row identifier other than `log_id`. The published relation now
+exposes `workflow_row_key` and `workflow_prompt_hash`, and capture reuse is
+validated against that stable row identity plus prompt hash.
+
 Run capture against the published relation:
 
 ```bash

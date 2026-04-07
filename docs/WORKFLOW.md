@@ -42,6 +42,11 @@ uv run -m pipelines.cli publication list --spec <spec_id>
 By default this publishes a named Neon view. The capture step targets that
 published relation, not internal storage tables.
 
+If the source dataset has a durable row identifier, declare it in
+`dataset.identity.column`. Published workflow relations expose
+`workflow_row_key` and `workflow_prompt_hash`, and capture reuse is checked
+against both the stable row identity and the prompt hash.
+
 ## 3. Run Capture
 
 ```bash
