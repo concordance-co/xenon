@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from projects.DX_TERMINAL.phases.research_rerun.postmarket import (
+from projects.DX_TERMINAL.research_rerun.postmarket import (
     build_affordance_edited_variant,
 )
-from projects.DX_TERMINAL.phases.research_rerun.postmarket_geometry import (
+from projects.DX_TERMINAL.research_rerun.postmarket_geometry import (
     AFFORDANCE_GROUP,
     RISK_GROUP,
     _evaluate_geometry_predictions,

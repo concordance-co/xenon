@@ -20,7 +20,7 @@ import numpy as np
 from scipy.stats import spearmanr
 
 from pipelines.db import connect_neon
-from projects.DX_TERMINAL.phases.counterfactual.analysis import train_probe
+from projects.DX_TERMINAL.counterfactual.analysis import train_probe
 from pipelines.datasets.synthetic.market import SET_GEOMETRY_SCENARIOS
 from projects.DX_TERMINAL.synthetic_market.shared.synthetic_manifold_analysis import (
     _evaluate_regression_probe,

@@ -4,15 +4,13 @@
   "description": "Umbrella project for Terminal Markets interpretability work, including prompt confusion, counterfactuals, decision structure, reruns, and synthetic market studies.",
   "version": 1,
   "goal": "Organize the Terminal Markets mech-interp program under one parent project while keeping executable workflow specs phase-local and Neon-backed.",
-  "phases": [
+  "subprojects": [
     "prompt_confusion",
     "counterfactual",
     "decision_structure",
     "research_kickoff",
     "research_rerun",
-    "synthetic_market/dimension_exploration",
-    "synthetic_market/restoration",
-    "synthetic_market/path_validation"
+    "synthetic_market"
   ],
   "defaults": {
     "capture_execution": "modal",

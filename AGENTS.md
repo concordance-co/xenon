@@ -7,7 +7,8 @@ This repo is organized around two layers:
   analysis, reporting, patching, and related runtime helpers.
 - `./projects`
   Human-facing project workspaces. Each umbrella project gets its own folder,
-  and each project may contain multiple phase-level subprojects.
+  and each project may contain multiple subprojects, each with its own phase
+  folders as needed.
 
 The main design rule is:
 
@@ -158,9 +159,9 @@ Minimum shape:
   "description": "Short description",
   "version": 1,
   "goal": "Umbrella research goal",
-  "phases": [
-    "phase_a",
-    "phase_b"
+  "subprojects": [
+    "subproject_a",
+    "subproject_b"
   ],
   "defaults": {
     "capture_execution": "modal",
@@ -174,8 +175,8 @@ Required ideas:
 
 - `goal`
   Defines the umbrella objective of the project.
-- `phases`
-  Lists the phase-level subprojects under the umbrella.
+- `subprojects`
+  Lists the subprojects under the umbrella project.
 - `defaults`
   Documents high-level execution defaults shared across phases.
 

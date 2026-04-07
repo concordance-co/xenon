@@ -217,9 +217,8 @@ def _project_init(argv: list[str]) -> int:
     subproject_title = ns.subproject_name or ns.subproject.strip().replace("_", " ").title()
     phase_title = ns.phase_name or ns.phase.strip().replace("_", " ").title()
     phase_goal = ns.goal or f"Define the first runnable workflow for the {phase_title} phase."
-    project_goal = ns.goal or f"Coordinate the {project_title} research program and its phase-level workflow specs."
+    project_goal = ns.goal or f"Coordinate the {project_title} research program and its subproject-level workflow specs."
     layer_values = [int(token.strip()) for token in str(ns.layers).split(",") if token.strip()]
-    phase_ref = f"{subproject_id}/{phase_id}"
 
     project_root = Path("projects") / project_id
     subproject_root = project_root / subproject_id
@@ -271,13 +270,22 @@ def _project_init(argv: list[str]) -> int:
         directory.mkdir(parents=True, exist_ok=True)
 
     existing_project_spec = _load_json_if_exists(project_spec_path) or {}
+    existing_subprojects = existing_project_spec.get("subprojects")
+    if existing_subprojects is None:
+        legacy_phase_refs = existing_project_spec.get("phases", [])
+        existing_subprojects = []
+        for ref in legacy_phase_refs:
+            if isinstance(ref, str) and ref:
+                candidate = ref.split("/", 1)[0]
+                if candidate and candidate not in existing_subprojects:
+                    existing_subprojects.append(candidate)
     project_spec = {
         "id": existing_project_spec.get("id", project_id),
         "name": existing_project_spec.get("name", project_title),
         "description": existing_project_spec.get("description", ns.description or f"Umbrella project for {project_title}."),
         "version": existing_project_spec.get("version", 1),
         "goal": existing_project_spec.get("goal", project_goal),
-        "phases": list(existing_project_spec.get("phases", [])),
+        "subprojects": list(existing_subprojects or []),
         "defaults": existing_project_spec.get(
             "defaults",
             {
@@ -287,8 +295,8 @@ def _project_init(argv: list[str]) -> int:
             },
         ),
     }
-    if phase_ref not in project_spec["phases"]:
-        project_spec["phases"].append(phase_ref)
+    if subproject_id not in project_spec["subprojects"]:
+        project_spec["subprojects"].append(subproject_id)
     phase_spec = {
         "id": phase_id,
         "name": phase_title,

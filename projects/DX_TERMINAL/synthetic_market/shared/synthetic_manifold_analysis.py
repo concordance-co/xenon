@@ -20,7 +20,7 @@ import numpy as np
 import pyarrow.parquet as pq
 
 from pipelines.db import connect_neon
-from projects.DX_TERMINAL.phases.counterfactual.analysis import (
+from projects.DX_TERMINAL.counterfactual.analysis import (
     evaluate_probe_per_snapshot,
     train_probe,
 )

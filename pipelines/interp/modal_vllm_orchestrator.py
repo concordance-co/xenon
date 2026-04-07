@@ -854,7 +854,7 @@ def run_counterfactual_capture(
     import pyarrow as pa
     import pyarrow.parquet as pq_
 
-    from projects.DX_TERMINAL.phases.counterfactual.capture import load_prompts_from_db
+    from projects.DX_TERMINAL.counterfactual.capture import load_prompts_from_db
     from transformers import AutoTokenizer
 
     # Step 1: Load tokenizer for boundary computation
@@ -1212,7 +1212,7 @@ def run_research_rerun_capture(
     from transformers import AutoTokenizer
 
     from pipelines.db import connect_neon
-    from projects.DX_TERMINAL.phases.research_rerun.capture import load_prompts_from_db
+    from projects.DX_TERMINAL.research_rerun.capture import load_prompts_from_db
 
     tokenizer = AutoTokenizer.from_pretrained(f"/models/{model_id}")
     capture_prompts = load_prompts_from_db(

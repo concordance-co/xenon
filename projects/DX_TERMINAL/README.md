@@ -6,9 +6,9 @@ This directory holds:
 
 - `project_spec.json`
   Umbrella project metadata and defaults.
-- `phases/`
-  Phase-level subprojects such as prompt confusion, counterfactuals, decision
-  structure, and reruns.
+- subproject folders such as `prompt_confusion/`, `counterfactual/`,
+  `decision_structure/`, and `research_rerun/`
+  Each subproject can contain one or more phase folders.
 - `synthetic_market/`
   A synthetic-market subproject with shared code plus phase folders such as
   `dimension_exploration`, `restoration`, and `path_validation`.

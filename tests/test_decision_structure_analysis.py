@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from safetensors.numpy import save_file
 
-from projects.DX_TERMINAL.phases.decision_structure.analysis import (
+from projects.DX_TERMINAL.decision_structure.analysis import (
     DecisionStructureAnalysisConfig,
     collect_concat_groups,
     collect_pre_groups,

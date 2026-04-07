@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from projects.DX_TERMINAL.phases.research_rerun.core import (
+from projects.DX_TERMINAL.research_rerun.core import (
     _build_blocked_valence_prompts,
     _build_settings_twist_prompts,
     _slice_manifest_rows,

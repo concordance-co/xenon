@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 from scipy.stats import spearmanr
 
-from projects.DX_TERMINAL.phases.counterfactual.analysis import orthogonal_procrustes
+from projects.DX_TERMINAL.counterfactual.analysis import orthogonal_procrustes
 from projects.DX_TERMINAL.synthetic_market.shared.synthetic_manifold_analysis import (
     _evaluate_regression_probe,
     _load_structure_tables,

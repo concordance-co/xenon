@@ -112,7 +112,7 @@ def test_project_init_scaffolds_project_subproject_and_phase(monkeypatch: pytest
 
     project_spec = json.loads((project_root / "project_spec.json").read_text())
     assert project_spec["id"] == "DX_TERMINAL"
-    assert project_spec["phases"] == ["synthetic_market/prompt_confusion"]
+    assert project_spec["subprojects"] == ["synthetic_market"]
 
     phase_spec = json.loads((phase_root / "phase_spec.json").read_text())
     assert phase_spec["inherits"] == "projects/DX_TERMINAL/project_spec.json"

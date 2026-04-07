@@ -1,0 +1,13 @@
+{
+  "id": "research_rerun",
+  "name": "Research Rerun",
+  "description": "Real-prompt rerun capture and geometry analysis phase.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Re-run selected real prompts under controlled variants and compare them against decision-structure probes and geometry analyses.",
+  "workflow_specs": [],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/research_rerun/phase_01/reports",
+    "notes": "Holds rerun captures, bridge analyses, and real-data report artifacts."
+  }
+}
