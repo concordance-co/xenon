@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-OUT = "/Users/brockelmore/concordance/xenon/projects/DX_TERMINAL/synthetic_market/reports/assets/public_story/charts"
+OUT = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "public_story", "charts")
+)
 os.makedirs(OUT, exist_ok=True)
 
 plt.rcParams.update({
@@ -109,20 +111,55 @@ def chart_relational():
 
 
 # ──────────────────────────────────────────────
-# Chart 3: Context Effects
+# Chart 3: Context Effects (Phase 16 asymmetry)
 # ──────────────────────────────────────────────
 def chart_context():
-    fig, ax = plt.subplots(figsize=(5.5, 4.5))
-    labels = ["Risk framing\nbefore market data", "Constraint framing\nbefore market data"]
-    gaps = [0.061, 0.070]
-    bars = ax.bar(labels, gaps, color=[ORANGE, GREEN], width=0.45, edgecolor="white", linewidth=1)
-    ax.set_ylabel("Representation shift", fontsize=11, fontweight="bold")
-    ax.set_title("Pre-Market Context Changes\nHow the Model Reads the Market",
-                 fontsize=13, fontweight="bold", pad=16)
-    ax.set_ylim(0, 0.10)
-    for i, val in enumerate(gaps):
-        ax.text(i, val + 0.003, f"{val:.3f}", ha="center",
-                fontweight="bold", fontsize=12, color=SLATE)
+    """Phase 16: A = no context, B = context after market, C = context before market.
+
+    Peak perception gap (1 − cosine of corrected market_eos):
+      Risk:       A vs B = 0.0000 (L42)   A vs C = 0.0609
+      Affordance: A vs B = 0.0000 (L40)   A vs C = 0.0695
+
+    The "after" bars are at zero. That asymmetry IS the result.
+    Source: data/analysis_results/synthetic_market_context_order/phase16_context_order_v1/results.json
+    """
+    fig, ax = plt.subplots(figsize=(7.8, 4.8))
+    groups = ["Risk framing", "Opportunity framing"]
+    after_gaps  = [0.0000, 0.0000]
+    before_gaps = [0.0609, 0.0695]
+
+    x = np.arange(len(groups))
+    w = 0.32
+
+    ax.bar(x - w / 2, after_gaps, w,
+           label="Same context AFTER market  (control)",
+           color="#E5E7EB", edgecolor=GRAY, linewidth=1.1)
+    ax.bar(x + w / 2, before_gaps, w,
+           label="Same context BEFORE market",
+           color=ORANGE, edgecolor="white", linewidth=1.0)
+
+    ax.set_ylabel("Representation shift\n(1 − cosine of market read)",
+                  fontsize=10.5, fontweight="bold")
+    ax.set_title("The Asymmetry: Context Bends the Market Read\nOnly When It Comes First",
+                 fontsize=14, fontweight="bold", pad=16)
+    ax.set_xticks(x)
+    ax.set_xticklabels(groups, fontsize=11)
+    ax.set_ylim(0, 0.094)
+    ax.legend(fontsize=9.5, loc="upper left", framealpha=0.92)
+
+    # Value labels on every bar
+    for i, val in enumerate(after_gaps):
+        ax.text(x[i] - w / 2, val + 0.0028, f"{val:.3f}",
+                ha="center", fontsize=10, color=GRAY, fontweight="bold")
+    for i, val in enumerate(before_gaps):
+        ax.text(x[i] + w / 2, val + 0.0028, f"{val:.3f}",
+                ha="center", fontsize=11.5, color=SLATE, fontweight="bold")
+
+    fig.text(0.5, -0.02,
+             "Same context content; only the placement changes. The market read shifts only when context comes first.\n"
+             "Peak gap layer: corrected market_eos, L40–L42. n = 184 matched examples per group.",
+             ha="center", fontsize=8.5, color=GRAY, style="italic")
+
     fig.savefig(f"{OUT}/03_context_effect.png")
     plt.close(fig)
     print("  done: 03")
