@@ -32,6 +32,7 @@ image = (
     .add_local_file(BASIS_NPZ_LOCAL, BASIS_NPZ_REMOTE)
     .add_local_file(BASIS_RESULTS_LOCAL, BASIS_RESULTS_REMOTE)
     .add_local_python_source("pipelines")
+    .add_local_python_source("research")
 )
 
 GPU_WORKER_CPU = 8
@@ -253,11 +254,14 @@ def prepare_synthetic_market_behavior_donors_modal(
     order_mode: str = "selection_rank_asc",
     selection_strategy: str = "ordered",
     limit: int = 0,
+    batch_size: int = 32,
     family_allowlist: str = "",
     pair_metric: str = "",
     pair_mode: str = "",
     min_pair_gap: float = 0.0,
     target_layers: str = "4",
+    secondary_patch_mode: str = "",
+    secondary_target_layers: str = "",
     tool_schema_mode: str = "",
     tool_choice: str = "",
     add_generation_prompt: bool = True,
@@ -270,6 +274,9 @@ def prepare_synthetic_market_behavior_donors_modal(
     )
 
     target_layer_tuple = tuple(int(token) for token in target_layers.split(",") if token.strip())
+    secondary_target_layer_tuple = tuple(
+        int(token) for token in secondary_target_layers.split(",") if token.strip()
+    )
     families = tuple(token.strip() for token in family_allowlist.split(",") if token.strip())
     output_dir = Path(f"/data/analysis_results/synthetic_market_behavior/{run_name}")
     result = prepare_synthetic_market_behavior_donors(
@@ -281,11 +288,14 @@ def prepare_synthetic_market_behavior_donors_modal(
             order_mode=order_mode,
             selection_strategy=selection_strategy,
             limit=limit if limit > 0 else None,
+            batch_size=max(1, int(batch_size)),
             family_allowlist=families,
             pair_metric=pair_metric,
             pair_mode=pair_mode,
             min_pair_gap=float(min_pair_gap),
             target_layers=target_layer_tuple or (4,),
+            secondary_patch_mode=secondary_patch_mode,
+            secondary_target_layers=secondary_target_layer_tuple,
             tool_schema_mode=tool_schema_mode,
             tool_choice=tool_choice,
             add_generation_prompt=bool(add_generation_prompt),
@@ -305,6 +315,7 @@ def prepare_synthetic_market_behavior_donors_modal(
     volumes={"/data": synthetic_volume, "/models": model_volume},
     image=image,
     timeout=12 * 3600,
+    max_containers=1,
     cpu=GPU_WORKER_CPU,
     memory=GPU_WORKER_MEMORY_MB,
     secrets=[hf_secret, neon_secret],
@@ -318,6 +329,7 @@ def run_synthetic_market_behavior_modal(
     selection_strategy: str = "ordered",
     limit: int = 0,
     family_allowlist: str = "",
+    example_id_allowlist: str = "",
     pair_metric: str = "",
     pair_mode: str = "",
     min_pair_gap: float = 0.0,
@@ -329,6 +341,12 @@ def run_synthetic_market_behavior_modal(
     component_indices: str = "",
     direction_name: str = "",
     strength: float = 1.0,
+    secondary_patch_mode: str = "",
+    secondary_target_layers: str = "",
+    secondary_components_per_layer: int = 4,
+    secondary_component_indices: str = "",
+    secondary_direction_name: str = "",
+    secondary_strength: float = 1.0,
     random_seed: int = 42,
     max_tokens: int = 32,
     temperature: float = 0.0,
@@ -352,15 +370,27 @@ def run_synthetic_market_behavior_modal(
     from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_runner import _parse_component_indices_spec
 
     target_layer_tuple = tuple(int(token) for token in target_layers.split(",") if token.strip())
+    secondary_target_layer_tuple = tuple(
+        int(token) for token in secondary_target_layers.split(",") if token.strip()
+    )
     component_indices_by_layer = _parse_component_indices_spec(
         component_indices,
         target_layers=target_layer_tuple or (4,),
     )
+    secondary_component_indices_by_layer = _parse_component_indices_spec(
+        secondary_component_indices,
+        target_layers=secondary_target_layer_tuple or (4,),
+    )
     families = tuple(token.strip() for token in family_allowlist.split(",") if token.strip())
+    example_ids = tuple(token.strip() for token in example_id_allowlist.split(",") if token.strip())
     normalized_patch_mode = patch_mode.strip().lower()
-    if normalized_patch_mode in {"swap_mean", "swap_components"} and not donor_means_run_name.strip():
+    normalized_secondary_patch_mode = secondary_patch_mode.strip().lower()
+    if (
+        normalized_patch_mode in {"swap_mean", "swap_components"}
+        or normalized_secondary_patch_mode in {"swap_mean", "swap_components"}
+    ) and not donor_means_run_name.strip():
         raise ValueError(
-            f"{patch_mode} runs on Modal require a precomputed donor_means_run_name. "
+            "swap_mean/swap_components runs on Modal require a precomputed donor_means_run_name. "
             "Run prepare_synthetic_market_behavior_donors_modal first, then pass --donor-means-run-name."
         )
     donor_means_path = (
@@ -378,6 +408,7 @@ def run_synthetic_market_behavior_modal(
             selection_strategy=selection_strategy,
             limit=limit if limit > 0 else None,
             family_allowlist=families,
+            example_id_allowlist=example_ids,
             pair_metric=pair_metric,
             pair_mode=pair_mode,
             min_pair_gap=float(min_pair_gap),
@@ -389,6 +420,12 @@ def run_synthetic_market_behavior_modal(
             component_indices_by_layer=component_indices_by_layer,
             direction_name=direction_name,
             strength=strength,
+            secondary_patch_mode=secondary_patch_mode,
+            secondary_target_layers=secondary_target_layer_tuple,
+            secondary_components_per_layer=secondary_components_per_layer,
+            secondary_component_indices_by_layer=secondary_component_indices_by_layer,
+            secondary_direction_name=secondary_direction_name,
+            secondary_strength=secondary_strength,
             random_seed=random_seed,
             max_tokens=max_tokens,
             temperature=temperature,

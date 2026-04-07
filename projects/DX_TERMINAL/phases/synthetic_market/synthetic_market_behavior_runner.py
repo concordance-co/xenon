@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -25,6 +26,8 @@ from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_patching_runn
 from pipelines.datasets.synthetic.structure import find_synthetic_section_boundaries
 from pipelines.interp.modal_vllm_engine import (
     VLLMCaptureConfig,
+    _build_chat_template_kwargs,
+    _capture_batch_vllm,
     _capture_one_vllm,
     _create_llm,
     _generate_batch_vllm,
@@ -46,6 +49,7 @@ class SyntheticMarketBehaviorConfig:
     selection_strategy: str = "ordered"
     limit: int | None = None
     family_allowlist: tuple[str, ...] = ()
+    example_id_allowlist: tuple[str, ...] = ()
     pair_metric: str = ""
     pair_mode: str = ""
     min_pair_gap: float = 0.0
@@ -58,6 +62,12 @@ class SyntheticMarketBehaviorConfig:
     component_indices_by_layer: dict[int, tuple[int, ...]] = field(default_factory=dict)
     direction_name: str = ""
     strength: float = 1.0
+    secondary_patch_mode: str = ""
+    secondary_target_layers: tuple[int, ...] = ()
+    secondary_components_per_layer: int = 4
+    secondary_component_indices_by_layer: dict[int, tuple[int, ...]] = field(default_factory=dict)
+    secondary_direction_name: str = ""
+    secondary_strength: float = 1.0
     random_seed: int = 42
     max_tokens: int = 32
     temperature: float = 0.0
@@ -87,6 +97,58 @@ class SyntheticMarketBehaviorConfig:
     @property
     def paired_mode_enabled(self) -> bool:
         return bool(self.pair_metric.strip() and self.pair_mode.strip())
+
+    @property
+    def secondary_patch_enabled(self) -> bool:
+        return bool(self.secondary_patch_mode and self.secondary_patch_mode.lower() != "none")
+
+
+def _requested_patch_layers(config: SyntheticMarketBehaviorConfig) -> tuple[int, ...]:
+    layers: list[int] = []
+    if config.patch_enabled:
+        layers.extend(int(layer) for layer in config.target_layers)
+    if config.secondary_patch_enabled:
+        layers.extend(int(layer) for layer in config.secondary_target_layers)
+    if not layers:
+        return tuple(int(layer) for layer in config.target_layers)
+    return tuple(sorted(set(layers)))
+
+
+def _requested_basis_components(config: SyntheticMarketBehaviorConfig) -> int:
+    values = [int(config.components_per_layer)]
+    if config.secondary_patch_enabled:
+        values.append(int(config.secondary_components_per_layer))
+    return max(1, max(values))
+
+
+def _build_behavior_patch_spec(
+    *,
+    patch_mode: str,
+    target_layers: tuple[int, ...],
+    components_per_layer: int,
+    component_indices_by_layer: dict[int, tuple[int, ...]],
+    direction_name: str,
+    strength: float,
+    random_seed: int,
+    market_span: tuple[int, int],
+    basis_payload: dict[int, dict[str, Any]],
+    donor_mean_by_layer: dict[int, Any] | None = None,
+):
+    spec_config = SimpleNamespace(
+        patch_mode=patch_mode,
+        target_layers=target_layers,
+        components_per_layer=components_per_layer,
+        component_indices_by_layer=component_indices_by_layer,
+        direction_name=direction_name,
+        strength=strength,
+        random_seed=random_seed,
+    )
+    return _build_patch_spec(
+        config=spec_config,
+        market_span=market_span,
+        basis_payload=basis_payload,
+        donor_mean_by_layer=donor_mean_by_layer,
+    )
 
 
 def _flush_table(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -131,12 +193,26 @@ def _normalize_tool_call_payload(payload: Any, *, raw_json: str) -> dict[str, An
 
 def _extract_first_tool_call_fields(text: str) -> dict[str, Any]:
     stripped = (text or "").strip()
+    json_candidates: list[str] = []
     if stripped.startswith("{") or stripped.startswith("["):
+        json_candidates.append(stripped)
+    if "</think>" in stripped:
+        suffix = stripped.rsplit("</think>", 1)[1].strip()
+        if suffix.startswith("{") or suffix.startswith("["):
+            json_candidates.append(suffix)
+    for marker in ("\n{", "\n["):
+        idx = stripped.rfind(marker)
+        if idx >= 0:
+            suffix = stripped[idx + 1 :].strip()
+            if suffix.startswith("{") or suffix.startswith("["):
+                json_candidates.append(suffix)
+
+    for candidate in json_candidates:
         try:
-            payload = json.loads(stripped)
-            return _normalize_tool_call_payload(payload, raw_json=stripped)
+            payload = json.loads(candidate)
+            return _normalize_tool_call_payload(payload, raw_json=candidate)
         except json.JSONDecodeError:
-            pass
+            continue
 
     match = _TOOL_CALL_PATTERN.search(text or "")
     if match is None:
@@ -197,6 +273,62 @@ def _compute_donor_mean_by_layer(
     return donor_mean_by_layer
 
 
+def _compute_batched_donor_means(
+    *,
+    llm_capture: Any,
+    tokenizer: Any,
+    prepared_rows: list[dict[str, Any]],
+    capture_cfg: VLLMCaptureConfig,
+    target_layers: tuple[int, ...],
+    batch_size: int,
+) -> dict[int, dict[int, Any]]:
+    unique_sources: list[dict[str, Any]] = []
+    seen_source_log_ids: set[int] = set()
+    for prepared in prepared_rows:
+        source_log_id = prepared["source_log_id"]
+        source_row_messages = prepared["source_row_messages"]
+        source_market_span = prepared["source_market_span"]
+        if source_log_id is None or source_row_messages is None or source_market_span is None:
+            continue
+        source_log_id = int(source_log_id)
+        if source_log_id in seen_source_log_ids:
+            continue
+        seen_source_log_ids.add(source_log_id)
+        unique_sources.append(
+            {
+                "id": str(source_log_id),
+                "source_log_id": source_log_id,
+                "messages": source_row_messages,
+                "market_span": source_market_span,
+            }
+        )
+
+    donor_mean_cache: dict[int, dict[int, Any]] = {}
+    for chunk in _chunk_list(unique_sources, max(1, int(batch_size))):
+        captured = _capture_batch_vllm(
+            llm=llm_capture,
+            tokenizer=tokenizer,
+            prompts=[{"id": item["id"], "messages": item["messages"]} for item in chunk],
+            config=capture_cfg,
+        )
+        captured_by_id = {str(prompt_id): residual for residual, _input_ids, prompt_id in captured}
+        for item in chunk:
+            residual = captured_by_id.get(str(item["source_log_id"]))
+            if residual is None:
+                raise RuntimeError(
+                    f"Residual capture returned None for source log_id={item['source_log_id']}"
+                )
+            residual_np = residual.detach().cpu().numpy() if hasattr(residual, "detach") else residual
+            start, end = item["market_span"]
+            donor_mean_by_layer: dict[int, Any] = {}
+            for layer in target_layers:
+                donor_mean_by_layer[int(layer)] = (
+                    residual_np[int(layer), int(start):int(end)].mean(axis=0).astype("float32")
+                )
+            donor_mean_cache[int(item["source_log_id"])] = donor_mean_by_layer
+    return donor_mean_cache
+
+
 def _destroy_llm(llm: Any | None) -> None:
     if llm is None:
         return
@@ -246,6 +378,9 @@ def _prepare_behavior_rows(
             min_metric_gap=float(config.min_pair_gap),
             limit=config.limit,
         )
+    if config.example_id_allowlist:
+        allowed = set(config.example_id_allowlist)
+        examples = [row for row in examples if str(row.get("example_id") or "") in allowed]
 
     prepared_rows: list[dict[str, Any]] = []
     skipped = 0
@@ -334,7 +469,7 @@ def prepare_synthetic_market_behavior_donors(config: SyntheticMarketBehaviorConf
     tokenizer = AutoTokenizer.from_pretrained(config.model_id)
     tools = resolve_tool_schema_mode(config.tool_schema_mode)
     tool_choice = config.tool_choice.strip() or None
-    chat_template_kwargs = {"tool_choice": tool_choice} if tool_choice is not None else None
+    chat_template_kwargs = _build_chat_template_kwargs(tools=tools, tool_choice=tool_choice)
 
     prepared_rows, skipped = _prepare_behavior_rows(
         config=config,
@@ -355,28 +490,21 @@ def prepare_synthetic_market_behavior_donors(config: SyntheticMarketBehaviorConf
         add_generation_prompt=bool(config.add_generation_prompt),
         tensor_parallel_size=int(config.tensor_parallel_size),
         gpu_memory_utilization=float(config.gpu_memory_utilization),
+        max_num_seqs=max(1, int(config.batch_size)),
+        max_num_batched_tokens=max(40960, max(1, int(config.batch_size)) * 4096),
         enable_prefix_caching=False,
     )
-    donor_mean_cache: dict[int, dict[int, Any]] = {}
+    donor_target_layers = _requested_patch_layers(config)
     llm_capture = _create_llm(capture_cfg)
     try:
-        for prepared in prepared_rows:
-            source_log_id = prepared["source_log_id"]
-            source_row_messages = prepared["source_row_messages"]
-            source_market_span = prepared["source_market_span"]
-            if source_log_id is None or source_row_messages is None or source_market_span is None:
-                continue
-            if source_log_id in donor_mean_cache:
-                continue
-            donor_mean_cache[source_log_id] = _compute_donor_mean_by_layer(
-                llm_capture=llm_capture,
-                tokenizer=tokenizer,
-                messages=source_row_messages,
-                capture_cfg=capture_cfg,
-                source_log_id=source_log_id,
-                market_span=source_market_span,
-                target_layers=config.target_layers,
-            )
+        donor_mean_cache = _compute_batched_donor_means(
+            llm_capture=llm_capture,
+            tokenizer=tokenizer,
+            prepared_rows=prepared_rows,
+            capture_cfg=capture_cfg,
+            target_layers=donor_target_layers,
+            batch_size=max(1, int(config.batch_size)),
+        )
     finally:
         _destroy_llm(llm_capture)
         _cleanup_cuda_memory()
@@ -387,7 +515,7 @@ def prepare_synthetic_market_behavior_donors(config: SyntheticMarketBehaviorConf
         "prepared_examples": len(prepared_rows),
         "skipped": skipped,
         "donor_source_count": len(donor_mean_cache),
-        "target_layers": [int(layer) for layer in config.target_layers],
+        "target_layers": [int(layer) for layer in donor_target_layers],
         "pair_metric": config.pair_metric,
         "pair_mode": config.pair_mode,
         "donor_means_path": str(donor_path),
@@ -402,7 +530,7 @@ def _build_generation_config(config: SyntheticMarketBehaviorConfig) -> VLLMCaptu
     # project-out, and random-control conditions. Patched requests carry
     # `market_patch_spec` in SamplingParams.extra_args; baseline requests leave
     # it empty but still benefit from the same scheduler / runner codepath.
-    use_request_scoped_patching = batch_size > 1
+    use_request_scoped_patching = batch_size > 1 or bool(config.secondary_patch_enabled)
     max_num_batched_tokens = None
     if batch_size > 1:
         max_num_batched_tokens = max(40960, batch_size * 4096)
@@ -449,6 +577,7 @@ def _run_generation_batch(
     top_k: int,
     tools: list[dict[str, Any]] | None,
     tool_choice: str | None,
+    chat_template_kwargs: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     if not requests:
         return []
@@ -467,6 +596,7 @@ def _run_generation_batch(
                 patch_spec=request.get("patch_spec"),
                 tools=tools,
                 tool_choice=tool_choice,
+                chat_template_kwargs=chat_template_kwargs,
             )
         ]
     return _generate_batch_vllm(
@@ -480,6 +610,7 @@ def _run_generation_batch(
         top_k=top_k,
         tools=tools,
         tool_choice=tool_choice,
+        chat_template_kwargs=chat_template_kwargs,
     )
 
 
@@ -492,7 +623,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
     tokenizer = AutoTokenizer.from_pretrained(config.model_id)
     tools = resolve_tool_schema_mode(config.tool_schema_mode)
     tool_choice = config.tool_choice.strip() or None
-    chat_template_kwargs = {"tool_choice": tool_choice} if tool_choice is not None else None
+    chat_template_kwargs = _build_chat_template_kwargs(tools=tools, tool_choice=tool_choice)
 
     prepared_rows, skipped = _prepare_behavior_rows(
         config=config,
@@ -507,9 +638,14 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
         return result
 
     needs_donor_capture = bool(
-        config.patch_enabled and config.patch_mode in {"swap_mean", "swap_components"} and config.paired_mode_enabled
+        config.paired_mode_enabled
+        and (
+            (config.patch_enabled and config.patch_mode in {"swap_mean", "swap_components"})
+            or (config.secondary_patch_enabled and config.secondary_patch_mode in {"swap_mean", "swap_components"})
+        )
     )
     donor_mean_cache: dict[int, dict[int, Any]] = {}
+    requested_patch_layers = _requested_patch_layers(config)
     if config.donor_means_path is not None:
         donor_mean_cache = _load_donor_mean_cache(config.donor_means_path)
     elif needs_donor_capture:
@@ -521,27 +657,20 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
             add_generation_prompt=bool(config.add_generation_prompt),
             tensor_parallel_size=int(config.tensor_parallel_size),
             gpu_memory_utilization=float(config.gpu_memory_utilization),
+            max_num_seqs=max(1, int(config.batch_size)),
+            max_num_batched_tokens=max(40960, max(1, int(config.batch_size)) * 4096),
             enable_prefix_caching=False,
         )
         llm_capture = _create_llm(capture_cfg)
         try:
-            for prepared in prepared_rows:
-                source_log_id = prepared["source_log_id"]
-                source_row_messages = prepared["source_row_messages"]
-                source_market_span = prepared["source_market_span"]
-                if source_log_id is None or source_row_messages is None or source_market_span is None:
-                    continue
-                if source_log_id in donor_mean_cache:
-                    continue
-                donor_mean_cache[source_log_id] = _compute_donor_mean_by_layer(
-                    llm_capture=llm_capture,
-                    tokenizer=tokenizer,
-                    messages=source_row_messages,
-                    capture_cfg=capture_cfg,
-                    source_log_id=source_log_id,
-                    market_span=source_market_span,
-                    target_layers=config.target_layers,
-                )
+            donor_mean_cache = _compute_batched_donor_means(
+                llm_capture=llm_capture,
+                tokenizer=tokenizer,
+                prepared_rows=prepared_rows,
+                capture_cfg=capture_cfg,
+                target_layers=requested_patch_layers,
+                batch_size=max(1, int(config.batch_size)),
+            )
         finally:
             _destroy_llm(llm_capture)
             _cleanup_cuda_memory()
@@ -550,13 +679,13 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
     llm_generate = _create_llm(generate_cfg)
 
     basis_payload: dict[int, dict[str, Any]] = {}
-    if config.patch_enabled:
+    if config.patch_enabled or config.secondary_patch_enabled:
         basis = default_phase17_market_patch_basis(
             basis_npz_path=config.basis_npz_path,
             results_json_path=config.basis_results_path,
             state_key=config.basis_state_key,
-            layers=tuple(int(layer) for layer in config.target_layers),
-            components_per_layer=int(config.components_per_layer),
+            layers=requested_patch_layers,
+            components_per_layer=_requested_basis_components(config),
         )
         basis_payload = basis.to_payload()
         _init_market_patching_on_model(llm_generate)
@@ -595,6 +724,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                     top_k=int(config.top_k),
                     tools=tools,
                     tool_choice=tool_choice,
+                    chat_template_kwargs=chat_template_kwargs,
                 )
                 for item, source_output in zip(source_chunk, outputs, strict=False):
                     source_generated_token_ids = [int(token) for token in source_output["generated_token_ids"]]
@@ -628,7 +758,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                 if config.generate_source_behavior and source_log_id is not None:
                     source_behavior_fields = dict(source_behavior_cache.get(int(source_log_id), {}))
 
-                patch_spec = None
+                patch_specs: list[dict[str, Any]] = []
                 if config.patch_enabled:
                     if config.patch_mode in {"swap_mean", "swap_components"}:
                         if (
@@ -643,23 +773,63 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                         donor_mean_by_layer = donor_mean_cache.get(int(source_log_id))
                         if donor_mean_by_layer is None:
                             raise RuntimeError(f"Missing donor mean cache for source log_id={source_log_id}")
-                        patch_spec = _build_patch_spec(
-                            config=config,  # type: ignore[arg-type]
+                        patch_specs.append(_build_behavior_patch_spec(
+                            patch_mode=config.patch_mode,
+                            target_layers=tuple(int(layer) for layer in config.target_layers),
+                            components_per_layer=int(config.components_per_layer),
+                            component_indices_by_layer=config.component_indices_by_layer,
+                            direction_name=config.direction_name,
+                            strength=float(config.strength),
+                            random_seed=int(config.random_seed),
                             market_span=market_span,
                             basis_payload=basis_payload,
                             donor_mean_by_layer=donor_mean_by_layer,
-                        ).to_payload()
+                        ).to_payload())
                     else:
-                        patch_spec = _build_patch_spec(
-                            config=config,  # type: ignore[arg-type]
+                        patch_specs.append(_build_behavior_patch_spec(
+                            patch_mode=config.patch_mode,
+                            target_layers=tuple(int(layer) for layer in config.target_layers),
+                            components_per_layer=int(config.components_per_layer),
+                            component_indices_by_layer=config.component_indices_by_layer,
+                            direction_name=config.direction_name,
+                            strength=float(config.strength),
+                            random_seed=int(config.random_seed),
                             market_span=market_span,
                             basis_payload=basis_payload,
-                        ).to_payload()
+                        ).to_payload())
+                if config.secondary_patch_enabled:
+                    donor_mean_by_layer = None
+                    if config.secondary_patch_mode in {"swap_mean", "swap_components"}:
+                        if (
+                            not config.paired_mode_enabled
+                            or source_row_messages is None
+                            or source_market_span is None
+                            or source_log_id is None
+                        ):
+                            raise ValueError(
+                                f"{config.secondary_patch_mode} behavior runs require paired mode with a valid source row"
+                            )
+                        donor_mean_by_layer = donor_mean_cache.get(int(source_log_id))
+                        if donor_mean_by_layer is None:
+                            raise RuntimeError(f"Missing donor mean cache for source log_id={source_log_id}")
+                    patch_specs.append(_build_behavior_patch_spec(
+                        patch_mode=config.secondary_patch_mode,
+                        target_layers=tuple(int(layer) for layer in config.secondary_target_layers),
+                        components_per_layer=int(config.secondary_components_per_layer),
+                        component_indices_by_layer=config.secondary_component_indices_by_layer,
+                        direction_name=config.secondary_direction_name,
+                        strength=float(config.secondary_strength),
+                        random_seed=int(config.random_seed),
+                        market_span=market_span,
+                        basis_payload=basis_payload,
+                        donor_mean_by_layer=donor_mean_by_layer,
+                    ).to_payload())
 
                 batch_requests.append(
                     {
                         "messages": messages,
-                        "patch_spec": patch_spec,
+                        "patch_spec": patch_specs[0] if len(patch_specs) == 1 else None,
+                        "patch_specs": patch_specs if len(patch_specs) > 1 else None,
                     }
                 )
                 chunk_context.append(
@@ -685,6 +855,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                 top_k=int(config.top_k),
                 tools=tools,
                 tool_choice=tool_choice,
+                chat_template_kwargs=chat_template_kwargs,
             )
 
             for context, output in zip(chunk_context, outputs, strict=False):
@@ -729,8 +900,17 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                         "tool_schema_mode": config.tool_schema_mode,
                         "tool_choice": config.tool_choice,
                         "tool_count": len(tools) if tools is not None else 0,
-                        "patch_mode": config.patch_mode,
+                        "patch_mode": (
+                            config.patch_mode
+                            if not config.secondary_patch_enabled
+                            else f"{config.patch_mode}+{config.secondary_patch_mode}"
+                        ),
+                        "primary_patch_mode": config.patch_mode,
+                        "secondary_patch_mode": config.secondary_patch_mode or None,
                         "target_layers": ",".join(str(int(layer)) for layer in config.target_layers),
+                        "secondary_target_layers": ",".join(
+                            str(int(layer)) for layer in config.secondary_target_layers
+                        ),
                         "components_per_layer": int(config.components_per_layer),
                         "component_indices_by_layer_json": json.dumps(
                             {
@@ -738,10 +918,19 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
                                 for layer, indices in config.component_indices_by_layer.items()
                             }
                         ),
+                        "secondary_components_per_layer": int(config.secondary_components_per_layer),
+                        "secondary_component_indices_by_layer_json": json.dumps(
+                            {
+                                str(layer): [int(index) for index in indices]
+                                for layer, indices in config.secondary_component_indices_by_layer.items()
+                            }
+                        ),
                         "basis_state_key": config.basis_state_key,
                         "direction_name": config.direction_name,
+                        "secondary_direction_name": config.secondary_direction_name or None,
                         "selection_strategy": config.selection_strategy,
                         "strength": float(config.strength),
+                        "secondary_strength": float(config.secondary_strength),
                         "generated_token_ids_json": json.dumps(generated_token_ids),
                         "generated_token_count": len(generated_token_ids),
                         "first_generated_token_id": generated_token_ids[0] if generated_token_ids else None,
@@ -767,17 +956,29 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
         "processed": processed,
         "skipped": skipped,
         "output_dir": str(config.output_dir),
-        "patch_mode": config.patch_mode,
-        "patch_enabled": bool(config.patch_enabled),
+        "patch_mode": (
+            config.patch_mode
+            if not config.secondary_patch_enabled
+            else f"{config.patch_mode}+{config.secondary_patch_mode}"
+        ),
+        "patch_enabled": bool(config.patch_enabled or config.secondary_patch_enabled),
+        "primary_patch_mode": config.patch_mode,
+        "secondary_patch_mode": config.secondary_patch_mode or None,
         "pair_metric": config.pair_metric,
         "pair_mode": config.pair_mode,
         "generate_source_behavior": bool(config.generate_source_behavior),
         "batch_size": max(1, int(config.batch_size)),
         "target_layers": [int(layer) for layer in config.target_layers],
+        "secondary_target_layers": [int(layer) for layer in config.secondary_target_layers],
         "components_per_layer": int(config.components_per_layer),
         "component_indices_by_layer": {
             str(layer): [int(index) for index in indices]
             for layer, indices in config.component_indices_by_layer.items()
+        },
+        "secondary_components_per_layer": int(config.secondary_components_per_layer),
+        "secondary_component_indices_by_layer": {
+            str(layer): [int(index) for index in indices]
+            for layer, indices in config.secondary_component_indices_by_layer.items()
         },
         "max_tokens": int(config.max_tokens),
         "selection_strategy": config.selection_strategy,
@@ -802,6 +1003,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--selection-strategy", default="ordered")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--family-allowlist", default="")
+    parser.add_argument("--example-id-allowlist", default="")
     parser.add_argument("--pair-metric", default="")
     parser.add_argument("--pair-mode", default="")
     parser.add_argument("--min-pair-gap", type=float, default=0.0)
@@ -813,6 +1015,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--component-indices", default="")
     parser.add_argument("--direction-name", default="")
     parser.add_argument("--strength", type=float, default=1.0)
+    parser.add_argument("--secondary-patch-mode", default="")
+    parser.add_argument("--secondary-target-layers", default="")
+    parser.add_argument("--secondary-components-per-layer", type=int, default=4)
+    parser.add_argument("--secondary-component-indices", default="")
+    parser.add_argument("--secondary-direction-name", default="")
+    parser.add_argument("--secondary-strength", type=float, default=1.0)
     parser.add_argument("--random-seed", type=int, default=42)
     parser.add_argument("--max-tokens", type=int, default=32)
     parser.add_argument("--temperature", type=float, default=0.0)
@@ -837,7 +1045,13 @@ def main(argv: list[str] | None = None) -> None:
         args.component_indices,
         target_layers=target_layers or (4,),
     )
+    secondary_target_layers = tuple(int(token) for token in args.secondary_target_layers.split(",") if token.strip())
+    secondary_component_indices_by_layer = _parse_component_indices_spec(
+        args.secondary_component_indices,
+        target_layers=secondary_target_layers or (4,),
+    )
     family_allowlist = tuple(token.strip() for token in args.family_allowlist.split(",") if token.strip())
+    example_id_allowlist = tuple(token.strip() for token in args.example_id_allowlist.split(",") if token.strip())
     result = run_synthetic_market_behavior(
         SyntheticMarketBehaviorConfig(
             phase_name=args.phase_name,
@@ -848,6 +1062,7 @@ def main(argv: list[str] | None = None) -> None:
             selection_strategy=args.selection_strategy,
             limit=args.limit if args.limit > 0 else None,
             family_allowlist=family_allowlist,
+            example_id_allowlist=example_id_allowlist,
             pair_metric=args.pair_metric,
             pair_mode=args.pair_mode,
             min_pair_gap=args.min_pair_gap,
@@ -859,6 +1074,12 @@ def main(argv: list[str] | None = None) -> None:
             component_indices_by_layer=component_indices_by_layer,
             direction_name=args.direction_name,
             strength=args.strength,
+            secondary_patch_mode=args.secondary_patch_mode,
+            secondary_target_layers=secondary_target_layers,
+            secondary_components_per_layer=args.secondary_components_per_layer,
+            secondary_component_indices_by_layer=secondary_component_indices_by_layer,
+            secondary_direction_name=args.secondary_direction_name,
+            secondary_strength=args.secondary_strength,
             random_seed=args.random_seed,
             max_tokens=args.max_tokens,
             temperature=args.temperature,

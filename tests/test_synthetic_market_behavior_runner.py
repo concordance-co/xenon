@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 import numpy as np
 import pyarrow.parquet as pq
 import transformers
 
 from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_runner import (
     SyntheticMarketBehaviorConfig,
+    _prepare_behavior_rows,
     _build_generation_config,
     _run_generation_batch,
+    prepare_synthetic_market_behavior_donors,
     run_synthetic_market_behavior,
 )
 
@@ -97,6 +100,21 @@ def test_build_generation_config_can_disable_enforce_eager():
     assert cfg.enforce_eager is False
 
 
+def test_build_generation_config_uses_request_scoped_worker_for_secondary_patch_runs():
+    cfg = _build_generation_config(
+        SyntheticMarketBehaviorConfig(
+            batch_size=1,
+            patch_mode="project_out",
+            secondary_patch_mode="swap_components",
+            secondary_target_layers=(40,),
+        )
+    )
+
+    assert cfg.max_num_seqs == 1
+    assert cfg.request_scoped_patching is True
+    assert cfg.worker_cls == "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
+
+
 def test_run_generation_batch_uses_single_prompt_path_for_single_request(monkeypatch):
     calls: list[str] = []
 
@@ -159,6 +177,49 @@ def test_run_generation_batch_uses_batched_path_for_multiple_requests(monkeypatc
 
     assert calls == ["batch"]
     assert len(out) == 2
+
+
+def test_prepare_behavior_rows_filters_exact_example_ids(monkeypatch):
+    import research.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+
+    rows = [
+        {
+            "log_id": 1,
+            "example_id": "keep-a",
+            "prompt_messages_json": '[{"role":"user","content":"prompt a"}]',
+        },
+        {
+            "log_id": 2,
+            "example_id": "drop-b",
+            "prompt_messages_json": '[{"role":"user","content":"prompt b"}]',
+        },
+        {
+            "log_id": 3,
+            "example_id": "keep-c",
+            "prompt_messages_json": '[{"role":"user","content":"prompt c"}]',
+        },
+    ]
+
+    monkeypatch.setattr(behavior_runner, "_load_examples", lambda **_kwargs: rows)
+    monkeypatch.setattr(behavior_runner, "_parse_messages", lambda raw: json.loads(raw))
+    monkeypatch.setattr(behavior_runner, "_extract_system_user", lambda messages: ("", messages[0]["content"]))
+    monkeypatch.setattr(
+        behavior_runner,
+        "find_synthetic_section_boundaries",
+        lambda *args, **kwargs: {"market": (0, 2)},
+    )
+
+    prepared, skipped = _prepare_behavior_rows(
+        config=SyntheticMarketBehaviorConfig(
+            example_id_allowlist=("keep-a", "keep-c"),
+        ),
+        tokenizer=_FakeTokenizer(),
+        tools=None,
+        chat_template_kwargs=None,
+    )
+
+    assert skipped == 0
+    assert [row["row"]["example_id"] for row in prepared] == ["keep-a", "keep-c"]
 
 
 class _FakeTokenizer:
@@ -253,8 +314,8 @@ def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp
     monkeypatch.setattr(behavior_runner, "_create_llm", fake_create_llm)
     monkeypatch.setattr(
         behavior_runner,
-        "_compute_donor_mean_by_layer",
-        lambda **_kwargs: {4: np.asarray([0.0], dtype=np.float32)},
+        "_compute_batched_donor_means",
+        lambda **_kwargs: {10: {4: np.asarray([0.0], dtype=np.float32)}},
     )
     monkeypatch.setattr(
         behavior_runner,
@@ -318,3 +379,243 @@ def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp
     metadata_rows = pq.read_table(tmp_path / "behavior" / "metadata.parquet").to_pylist()
     assert metadata_rows[0]["patch_mode"] == "swap_components"
     assert metadata_rows[0]["basis_state_key"] == "market_eos"
+
+
+def test_run_behavior_builds_multi_spec_requests_for_path_validation(monkeypatch, tmp_path):
+    import research.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+
+    requests_seen: list[list[dict[str, object]]] = []
+    donor_capture_layers: list[tuple[int, ...]] = []
+    basis_calls: list[dict[str, object]] = []
+
+    cfg = SyntheticMarketBehaviorConfig(
+        output_dir=tmp_path / "behavior",
+        model_id="fake-model",
+        pair_metric="vol_1h_max",
+        pair_mode="denoise",
+        generate_source_behavior=False,
+        batch_size=1,
+        patch_mode="project_out",
+        target_layers=(4,),
+        components_per_layer=4,
+        secondary_patch_mode="swap_components",
+        secondary_target_layers=(40,),
+        secondary_components_per_layer=4,
+        max_tokens=8,
+        tool_schema_mode="trading_v1",
+        tool_choice="required",
+        enforce_eager=False,
+    )
+
+    monkeypatch.setattr(
+        behavior_runner,
+        "resolve_tool_schema_mode",
+        lambda _mode: [{"type": "function", "function": {"name": "buy_token"}}],
+    )
+    monkeypatch.setattr(
+        transformers.AutoTokenizer,
+        "from_pretrained",
+        staticmethod(lambda *_args, **_kwargs: _FakeTokenizer()),
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "_prepare_behavior_rows",
+        lambda **_kwargs: (
+            [
+                {
+                    "row": {
+                        "log_id": 1,
+                        "phase_name": cfg.phase_name,
+                        "example_id": "ex-1",
+                        "family": "fam",
+                        "family_variant": "var",
+                        "context_variant": cfg.context_variant,
+                        "roster_key": "r00",
+                        "pair_metric_name": cfg.pair_metric,
+                        "pair_metric_value": 1.0,
+                        "pair_mode": cfg.pair_mode,
+                        "pair_id": 0,
+                        "source_log_id": 10,
+                        "source_example_id": "src",
+                        "source_family_variant": "srcvar",
+                        "source_roster_key": "r00",
+                    },
+                    "messages": [{"role": "user", "content": "prompt"}],
+                    "market_span": (0, 2),
+                    "source_log_id": 10,
+                    "source_row_messages": [{"role": "user", "content": "source"}],
+                    "source_market_span": (0, 2),
+                }
+            ],
+            0,
+        ),
+    )
+    monkeypatch.setattr(behavior_runner, "_build_generation_config", lambda cfg: cfg)
+    monkeypatch.setattr(
+        behavior_runner,
+        "_create_llm",
+        lambda _cfg: {"kind": "capture" if bool(getattr(_cfg, "capture_residual", False)) else "generate"},
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "_compute_batched_donor_means",
+        lambda **kwargs: donor_capture_layers.append(tuple(kwargs["target_layers"])) or {
+            10: {
+                4: np.asarray([0.0], dtype=np.float32),
+                40: np.asarray([1.0], dtype=np.float32),
+            }
+        },
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "default_phase17_market_patch_basis",
+        lambda **kwargs: basis_calls.append(dict(kwargs)) or _FakeBasis(),
+    )
+    monkeypatch.setattr(behavior_runner, "_init_market_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(behavior_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(
+        behavior_runner,
+        "_build_patch_spec",
+        lambda *, config, market_span, basis_payload, donor_mean_by_layer=None: _FakePatchSpec(
+            {
+                "mode": config.patch_mode,
+                "token_span": list(market_span),
+                "target_layers": [int(layer) for layer in config.target_layers],
+                "has_donor": donor_mean_by_layer is not None,
+            }
+        ),
+    )
+    monkeypatch.setattr(behavior_runner, "_destroy_llm", lambda _llm: None)
+    monkeypatch.setattr(behavior_runner, "_cleanup_cuda_memory", lambda: None)
+
+    def fake_run_generation_batch(**kwargs):
+        requests_seen.append(list(kwargs["requests"]))
+        return [
+            {
+                "input_ids": [1, 2, 3],
+                "generated_token_ids": [151],
+                "generated_text": "patched",
+                "finish_reason": "stop",
+                "request_id": "req-0",
+                "patch_stats": {"4": {"status": "applied"}, "40": {"status": "applied"}},
+                "all_patch_stats": {},
+            }
+        ]
+
+    monkeypatch.setattr(behavior_runner, "_run_generation_batch", fake_run_generation_batch)
+
+    result = run_synthetic_market_behavior(cfg)
+
+    assert result["processed"] == 1
+    assert donor_capture_layers == [(4, 40)]
+    assert basis_calls == [
+        {
+            "basis_npz_path": cfg.basis_npz_path,
+            "results_json_path": cfg.basis_results_path,
+            "state_key": "market_mean",
+            "layers": (4, 40),
+            "components_per_layer": 4,
+        }
+    ]
+    assert len(requests_seen) == 1
+    request = requests_seen[0][0]
+    assert request["patch_spec"] is None
+    assert [spec["mode"] for spec in request["patch_specs"]] == ["project_out", "swap_components"]
+    metadata_rows = pq.read_table(tmp_path / "behavior" / "metadata.parquet").to_pylist()
+    assert metadata_rows[0]["patch_mode"] == "project_out+swap_components"
+    assert metadata_rows[0]["primary_patch_mode"] == "project_out"
+    assert metadata_rows[0]["secondary_patch_mode"] == "swap_components"
+    assert metadata_rows[0]["secondary_target_layers"] == "40"
+
+
+def test_prepare_donors_uses_batched_residual_capture(monkeypatch, tmp_path):
+    import research.synthetic_market.synthetic_market_behavior_runner as behavior_runner
+
+    capture_cfgs: list[object] = []
+    batch_calls: list[dict[str, object]] = []
+
+    cfg = SyntheticMarketBehaviorConfig(
+        output_dir=tmp_path / "donors",
+        model_id="fake-model",
+        pair_metric="vol_1h_max",
+        pair_mode="denoise",
+        batch_size=32,
+        target_layers=(4,),
+        secondary_patch_mode="swap_components",
+        secondary_target_layers=(40,),
+        tool_schema_mode="trading_v1",
+        tool_choice="required",
+    )
+
+    monkeypatch.setattr(
+        behavior_runner,
+        "resolve_tool_schema_mode",
+        lambda _mode: [{"type": "function", "function": {"name": "buy_token"}}],
+    )
+    monkeypatch.setattr(
+        transformers.AutoTokenizer,
+        "from_pretrained",
+        staticmethod(lambda *_args, **_kwargs: _FakeTokenizer()),
+    )
+    monkeypatch.setattr(
+        behavior_runner,
+        "_prepare_behavior_rows",
+        lambda **_kwargs: (
+            [
+                {
+                    "row": {"log_id": 1},
+                    "messages": [{"role": "user", "content": "prompt"}],
+                    "market_span": (0, 2),
+                    "source_log_id": 10,
+                    "source_row_messages": [{"role": "user", "content": "source-a"}],
+                    "source_market_span": (0, 2),
+                },
+                {
+                    "row": {"log_id": 2},
+                    "messages": [{"role": "user", "content": "prompt"}],
+                    "market_span": (0, 2),
+                    "source_log_id": 11,
+                    "source_row_messages": [{"role": "user", "content": "source-b"}],
+                    "source_market_span": (0, 2),
+                },
+            ],
+            0,
+        ),
+    )
+
+    def fake_create_llm(config):
+        capture_cfgs.append(config)
+        return {"kind": "capture"}
+
+    monkeypatch.setattr(behavior_runner, "_create_llm", fake_create_llm)
+    monkeypatch.setattr(
+        behavior_runner,
+        "_compute_batched_donor_means",
+        lambda **kwargs: batch_calls.append(
+            {
+                "target_layers": tuple(kwargs["target_layers"]),
+                "batch_size": int(kwargs["batch_size"]),
+                "num_rows": len(kwargs["prepared_rows"]),
+                "max_num_seqs": int(kwargs["capture_cfg"].max_num_seqs),
+            }
+        )
+        or {
+            10: {4: np.asarray([0.0], dtype=np.float32), 40: np.asarray([1.0], dtype=np.float32)},
+            11: {4: np.asarray([0.0], dtype=np.float32), 40: np.asarray([1.0], dtype=np.float32)},
+        },
+    )
+    monkeypatch.setattr(behavior_runner, "_destroy_llm", lambda _llm: None)
+    monkeypatch.setattr(behavior_runner, "_cleanup_cuda_memory", lambda: None)
+
+    result = prepare_synthetic_market_behavior_donors(cfg)
+
+    assert result["donor_source_count"] == 2
+    assert batch_calls == [
+        {
+            "target_layers": (40,),
+            "batch_size": 32,
+            "num_rows": 2,
+            "max_num_seqs": 32,
+        }
+    ]
+    assert capture_cfgs[0].max_num_seqs == 32

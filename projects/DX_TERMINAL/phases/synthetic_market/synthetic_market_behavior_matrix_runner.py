@@ -11,6 +11,7 @@ import gc
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from pipelines.interp.modal_vllm_engine import _build_chat_template_kwargs
 from pipelines.interp.tool_schemas import resolve_tool_schema_mode
 from pipelines.interp.patching.basis import default_phase17_market_patch_basis
 from projects.DX_TERMINAL.phases.synthetic_market.synthetic_market_behavior_battery import SyntheticMarketBehaviorPlanItem
@@ -163,7 +164,7 @@ def run_synthetic_market_behavior_matrix(config: SyntheticMarketBehaviorMatrixCo
     tokenizer = AutoTokenizer.from_pretrained(config.base_config.model_id)
     tools = resolve_tool_schema_mode(config.base_config.tool_schema_mode)
     tool_choice = config.base_config.tool_choice.strip() or None
-    chat_template_kwargs = {"tool_choice": tool_choice} if tool_choice is not None else None
+    chat_template_kwargs = _build_chat_template_kwargs(tools=tools, tool_choice=tool_choice)
 
     cells_by_group: dict[tuple[Any, ...], list[SyntheticMarketBehaviorPlanItem]] = defaultdict(list)
     for cell in config.cells:
@@ -264,6 +265,7 @@ def run_synthetic_market_behavior_matrix(config: SyntheticMarketBehaviorMatrixCo
                 top_k=int(config.base_config.top_k),
                 tools=tools,
                 tool_choice=tool_choice,
+                chat_template_kwargs=chat_template_kwargs,
             )
             for item, source_output in zip(source_chunk, outputs, strict=False):
                 source_generated_token_ids = [int(token) for token in source_output["generated_token_ids"]]
@@ -378,6 +380,7 @@ def run_synthetic_market_behavior_matrix(config: SyntheticMarketBehaviorMatrixCo
                         top_k=int(config.base_config.top_k),
                         tools=tools,
                         tool_choice=tool_choice,
+                        chat_template_kwargs=chat_template_kwargs,
                     )
 
                     for context, output in zip(chunk_context, outputs, strict=False):

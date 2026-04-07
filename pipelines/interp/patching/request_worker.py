@@ -18,28 +18,38 @@ else:
 
 class MarketPatchRequestHelper:
     def __init__(self) -> None:
-        self.req_id_to_patch_spec: dict[str, dict[str, Any]] = {}
+        self.req_id_to_patch_specs: dict[str, list[dict[str, Any]]] = {}
         self.current_step_specs: list[dict[str, Any]] = []
 
-    def _lookup_patch_spec(self, req_id: str) -> dict[str, Any] | None:
-        direct = self.req_id_to_patch_spec.get(req_id)
+    def _lookup_patch_specs(self, req_id: str) -> list[dict[str, Any]]:
+        direct = self.req_id_to_patch_specs.get(req_id)
         if direct is not None:
-            return direct
+            return [dict(payload) for payload in direct]
         req_base = req_id.rsplit("-", 1)[0]
-        for candidate_id, payload in self.req_id_to_patch_spec.items():
+        for candidate_id, payload in self.req_id_to_patch_specs.items():
             if candidate_id == req_id or candidate_id.rsplit("-", 1)[0] == req_base:
-                return payload
-        return None
+                return [dict(item) for item in payload]
+        return []
 
     def process_new_reqs(self, new_reqs: list[NewRequestData]) -> None:
         for new_req in new_reqs:
             extra_args = getattr(new_req.sampling_params, "extra_args", None)
             if not extra_args:
                 continue
-            payload = extra_args.get("market_patch_spec")
-            if not isinstance(payload, dict):
+            payloads: list[dict[str, Any]] = []
+            multi_payload = extra_args.get("market_patch_specs")
+            if isinstance(multi_payload, list):
+                payloads.extend(
+                    dict(item)
+                    for item in multi_payload
+                    if isinstance(item, dict)
+                )
+            single_payload = extra_args.get("market_patch_spec")
+            if isinstance(single_payload, dict):
+                payloads.append(dict(single_payload))
+            if not payloads:
                 continue
-            self.req_id_to_patch_spec[str(new_req.req_id)] = dict(payload)
+            self.req_id_to_patch_specs[str(new_req.req_id)] = payloads
 
     def build_step_specs(
         self,
@@ -65,10 +75,10 @@ class MarketPatchRequestHelper:
         step_specs: list[dict[str, Any]] = []
         query_start = 0
         for i, req_id in enumerate(req_ids):
-            patch_spec = self._lookup_patch_spec(req_id)
+            patch_specs = self._lookup_patch_specs(req_id)
             scheduled_tokens = int(num_scheduled_tokens[i])
             query_end = query_start + scheduled_tokens
-            if patch_spec is None or scheduled_tokens <= 0:
+            if not patch_specs or scheduled_tokens <= 0:
                 query_start = query_end
                 continue
 
@@ -82,21 +92,22 @@ class MarketPatchRequestHelper:
                 query_start = query_end
                 continue
 
-            target_start, target_end = patch_spec["token_span"]
             chunk_abs_start = computed_prefill_before
             chunk_abs_end = computed_prefill_before + prefill_chunk_len
-            overlap_start = max(int(target_start), int(chunk_abs_start))
-            overlap_end = min(int(target_end), int(chunk_abs_end))
-            if overlap_end <= overlap_start:
-                continue
+            for patch_spec in patch_specs:
+                target_start, target_end = patch_spec["token_span"]
+                overlap_start = max(int(target_start), int(chunk_abs_start))
+                overlap_end = min(int(target_end), int(chunk_abs_end))
+                if overlap_end <= overlap_start:
+                    continue
 
-            local_payload = copy.deepcopy(patch_spec)
-            local_payload["token_span"] = [
-                int(query_start + (overlap_start - chunk_abs_start)),
-                int(query_start + (overlap_end - chunk_abs_start)),
-            ]
-            step_specs.append(
-                {
+                local_payload = copy.deepcopy(patch_spec)
+                local_payload["token_span"] = [
+                    int(query_start + (overlap_start - chunk_abs_start)),
+                    int(query_start + (overlap_end - chunk_abs_start)),
+                ]
+                step_specs.append(
+                    {
                         "req_id": req_id,
                         "patch_spec": local_payload,
                         "target_span": [int(target_start), int(target_end)],
@@ -114,7 +125,7 @@ class MarketPatchRequestHelper:
         if not finished_req_ids:
             return
         for req_id in finished_req_ids:
-            self.req_id_to_patch_spec.pop(str(req_id), None)
+            self.req_id_to_patch_specs.pop(str(req_id), None)
 
 
 class MarketPatchGPUModelRunner(GPUModelRunner):

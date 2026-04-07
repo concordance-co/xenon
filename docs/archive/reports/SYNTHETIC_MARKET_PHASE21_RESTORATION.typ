@@ -23,7 +23,7 @@
   v(0.3em)
 }
 
-#let summary = json("../../data/report_assets/synthetic_market_phase21_restoration/summary.json")
+#let summary = json("../../../data/report_assets/synthetic_market_phase21_restoration/summary.json")
 #let sample = summary.at("sample")
 #let methodology = summary.at("methodology")
 #let overall = summary.at("overall")
@@ -77,7 +77,8 @@
   #v(0.4em)
   #text(size: 11pt, fill: rgb("#4a4a4a"))[
     Source-driven restoration across two axes on the compiled patch path: Leader (`L4`, top-4 components)
-    and Dispersion (`L35`, top-4 components). Each axis uses `48` matched pairs, separately generated source
+    and Dispersion (`L35`, top-4 components). This report replaces the earlier mixed-batch draft and uses
+    only the validated `batch_size = 16` reruns: `48` matched pairs per axis, separately generated source
     behaviors, and a `swap_components` intervention that inserts source-side coefficients into the base prompt.
   ]
   #v(0.8em)
@@ -174,9 +175,32 @@ Here the chosen metric depends on the axis:
 
 One operational note matters for interpretation:
 
-- Leader was run earlier at `batch_size = 8`
-- Dispersion was run later at `batch_size = 32`
-- both still used the same compiled non-eager custom-op patch path
+- both axes were rerun at `batch_size = 16`
+- both used the same compiled non-eager custom-op patch path
+- this replaces the earlier draft whose Dispersion result was contaminated by the batch-32 tool-surface failure
+
+
+= Decode Validity
+
+Before interpreting the restoration metrics, the reruns need to clear the decode-validity check that the old
+draft failed.
+
+#table(
+  columns: (2.2fr, 1fr, 1fr),
+  align: (left, center, center),
+  table.hline(stroke: 1pt),
+  table.header([*Check*], [*Leader*], [*Dispersion*]),
+  table.hline(stroke: 0.5pt),
+  [Base rows with valid tool calls], [48 / 48], [48 / 48],
+  [Source rows with valid tool calls], [48 / 48], [48 / 48],
+  [Finish reason `stop`], [48 / 48 base and source], [48 / 48 base and source],
+  [`15000`-token cap hits], [0], [0],
+  [`!!!!` corruption rows], [0], [0],
+  [Missing `</think>` rows], [0], [0],
+)
+
+So the key methodological upgrade over the old report is not only the science. It is that both axes are now being
+evaluated on a clean, validated generation regime.
 
 
 = Axis Comparison
@@ -187,12 +211,12 @@ One operational note matters for interpretation:
   table.hline(stroke: 1pt),
   table.header([*Measure*], [*Leader*], [*Dispersion*], [*How to read it*]),
   table.hline(stroke: 0.5pt),
-  [Source tool-name match], [#pair_fmt(leader_metrics.at("source_tool_name_match_rate_baseline"), leader_metrics.at("source_tool_name_match_rate_intervention"))], [#pair_fmt(dispersion_metrics.at("source_tool_name_match_rate_baseline"), dispersion_metrics.at("source_tool_name_match_rate_intervention"))], [Dispersion gets worse overall; Leader was already saturated],
-  [Source tool-token match], [#pair_fmt(leader_metrics.at("source_tool_token_match_rate_baseline"), leader_metrics.at("source_tool_token_match_rate_intervention"))], [#pair_fmt(dispersion_metrics.at("source_tool_token_match_rate_baseline"), dispersion_metrics.at("source_tool_token_match_rate_intervention"))], [Leader improves; Dispersion gets worse],
+  [Source tool-name match], [#pair_fmt(leader_metrics.at("source_tool_name_match_rate_baseline"), leader_metrics.at("source_tool_name_match_rate_intervention"))], [#pair_fmt(dispersion_metrics.at("source_tool_name_match_rate_baseline"), dispersion_metrics.at("source_tool_name_match_rate_intervention"))], [Leader improves from near-saturation; Dispersion stays saturated],
+  [Source tool-token match], [#pair_fmt(leader_metrics.at("source_tool_token_match_rate_baseline"), leader_metrics.at("source_tool_token_match_rate_intervention"))], [#pair_fmt(dispersion_metrics.at("source_tool_token_match_rate_baseline"), dispersion_metrics.at("source_tool_token_match_rate_intervention"))], [Leader improves; Dispersion is slightly negative even after the clean rerun],
   [Tool-token restoration rate], [#fmt3(leader_metrics.at("source_tool_token_restoration_rate"))], [#fmt3(dispersion_metrics.at("source_tool_token_restoration_rate"))], [Higher is better on rows that needed fixing],
   [Tool-token backfire rate], [#fmt3(leader_metrics.at("source_tool_token_backfire_rate"))], [#fmt3(dispersion_metrics.at("source_tool_token_backfire_rate"))], [Lower is better on rows that were already correct],
-  [Spend improvement rate], [#fmt3(leader_metrics.at("source_tool_spend_pct_improvement_rate"))], [#fmt3(dispersion_metrics.at("source_tool_spend_pct_improvement_rate"))], [Dispersion looks perfect, but only on one restorable row],
-  [Generated-token improvement rate], [#fmt3(leader_metrics.at("source_generated_token_count_improvement_rate"))], [#fmt3(dispersion_metrics.at("source_generated_token_count_improvement_rate"))], [Both are weak; Leader is less bad],
+  [Spend improvement rate], [#fmt3(leader_metrics.at("source_tool_spend_pct_improvement_rate"))], [#fmt3(dispersion_metrics.at("source_tool_spend_pct_improvement_rate"))], [Both axes move spend toward the source more often than not; Leader still has the clearer action result],
+  [Generated-token improvement rate], [#fmt3(leader_metrics.at("source_generated_token_count_improvement_rate"))], [#fmt3(dispersion_metrics.at("source_generated_token_count_improvement_rate"))], [Both are weak; Leader is still less bad],
   [Mean normalized length restoration], [#fmt3(leader_metrics.at("mean_source_generated_token_count_normalized_restoration"))], [#fmt3(dispersion_metrics.at("mean_source_generated_token_count_normalized_restoration"))], [Negative means the patch moved away from the source],
 )
 
@@ -215,7 +239,7 @@ This table is the clearest practical summary:
 
 - Leader helps on tool-token choice more often than it hurts
 - Dispersion hurts tool-token choice almost as often as it helps
-- Dispersion spend looks good only because there was just one spend mismatch to fix
+- Dispersion spend is now real on a small five-row restorable subset, but the action-surface result is still weak
 - neither axis gives a clean length-restoration story
 
 
@@ -253,10 +277,13 @@ Mechanically, both runs are clean. Every row has patch diagnostics and nothing w
 
 The main methodological upgrade over Phase 20 is that Phase 21 uses #emph[generated source behaviors] and a #emph[source-driven swap]. That makes this a real restoration test, not only a disruption test.
 
+The main methodological upgrade over the earlier Phase 21 draft is that this version also clears a #emph[decode-validity]
+check: both axes were rerun in a batch regime with no degenerate decodes, so the axis comparison is now operationally apples-to-apples.
+
 
 = Interpretation
 
-Leader and Dispersion do not behave the same way.
+Leader and Dispersion still do not behave the same way.
 
 Leader is the better causal candidate:
 
@@ -264,17 +291,18 @@ Leader is the better causal candidate:
 - tool-token restoration is materially above backfire
 - spend moves toward the source more often than not
 
-Dispersion is weaker:
+Dispersion is cleaner than it looked in the old draft, but it is still weaker:
 
-- source match on tool name and tool token gets worse overall
-- tool-token restoration is small and backfire is high
-- the one clean positive is spend, but that result rests on a one-row restorable subset
+- tool-name match is saturated, so there is no tool-name restoration story to tell
+- tool-token match is slightly worse overall after the patch
+- tool-token restoration and backfire are roughly the same size
+- spend does move toward the source on a five-row restorable subset, but that is not enough to promote Dispersion into the main causal handle
 
 The combined takeaway is not “restoration failed.” It is more specific:
 
 - the market representation is not uniform
 - Leader looks more like a usable causal handle on action choice
-- Dispersion may matter for a narrower calibration-like quantity, but not for clean action restoration
+- Dispersion may still matter for a narrower calibration-like quantity, but not for clean action restoration
 - neither axis yet restores whole-response length cleanly
 
 
@@ -282,9 +310,9 @@ The combined takeaway is not “restoration failed.” It is more specific:
 
 The next experiment should push the restoration story where it is currently strongest:
 
-- keep `batch_size = 32` as the default going forward unless a run errors
-- extend the Leader restoration surface beyond `denoise` to other pairing directions
-- keep Dispersion in the suite, but treat it as a contrast case rather than the primary success case
+- keep `batch_size = 16` for this Qwen3 thinking + forced-tool setup unless batch invariance proves `32` stable
+- run Phase 22 path validation on #emph[Leader first]
+- keep Dispersion as a contrast case or calibration follow-up, not as the primary Phase 22 path-validation target
 - if possible, move from span-mean coefficient swapping toward a more exact source-activation transplant
 
 If Leader keeps restoring tool-token choice under those stronger tests, the causal claim becomes materially harder to dismiss.

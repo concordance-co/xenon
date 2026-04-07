@@ -19,6 +19,7 @@ from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq  # used for metadata.parquet I/O
+from pipelines.interp.tool_schemas import build_structured_tool_call_schema
 
 
 # ---------------------------------------------------------------------------
@@ -54,6 +55,7 @@ class VLLMCaptureConfig:
     request_scoped_patching: bool = False
     enable_logging_iteration_details: bool = False
     enable_mfu_metrics: bool = False
+    reasoning_parser: str = ""
 
     # Router capture knobs
     router_top_k: int = 8  # top-k indices to save alongside full logits
@@ -247,6 +249,13 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         "tensor_parallel_size": config.tensor_parallel_size,
         "gpu_memory_utilization": config.gpu_memory_utilization,
     }
+    reasoning_parser = (config.reasoning_parser or "").strip()
+    if not reasoning_parser and "qwen3" in config.model_id.lower():
+        reasoning_parser = "qwen3"
+    if reasoning_parser:
+        kwargs["structured_outputs_config"] = {
+            "reasoning_parser": reasoning_parser,
+        }
     if config.worker_cls:
         kwargs["worker_cls"] = config.worker_cls
         if (
@@ -350,6 +359,33 @@ def _tokenize_chat_messages(
     return [int(token) for token in input_ids]
 
 
+def _build_chat_template_kwargs(
+    *,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    del tools
+    kwargs: dict[str, Any] = {}
+    if tool_choice is not None:
+        kwargs["tool_choice"] = tool_choice
+    return kwargs or None
+
+
+def _apply_structured_tool_constraint(
+    *,
+    sampling_params: Any,
+    tools: list[dict[str, Any]] | None,
+    tool_choice: str | dict[str, Any] | None,
+) -> None:
+    schema = build_structured_tool_call_schema(tools, tool_choice)
+    if schema is None:
+        return
+
+    from vllm.sampling_params import StructuredOutputsParams
+
+    sampling_params.structured_outputs = StructuredOutputsParams(json=schema)
+
+
 def _generate_one_vllm(
     *,
     llm: Any,
@@ -361,15 +397,18 @@ def _generate_one_vllm(
     top_p: float = 1.0,
     top_k: int = -1,
     patch_spec: dict[str, Any] | None = None,
+    patch_specs: list[dict[str, Any]] | None = None,
     tools: list[dict[str, Any]] | None = None,
     tool_choice: str | dict[str, Any] | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run a single prompt through vLLM generation, optionally under a patch spec."""
     from vllm import SamplingParams
 
-    chat_template_kwargs: dict[str, Any] | None = None
-    if tool_choice is not None:
-        chat_template_kwargs = {"tool_choice": tool_choice}
+    chat_template_kwargs = {
+        **(_build_chat_template_kwargs(tools=tools, tool_choice=tool_choice) or {}),
+        **(chat_template_kwargs or {}),
+    } or None
 
     input_ids = _tokenize_chat_messages(
         tokenizer=tokenizer,
@@ -385,28 +424,33 @@ def _generate_one_vllm(
         top_p=float(top_p),
         top_k=int(top_k),
     )
-    use_request_scoped_patch = bool(config.request_scoped_patching and patch_spec is not None)
+    _apply_structured_tool_constraint(
+        sampling_params=sampling_params,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
+    if patch_spec is not None and patch_specs:
+        raise ValueError("Provide either patch_spec or patch_specs, not both")
+    has_patch = bool(patch_spec is not None or patch_specs)
+    use_request_scoped_patch = bool(config.request_scoped_patching and has_patch)
     if use_request_scoped_patch:
         extra_args = getattr(sampling_params, "extra_args", None)
         if not isinstance(extra_args, dict):
             extra_args = {}
-        extra_args["market_patch_spec"] = dict(patch_spec)
+        if patch_specs:
+            extra_args["market_patch_specs"] = [dict(spec) for spec in patch_specs]
+        elif patch_spec is not None:
+            extra_args["market_patch_spec"] = dict(patch_spec)
         sampling_params.extra_args = extra_args
+    elif patch_specs:
+        raise ValueError("Multiple patch specs require request_scoped_patching=True")
     elif patch_spec is not None:
         _set_market_patch_spec_on_model(llm, patch_spec)
     try:
-        if tools is not None:
-            outputs = llm.chat(
-                messages=messages,
-                sampling_params=sampling_params,
-                tools=tools,
-                chat_template_kwargs=chat_template_kwargs,
-            )
-        else:
-            outputs = llm.generate(
-                prompts=[{"prompt_token_ids": input_ids}],
-                sampling_params=sampling_params,
-            )
+        outputs = llm.generate(
+            prompts=[{"prompt_token_ids": input_ids}],
+            sampling_params=sampling_params,
+        )
     finally:
         if patch_spec is not None and not use_request_scoped_patch:
             _clear_market_patch_spec_on_model(llm)
@@ -426,12 +470,12 @@ def _generate_one_vllm(
         "request_id": str(request_id) if request_id is not None else "",
         "patch_stats": (
             _collect_market_patch_stats_from_model(llm, req_id=str(request_id) if request_id is not None else None)
-            if patch_spec is not None
+            if has_patch
             else {}
         ),
         "all_patch_stats": (
             _collect_market_patch_stats_from_model(llm)
-            if patch_spec is not None
+            if has_patch
             else {}
         ),
     }
@@ -449,12 +493,14 @@ def _generate_batch_vllm(
     top_k: int = -1,
     tools: list[dict[str, Any]] | None = None,
     tool_choice: str | dict[str, Any] | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     from vllm import SamplingParams
 
-    chat_template_kwargs: dict[str, Any] | None = None
-    if tool_choice is not None:
-        chat_template_kwargs = {"tool_choice": tool_choice}
+    chat_template_kwargs = {
+        **(_build_chat_template_kwargs(tools=tools, tool_choice=tool_choice) or {}),
+        **(chat_template_kwargs or {}),
+    } or None
 
     prompts: list[dict[str, Any]] = []
     sampling_params_list: list[Any] = []
@@ -474,19 +520,34 @@ def _generate_batch_vllm(
             top_p=float(top_p),
             top_k=int(top_k),
         )
+        _apply_structured_tool_constraint(
+            sampling_params=sampling_params,
+            tools=tools,
+            tool_choice=tool_choice,
+        )
         patch_spec = item.get("patch_spec")
-        if patch_spec is not None:
+        patch_specs = item.get("patch_specs")
+        if patch_spec is not None and patch_specs:
+            raise ValueError("Provide either patch_spec or patch_specs per request, not both")
+        if patch_spec is not None or patch_specs:
             if not config.request_scoped_patching:
-                raise ValueError("Batched generation requires request_scoped_patching=True when patch_spec is present")
+                raise ValueError(
+                    "Batched generation requires request_scoped_patching=True when patch specs are present"
+                )
             extra_args = getattr(sampling_params, "extra_args", None)
             if not isinstance(extra_args, dict):
                 extra_args = {}
-            extra_args["market_patch_spec"] = dict(patch_spec)
+            if patch_specs:
+                extra_args["market_patch_specs"] = [dict(spec) for spec in patch_specs]
+            else:
+                extra_args["market_patch_spec"] = dict(patch_spec)
             sampling_params.extra_args = extra_args
         prompts.append({"prompt_token_ids": input_ids})
         sampling_params_list.append(sampling_params)
         input_ids_list.append(input_ids)
 
+    # Match the older stable path: apply the HF chat template locally, then
+    # send pretokenized prompts through llm.generate even when tools are used.
     outputs = llm.generate(prompts=prompts, sampling_params=sampling_params_list)
 
     results: list[dict[str, Any]] = []
@@ -497,6 +558,8 @@ def _generate_batch_vllm(
         finish_reason = getattr(completion, "finish_reason", None) if completion is not None else None
         request_id = getattr(request_output, "request_id", None)
         patch_spec = item.get("patch_spec")
+        patch_specs = item.get("patch_specs")
+        has_patch = bool(patch_spec is not None or patch_specs)
         results.append(
             {
                 "input_ids": input_ids,
@@ -509,12 +572,12 @@ def _generate_batch_vllm(
                         llm,
                         req_id=str(request_id) if request_id is not None else None,
                     )
-                    if patch_spec is not None
+                    if has_patch
                     else {}
                 ),
                 "all_patch_stats": (
                     _collect_market_patch_stats_from_model(llm)
-                    if patch_spec is not None
+                    if has_patch
                     else {}
                 ),
             }
