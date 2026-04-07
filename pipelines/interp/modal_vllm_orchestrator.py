@@ -1,7 +1,5 @@
 """Canonical Modal capture orchestrator for generic workflow capture runs."""
 
-from __future__ import annotations
-
 import modal
 
 app = modal.App("xenon-vllm-capture")
