@@ -98,13 +98,13 @@ def test_project_init_scaffolds_project_subproject_and_phase(monkeypatch: pytest
             "--subproject",
             "synthetic_market",
             "--phase",
-            "prompt_confusion",
+            "path_validation",
         ]
     ) == 0
 
     project_root = tmp_path / "projects" / "DX_TERMINAL"
     subproject_root = project_root / "synthetic_market"
-    phase_root = subproject_root / "prompt_confusion"
+    phase_root = subproject_root / "path_validation"
     assert (project_root / "project_spec.json").is_file()
     assert (subproject_root / "__init__.py").is_file()
     assert (phase_root / "phase_spec.json").is_file()
@@ -116,13 +116,13 @@ def test_project_init_scaffolds_project_subproject_and_phase(monkeypatch: pytest
 
     phase_spec = json.loads((phase_root / "phase_spec.json").read_text())
     assert phase_spec["inherits"] == "projects/DX_TERMINAL/project_spec.json"
-    assert phase_spec["workflow_specs"] == ["projects/DX_TERMINAL/synthetic_market/prompt_confusion/specs/workflow.json"]
+    assert phase_spec["workflow_specs"] == ["projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow.json"]
 
     workflow_spec = json.loads((phase_root / "specs" / "workflow.json").read_text())
-    assert workflow_spec["id"] == "dx_terminal_synthetic_market_prompt_confusion"
+    assert workflow_spec["id"] == "dx_terminal_synthetic_market_path_validation"
     assert workflow_spec["capture"]["execution"] == "modal"
     assert workflow_spec["analysis"]["execution"] == "modal"
-    assert workflow_spec["report"]["output_dir"] == "projects/DX_TERMINAL/synthetic_market/prompt_confusion/reports"
+    assert workflow_spec["report"]["output_dir"] == "projects/DX_TERMINAL/synthetic_market/path_validation/reports"
 
 
 def test_project_init_defaults_first_phase_when_not_provided(
@@ -156,7 +156,7 @@ def test_project_init_refuses_to_overwrite_without_force(
             "--subproject",
             "synthetic_market",
             "--phase",
-            "prompt_confusion",
+            "path_validation",
         ]
     ) == 0
     with pytest.raises(SystemExit, match="Project scaffolding already exists"):
@@ -169,7 +169,7 @@ def test_project_init_refuses_to_overwrite_without_force(
                 "--subproject",
                 "synthetic_market",
                 "--phase",
-                "prompt_confusion",
+                "path_validation",
             ]
         )
 

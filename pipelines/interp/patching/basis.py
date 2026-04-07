@@ -9,7 +9,7 @@ import numpy as np
 
 
 @dataclass(slots=True)
-class MarketPatchBasisLayer:
+class ActivationPatchBasisLayer:
     layer: int
     state_key: str
     mean: np.ndarray
@@ -59,9 +59,9 @@ class MarketPatchBasisLayer:
 
 
 @dataclass(slots=True)
-class MarketPatchBasis:
+class ActivationPatchBasis:
     state_key: str
-    layers: dict[int, MarketPatchBasisLayer]
+    layers: dict[int, ActivationPatchBasisLayer]
     source_basis_npz: str
     source_results_json: str | None
 
@@ -104,17 +104,17 @@ def _named_components_for_layer(
     return named
 
 
-def load_market_patch_basis(
+def load_activation_patch_basis(
     *,
     basis_npz_path: Path,
-    state_key: str = "market_mean",
+    state_key: str = "activation_mean",
     layers: tuple[int, ...] = (4, 35),
     components_per_layer: int = 4,
     results_json_path: Path | None = None,
-) -> MarketPatchBasis:
+) -> ActivationPatchBasis:
     basis = np.load(basis_npz_path)
     results_json = _load_results_json(results_json_path)
-    layer_map: dict[int, MarketPatchBasisLayer] = {}
+    layer_map: dict[int, ActivationPatchBasisLayer] = {}
 
     for layer in layers:
         prefix = f"{state_key}_layer_{int(layer)}"
@@ -129,7 +129,7 @@ def load_market_patch_basis(
 
         components = np.asarray(basis[comp_key], dtype=np.float32)
         take = min(max(1, int(components_per_layer)), int(components.shape[0]))
-        layer_map[int(layer)] = MarketPatchBasisLayer(
+        layer_map[int(layer)] = ActivationPatchBasisLayer(
             layer=int(layer),
             state_key=state_key,
             mean=np.asarray(basis[mean_key], dtype=np.float32),
@@ -143,30 +143,9 @@ def load_market_patch_basis(
             ),
         )
 
-    return MarketPatchBasis(
+    return ActivationPatchBasis(
         state_key=state_key,
         layers=layer_map,
         source_basis_npz=str(basis_npz_path),
         source_results_json=None if results_json_path is None else str(results_json_path),
-    )
-
-
-def default_phase17_market_patch_basis(
-    *,
-    basis_npz_path: Path = Path(
-        "data/analysis_results/synthetic_market_discovery/phase15_market_basis_discovery_v1/residualized_nuisance_v1/pca_basis.npz"
-    ),
-    results_json_path: Path = Path(
-        "data/analysis_results/synthetic_market_axis_decomposition/phase17_market_axis_decomposition_v1/results.json"
-    ),
-    state_key: str = "market_mean",
-    layers: tuple[int, ...] = (4, 35),
-    components_per_layer: int = 4,
-) -> MarketPatchBasis:
-    return load_market_patch_basis(
-        basis_npz_path=basis_npz_path,
-        results_json_path=results_json_path,
-        state_key=state_key,
-        layers=layers,
-        components_per_layer=components_per_layer,
     )

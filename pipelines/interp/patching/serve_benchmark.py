@@ -22,7 +22,7 @@ DEFAULT_BENCHMARK_MESSAGES: list[dict[str, str]] = [
         "role": "user",
         "content": (
             "A trader has 100 ETH available and wants to deploy a single position. "
-            "Review this market snapshot and recommend one asset plus a position size.\n\n"
+            "Review this asset slate and recommend one asset plus a position size.\n\n"
             "Assets:\n"
             "- ALP: 1h return +6.2%, 24h return +18.1%, volume 42.1m, realized vol 0.88, drawdown 0.19\n"
             "- BRV: 1h return +1.3%, 24h return +4.6%, volume 15.7m, realized vol 0.31, drawdown 0.07\n"
@@ -518,13 +518,14 @@ def _build_benchmark_patch_artifacts(
     target_layers: tuple[int, ...],
     components_per_layer: int,
     strength: float,
+    basis_state_key: str,
 ) -> dict[str, Any]:
     from pipelines.interp.pooling import (
         _char_to_token_span,
         _token_offsets_for_rendered,
     )
-    from pipelines.interp.patching.basis import default_phase17_market_patch_basis
-    from pipelines.interp.patching.market_patch import MarketPatchSpec
+    from pipelines.interp.patching.activation_patch import ActivationPatchSpec
+    from pipelines.interp.patching.basis import load_activation_patch_basis
 
     rendered = tokenizer.apply_chat_template(
         list(benchmark_messages),
@@ -539,9 +540,10 @@ def _build_benchmark_patch_artifacts(
     if token_span is None:
         raise RuntimeError("Failed to map benchmark section chars onto token span")
 
-    basis = default_phase17_market_patch_basis(
+    basis = load_activation_patch_basis(
         basis_npz_path=basis_npz_path,
         results_json_path=results_json_path,
+        state_key=basis_state_key,
         layers=tuple(int(layer) for layer in target_layers),
         components_per_layer=int(components_per_layer),
     )
@@ -555,7 +557,7 @@ def _build_benchmark_patch_artifacts(
             range(min(int(components_per_layer), int(payload["components"].shape[0])))
         )
 
-    patch_spec = MarketPatchSpec(
+    patch_spec = ActivationPatchSpec(
         mode=str(patch_mode),
         target_layers=tuple(int(layer) for layer in target_layers),
         token_span=(int(token_span[0]), int(token_span[1])),
@@ -591,16 +593,17 @@ def run_customop_vllm_benchmark(
     strength: float = 1.0,
     basis_npz_path: Path | None = None,
     results_json_path: Path | None = None,
+    basis_state_key: str = "activation_mean",
 ) -> dict[str, Any]:
     from transformers import AutoTokenizer
 
-    from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import _destroy_llm
     from pipelines.interp.modal_vllm_engine import (
         VLLMCaptureConfig,
+        _destroy_llm,
         _create_llm,
         _generate_batch_vllm,
         _generate_one_vllm,
-        _register_market_patch_basis_on_model,
+        _register_activation_patch_basis_on_model,
     )
 
     benchmark_messages = list(benchmark_messages or DEFAULT_BENCHMARK_MESSAGES)
@@ -622,7 +625,7 @@ def run_customop_vllm_benchmark(
         enable_chunked_prefill=bool(enable_chunked_prefill),
         async_scheduling=False if int(max_num_seqs) > 1 else None,
         worker_cls=(
-            "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
+            "pipelines.interp.patching.activation_patch_request_worker.ActivationPatchGPUWorker"
             if use_custom_worker
             else ""
         ),
@@ -638,6 +641,7 @@ def run_customop_vllm_benchmark(
             add_generation_prompt=request_scoped_cfg.add_generation_prompt,
             basis_npz_path=basis_npz_path,
             results_json_path=results_json_path,
+            basis_state_key=basis_state_key,
             patch_mode=patch_mode,
             target_layers=tuple(int(layer) for layer in target_layers),
             components_per_layer=int(components_per_layer),
@@ -648,7 +652,7 @@ def run_customop_vllm_benchmark(
     llm = _create_llm(request_scoped_cfg)
     try:
         if patch_setup is not None:
-            _register_market_patch_basis_on_model(llm, patch_setup["basis_payload"])
+            _register_activation_patch_basis_on_model(llm, patch_setup["basis_payload"])
 
         for _ in range(max(0, int(warmup_requests))):
             _generate_one_vllm(
@@ -845,6 +849,7 @@ def run_customop_vs_stock_vllm_benchmark(
     strength: float = 1.0,
     basis_npz_path: Path | None = None,
     results_json_path: Path | None = None,
+    basis_state_key: str = "activation_mean",
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     benchmark_messages = list(benchmark_messages or DEFAULT_BENCHMARK_MESSAGES)
@@ -900,6 +905,7 @@ def run_customop_vs_stock_vllm_benchmark(
         strength=strength,
         basis_npz_path=basis_npz_path,
         results_json_path=results_json_path,
+        basis_state_key=basis_state_key,
     )
 
     stock_single = float(stock_result["chat_request_benchmark"]["output_toks_per_s_mean"])

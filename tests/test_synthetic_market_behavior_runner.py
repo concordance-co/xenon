@@ -25,7 +25,7 @@ def test_build_generation_config_uses_request_scoped_worker_for_patched_runs():
 
     assert cfg.max_num_seqs == 4
     assert cfg.request_scoped_patching is True
-    assert cfg.worker_cls == "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
+    assert cfg.worker_cls == "pipelines.interp.patching.activation_patch_request_worker.ActivationPatchGPUWorker"
     assert cfg.enable_chunked_prefill is False
     assert cfg.enable_prefix_caching is False
     assert cfg.async_scheduling is False
@@ -42,7 +42,7 @@ def test_build_generation_config_disables_async_scheduling_for_batched_baseline_
 
     assert cfg.max_num_seqs == 4
     assert cfg.request_scoped_patching is True
-    assert cfg.worker_cls == "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
+    assert cfg.worker_cls == "pipelines.interp.patching.activation_patch_request_worker.ActivationPatchGPUWorker"
     assert cfg.async_scheduling is False
 
 
@@ -112,7 +112,7 @@ def test_build_generation_config_uses_request_scoped_worker_for_secondary_patch_
 
     assert cfg.max_num_seqs == 1
     assert cfg.request_scoped_patching is True
-    assert cfg.worker_cls == "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
+    assert cfg.worker_cls == "pipelines.interp.patching.activation_patch_request_worker.ActivationPatchGPUWorker"
 
 
 def test_run_generation_batch_uses_single_prompt_path_for_single_request(monkeypatch):
@@ -319,11 +319,11 @@ def test_run_behavior_releases_capture_memory_before_generation(monkeypatch, tmp
     )
     monkeypatch.setattr(
         behavior_runner,
-        "default_phase17_market_patch_basis",
+        "load_phase17_activation_patch_basis",
         lambda **kwargs: basis_calls.append(dict(kwargs)) or _FakeBasis(),
     )
-    monkeypatch.setattr(behavior_runner, "_init_market_patching_on_model", lambda _llm: True)
-    monkeypatch.setattr(behavior_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(behavior_runner, "_init_activation_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(behavior_runner, "_register_activation_patch_basis_on_model", lambda _llm, _payload: None)
     monkeypatch.setattr(
         behavior_runner,
         "_build_patch_spec",
@@ -468,11 +468,11 @@ def test_run_behavior_builds_multi_spec_requests_for_path_validation(monkeypatch
     )
     monkeypatch.setattr(
         behavior_runner,
-        "default_phase17_market_patch_basis",
+        "load_phase17_activation_patch_basis",
         lambda **kwargs: basis_calls.append(dict(kwargs)) or _FakeBasis(),
     )
-    monkeypatch.setattr(behavior_runner, "_init_market_patching_on_model", lambda _llm: True)
-    monkeypatch.setattr(behavior_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(behavior_runner, "_init_activation_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(behavior_runner, "_register_activation_patch_basis_on_model", lambda _llm, _payload: None)
     monkeypatch.setattr(
         behavior_runner,
         "_build_patch_spec",

@@ -72,7 +72,7 @@ def test_generate_batch_uses_generate_when_tools_are_present(monkeypatch):
     llm = _FakeLLM()
     tokenizer = _FakeTokenizer()
 
-    monkeypatch.setattr(engine, "_collect_market_patch_stats_from_model", lambda *args, **kwargs: {})
+    monkeypatch.setattr(engine, "_collect_activation_patch_stats_from_model", lambda *args, **kwargs: {})
 
     config = engine.VLLMCaptureConfig(
         add_generation_prompt=True,

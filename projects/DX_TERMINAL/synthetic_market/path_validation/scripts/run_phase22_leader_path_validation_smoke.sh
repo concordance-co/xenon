@@ -38,7 +38,7 @@ RESCUE_LOG="/tmp/${RESCUE_RUN_NAME}.txt"
 
 run_donor_prep() {
   printf 'preparing donors %s log=%s\n' "$DONOR_RUN_NAME" "$DONOR_LOG"
-  modal run pipelines/interp/patching/modal_app.py::prepare_synthetic_market_behavior_donors_modal \
+  modal run projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::prepare_synthetic_market_behavior_donors_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$DONOR_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -61,7 +61,7 @@ run_donor_prep() {
 
 run_lesion() {
   printf 'running lesion baseline %s log=%s\n' "$LESION_RUN_NAME" "$LESION_LOG"
-  modal run pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  modal run projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$LESION_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -91,7 +91,7 @@ run_lesion() {
 
 run_rescue() {
   printf 'running lesion+rescue %s log=%s\n' "$RESCUE_RUN_NAME" "$RESCUE_LOG"
-  modal run pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  modal run projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$RESCUE_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -131,7 +131,7 @@ launch_background() {
 run_donor_prep
 if [[ "$LAUNCH_MODE" == "background" ]]; then
   printf 'launching lesion baseline in background\n'
-  launch_background pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  launch_background projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$LESION_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -156,7 +156,7 @@ if [[ "$LAUNCH_MODE" == "background" ]]; then
     --enable-chunked-prefill \
     --basis-state-key "$BASIS_STATE_KEY"
   printf 'launching lesion+rescue in background\n'
-  launch_background pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  launch_background projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$RESCUE_RUN_NAME" \
     --model-id "$MODEL_ID" \

@@ -33,19 +33,19 @@ def _load_request_helper_class():
     sys.modules.setdefault("vllm.v1.worker.gpu_worker", gpu_worker_module)
 
     module = importlib.import_module("pipelines.interp.patching.request_worker")
-    return module.MarketPatchRequestHelper
+    return module.ActivationPatchRequestHelper
 
 
 def test_request_helper_builds_step_specs_for_multiple_patch_specs() -> None:
-    MarketPatchRequestHelper = _load_request_helper_class()
-    helper = MarketPatchRequestHelper()
+    ActivationPatchRequestHelper = _load_request_helper_class()
+    helper = ActivationPatchRequestHelper()
     helper.process_new_reqs(
         [
             SimpleNamespace(
                 req_id="req-1",
                 sampling_params=SimpleNamespace(
                     extra_args={
-                        "market_patch_specs": [
+                        "patch_specs": [
                             {"mode": "project_out", "token_span": [2, 6], "target_layers": [4]},
                             {"mode": "swap_components", "token_span": [2, 6], "target_layers": [40]},
                         ]

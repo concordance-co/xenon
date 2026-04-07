@@ -20,7 +20,7 @@ from pipelines.interp.pooling import (
     _save_pooled,
     pool_decision_residual,
 )
-from pipelines.interp.patching.basis import default_phase17_market_patch_basis
+from projects.DX_TERMINAL.synthetic_market.shared.patch_basis import load_phase17_activation_patch_basis
 from pipelines.datasets.synthetic.db import validate_order_mode
 from pipelines.datasets.synthetic.structure import (
     build_asset_label_rows,
@@ -32,15 +32,15 @@ from pipelines.interp.modal_vllm_engine import (
     VLLMCaptureConfig,
     _capture_one_vllm,
     _create_llm,
-    _init_market_patching_on_model,
-    _register_market_patch_basis_on_model,
-    _collect_market_patch_stats_from_model,
+    _init_activation_patching_on_model,
+    _register_activation_patch_basis_on_model,
+    _collect_activation_patch_stats_from_model,
 )
-from pipelines.interp.patching.market_patch import (
+from pipelines.interp.patching.activation_patch import (
     PATCH_MODE_ADD_DIRECTION,
     PATCH_MODE_SWAP_COMPONENTS,
     PATCH_MODE_SWAP_MEAN,
-    MarketPatchSpec,
+    ActivationPatchSpec,
 )
 
 
@@ -263,7 +263,7 @@ def _build_patch_spec(
     market_span: tuple[int, int],
     basis_payload: dict[int, dict[str, Any]],
     donor_mean_by_layer: dict[int, Any] | None = None,
-) -> MarketPatchSpec:
+) -> ActivationPatchSpec:
     component_indices: dict[int, tuple[int, ...]] = {}
     for layer in config.target_layers:
         payload = basis_payload.get(int(layer))
@@ -302,7 +302,7 @@ def _build_patch_spec(
             weights = np.zeros((payload["components"].shape[0],), dtype=np.float32)
             weights[int(named_components[config.direction_name])] = 1.0
             direction_weights_by_layer[int(layer)] = weights
-        return MarketPatchSpec(
+        return ActivationPatchSpec(
             mode=config.patch_mode,
             target_layers=tuple(int(layer) for layer in config.target_layers),
             token_span=market_span,
@@ -314,7 +314,7 @@ def _build_patch_spec(
     if config.patch_mode in {PATCH_MODE_SWAP_MEAN, PATCH_MODE_SWAP_COMPONENTS}:
         if not donor_mean_by_layer:
             raise ValueError(f"{config.patch_mode} requires donor_mean_by_layer")
-        return MarketPatchSpec(
+        return ActivationPatchSpec(
             mode=config.patch_mode,
             target_layers=tuple(int(layer) for layer in config.target_layers),
             token_span=market_span,
@@ -323,7 +323,7 @@ def _build_patch_spec(
             random_seed=int(config.random_seed),
         )
 
-    return MarketPatchSpec(
+    return ActivationPatchSpec(
         mode=config.patch_mode,
         target_layers=tuple(int(layer) for layer in config.target_layers),
         token_span=market_span,
@@ -358,7 +358,7 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
 
     asset_rows_by_log = _load_asset_rows([int(row["log_id"]) for row in examples], phase_name=config.phase_name)
     tokenizer = AutoTokenizer.from_pretrained(config.model_id)
-    basis = default_phase17_market_patch_basis(
+    basis = load_phase17_activation_patch_basis(
         basis_npz_path=config.basis_npz_path,
         results_json_path=config.basis_results_path,
         layers=tuple(int(layer) for layer in config.target_layers),
@@ -377,8 +377,8 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
             enable_prefix_caching=False,
         )
     )
-    _init_market_patching_on_model(llm)
-    _register_market_patch_basis_on_model(llm, basis_payload)
+    _init_activation_patching_on_model(llm)
+    _register_activation_patch_basis_on_model(llm, basis_payload)
 
     capture_cfg = VLLMCaptureConfig(
         output_dir=tmp_capture_dir,
@@ -436,7 +436,7 @@ def run_synthetic_market_patching(config: SyntheticMarketPatchingConfig) -> dict
             section_boundaries=section_boundaries,
         )
         file_size = _save_pooled(pooled, residual_out_dir / f"{log_id}.safetensors")
-        patch_stats = _collect_market_patch_stats_from_model(llm)
+        patch_stats = _collect_activation_patch_stats_from_model(llm)
 
         metadata_rows.append({
             "log_id": log_id,

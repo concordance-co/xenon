@@ -9,7 +9,7 @@ from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runn
     _extract_roster_key,
     _parse_component_indices_spec,
 )
-from pipelines.interp.patching.market_patch import (
+from pipelines.interp.patching.activation_patch import (
     PATCH_MODE_PROJECT_OUT,
     PATCH_MODE_RANDOM_CONTROL,
     PATCH_MODE_SWAP_MEAN,

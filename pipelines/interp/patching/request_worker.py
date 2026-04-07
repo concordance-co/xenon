@@ -16,7 +16,7 @@ else:
     SchedulerOutput = Any
 
 
-class MarketPatchRequestHelper:
+class ActivationPatchRequestHelper:
     def __init__(self) -> None:
         self.req_id_to_patch_specs: dict[str, list[dict[str, Any]]] = {}
         self.current_step_specs: list[dict[str, Any]] = []
@@ -37,14 +37,14 @@ class MarketPatchRequestHelper:
             if not extra_args:
                 continue
             payloads: list[dict[str, Any]] = []
-            multi_payload = extra_args.get("market_patch_specs")
+            multi_payload = extra_args.get("patch_specs")
             if isinstance(multi_payload, list):
                 payloads.extend(
                     dict(item)
                     for item in multi_payload
                     if isinstance(item, dict)
                 )
-            single_payload = extra_args.get("market_patch_spec")
+            single_payload = extra_args.get("patch_spec")
             if isinstance(single_payload, dict):
                 payloads.append(dict(single_payload))
             if not payloads:
@@ -128,18 +128,18 @@ class MarketPatchRequestHelper:
             self.req_id_to_patch_specs.pop(str(req_id), None)
 
 
-class MarketPatchGPUModelRunner(GPUModelRunner):
+class ActivationPatchGPUModelRunner(GPUModelRunner):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.market_patch_request_helper = MarketPatchRequestHelper()
+        self.activation_patch_request_helper = ActivationPatchRequestHelper()
 
     def load_model(self, load_dummy_weights: bool = False) -> None:
         import torch
         import vllm.v1.worker.gpu_model_runner as gm
 
-        from pipelines.interp.patching.market_patch import (
-            init_market_patching,
-            install_qwen3_moe_market_patch_hooks,
+        from pipelines.interp.patching.activation_patch_core import (
+            init_activation_patching,
+            install_qwen3_moe_activation_patch_hooks,
         )
 
         gm.logger.info_once(
@@ -156,7 +156,7 @@ class MarketPatchGPUModelRunner(GPUModelRunner):
                 if load_dummy_weights:
                     self.load_config.load_format = "dummy"
                 if not self.vllm_config.model_config.enforce_eager:
-                    install_qwen3_moe_market_patch_hooks()
+                    install_qwen3_moe_activation_patch_hooks()
                 model_loader = gm.get_model_loader(self.load_config)
                 self.model = model_loader.load_model(
                     vllm_config=self.vllm_config, model_config=self.model_config
@@ -211,8 +211,8 @@ class MarketPatchGPUModelRunner(GPUModelRunner):
 
                 # Install patching while still inside vLLM's model-init context so
                 # compile/custom-op discovery can see the modified model graph.
-                init_market_patching(self.model)
-                self.model._market_patch_force_custom_op_presence = not bool(
+                init_activation_patching(self.model)
+                self.model._activation_patch_force_custom_op_presence = not bool(
                     self.vllm_config.model_config.enforce_eager
                 )
                 time_after_load = gm.time.perf_counter()
@@ -305,29 +305,29 @@ class MarketPatchGPUModelRunner(GPUModelRunner):
 
     def _update_states(self, scheduler_output: SchedulerOutput) -> None:
         super()._update_states(scheduler_output)
-        self.market_patch_request_helper.process_new_reqs(
+        self.activation_patch_request_helper.process_new_reqs(
             scheduler_output.scheduled_new_reqs
         )
         finished_req_ids = getattr(scheduler_output, "finished_req_ids", None)
-        self.market_patch_request_helper.cleanup_finished(finished_req_ids)
+        self.activation_patch_request_helper.cleanup_finished(finished_req_ids)
 
     def _prepare_inputs(
         self,
         scheduler_output: SchedulerOutput,
         num_scheduled_tokens: Any,
     ) -> Any:
-        from pipelines.interp.patching.market_patch import (
+        from pipelines.interp.patching.activation_patch_core import (
             set_batch_patch_specs,
         )
 
         prepared = super()._prepare_inputs(scheduler_output, num_scheduled_tokens)
-        self.market_patch_request_helper.build_step_specs(
+        self.activation_patch_request_helper.build_step_specs(
             input_batch=self.input_batch,
             num_scheduled_tokens=num_scheduled_tokens,
         )
         set_batch_patch_specs(
             self.model,
-            list(self.market_patch_request_helper.current_step_specs),
+            list(self.activation_patch_request_helper.current_step_specs),
         )
         return prepared
 
@@ -336,7 +336,7 @@ class MarketPatchGPUModelRunner(GPUModelRunner):
         scheduler_output: SchedulerOutput,
         intermediate_tensors: IntermediateTensors | None = None,
     ) -> Any:
-        from pipelines.interp.patching.market_patch import (
+        from pipelines.interp.patching.activation_patch_core import (
             clear_batch_patch_specs,
             harvest_batch_tensor_stats,
         )
@@ -345,14 +345,14 @@ class MarketPatchGPUModelRunner(GPUModelRunner):
             result = super().execute_model(scheduler_output, intermediate_tensors)
             harvest_batch_tensor_stats(
                 self.model,
-                list(self.market_patch_request_helper.current_step_specs),
+                list(self.activation_patch_request_helper.current_step_specs),
             )
             return result
         finally:
             clear_batch_patch_specs(self.model)
 
 
-class MarketPatchGPUWorker(gpu_worker.Worker):
+class ActivationPatchGPUWorker(gpu_worker.Worker):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        gpu_model_runner.GPUModelRunner = MarketPatchGPUModelRunner
+        gpu_model_runner.GPUModelRunner = ActivationPatchGPUModelRunner
         super().__init__(*args, **kwargs)

@@ -26,6 +26,7 @@ image = (
         "psycopg[binary]",
     )
     .add_local_python_source("pipelines")
+    .add_local_python_source("projects")
 )
 
 

@@ -36,7 +36,7 @@ PATCH_LOG="/tmp/${PATCH_RUN_NAME}.txt"
 
 run_donor_prep() {
   printf 'preparing donors %s log=%s\n' "$DONOR_RUN_NAME" "$DONOR_LOG"
-  modal run pipelines/interp/patching/modal_app.py::prepare_synthetic_market_behavior_donors_modal \
+  modal run projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::prepare_synthetic_market_behavior_donors_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$DONOR_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -59,7 +59,7 @@ run_donor_prep() {
 
 run_baseline() {
   printf 'running baseline %s log=%s\n' "$BASELINE_RUN_NAME" "$BASELINE_LOG"
-  modal run pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  modal run projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$BASELINE_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -86,7 +86,7 @@ run_baseline() {
 
 run_patch() {
   printf 'running patch %s log=%s\n' "$PATCH_RUN_NAME" "$PATCH_LOG"
-  modal run pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  modal run projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$PATCH_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -123,7 +123,7 @@ launch_background() {
 run_donor_prep
 if [[ "$LAUNCH_MODE" == "background" ]]; then
   printf 'launching baseline in background\n'
-  launch_background pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  launch_background projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$BASELINE_RUN_NAME" \
     --model-id "$MODEL_ID" \
@@ -145,7 +145,7 @@ if [[ "$LAUNCH_MODE" == "background" ]]; then
     --enable-chunked-prefill \
     --basis-state-key "$BASIS_STATE_KEY"
   printf 'launching patch run in background\n'
-  launch_background pipelines/interp/patching/modal_app.py::run_synthetic_market_behavior_modal \
+  launch_background projects/DX_TERMINAL/synthetic_market/shared/modal_app.py::run_synthetic_market_behavior_modal \
     --phase-name "$PHASE_NAME" \
     --run-name "$PATCH_RUN_NAME" \
     --model-id "$MODEL_ID" \

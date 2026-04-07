@@ -125,9 +125,9 @@ def test_matrix_runner_executes_multiple_cells_in_one_run(monkeypatch, tmp_path)
         "_create_llm",
         lambda cfg: create_llm_calls.append(bool(cfg.enforce_eager)) or object(),
     )
-    monkeypatch.setattr(matrix_runner, "default_phase17_market_patch_basis", lambda **_kwargs: _FakeBasis())
-    monkeypatch.setattr(matrix_runner, "_init_market_patching_on_model", lambda _llm: True)
-    monkeypatch.setattr(matrix_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(matrix_runner, "load_phase17_activation_patch_basis", lambda **_kwargs: _FakeBasis())
+    monkeypatch.setattr(matrix_runner, "_init_activation_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(matrix_runner, "_register_activation_patch_basis_on_model", lambda _llm, _payload: None)
     monkeypatch.setattr(
         matrix_runner,
         "_build_patch_spec",
@@ -280,9 +280,9 @@ def test_matrix_runner_uses_eager_fallback_for_random_control(monkeypatch, tmp_p
         "_create_llm",
         lambda cfg: create_llm_calls.append(bool(cfg.enforce_eager)) or object(),
     )
-    monkeypatch.setattr(matrix_runner, "default_phase17_market_patch_basis", lambda **_kwargs: _FakeBasis())
-    monkeypatch.setattr(matrix_runner, "_init_market_patching_on_model", lambda _llm: True)
-    monkeypatch.setattr(matrix_runner, "_register_market_patch_basis_on_model", lambda _llm, _payload: None)
+    monkeypatch.setattr(matrix_runner, "load_phase17_activation_patch_basis", lambda **_kwargs: _FakeBasis())
+    monkeypatch.setattr(matrix_runner, "_init_activation_patching_on_model", lambda _llm: True)
+    monkeypatch.setattr(matrix_runner, "_register_activation_patch_basis_on_model", lambda _llm, _payload: None)
     monkeypatch.setattr(
         matrix_runner,
         "_build_patch_spec",

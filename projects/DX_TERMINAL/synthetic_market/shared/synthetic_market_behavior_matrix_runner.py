@@ -13,7 +13,7 @@ import pyarrow.parquet as pq
 
 from pipelines.interp.modal_vllm_engine import _build_chat_template_kwargs
 from pipelines.interp.tool_schemas import resolve_tool_schema_mode
-from pipelines.interp.patching.basis import default_phase17_market_patch_basis
+from projects.DX_TERMINAL.synthetic_market.shared.patch_basis import load_phase17_activation_patch_basis
 from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_battery import SyntheticMarketBehaviorPlanItem
 from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
     SyntheticMarketBehaviorConfig,
@@ -32,8 +32,8 @@ from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runn
 from pipelines.interp.modal_vllm_engine import (
     VLLMCaptureConfig,
     _create_llm,
-    _init_market_patching_on_model,
-    _register_market_patch_basis_on_model,
+    _init_activation_patching_on_model,
+    _register_activation_patch_basis_on_model,
 )
 
 
@@ -87,7 +87,7 @@ def _build_union_basis_payload(cells: list[SyntheticMarketBehaviorPlanItem], bas
         return {}
     layers = sorted({int(layer) for cell in patch_cells for layer in cell.config.target_layers})
     components_per_layer = max(_cell_component_count(cell) for cell in patch_cells)
-    basis = default_phase17_market_patch_basis(
+    basis = load_phase17_activation_patch_basis(
         basis_npz_path=base_config.basis_npz_path,
         results_json_path=base_config.basis_results_path,
         state_key=base_config.basis_state_key,
@@ -296,8 +296,8 @@ def run_synthetic_market_behavior_matrix(config: SyntheticMarketBehaviorMatrixCo
             config.base_config,
         )
         if basis_payload:
-            _init_market_patching_on_model(llm_generate)
-            _register_market_patch_basis_on_model(llm_generate, basis_payload)
+            _init_activation_patching_on_model(llm_generate)
+            _register_activation_patch_basis_on_model(llm_generate, basis_payload)
 
         try:
             _fill_source_behavior_cache(

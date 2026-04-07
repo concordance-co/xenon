@@ -4,10 +4,10 @@ import json
 
 import numpy as np
 
-from pipelines.interp.patching.basis import load_market_patch_basis
+from pipelines.interp.patching.basis import load_activation_patch_basis
 
 
-def test_load_market_patch_basis_reads_named_phase17_axes(tmp_path):
+def test_load_activation_patch_basis_reads_named_components(tmp_path):
     basis_path = tmp_path / "basis.npz"
     results_path = tmp_path / "results.json"
 
@@ -39,8 +39,9 @@ def test_load_market_patch_basis_reads_named_phase17_axes(tmp_path):
         )
     )
 
-    basis = load_market_patch_basis(
+    basis = load_activation_patch_basis(
         basis_npz_path=basis_path,
+        state_key="market_mean",
         results_json_path=results_path,
         layers=(4, 35),
         components_per_layer=3,
@@ -54,7 +55,7 @@ def test_load_market_patch_basis_reads_named_phase17_axes(tmp_path):
     assert basis.layers[35].named_components == {"dispersion_axis": 0}
 
 
-def test_load_market_patch_basis_raises_for_missing_layer_payload(tmp_path):
+def test_load_activation_patch_basis_raises_for_missing_layer_payload(tmp_path):
     basis_path = tmp_path / "basis.npz"
     np.savez_compressed(
         basis_path,
@@ -64,8 +65,9 @@ def test_load_market_patch_basis_raises_for_missing_layer_payload(tmp_path):
     )
 
     try:
-        load_market_patch_basis(
+        load_activation_patch_basis(
             basis_npz_path=basis_path,
+            state_key="market_mean",
             layers=(4, 35),
             components_per_layer=2,
         )

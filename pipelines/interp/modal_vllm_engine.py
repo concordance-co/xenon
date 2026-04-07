@@ -135,78 +135,78 @@ def _collect_router_logits_from_model(llm: Any) -> dict[int, Any]:
     return _apply_to_model(llm, collect_router_logits)
 
 
-def _setup_market_patching(model: Any) -> bool:
+def _setup_activation_patching(model: Any) -> bool:
     """Top-level function for apply_model — initialise residual patch wrappers."""
-    from pipelines.interp.patching.market_patch import init_market_patching
+    from pipelines.interp.patching.activation_patch_core import init_activation_patching
 
-    init_market_patching(model)
+    init_activation_patching(model)
     return True
 
 
-def _register_market_patch_basis(model: Any, basis_payload: dict[int, dict[str, Any]]) -> dict[str, Any]:
-    from pipelines.interp.patching.market_patch import register_patch_basis
+def _register_activation_patch_basis(model: Any, basis_payload: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    from pipelines.interp.patching.activation_patch_core import register_patch_basis
 
     return register_patch_basis(model, basis_payload)
 
 
-def _set_market_patch_spec(model: Any, patch_spec: dict[str, Any]) -> dict[str, Any]:
-    from pipelines.interp.patching.market_patch import set_patch_spec
+def _set_activation_patch_spec(model: Any, patch_spec: dict[str, Any]) -> dict[str, Any]:
+    from pipelines.interp.patching.activation_patch_core import set_patch_spec
 
     return set_patch_spec(model, patch_spec)
 
 
-def _clear_market_patch_spec(model: Any) -> None:
-    from pipelines.interp.patching.market_patch import clear_patch_spec
+def _clear_activation_patch_spec(model: Any) -> None:
+    from pipelines.interp.patching.activation_patch_core import clear_patch_spec
 
     clear_patch_spec(model)
 
 
-def _collect_market_patch_stats(
+def _collect_activation_patch_stats(
     model: Any,
     req_id: str | None = None,
 ) -> dict[int, dict[str, Any]]:
-    from pipelines.interp.patching.market_patch import collect_patch_stats
+    from pipelines.interp.patching.activation_patch_core import collect_patch_stats
 
     return collect_patch_stats(model, req_id=req_id)
 
 
-def _init_market_patching_on_model(llm: Any) -> bool:
-    """Initialise market patching wrappers on the model inside vLLM workers."""
-    return _apply_to_model(llm, _setup_market_patching)
+def _init_activation_patching_on_model(llm: Any) -> bool:
+    """Initialise activation-patching wrappers on the model inside vLLM workers."""
+    return _apply_to_model(llm, _setup_activation_patching)
 
 
-def _register_market_patch_basis_on_model(
+def _register_activation_patch_basis_on_model(
     llm: Any,
     basis_payload: dict[int, dict[str, Any]],
 ) -> dict[str, Any]:
-    """Register market patch basis tensors on the model inside vLLM workers."""
+    """Register activation-patch basis tensors on the model inside vLLM workers."""
     from functools import partial
 
-    func = partial(_register_market_patch_basis, basis_payload=basis_payload)
+    func = partial(_register_activation_patch_basis, basis_payload=basis_payload)
     return _apply_to_model(llm, func)
 
 
-def _set_market_patch_spec_on_model(llm: Any, patch_spec: dict[str, Any]) -> dict[str, Any]:
-    """Activate a market patch spec for the next request on the worker model."""
+def _set_activation_patch_spec_on_model(llm: Any, patch_spec: dict[str, Any]) -> dict[str, Any]:
+    """Activate a patch spec for the next request on the worker model."""
     from functools import partial
 
-    func = partial(_set_market_patch_spec, patch_spec=patch_spec)
+    func = partial(_set_activation_patch_spec, patch_spec=patch_spec)
     return _apply_to_model(llm, func)
 
 
-def _clear_market_patch_spec_on_model(llm: Any) -> None:
-    """Disable any active market patch spec on the worker model."""
-    _apply_to_model(llm, _clear_market_patch_spec)
+def _clear_activation_patch_spec_on_model(llm: Any) -> None:
+    """Disable any active patch spec on the worker model."""
+    _apply_to_model(llm, _clear_activation_patch_spec)
 
 
-def _collect_market_patch_stats_from_model(
+def _collect_activation_patch_stats_from_model(
     llm: Any,
     req_id: str | None = None,
 ) -> dict[int, dict[str, Any]]:
     """Collect patch statistics from the worker-side model."""
     from functools import partial
 
-    func = partial(_collect_market_patch_stats, req_id=req_id)
+    func = partial(_collect_activation_patch_stats, req_id=req_id)
     return _apply_to_model(llm, func)
 
 
@@ -227,6 +227,19 @@ def _resolve_num_layers(model_id: str) -> int:
 
     cfg = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
     return cfg.num_hidden_layers
+
+
+def _destroy_llm(llm: Any | None) -> None:
+    """Best-effort shutdown for a vLLM engine held by a long-lived worker."""
+    if llm is None:
+        return
+    try:
+        llm_engine = getattr(llm, "llm_engine", None)
+        shutdown = getattr(llm_engine, "shutdown", None)
+        if callable(shutdown):
+            shutdown()
+    except Exception:
+        pass
 
 
 def _create_llm(config: VLLMCaptureConfig) -> Any:
@@ -260,10 +273,13 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         kwargs["worker_cls"] = config.worker_cls
         if (
             not config.enforce_eager
-            and "vllm_request_patch_worker" in str(config.worker_cls)
+            and (
+                "ActivationPatchGPUWorker" in str(config.worker_cls)
+                or "vllm_request_patch_worker" in str(config.worker_cls)
+            )
         ):
             kwargs["compilation_config"] = {
-                "custom_ops": ["none", "+market_patch_hidden_states"],
+                "custom_ops": ["none", "+activation_patch_hidden_states"],
             }
     if config.async_scheduling is not None:
         kwargs["async_scheduling"] = bool(config.async_scheduling)
@@ -438,14 +454,14 @@ def _generate_one_vllm(
         if not isinstance(extra_args, dict):
             extra_args = {}
         if patch_specs:
-            extra_args["market_patch_specs"] = [dict(spec) for spec in patch_specs]
+            extra_args["patch_specs"] = [dict(spec) for spec in patch_specs]
         elif patch_spec is not None:
-            extra_args["market_patch_spec"] = dict(patch_spec)
+            extra_args["patch_spec"] = dict(patch_spec)
         sampling_params.extra_args = extra_args
     elif patch_specs:
         raise ValueError("Multiple patch specs require request_scoped_patching=True")
     elif patch_spec is not None:
-        _set_market_patch_spec_on_model(llm, patch_spec)
+        _set_activation_patch_spec_on_model(llm, patch_spec)
     try:
         outputs = llm.generate(
             prompts=[{"prompt_token_ids": input_ids}],
@@ -453,7 +469,7 @@ def _generate_one_vllm(
         )
     finally:
         if patch_spec is not None and not use_request_scoped_patch:
-            _clear_market_patch_spec_on_model(llm)
+            _clear_activation_patch_spec_on_model(llm)
 
     request_output = outputs[0]
     completion = request_output.outputs[0] if getattr(request_output, "outputs", None) else None
@@ -469,12 +485,12 @@ def _generate_one_vllm(
         "finish_reason": str(finish_reason) if finish_reason is not None else "",
         "request_id": str(request_id) if request_id is not None else "",
         "patch_stats": (
-            _collect_market_patch_stats_from_model(llm, req_id=str(request_id) if request_id is not None else None)
+            _collect_activation_patch_stats_from_model(llm, req_id=str(request_id) if request_id is not None else None)
             if has_patch
             else {}
         ),
         "all_patch_stats": (
-            _collect_market_patch_stats_from_model(llm)
+            _collect_activation_patch_stats_from_model(llm)
             if has_patch
             else {}
         ),
@@ -538,9 +554,9 @@ def _generate_batch_vllm(
             if not isinstance(extra_args, dict):
                 extra_args = {}
             if patch_specs:
-                extra_args["market_patch_specs"] = [dict(spec) for spec in patch_specs]
+                extra_args["patch_specs"] = [dict(spec) for spec in patch_specs]
             else:
-                extra_args["market_patch_spec"] = dict(patch_spec)
+                extra_args["patch_spec"] = dict(patch_spec)
             sampling_params.extra_args = extra_args
         prompts.append({"prompt_token_ids": input_ids})
         sampling_params_list.append(sampling_params)
@@ -568,7 +584,7 @@ def _generate_batch_vllm(
                 "finish_reason": str(finish_reason) if finish_reason is not None else "",
                 "request_id": str(request_id) if request_id is not None else "",
                 "patch_stats": (
-                    _collect_market_patch_stats_from_model(
+                    _collect_activation_patch_stats_from_model(
                         llm,
                         req_id=str(request_id) if request_id is not None else None,
                     )
@@ -576,7 +592,7 @@ def _generate_batch_vllm(
                     else {}
                 ),
                 "all_patch_stats": (
-                    _collect_market_patch_stats_from_model(llm)
+                    _collect_activation_patch_stats_from_model(llm)
                     if has_patch
                     else {}
                 ),
@@ -621,7 +637,7 @@ def _capture_one_vllm(
     # Run through vLLM -- single prompt, max_tokens=1 (prefill only)
     sampling_params = SamplingParams(max_tokens=1)
     if patch_spec is not None:
-        _set_market_patch_spec_on_model(llm, patch_spec)
+        _set_activation_patch_spec_on_model(llm, patch_spec)
     try:
         outputs = llm.generate(
             prompts=[{"prompt_token_ids": input_ids}],
@@ -629,7 +645,7 @@ def _capture_one_vllm(
         )
     finally:
         if patch_spec is not None:
-            _clear_market_patch_spec_on_model(llm)
+            _clear_activation_patch_spec_on_model(llm)
 
     seq_len = len(input_ids)
 

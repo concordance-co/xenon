@@ -75,15 +75,15 @@ class SyntheticMarketBehaviorMatrixWorker:
 
         from transformers import AutoTokenizer
 
-        from pipelines.interp.patching.basis import default_phase17_market_patch_basis
+        from projects.DX_TERMINAL.synthetic_market.shared.patch_basis import load_phase17_activation_patch_basis
         from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_behavior_runner import (
             SyntheticMarketBehaviorConfig,
             _build_generation_config,
         )
         from pipelines.interp.modal_vllm_engine import (
             _create_llm,
-            _init_market_patching_on_model,
-            _register_market_patch_basis_on_model,
+            _init_activation_patching_on_model,
+            _register_activation_patch_basis_on_model,
         )
 
         local_model_path = f"/models/{self.model_id}"
@@ -118,15 +118,15 @@ class SyntheticMarketBehaviorMatrixWorker:
             int(token.strip()) for token in self.basis_layers.split(",") if token.strip()
         )
         if parsed_layers and int(self.basis_components_per_layer) > 0:
-            basis = default_phase17_market_patch_basis(
+            basis = load_phase17_activation_patch_basis(
                 basis_npz_path=Path(BASIS_NPZ_REMOTE),
                 results_json_path=Path(BASIS_RESULTS_REMOTE),
                 state_key=self.basis_state_key,
                 layers=parsed_layers,
                 components_per_layer=int(self.basis_components_per_layer),
             )
-            _init_market_patching_on_model(self.llm)
-            _register_market_patch_basis_on_model(self.llm, basis.to_payload())
+            _init_activation_patching_on_model(self.llm)
+            _register_activation_patch_basis_on_model(self.llm, basis.to_payload())
 
     @modal.method()
     def generate_batch(self, requests: list[dict]) -> list[dict]:
@@ -1148,6 +1148,7 @@ def benchmark_customop_vs_stock_vllm_modal(
         strength=float(strength),
         basis_npz_path=Path(BASIS_NPZ_REMOTE),
         results_json_path=Path(BASIS_RESULTS_REMOTE),
+        basis_state_key="market_mean",
     )
     synthetic_volume.commit()
     return result
@@ -1214,6 +1215,7 @@ def benchmark_direct_vllm_variant_modal(
         strength=float(strength),
         basis_npz_path=Path(BASIS_NPZ_REMOTE),
         results_json_path=Path(BASIS_RESULTS_REMOTE),
+        basis_state_key="market_mean",
     )
     synthetic_volume.commit()
     return result

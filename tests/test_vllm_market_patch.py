@@ -3,16 +3,16 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from pipelines.interp.patching.market_patch import (
+from pipelines.interp.patching.activation_patch_core import (
     PATCH_MODE_ADD_DIRECTION,
     PATCH_MODE_PROJECT_OUT,
     PATCH_MODE_RANDOM_CONTROL,
     PATCH_MODE_SWAP_COMPONENTS,
     PATCH_MODE_SWAP_MEAN,
-    MarketPatchSpec,
+    ActivationPatchSpec,
     clear_patch_spec,
     collect_patch_stats,
-    init_market_patching,
+    init_activation_patching,
     register_patch_basis,
     restore_original_forwards,
     set_batch_patch_specs,
@@ -60,12 +60,12 @@ class _FakeModel:
 
 def test_project_out_removes_selected_mean_components():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_PROJECT_OUT,
             target_layers=(0,),
             token_span=(0, 2),
@@ -93,12 +93,12 @@ def test_project_out_removes_selected_mean_components():
 
 def test_project_out_strength_scales_delta():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_PROJECT_OUT,
             target_layers=(0,),
             token_span=(0, 2),
@@ -123,12 +123,12 @@ def test_project_out_strength_scales_delta():
 
 def test_add_direction_moves_market_mean_in_named_direction():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_ADD_DIRECTION,
             target_layers=(0,),
             token_span=(0, 2),
@@ -147,12 +147,12 @@ def test_add_direction_moves_market_mean_in_named_direction():
 
 def test_swap_mean_sets_market_mean_to_donor_mean():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_SWAP_MEAN,
             target_layers=(0,),
             token_span=(0, 2),
@@ -179,12 +179,12 @@ def test_swap_mean_sets_market_mean_to_donor_mean():
 
 def test_swap_mean_strength_scales_toward_donor_mean():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_SWAP_MEAN,
             target_layers=(0,),
             token_span=(0, 2),
@@ -211,12 +211,12 @@ def test_swap_mean_strength_scales_toward_donor_mean():
 
 def test_swap_components_only_replaces_selected_subspace_coefficients():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_SWAP_COMPONENTS,
             target_layers=(0,),
             token_span=(0, 2),
@@ -241,12 +241,12 @@ def test_swap_components_only_replaces_selected_subspace_coefficients():
 
 def test_random_control_changes_hidden_state_but_stays_orthogonal_to_target_space():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_RANDOM_CONTROL,
             target_layers=(0,),
             token_span=(0, 2),
@@ -273,12 +273,12 @@ def test_random_control_changes_hidden_state_but_stays_orthogonal_to_target_spac
 
 def test_only_targeted_layer_is_patched_and_clear_resets_state():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_ADD_DIRECTION,
             target_layers=(0,),
             token_span=(0, 2),
@@ -305,12 +305,12 @@ def test_only_targeted_layer_is_patched_and_clear_resets_state():
 
 def test_generation_followup_calls_do_not_overwrite_successful_prefill_stats():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
     set_patch_spec(
         model,
-        MarketPatchSpec(
+        ActivationPatchSpec(
             mode=PATCH_MODE_PROJECT_OUT,
             target_layers=(0,),
             token_span=(0, 2),
@@ -341,16 +341,16 @@ def test_generation_followup_calls_do_not_overwrite_successful_prefill_stats():
 
 def test_batch_patch_specs_apply_per_request_and_stats_can_be_collected_by_base_id():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
-    req1 = MarketPatchSpec(
+    req1 = ActivationPatchSpec(
         mode=PATCH_MODE_PROJECT_OUT,
         target_layers=(0,),
         token_span=(0, 2),
         component_indices_by_layer={0: (0, 1)},
     ).to_payload()
-    req2 = MarketPatchSpec(
+    req2 = ActivationPatchSpec(
         mode=PATCH_MODE_ADD_DIRECTION,
         target_layers=(0,),
         token_span=(2, 4),
@@ -410,10 +410,10 @@ def test_batch_patch_specs_apply_per_request_and_stats_can_be_collected_by_base_
 
 def test_batch_patch_stats_survive_followup_decode_steps():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
-    patch_payload = MarketPatchSpec(
+    patch_payload = ActivationPatchSpec(
         mode=PATCH_MODE_PROJECT_OUT,
         target_layers=(0,),
         token_span=(0, 2),
@@ -456,10 +456,10 @@ def test_batch_patch_stats_survive_followup_decode_steps():
 
 def test_batch_patch_stats_accumulate_chunk_coverage_across_multiple_steps():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
 
-    patch_payload = MarketPatchSpec(
+    patch_payload = ActivationPatchSpec(
         mode=PATCH_MODE_PROJECT_OUT,
         target_layers=(0,),
         token_span=(0, 1),
@@ -528,7 +528,7 @@ def test_swap_components_batch_op_replaces_selected_coefficients():
     coeff_before = torch.zeros((1, 1), dtype=torch.float32)
     coeff_after = torch.zeros((1, 1), dtype=torch.float32)
 
-    patched = torch.ops.xenon_market_patch.swap_components_batch(
+    patched = torch.ops.xenon_activation_patch.swap_components_batch(
         hidden,
         mean,
         scale,
@@ -553,11 +553,11 @@ def test_swap_components_batch_op_replaces_selected_coefficients():
 
 def test_compiled_batch_runtime_state_supports_swap_components():
     model = _FakeModel()
-    init_market_patching(model)
+    init_activation_patching(model)
     register_patch_basis(model, _basis_payload())
-    model._market_patch_force_custom_op_presence = True
+    model._activation_patch_force_custom_op_presence = True
 
-    patch_payload = MarketPatchSpec(
+    patch_payload = ActivationPatchSpec(
         mode=PATCH_MODE_SWAP_COMPONENTS,
         target_layers=(0,),
         token_span=(0, 2),
@@ -580,6 +580,6 @@ def test_compiled_batch_runtime_state_supports_swap_components():
         ],
     )
 
-    runtime_state = model._market_patch_batch_runtime_state[0]
-    assert model._market_patch_compiled_batch_modes[0] == PATCH_MODE_SWAP_COMPONENTS
+    runtime_state = model._activation_patch_batch_runtime_state[0]
+    assert model._activation_patch_compiled_batch_modes[0] == PATCH_MODE_SWAP_COMPONENTS
     assert torch.allclose(runtime_state["donor_means"][0], torch.tensor([10.0, 99.0, 0.0, 0.0]))

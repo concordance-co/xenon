@@ -16,7 +16,7 @@ import pyarrow.parquet as pq
 
 from pipelines.interp.pooling import _extract_system_user, _parse_messages
 from pipelines.interp.tool_schemas import resolve_tool_schema_mode
-from pipelines.interp.patching.basis import default_phase17_market_patch_basis
+from projects.DX_TERMINAL.synthetic_market.shared.patch_basis import load_phase17_activation_patch_basis
 from pipelines.datasets.synthetic.pairing import build_matched_metric_examples
 from projects.DX_TERMINAL.synthetic_market.shared.synthetic_market_patching_runner import (
     _build_patch_spec,
@@ -32,8 +32,8 @@ from pipelines.interp.modal_vllm_engine import (
     _create_llm,
     _generate_batch_vllm,
     _generate_one_vllm,
-    _init_market_patching_on_model,
-    _register_market_patch_basis_on_model,
+    _init_activation_patching_on_model,
+    _register_activation_patch_basis_on_model,
 )
 
 
@@ -528,7 +528,7 @@ def _build_generation_config(config: SyntheticMarketBehaviorConfig) -> VLLMCaptu
     batch_size = max(1, int(config.batch_size))
     # Keep batched behavior runs on the same vLLM worker path across baseline,
     # project-out, and random-control conditions. Patched requests carry
-    # `market_patch_spec` in SamplingParams.extra_args; baseline requests leave
+    # `patch_spec` in SamplingParams.extra_args; baseline requests leave
     # it empty but still benefit from the same scheduler / runner codepath.
     use_request_scoped_patching = batch_size > 1 or bool(config.secondary_patch_enabled)
     max_num_batched_tokens = None
@@ -555,7 +555,7 @@ def _build_generation_config(config: SyntheticMarketBehaviorConfig) -> VLLMCaptu
         enable_chunked_prefill=bool(config.enable_chunked_prefill),
         async_scheduling=async_scheduling,
         worker_cls=(
-            "pipelines.interp.patching.request_worker.MarketPatchGPUWorker"
+            "pipelines.interp.patching.activation_patch_request_worker.ActivationPatchGPUWorker"
             if use_request_scoped_patching
             else ""
         ),
@@ -680,7 +680,7 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
 
     basis_payload: dict[int, dict[str, Any]] = {}
     if config.patch_enabled or config.secondary_patch_enabled:
-        basis = default_phase17_market_patch_basis(
+        basis = load_phase17_activation_patch_basis(
             basis_npz_path=config.basis_npz_path,
             results_json_path=config.basis_results_path,
             state_key=config.basis_state_key,
@@ -688,8 +688,8 @@ def run_synthetic_market_behavior(config: SyntheticMarketBehaviorConfig) -> dict
             components_per_layer=_requested_basis_components(config),
         )
         basis_payload = basis.to_payload()
-        _init_market_patching_on_model(llm_generate)
-        _register_market_patch_basis_on_model(llm_generate, basis_payload)
+        _init_activation_patching_on_model(llm_generate)
+        _register_activation_patch_basis_on_model(llm_generate, basis_payload)
 
     source_behavior_cache: dict[int, dict[str, Any]] = {}
     metadata_rows: list[dict[str, Any]] = []
