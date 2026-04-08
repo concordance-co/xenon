@@ -60,6 +60,12 @@ class VLLMCaptureConfig:
     # Router capture knobs
     router_top_k: int = 8  # top-k indices to save alongside full logits
     router_dtype: str = "float16"  # storage dtype for router logits
+    capture_generation: bool = False
+    capture_reasoning: bool = True
+    reasoning_parser: str = ""
+    generation_max_tokens: int = 256
+    generation_temperature: float = 0.0
+    generation_top_p: float = 1.0
 
     # Metadata
     metadata_flush_interval: int = 10  # flush metadata every N examples
@@ -481,12 +487,30 @@ def _generate_one_vllm(
     generated_text = str(getattr(completion, "text", "")) if completion is not None else ""
     finish_reason = getattr(completion, "finish_reason", None) if completion is not None else None
     request_id = getattr(request_output, "request_id", None)
+    reasoning_text = ""
+    for candidate in (
+        getattr(completion, "reasoning_content", None),
+        getattr(completion, "reasoning", None),
+        getattr(request_output, "reasoning_content", None),
+        getattr(request_output, "reasoning", None),
+    ):
+        if candidate is None:
+            continue
+        if isinstance(candidate, str) and candidate.strip():
+            reasoning_text = candidate
+            break
+        if isinstance(candidate, dict):
+            text = candidate.get("text") or candidate.get("content")
+            if isinstance(text, str) and text.strip():
+                reasoning_text = text
+                break
 
     return {
         "input_ids": input_ids,
         "generated_token_ids": generated_token_ids,
         "generated_text": generated_text,
         "finish_reason": str(finish_reason) if finish_reason is not None else "",
+        "reasoning_text": reasoning_text,
         "request_id": str(request_id) if request_id is not None else "",
         "patch_stats": (
             _collect_activation_patch_stats_from_model(llm, req_id=str(request_id) if request_id is not None else None)
@@ -614,10 +638,10 @@ def _capture_one_vllm(
     log_id: str | int,
     patch_spec: dict[str, Any] | None = None,
     skip_residual_save: bool = False,
-) -> tuple[Any, Any, Any, Any]:
+) -> tuple[Any, Any, Any, Any, dict[str, Any]]:
     """Run a single prompt through vLLM and capture activations.
 
-    Returns ``(residual, router_logits, router_indices, input_ids_list)``
+    Returns ``(residual, router_logits, router_indices, input_ids_list, generation_result)``
     where:
     - ``residual``: ``(num_layers, seq_len, hidden_dim)`` float16 tensor or None
     - ``router_logits``: ``(num_moe_layers, seq_len, num_experts)`` float16 tensor or None
@@ -638,18 +662,66 @@ def _capture_one_vllm(
     if config.capture_router:
         _reset_router_buffers_on_model(llm)
 
-    # Run through vLLM -- single prompt, max_tokens=1 (prefill only)
-    sampling_params = SamplingParams(max_tokens=1)
-    if patch_spec is not None:
-        _set_activation_patch_spec_on_model(llm, patch_spec)
-    try:
-        outputs = llm.generate(
-            prompts=[{"prompt_token_ids": input_ids}],
-            sampling_params=sampling_params,
-        )
-    finally:
+    request_output = None
+    captured_router_data = None
+    generation_result = {
+        "generated_token_ids": [],
+        "generated_text": "",
+        "finish_reason": "",
+        "reasoning_text": "",
+        "request_id": "",
+    }
+
+    should_run_capture_pass = bool(config.capture_residual or config.capture_router or not config.capture_generation)
+    if should_run_capture_pass:
+        # Keep prompt-side activation capture on the prefill-only path. The
+        # stock ExampleHiddenStatesConnector is not stable when we also ask the
+        # same request to decode multiple generated tokens.
+        sampling_params = SamplingParams(max_tokens=1)
         if patch_spec is not None:
-            _clear_activation_patch_spec_on_model(llm)
+            _set_activation_patch_spec_on_model(llm, patch_spec)
+        try:
+            outputs = llm.generate(
+                prompts=[{"prompt_token_ids": input_ids}],
+                sampling_params=sampling_params,
+            )
+        finally:
+            if patch_spec is not None:
+                _clear_activation_patch_spec_on_model(llm)
+
+        request_output = outputs[0]
+        completion = request_output.outputs[0] if getattr(request_output, "outputs", None) else None
+        generation_result = {
+            "generated_token_ids": [
+                int(token) for token in getattr(completion, "token_ids", [])
+            ] if completion is not None else [],
+            "generated_text": str(getattr(completion, "text", "")) if completion is not None else "",
+            "finish_reason": (
+                str(getattr(completion, "finish_reason", ""))
+                if completion is not None and getattr(completion, "finish_reason", None) is not None
+                else ""
+            ),
+            "reasoning_text": "",
+            "request_id": str(getattr(request_output, "request_id", "") or ""),
+        }
+
+        if config.capture_router and config.capture_generation:
+            captured_router_data = _collect_router_logits_from_model(llm)
+
+    if config.capture_generation:
+        generation_result = _generate_one_vllm(
+            llm=llm,
+            tokenizer=tokenizer,
+            messages=messages,
+            config=config,
+            max_tokens=int(config.generation_max_tokens),
+            temperature=float(config.generation_temperature),
+            top_p=float(config.generation_top_p),
+            top_k=-1,
+            patch_spec=patch_spec,
+        )
+        if not config.capture_reasoning:
+            generation_result["reasoning_text"] = ""
 
     seq_len = len(input_ids)
 
@@ -657,7 +729,7 @@ def _capture_one_vllm(
     residual = None
     if config.capture_residual:
         residual_dir = config.output_dir / "residual_stream"
-        output = outputs[0]
+        output = request_output
 
         # The ExampleHiddenStatesConnector returns the path via
         # kv_transfer_params["hidden_states_path"] on request completion.
@@ -678,6 +750,7 @@ def _capture_one_vllm(
             hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
             if hs.dim() == 3:
                 hs = hs.permute(1, 0, 2)  # (seq, layers, dim) -> (layers, seq, dim)
+            hs = hs[:, :seq_len, :]
             residual = hs.to(torch.float16)
 
             if skip_residual_save:
@@ -699,13 +772,14 @@ def _capture_one_vllm(
     router_logits_tensor = None
     router_indices_tensor = None
     if config.capture_router:
-        router_data = _collect_router_logits_from_model(llm)
+        router_data = captured_router_data if captured_router_data is not None else _collect_router_logits_from_model(llm)
         if router_data:
             sorted_layers = sorted(router_data.keys())
             # Stack: {layer_idx: (seq_len, num_experts)} -> (num_layers, seq_len, num_experts)
             stacked = torch.stack(
                 [router_data[i] for i in sorted_layers], dim=0
             )
+            stacked = stacked[:, :seq_len, :]
 
             # Compute top-k indices
             _, topk_indices = torch.topk(stacked, k=config.router_top_k, dim=-1)
@@ -719,7 +793,7 @@ def _capture_one_vllm(
             router_logits_tensor = stacked.to(target_dtype)
             router_indices_tensor = topk_indices.to(torch.int16)
 
-    return residual, router_logits_tensor, router_indices_tensor, input_ids
+    return residual, router_logits_tensor, router_indices_tensor, input_ids, generation_result
 
 
 # ---------------------------------------------------------------------------
@@ -923,7 +997,7 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
 
         try:
             t0 = time.monotonic()
-            residual, router_logits, router_indices, input_ids = (
+            residual, router_logits, router_indices, input_ids, _generation_result = (
                 _capture_one_vllm(
                     llm=llm,
                     tokenizer=tokenizer,

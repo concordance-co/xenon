@@ -1,6 +1,7 @@
 """Canonical Modal capture orchestrator for generic workflow capture runs."""
 
 import modal
+import re
 from typing import Any
 
 app = modal.App("xenon-vllm-capture")
@@ -58,6 +59,9 @@ class VLLMCaptureWorker:
     gpu_memory_utilization: str = modal.parameter(default="0.90")
     max_model_len: int = modal.parameter(default=0)
     capture_residual: bool = modal.parameter(default=True)
+    capture_layers_csv: str = modal.parameter(default="")
+    capture_reasoning: bool = modal.parameter(default=True)
+    reasoning_parser: str = modal.parameter(default="")
 
     @modal.enter()
     def setup(self):
@@ -75,6 +79,9 @@ class VLLMCaptureWorker:
 
         hf_config = AutoConfig.from_pretrained(local_path, trust_remote_code=True)
         self.num_layers = hf_config.num_hidden_layers
+        self.capture_layer_ids = [
+            int(token.strip()) for token in self.capture_layers_csv.split(",") if token.strip()
+        ]
 
         kwargs: dict = {
             "model": local_path,
@@ -84,8 +91,16 @@ class VLLMCaptureWorker:
             "tensor_parallel_size": self.tensor_parallel_size,
             "gpu_memory_utilization": float(self.gpu_memory_utilization),
         }
+        reasoning_parser = (self.reasoning_parser or "").strip()
+        if self.capture_reasoning:
+            if not reasoning_parser and "qwen3" in self.model_id.lower():
+                reasoning_parser = "qwen3"
+            if reasoning_parser:
+                kwargs["structured_outputs_config"] = {
+                    "reasoning_parser": reasoning_parser,
+                }
         if self.capture_residual:
-            layer_ids = list(range(self.num_layers))
+            layer_ids = self.capture_layer_ids or list(range(self.num_layers))
             storage_path = "/data/activations/residual_stream"
             Path(storage_path).mkdir(parents=True, exist_ok=True)
             kwargs["speculative_config"] = {
@@ -104,7 +119,7 @@ class VLLMCaptureWorker:
                     "shared_storage_path": storage_path,
                 },
             }
-            print(f"  Residual capture: {self.num_layers} layers")
+            print(f"  Residual capture: {len(layer_ids)} layers")
         if self.max_model_len > 0:
             kwargs["max_model_len"] = self.max_model_len
 
@@ -125,6 +140,10 @@ class VLLMCaptureWorker:
         layers: list[int] | None = None,
         capture_router: bool = True,
         capture_residual: bool = True,
+        capture_generation: bool = False,
+        generation_max_tokens: int = 256,
+        generation_temperature: float = 0.0,
+        generation_top_p: float = 1.0,
         pool_on_capture: str | None = None,
         router_top_k: int = 8,
         router_dtype: str = "float16",
@@ -144,7 +163,10 @@ class VLLMCaptureWorker:
             _save_activations,
             _save_router,
         )
-        from pipelines.interp.modal_vllm_engine import VLLMCaptureConfig, _capture_one_vllm
+        from pipelines.interp.modal_vllm_engine import (
+            VLLMCaptureConfig,
+            _capture_one_vllm,
+        )
 
         output_dir = Path("/data/activations")
         if output_subdir:
@@ -159,9 +181,15 @@ class VLLMCaptureWorker:
         config = VLLMCaptureConfig(
             output_dir=output_dir,
             model_id=self.model_id,
-            layers=layers,
+            layers=layers or self.capture_layer_ids or None,
             capture_router=capture_router and self.is_moe,
             capture_residual=capture_residual,
+            capture_generation=capture_generation,
+            capture_reasoning=self.capture_reasoning and capture_generation,
+            reasoning_parser=self.reasoning_parser,
+            generation_max_tokens=generation_max_tokens,
+            generation_temperature=generation_temperature,
+            generation_top_p=generation_top_p,
             pool_on_capture=pool_on_capture,
             router_top_k=router_top_k,
             router_dtype=router_dtype,
@@ -179,7 +207,7 @@ class VLLMCaptureWorker:
                 continue
             try:
                 t0 = time.monotonic()
-                residual, router_logits, router_indices, input_ids = _capture_one_vllm(
+                residual, router_logits, router_indices, input_ids, generation_result = _capture_one_vllm(
                     llm=self.llm,
                     tokenizer=self.tokenizer,
                     messages=messages,
@@ -210,7 +238,8 @@ class VLLMCaptureWorker:
                     )
 
                 prompt_hash = hashlib.sha256(bytes(json.dumps(input_ids), "utf-8")).hexdigest()
-                captured_layers = sorted(layers) if layers is not None else list(range(self.num_layers))
+                effective_layers = layers or self.capture_layer_ids or list(range(self.num_layers))
+                captured_layers = sorted(effective_layers)
                 meta_row: dict = {
                     "log_id": int(log_id),
                     "row_key": row.get("row_key"),
@@ -227,6 +256,11 @@ class VLLMCaptureWorker:
                     "has_router": router_logits is not None,
                     "captured_layers": json.dumps(captured_layers),
                     "pooling": pool_on_capture or "none",
+                    "example_id": row.get("example_id"),
+                    "generated_text": generation_result.get("generated_text", ""),
+                    "generated_token_ids": json.dumps(generation_result.get("generated_token_ids", [])),
+                    "finish_reason": generation_result.get("finish_reason", ""),
+                    "reasoning_text": generation_result.get("reasoning_text", ""),
                 }
                 if residual is not None:
                     meta_row["num_layers_captured"] = int(residual.shape[0])
@@ -237,15 +271,90 @@ class VLLMCaptureWorker:
                 if router_logits is not None:
                     meta_row["num_experts"] = int(router_logits.shape[-1])
                 metadata_rows.append(meta_row)
-                print(f"  {log_id}: seq_len={seq_len}, {file_size / 1024 / 1024:.1f}MB, {elapsed:.1f}s")
+                if capture_generation:
+                    print(
+                        f"  generated {log_id}: finish_reason={generation_result.get('finish_reason', '')!r}, "
+                        f"text_chars={len(generation_result.get('generated_text', '') or '')}, "
+                        f"reasoning_chars={len(generation_result.get('reasoning_text', '') or '')}, "
+                        f"elapsed={elapsed:.1f}s"
+                    )
+                else:
+                    print(f"  {log_id}: seq_len={seq_len}, {file_size / 1024 / 1024:.1f}MB, {elapsed:.1f}s")
             except Exception as exc:
                 import traceback
 
+                # Once the vLLM engine core dies, every subsequent row tends to fail with
+                # the same secondary EngineDeadError. Re-raise immediately so Modal surfaces
+                # the first fatal cause instead of looping through the whole batch.
+                if exc.__class__.__name__ == "EngineDeadError":
+                    print(f"  FATAL {log_id}: vLLM engine died; aborting batch")
+                    raise
                 print(f"  ERROR {log_id}: {exc}")
                 traceback.print_exc()
+                if "Engine core initialization failed" in str(exc):
+                    raise
 
         volume.commit()
         return metadata_rows
+
+    @modal.method()
+    def generate_batch(
+        self,
+        rows: list[dict],
+        generation_max_tokens: int = 256,
+        generation_temperature: float = 0.0,
+        generation_top_p: float = 1.0,
+    ) -> list[dict]:
+        """Generate model responses for a batch without activation capture."""
+        import json
+
+        from pipelines.interp.local_capture import _parse_messages
+        from pipelines.interp.modal_vllm_engine import (
+            VLLMCaptureConfig,
+            _generate_one_vllm,
+        )
+
+        config = VLLMCaptureConfig(
+            model_id=self.model_id,
+            capture_reasoning=self.capture_reasoning,
+            reasoning_parser=self.reasoning_parser,
+            capture_residual=False,
+            capture_router=False,
+        )
+
+        metadata_rows: list[dict] = []
+        for row in rows:
+            log_id = row.get("log_id")
+            if log_id is None:
+                continue
+            messages = _parse_messages(row)
+            if not messages:
+                continue
+            generation_result = _generate_one_vllm(
+                llm=self.llm,
+                tokenizer=self.tokenizer,
+                messages=messages,
+                config=config,
+                max_tokens=generation_max_tokens,
+                temperature=generation_temperature,
+                top_p=generation_top_p,
+                top_k=-1,
+            )
+            metadata_rows.append(
+                {
+                    "log_id": int(log_id),
+                    "generated_text": generation_result.get("generated_text", ""),
+                    "generated_token_ids": json.dumps(generation_result.get("generated_token_ids", [])),
+                    "finish_reason": generation_result.get("finish_reason", ""),
+                    "reasoning_text": (
+                        generation_result.get("reasoning_text", "")
+                        if self.capture_reasoning
+                        else ""
+                    ),
+                }
+            )
+        return metadata_rows
+
 
 
 @app.function(volumes={"/data": volume}, image=image, timeout=300)
@@ -425,12 +534,18 @@ def run_vllm_capture(
     layers_str: str = "",
     capture_router: bool = True,
     capture_residual: bool = True,
+    capture_generation: bool = False,
+    capture_reasoning: bool = True,
     batch_size: int = 10,
     model_id: str = "Qwen/Qwen3-30B-A3B",
     pool: str = "",
     tensor_parallel_size: int = 1,
     gpu_memory_utilization: str = "0.90",
     max_model_len: int = 0,
+    reasoning_parser: str = "",
+    generation_max_tokens: int = 256,
+    generation_temperature: float = 0.0,
+    generation_top_p: float = 1.0,
     router_top_k: int = 8,
     router_dtype: str = "float16",
     gpu: str = "A100-80GB",
@@ -438,9 +553,11 @@ def run_vllm_capture(
     cohort_view: str = "",
     order_mode: str = "log_id",
     source_relation: str = "",
+    workflow_run_id: str = "",
     output_subdir: str = "",
 ) -> str:
     """Load examples from Neon, fan out to GPU workers, and write metadata."""
+    from psycopg import sql
     from pipelines.db import connect_neon
     from pipelines.interp.local_capture import (
         _can_reuse_capture,
@@ -456,6 +573,10 @@ def run_vllm_capture(
     )
     if not rows:
         return "No examples to capture"
+
+    spec_id = str(rows[0].get("workflow_spec_id") or "workflow_capture").strip()
+    table_slug = re.sub(r"[^a-zA-Z0-9_]+", "_", spec_id).strip("_").lower() or "workflow_capture"
+    response_table_name = f"capture_outputs_{table_slug}"
 
     parsed_layers: list[int] | None = None
     if layers_str:
@@ -501,7 +622,22 @@ def run_vllm_capture(
         gpu_memory_utilization=str(gpu_memory_utilization),
         max_model_len=max_model_len,
         capture_residual=capture_residual,
+        capture_layers_csv=",".join(str(layer) for layer in parsed_layers) if parsed_layers else "",
+        capture_reasoning=capture_reasoning,
+        reasoning_parser=reasoning_parser,
     )
+    generation_worker = None
+    if capture_generation:
+        generation_worker = WorkerCls(
+            model_id=model_id,
+            tensor_parallel_size=tensor_parallel_size,
+            gpu_memory_utilization=str(gpu_memory_utilization),
+            max_model_len=max_model_len,
+            capture_residual=False,
+            capture_layers_csv="",
+            capture_reasoning=capture_reasoning,
+            reasoning_parser=reasoning_parser,
+        )
 
     all_metadata: list[dict] = []
     db_conn = connect_neon()
@@ -530,9 +666,50 @@ def run_vllm_capture(
             )
             """
         )
+        # Older deployments may already have capture_metadata with a narrower schema.
+        # Keep the table forward-compatible rather than requiring a manual drop.
+        for ddl in (
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS row_key TEXT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS artifact_id TEXT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS source_prompt_hash TEXT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS source_relation TEXT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS workflow_spec_id TEXT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS workflow_spec_version INT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS prompt_hash TEXT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS captured_layers TEXT",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS pooling TEXT NOT NULL DEFAULT 'none'",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS num_layers_captured INT NOT NULL DEFAULT 0",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS hidden_dim INT NOT NULL DEFAULT 0",
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS num_experts INT",
+        ):
+            cur.execute(ddl)
+        if capture_generation:
+            cur.execute(
+                sql.SQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS {} (
+                        run_id                TEXT NOT NULL,
+                        log_id                INT NOT NULL,
+                        example_id            TEXT,
+                        row_key               TEXT,
+                        source_relation       TEXT,
+                        workflow_spec_id      TEXT NOT NULL,
+                        workflow_spec_version INT,
+                        model_id              TEXT NOT NULL,
+                        reasoning_parser      TEXT,
+                        capture_timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        generated_text        TEXT NOT NULL DEFAULT '',
+                        generated_token_ids   JSONB NOT NULL DEFAULT '[]'::jsonb,
+                        finish_reason         TEXT NOT NULL DEFAULT '',
+                        reasoning_text        TEXT NOT NULL DEFAULT '',
+                        PRIMARY KEY (run_id, log_id)
+                    )
+                    """
+                ).format(sql.Identifier(response_table_name))
+            )
     db_conn.commit()
 
-    for batch_meta in worker.capture_batch.map(
+    capture_iter = worker.capture_batch.map(
         batches,
         kwargs=dict(
             layers=parsed_layers,
@@ -543,7 +720,37 @@ def run_vllm_capture(
             router_dtype=router_dtype,
             output_subdir=output_subdir,
         ),
-    ):
+    )
+    generation_iter = None
+    if capture_generation and generation_worker is not None:
+        generation_iter = generation_worker.generate_batch.map(
+            batches,
+            kwargs=dict(
+                generation_max_tokens=generation_max_tokens,
+                generation_temperature=generation_temperature,
+                generation_top_p=generation_top_p,
+            ),
+        )
+
+    if generation_iter is None:
+        batch_stream = ((batch_meta, None) for batch_meta in capture_iter)
+    else:
+        batch_stream = zip(capture_iter, generation_iter, strict=True)
+
+    for batch_meta, generation_meta in batch_stream:
+        if generation_meta:
+            generation_by_log_id = {
+                int(row["log_id"]): row for row in generation_meta if row.get("log_id") is not None
+            }
+            for row in batch_meta:
+                generation_row = generation_by_log_id.get(int(row["log_id"]))
+                if generation_row is None:
+                    continue
+                row["generated_text"] = generation_row.get("generated_text", "")
+                row["generated_token_ids"] = generation_row.get("generated_token_ids", "[]")
+                row["finish_reason"] = generation_row.get("finish_reason", "")
+                row["reasoning_text"] = generation_row.get("reasoning_text", "")
+
         all_metadata.extend(batch_meta)
         if batch_meta:
             with db_conn.cursor() as cur:
@@ -596,8 +803,60 @@ def run_vllm_capture(
                             row.get("num_experts"),
                         ),
                     )
+                    if capture_generation:
+                        cur.execute(
+                            sql.SQL(
+                                """
+                                INSERT INTO {} (
+                                    run_id, log_id, example_id, row_key, source_relation,
+                                    workflow_spec_id, workflow_spec_version, model_id, reasoning_parser,
+                                    capture_timestamp, generated_text, generated_token_ids,
+                                    finish_reason, reasoning_text
+                                )
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+                                ON CONFLICT (run_id, log_id) DO UPDATE SET
+                                    example_id = EXCLUDED.example_id,
+                                    row_key = EXCLUDED.row_key,
+                                    source_relation = EXCLUDED.source_relation,
+                                    workflow_spec_id = EXCLUDED.workflow_spec_id,
+                                    workflow_spec_version = EXCLUDED.workflow_spec_version,
+                                    model_id = EXCLUDED.model_id,
+                                    reasoning_parser = EXCLUDED.reasoning_parser,
+                                    capture_timestamp = EXCLUDED.capture_timestamp,
+                                    generated_text = EXCLUDED.generated_text,
+                                    generated_token_ids = EXCLUDED.generated_token_ids,
+                                    finish_reason = EXCLUDED.finish_reason,
+                                    reasoning_text = EXCLUDED.reasoning_text
+                                """
+                            ).format(sql.Identifier(response_table_name)),
+                            (
+                                workflow_run_id,
+                                row["log_id"],
+                                row.get("example_id"),
+                                row.get("row_key"),
+                                row.get("source_relation"),
+                                row.get("workflow_spec_id"),
+                                row.get("workflow_spec_version"),
+                                model_id,
+                                reasoning_parser if capture_reasoning else "",
+                                row["capture_timestamp"],
+                                row.get("generated_text", ""),
+                                row.get("generated_token_ids", "[]"),
+                                row.get("finish_reason", ""),
+                                row.get("reasoning_text", ""),
+                            ),
+                        )
             db_conn.commit()
-            print(f"  Flushed {len(batch_meta)} rows to Neon ({len(all_metadata)} total)")
+            if capture_generation:
+                sample = batch_meta[0]
+                print(
+                    f"  Flushed {len(batch_meta)} rows to Neon ({len(all_metadata)} total), "
+                    f"including generated outputs to {response_table_name}; "
+                    f"sample text_chars={len(sample.get('generated_text', '') or '')}, "
+                    f"reasoning_chars={len(sample.get('reasoning_text', '') or '')}"
+                )
+            else:
+                print(f"  Flushed {len(batch_meta)} rows to Neon ({len(all_metadata)} total)")
         if len(all_metadata) % 50 == 0 or len(all_metadata) == len(rows):
             write_metadata_to_volume.remote(all_metadata, output_subdir=output_subdir)
 
@@ -617,12 +876,18 @@ def main(
     layers: str = "",
     capture_router: bool = True,
     capture_residual: bool = True,
+    capture_generation: bool = False,
+    capture_reasoning: bool = True,
     batch_size: int = 10,
     model_id: str = "Qwen/Qwen3-30B-A3B",
     pool: str = "",
     tensor_parallel_size: int = 1,
     gpu_memory_utilization: str = "0.90",
     max_model_len: int = 0,
+    reasoning_parser: str = "",
+    generation_max_tokens: int = 256,
+    generation_temperature: float = 0.0,
+    generation_top_p: float = 1.0,
     router_top_k: int = 8,
     router_dtype: str = "float16",
     gpu: str = "A100-80GB",
@@ -630,6 +895,7 @@ def main(
     cohort_view: str = "",
     order_mode: str = "log_id",
     source_relation: str = "",
+    workflow_run_id: str = "",
     output_subdir: str = "",
 ):
     if mode != "capture":
@@ -640,12 +906,18 @@ def main(
         layers_str=layers,
         capture_router=capture_router,
         capture_residual=capture_residual,
+        capture_generation=capture_generation,
+        capture_reasoning=capture_reasoning,
         batch_size=batch_size,
         model_id=model_id,
         pool=pool,
         tensor_parallel_size=tensor_parallel_size,
         gpu_memory_utilization=gpu_memory_utilization,
         max_model_len=max_model_len,
+        reasoning_parser=reasoning_parser,
+        generation_max_tokens=generation_max_tokens,
+        generation_temperature=generation_temperature,
+        generation_top_p=generation_top_p,
         router_top_k=router_top_k,
         router_dtype=router_dtype,
         gpu=gpu,
@@ -653,6 +925,7 @@ def main(
         cohort_view=cohort_view,
         order_mode=order_mode,
         source_relation=source_relation,
+        workflow_run_id=workflow_run_id,
         output_subdir=output_subdir,
     )
     print(result)

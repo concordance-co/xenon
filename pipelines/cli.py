@@ -452,8 +452,16 @@ def _run_capture(argv: list[str]) -> int:
     parser.add_argument("--execution", choices=["modal", "local"], default=None)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--layers", default=None)
+    parser.add_argument("--gpu-memory-utilization", default=None)
+    parser.add_argument("--max-model-len", type=int, default=None)
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--add-generation-prompt", action="store_true")
+    parser.add_argument("--capture-generation", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--capture-reasoning", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--reasoning-parser", default=None)
+    parser.add_argument("--generation-max-tokens", type=int, default=None)
+    parser.add_argument("--generation-temperature", type=float, default=None)
+    parser.add_argument("--generation-top-p", type=float, default=None)
     parser.add_argument("--capture-router", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--capture-residual", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--pool-on-capture", choices=["last_token", "mean_pool"], default=None)
@@ -477,6 +485,14 @@ def _run_capture(argv: list[str]) -> int:
             "execution": ns.execution or capture_block.get("execution") or "modal",
             "limit": ns.limit if ns.limit is not None else capture_block.get("limit"),
             "layers": ns.layers or capture_block.get("layers"),
+            "gpu_memory_utilization": ns.gpu_memory_utilization or capture_block.get("gpu_memory_utilization") or "0.90",
+            "max_model_len": ns.max_model_len if ns.max_model_len is not None else capture_block.get("max_model_len"),
+            "capture_generation": ns.capture_generation if ns.capture_generation is not None else bool(capture_block.get("capture_generation", False)),
+            "capture_reasoning": ns.capture_reasoning if ns.capture_reasoning is not None else bool(capture_block.get("capture_reasoning", True)),
+            "reasoning_parser": ns.reasoning_parser or capture_block.get("reasoning_parser") or "",
+            "generation_max_tokens": ns.generation_max_tokens if ns.generation_max_tokens is not None else int(capture_block.get("generation_max_tokens") or 256),
+            "generation_temperature": ns.generation_temperature if ns.generation_temperature is not None else float(capture_block.get("generation_temperature") or 0.0),
+            "generation_top_p": ns.generation_top_p if ns.generation_top_p is not None else float(capture_block.get("generation_top_p") or 1.0),
             "capture_router": ns.capture_router if ns.capture_router is not None else bool(capture_block.get("router", True)),
             "capture_residual": ns.capture_residual if ns.capture_residual is not None else bool(capture_block.get("residual", True)),
             "pool_on_capture": ns.pool_on_capture or capture_block.get("pooling"),
@@ -499,15 +515,32 @@ def _run_capture(argv: list[str]) -> int:
                     "capture",
                     "--source-relation",
                     str(dataset_name),
+                    "--workflow-run-id",
+                    str(run["id"]),
                     "--output-subdir",
                     remote_subdir,
                     "--model-id",
                     str(resolved["model_id"]),
+                    "--gpu-memory-utilization",
+                    str(resolved["gpu_memory_utilization"]),
                     "--router-dtype",
                     str(resolved["router_dtype"]),
                 ]
                 if resolved["limit"] is not None:
                     modal_args.extend(["--limit", str(resolved["limit"])])
+                if resolved["max_model_len"] is not None:
+                    modal_args.extend(["--max-model-len", str(resolved["max_model_len"])])
+                if bool(resolved["capture_generation"]):
+                    modal_args.append("--capture-generation")
+                    if bool(resolved["capture_reasoning"]):
+                        modal_args.append("--capture-reasoning")
+                    else:
+                        modal_args.append("--no-capture-reasoning")
+                    if str(resolved["reasoning_parser"]):
+                        modal_args.extend(["--reasoning-parser", str(resolved["reasoning_parser"])])
+                    modal_args.extend(["--generation-max-tokens", str(resolved["generation_max_tokens"])])
+                    modal_args.extend(["--generation-temperature", str(resolved["generation_temperature"])])
+                    modal_args.extend(["--generation-top-p", str(resolved["generation_top_p"])])
                 if parsed_layers:
                     modal_args.extend(["--layers", ",".join(str(v) for v in parsed_layers)])
                 if bool(resolved["capture_router"]):

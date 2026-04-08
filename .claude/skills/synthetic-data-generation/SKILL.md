@@ -152,6 +152,133 @@ For authority-applicability, the intended computation was:
 
 That is much better than simply presenting a good holder in one class and a nonsense string in the other.
 
+### 2.1 Treat the environment as part of the measurement instrument
+
+In many synthetic benchmarks, the surrounding "world state" is not neutral background.
+It is part of how the latent variable becomes behaviorally visible.
+
+This includes things like:
+
+- market state
+- portfolio state
+- current permissions or affordances
+- currently held objects or positions
+
+Rule:
+
+- if the benchmark is about instruction conflict, design the environment so the conflict shows up on the intended behavioral dimension
+
+Examples:
+
+- if testing size conflict, make action and target asset obvious so only size is live
+- if testing trade-vs-observe conflict, make action selection live rather than target-asset selection
+- if testing concentration-vs-diversification conflict, include current holdings so spreading vs adding is a real choice
+- if testing hold-vs-exit conflict, include an existing position so hold/exit is behaviorally meaningful
+
+Bad pattern:
+
+- one generic context pool reused across all conflict families
+
+Better pattern:
+
+- family-specific environment contracts
+
+### 2.3 Use the pipelines workflow path deliberately
+
+When the benchmark is meant to run through the repo's workflow infra, keep the layers distinct:
+
+- source dataset table: the synthetic rows you generated
+- published workflow relation: the workflow-facing dataset relation/view
+- capture runtime metadata: infra bookkeeping about activation artifacts and responses
+
+Do not confuse these.
+
+Operational guidance:
+
+- keep the checked-in phase workflow snapshot current
+- register it in Neon for canonical runtime use
+- for quick smoke tests, prefer CLI overrides on the existing spec instead of inventing new spec files
+- remember that Modal capture writes activations to the remote volume; local `--output-dir` is mostly bookkeeping in the workflow run config
+- capture/inference parameters are persisted in `workflow_runs.config_json`, so inspect that when behavior does not match the expected run settings
+
+### 2.4 Behavior-validating smoke tests need model outputs, not just activations
+
+For prompt-confusion-style benchmarks, an activation-only smoke test is not enough.
+
+You need to inspect:
+
+- the prompt
+- the captured activations
+- the model's generated answer
+
+Otherwise you can only validate infra, not benchmark behavior.
+
+Rule:
+
+- if the purpose of the smoke test is behavioral sanity, persist generated outputs alongside capture metadata
+
+Practical implication:
+
+- prompt-side activation capture and response generation can be separated within the same worker run
+- do not assume a prefill-only activation path gives you enough information to audit model behavior
+- generated model outputs should live in a phase/spec-scoped outputs table, not in generic activation-bookkeeping tables
+
+### 2.4.1 Smoke-run CLI guidance
+
+For quick smoke tests on an existing workflow spec:
+
+- prefer runtime CLI overrides such as layer subsets, max model length, or generation toggles
+- do not create extra workflow spec files unless the workflow contract itself has changed
+
+Examples of good smoke-only overrides:
+
+- `--layers 8,24,40`
+- `--max-model-len 8192`
+- `--capture-generation`
+- `--capture-reasoning` or `--no-capture-reasoning`
+
+### 2.5 Make runtime bookkeeping tables forward-compatible
+
+Infra tables such as capture metadata often outlive a single benchmark.
+
+Bad pattern:
+
+- assuming `CREATE TABLE IF NOT EXISTS` is enough when the table may already exist with an older schema
+
+Better pattern:
+
+- additive migrations such as `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+
+This matters because runtime schema drift can fail a smoke test even when the dataset and workflow relation are correct.
+
+### 2.6 Keep runtime tables separated by responsibility
+
+Use separate storage surfaces for:
+
+- synthetic source rows
+- published workflow relations
+- activation bookkeeping metadata
+- behavior outputs from smoke or capture runs
+
+Do not collapse these into one table just because it is convenient during debugging.
+
+### 2.2 Operationalize the same latent variable differently by family
+
+The benchmark-level latent variable can stay constant while the readout changes by family.
+
+Example:
+
+- benchmark latent variable: `instruction_source_followed`
+
+Possible family-specific readouts:
+
+- size family: same action, same asset, different size
+- activity family: same market, different action
+- diversification family: different chosen asset under the same market and portfolio
+- holding family: keep position vs reduce position
+
+Do not force every family into the same behavioral readout if that makes the task unnatural or ambiguous.
+
 ### 3. Design the negative class carefully
 
 Avoid lazy negatives.
@@ -290,6 +417,52 @@ Ideal matched pair:
 - same action family
 - same control map
 - label differs only in the decisive variable
+
+For instruction-conflict datasets, this usually means:
+
+- same strategy wording
+- same setting wording family
+- same environment template
+- same lexical split assignment
+- only the target setting value changes
+
+Important:
+
+- aligned control rows are still part of the dataset, but they should not be mislabeled as one side "winning"
+- if strategy and setting agree, treat that row as an aligned control state rather than source-disambiguation supervision
+
+Good audit scheme:
+
+- `aligned_agreement`
+- `strategy_followed`
+- `setting_followed`
+- `mixed_or_neither`
+
+Then derive a smaller training target later if needed.
+
+### 10.1 Freeze inventories before writing the generator
+
+If the user wants a benchmark that is reproducible and auditable, do not let the generator improvise.
+
+Lock named inventories for:
+
+- strategy wording
+- setting wording
+- environment templates
+- portfolio templates
+- market templates
+- lexical split assignments
+
+Then make the generator instantiate only those inventories.
+
+This avoids a common failure mode where the markdown spec looks precise but the actual script reintroduces ambiguity by inventing details on the fly.
+
+Useful pattern:
+
+1. write the generator contract
+2. write a hand-audited example bank from that contract
+3. define the exact dataset row shape
+4. only then implement the full generator
 
 ### 11. Keep prompts auditable by eye
 

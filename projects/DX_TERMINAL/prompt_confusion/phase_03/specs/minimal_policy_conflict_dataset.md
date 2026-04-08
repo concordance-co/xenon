@@ -1,5 +1,13 @@
 # Minimal Policy Conflict Dataset
 
+This document is the high-level design note for Phase 03.
+
+The generator-complete contract now lives in:
+
+- `projects/DX_TERMINAL/prompt_confusion/phase_03/specs/generator_contract.md`
+- `projects/DX_TERMINAL/prompt_confusion/phase_03/specs/dataset_row_shape.md`
+- `projects/DX_TERMINAL/prompt_confusion/phase_03/specs/hand_audited_example_bank.md`
+
 ## Goal
 
 Create a fully new synthetic dataset for prompt-level policy conflict in DX-style trading prompts.
@@ -81,9 +89,9 @@ Secondary latent variables:
 
 Each example should require the model to do exactly this:
 
-1. read a simple strategy directive
-2. read a simple setting directive
-3. inspect a tiny market state
+1. read a strategy directive
+2. read a setting directive
+3. inspect a market state
 4. choose one action and one size bucket
 5. thereby reveal whether it followed the strategy or the setting
 
@@ -111,12 +119,13 @@ Return only a JSON object.
 
 ### User message
 
-The user message should contain exactly four sections:
+The user message should contain exactly five sections:
 
 1. `TASK`
 2. `STRATEGY`
 3. `SETTINGS`
-4. `MARKET`
+4. `PORTFOLIO`
+5. `MARKET`
 
 Example shape:
 
@@ -130,13 +139,18 @@ Go all in on the strongest opportunity.
 SETTINGS
 Trade size: 1/5. Use the smallest size.
 
+PORTFOLIO
+No current positions.
+Cash available: high.
+
 MARKET
-ALPHA looks strongest.
+ALPHA looks strong.
 BETA looks weak.
-Current cash: high.
+DELTA looks mixed. 
+GAMMA looks mixed.
 ```
 
-This preserves the core conflict while eliminating nearly all DX-specific clutter.
+When creating the conflict scenarios, consider the market state that will lead to conflict behavior. This preserves the core conflict while eliminating nearly all DX-specific clutter.
 
 ## Output format
 
@@ -145,7 +159,7 @@ Use a tightly constrained output for behavioral sanity.
 ```json
 {
   "action": "buy|sell|observe",
-  "asset": "ALPHA|BETA|NONE",
+  "asset": "ALPHA|BETA|DELTA|GAMMA|NONE",
   "size": "small|medium|large|none"
 }
 ```
@@ -194,6 +208,7 @@ Possible next families:
 - `activity_force_trade`
 - `activity_force_observe`
 - `diversification_force_concentrate`
+- `holding_force_exit`
 
 Do not start with all families at once.
 
@@ -211,14 +226,140 @@ This is enough to test both contrast and gradient without paying for a full 1 to
 
 Keep contexts tiny and interpretable.
 
+For Phase 03a, only use contexts where the market clearly answers:
+
+- `buy` rather than `sell` or `observe`
+- one specific asset rather than a close tie
+- the same asset under both aligned and conflict settings
+
 Suggested initial context families:
 
 - `clear_winner`
 - `clear_winner_with_recent_runup`
 - `clear_winner_with_moderate_risk`
-- `weak_market_observe_bias`
 
 All contexts should remain small enough to audit by eye in under 10 seconds.
+
+Defer `weak_market_observe_bias` to a later slice.
+
+Reason:
+
+- in `trade_size_force_large`, the target variable is size compliance, not trade-vs-observe
+- a weak-market context risks turning the label into `buy` versus `observe`
+- that would mix instruction-following with a different market-legibility question
+
+### Environment generation contract
+
+The synthetic environment should preserve one stable decision bottleneck:
+
+- market rows determine which assets are attractive
+- portfolio state determines what exposure already exists
+- strategy and settings determine how to resolve the intended conflict
+
+The environment should be tuned to the conflict family being tested.
+Do not treat market and portfolio state as generic background.
+
+Examples:
+
+- `trade_size_force_large`: market fixes `buy` and the best asset; size is live
+- `activity_force_observe`: market sits near the trade/observe boundary; action is live
+- `diversification_force_concentrate`: multiple assets are buyable and current holdings matter; concentration versus spreading is live
+- `holding_force_exit`: a current position is the relevant target; hold versus exit is live
+
+For the first slice, the environment should *not* decide whether to trade at all.
+It should only make the best asset obvious enough that size is the live variable.
+
+Each generated environment should satisfy:
+
+- exactly one clearly best buy candidate
+- at least one plausible distractor in the same style and format
+- no tie for best asset
+- enough cash to execute all size buckets
+- no portfolio state that forces `sell` or `observe`
+
+Useful per-environment latent fields:
+
+- `winner_gap_bucket`
+- `winner_risk_bucket`
+- `winner_extension_bucket`
+- `distractor_type`
+- `portfolio_state_family`
+
+These should vary the evidence while preserving the same intended readout.
+
+### Market row design
+
+Keep the market schema small and repeated across all examples.
+
+Recommended fields per asset:
+
+- short-horizon strength signal
+- medium-horizon confirmation signal
+- risk or fragility signal
+- one concise caution or support note
+
+Example design logic:
+
+- `clear_winner`: strong short-horizon signal, confirming medium-horizon signal, low caution
+- `clear_winner_with_recent_runup`: strong signal, but one explicit overextension note
+- `clear_winner_with_moderate_risk`: strong signal, but one explicit risk note
+
+This gives the model a real market-reading step without recreating full DX prompt mass.
+
+### Portfolio design
+
+For some conflict families, current portfolio state is part of the task, not noise.
+
+Examples:
+
+- diversification tests need current holdings so the model must choose between adding to an existing winner versus spreading into a second strong candidate
+- hold-versus-exit tests need an existing position with meaningful age or unrealized outcome
+- activity tests may need cash state set so `buy` is feasible but not trivially dominant
+
+Design rule:
+
+- only include portfolio state when that state is part of the intended computation
+- when included, keep it minimal and matched across aligned/conflict pairs
+- never let portfolio quirks create the label by themselves
+
+For `trade_size_force_large`, prefer:
+
+- no existing holdings
+- enough cash for all size buckets
+- no extra execution constraints beyond the basic output semantics
+
+For later diversification slices, prefer:
+
+- one existing meaningful position or one concentrated portfolio state
+- two buyable candidates with different implications for concentration
+- enough free cash that both concentration and spreading are executable options
+
+### Family-specific environment design
+
+The generator should eventually expose family-specific contracts rather than one shared context pool.
+
+Recommended first-pass mapping:
+
+- `trade_size_force_large`: single-winner buy market, empty portfolio, unconstrained execution
+- `trade_size_force_small`: same as above
+- `activity_force_trade`: borderline but still executable market, empty or neutral portfolio
+- `activity_force_observe`: weak or ambiguous market where observe is a live baseline
+- `diversification_force_concentrate`: multiple attractive buys plus an existing position or concentrated portfolio
+- `holding_force_exit`: held position with a plausible reason to either keep or reduce
+
+This matters because `instruction_source_followed` is operationalized differently by family.
+The environment should make the target behavioral degree of freedom legible.
+
+### Market validity checks
+
+Before keeping a generated environment template, verify:
+
+1. Without any strategy or settings conflict, the market still implies the same best asset.
+2. Changing `trade_size` from `5` to `1` should not change the best asset.
+3. The context does not make `observe` look more reasonable than a small buy.
+4. The distractor is believable enough that the model must read the rows, but weak enough that humans still agree on the winner quickly.
+
+If a market fails any of these checks, discard it rather than trying to rescue it with stronger strategy wording.
 
 ### Lexical variants
 
@@ -252,6 +393,13 @@ Each row should include:
 - `lexical_split`
 - `conflict_present`
 - `conflict_strength`
+- `market_expected_action`
+- `market_expected_asset`
+- `winner_gap_bucket`
+- `winner_risk_bucket`
+- `winner_extension_bucket`
+- `distractor_type`
+- `portfolio_state_family`
 - `expected_strategy_action`
 - `expected_setting_action`
 
