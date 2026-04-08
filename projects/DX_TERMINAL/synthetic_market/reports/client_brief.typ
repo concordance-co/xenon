@@ -6,27 +6,27 @@
 
 #set page(
   paper: "us-letter",
-  margin: (top: 1.5cm, bottom: 1.5cm, left: 1.8cm, right: 1.8cm),
+  margin: (top: 1.75cm, bottom: 1.75cm, left: 2.0cm, right: 2.0cm),
   numbering: "1 / 1",
   number-align: right,
 )
 
 #set text(font: "Georgia", size: 9.6pt)
-#set par(justify: true, leading: 0.6em)
+#set par(justify: true, leading: 0.62em)
 #set heading(numbering: none)
 
 #show heading.where(level: 1): it => {
   set text(size: 12.5pt, weight: "bold")
-  v(0.55em)
+  v(0.78em)
   it
-  v(0.12em)
+  v(0.18em)
 }
 
 #show heading.where(level: 2): it => {
   set text(size: 10pt, weight: "bold")
-  v(0.4em)
+  v(0.5em)
   it
-  v(0.08em)
+  v(0.12em)
 }
 
 #let accent = rgb("#9d3c2a")
@@ -50,12 +50,12 @@
 
 #let callout(title, body, fill: cream, accent_color: accent) = block(
   width: 100%,
-  inset: (left: 12pt, right: 12pt, top: 9pt, bottom: 9pt),
+  inset: (left: 12pt, right: 12pt, top: 6pt, bottom: 6pt),
   fill: fill,
   stroke: (left: 3pt + accent_color, top: none, right: none, bottom: none),
 )[
   #text(size: 7.5pt, tracking: 0.08em, fill: accent_color, weight: "bold")[#title]
-  #v(0.2em)
+  #v(0.15em)
   #body
 ]
 
@@ -79,7 +79,7 @@
 #align(left)[
   #text(size: 8.5pt, fill: accent, tracking: 0.10em, weight: "medium")[CONCORDANCE · RESEARCH BRIEF]
   #v(0.2em)
-  #text(size: 20pt, weight: "bold")[Reading the Mind of an Autonomous Trading Agent]
+  #text(size: 20pt, weight: "bold")[Mechanistically Examining a Financial Agent]
   #v(0.3em)
   #text(size: 10.5pt, fill: rgb("#47433f"))[
     We tested whether the model's internal picture of the market is real, where it comes from, and whether it actually drives the trading choice. Six findings, one honest verdict.
@@ -93,7 +93,7 @@
     [#text(size: 6.8pt, fill: muted, weight: "bold")[DATE]\ #text(size: 8.5pt)[April 2026]],
     [#text(size: 6.8pt, fill: muted, weight: "bold")[MODEL]\ #text(size: 8.5pt)[Qwen3-30B-A3B (MoE)]],
     [#text(size: 6.8pt, fill: muted, weight: "bold")[SCOPE]\ #text(size: 8.5pt)[6 findings · 9 phases]],
-    [#text(size: 6.8pt, fill: muted, weight: "bold")[STATUS]\ #text(size: 8.5pt)[Validated through restoration test]],
+    [#text(size: 6.8pt, fill: muted, weight: "bold")[STATUS]\ #text(size: 8.5pt)[Validated through causal restoration test]],
   )
 ]
 
@@ -103,7 +103,7 @@
   [BOTTOM LINE],
   [
     #text(size: 11pt, weight: "medium")[
-      The model builds a precise, structured internal picture of the market, and prior context measurably shapes that picture. The two specific internal signals we isolated are real and selective — but on their own, they only partially explain the model's final trading choice. Narrower than the headline story, and stronger because of it.
+      The model builds a precise, structured internal picture of the market, and prior context measurably shapes that picture. The two specific internal signals we isolated are real and selective — but on their own, they only partially explain the model's final trading choice.
     ]
   ],
 )
@@ -124,7 +124,7 @@
 #callout(
   [WHY THIS MATTERS],
   [
-    Most interpretability work stops at discovery: find a pattern, name it, call it an explanation. That is not enough — a signal that looks meaningful might just be wallpaper the model computes but never actually leans on. This study applied progressively harder tests to the same set of internal signals: discovery, format-decontamination, context-sensitivity, intervention, robustness, and source-driven restoration. Where those tests held, the claims got stronger. Where they broke, we say so.
+    We extracted the model's hidden activations as it processed trading-style prompts and ran six progressively tighter tests on what we found there — from representation discovery and format decontamination through context-sensitivity, intervention, robustness, and causal restoration. Each step asks a sharper version of the same question: what does the model represent internally, and does any of it actually drive the trade?
   ],
   fill: rgb("#f4f1ec"),
   accent_color: accent_green,
@@ -132,7 +132,9 @@
 
 #v(0.55em)
 
-#align(center)[#image("assets/public_story/charts/08_research_arc.png", width: 92%)]
+#align(center)[#image("assets/public_story/charts/combined_methodology_overview.png", width: 100%)]
+#v(0.1em)
+#align(center)[#cap[The full study at a glance: discovery basis (Phase 15) → axis decomposition (Phase 17) → context-order test (Phase 16).]]
 
 #pagebreak()
 
@@ -195,14 +197,11 @@
 
 = Finding 4 — Two Named Internal Signals
 
-#grid(
-  columns: (1fr, 1fr),
-  gutter: 0.7em,
-  align(center)[#image("assets/public_story/charts/04a_leader_signal.png", width: 100%)],
-  align(center)[#image("assets/public_story/charts/04b_dispersion_signal.png", width: 100%)],
-)
+#align(center)[#image("assets/public_story/charts/combined_axis_decomposition.png", width: 100%)]
+#v(0.1em)
+#align(center)[#cap[Top single features, metric-family fits, and aggregate-type fits for the two axes. Leader (red) is dominated by *top-asset* features; Dispersion (teal) by *spread* features.]]
 
-After controlling for prompt-formatting artifacts (sequence length, character count, asset count), statistical decomposition of the model's market-section activations identifies two recurring internal patterns. *Leader* (early layers) tracks the standout asset: best single feature #mono([R² 0.46]), best pair #mono([R² 0.67]). *Dispersion* (later layers) tracks how uneven the market is: best single feature #mono([R² 0.52]), best pair #mono([R² 0.84]). Both collapsed below #mono([R² 0.06]) on shuffled-data controls — confirming they reflect market content, not statistical noise — and both decode from features a human trader could also read off the screen.
+After controlling for prompt-formatting artifacts (sequence length, character count, asset count), statistical decomposition of the model's market-section activations identifies two recurring internal patterns. *Leader* (early layers) tracks the standout asset: best single feature #mono([R² 0.46]), best pair #mono([R² 0.67]). *Dispersion* (later layers) tracks how uneven the market is: best single feature #mono([R² 0.52]), best pair #mono([R² 0.84]). Both collapsed below #mono([R² 0.06]) on shuffled-data controls — confirming they reflect market content, not noise — and both decode from features a human trader could also read off the screen.
 
 = Finding 5 — The Signals Are Real (Selectivity Test)
 
@@ -240,6 +239,10 @@ After controlling for prompt-formatting artifacts (sequence length, character co
   ],
 )
 
+#pagebreak()
+
+// ── Page 4: Finding 6 + Verdict + framing ──────────────────────
+
 = Finding 6 — Restoration: The Honest Causal Test
 
 #grid(
@@ -268,15 +271,11 @@ After controlling for prompt-formatting artifacts (sequence length, character co
     *Leader* is a real but partial causal handle: modest positive shift, fix rate 4× the backfire rate, spend improvement on 66.7% of cases. *Dispersion* failed: backfire exceeded fix rate. 48 paired scenarios per signal.
   ],
   align(center)[
-    #image("assets/public_story/charts/06_restoration.png", width: 100%)
-    #v(0.15em)
+    #image("assets/public_story/charts/06_restoration.png", width: 88%)
+    #v(0.1em)
     #cap[Restoration outcomes for the two signals.]
   ],
 )
-
-#pagebreak()
-
-// ── Page 4: Verdict + framing ───────────────────────────────────
 
 = What Held Up
 
@@ -315,20 +314,18 @@ After controlling for prompt-formatting artifacts (sequence length, character co
   [Restoration backfire (15.4%) exceeds fix rate (13.6%). The signal is real (Finding 5), but not a causal handle.],
 )
 
-#v(0.4em)
+#v(0.15em)
 
 #grid(
   columns: (1fr, 1fr),
   gutter: 0.7em,
   [
     #callout(
-      [WHAT WE ARE NOT CLAIMING],
+      [WHAT WE DON'T KNOW],
       [
-        - We did *not* find the single hidden cause of the trading choice.
-        - We did *not* show that either named signal alone determines a decision.
-        - We did *not* prove every readable internal pattern is also a behavioral lever.
-
-        The restoration test was designed to catch overreach, and it did. The complete decision pathway integrates the model's market read with user-specific factors — portfolio, constraints, strategy framing — that this study did not isolate. That is the next phase.
+        - The single decisive cause of any given trade is still not isolated. Our strongest causal handle (Leader) explains a slice, not the whole picture.
+        - The integration point where market perception meets user-specific factors — portfolio, constraints, strategy — is where the rest of the explanation lives.
+        - Real but readable internal structure does not automatically translate to a behavioral lever. Restoration is the only test that distinguishes the two.
       ],
       fill: rgb("#f6f1f0"),
       accent_color: accent,
@@ -348,22 +345,46 @@ After controlling for prompt-formatting artifacts (sequence length, character co
   ],
 )
 
-#v(0.4em)
-
-#callout(
-  [RECOMMENDED PUBLIC FRAMING],
-  [
-    #text(size: 9.8pt, weight: "medium", style: "italic")[
-      "Concordance built a precise, verifiable map of how an autonomous trading agent reads the market. The model preserves raw data faithfully, builds a comparative internal picture, and that picture is shaped by the framing the model has already been given. We identified two specific internal signals — a 'standout asset' detector that has a real but partial influence on the final trading choice, and a 'market unevenness' signal that does not. The work narrows the next research question to a clear target: where the model's market read meets its decision."
-    ]
-  ],
-  fill: rgb("#f4f1ec"),
-  accent_color: accent_green,
-)
-
 #pagebreak()
 
-// ── Page 5: Appendix ───────────────────────────────────────────
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  gutter: 0.7em,
+  [
+    #callout(
+      [TAKEAWAY],
+      [
+        The model builds a real, structured market picture, and one of the two named signals partially drives the trading decision. The other doesn't.
+      ],
+      fill: rgb("#f3f0eb"),
+      accent_color: accent_green,
+    )
+  ],
+  [
+    #callout(
+      [WHY IT MATTERS],
+      [
+        First end-to-end mechanistic interpretability study on a deployed financial agent. Causal interp scales to production systems, not just toy models.
+      ],
+      fill: rgb("#eff3f6"),
+      accent_color: accent_blue,
+    )
+  ],
+  [
+    #callout(
+      [WHAT'S NEXT],
+      [
+        Apply the same playbook to detect *conflict in trading policies* — pinning down where competing policy signals live and which ones actually drive action.
+      ],
+      fill: rgb("#f4f1ec"),
+      accent_color: accent,
+    )
+  ],
+)
+
+#v(0.8em)
+
+// ── Page 5 continues: Appendix ─────────────────────────────────
 
 = Appendix
 
@@ -416,11 +437,3 @@ After controlling for prompt-formatting artifacts (sequence length, character co
 == A.4 · Path-Validation Status
 
 We ran a Phase 22 path-validation test on the Leader axis: an early lesion (`project_out` at L4) followed by a downstream rescue (`swap_components` at L35) using source-side coefficients. *The patch path itself worked* — every row produced patch diagnostics, no rows were skipped, both lesion and rescue applied cleanly. *But* the lesioned model did not reliably produce parsed tool calls at scale, so the action-choice readout was too sparse to interpret causally. This is not a refutation of any finding above; it is where the next round of work begins. Two natural follow-ups: (a) a denser behavioral readout regime that survives the lesion, and (b) moving from span-mean coefficient swapping toward exact source-activation transplantation.
-
-#v(0.4em)
-
-#line(length: 100%, stroke: 0.4pt + border)
-#v(0.15em)
-#text(size: 7.2pt, fill: muted)[
-  Concordance · Synthetic Market Research Brief · April 2026 · Self-contained; numerics traceable to `client_summary_draft.md` and `blog_post_draft.md`.
-]

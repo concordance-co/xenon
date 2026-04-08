@@ -62,6 +62,26 @@ def test_analysis_run_passthrough_dispatches(monkeypatch: pytest.MonkeyPatch) ->
     assert seen == [["--target", "decision_type"]]
 
 
+def test_finish_workflow_run_resilient_reopens_connection_after_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stale = _DummyConn()
+    fresh = _DummyConn()
+    seen: list[tuple[object, str]] = []
+
+    def _fake_finish(conn, *, run_id, status, result=None, error_text=None):
+        seen.append((conn, status))
+        if conn is stale:
+            raise RuntimeError("stale connection")
+
+    monkeypatch.setattr("pipelines.cli._open_conn", lambda: fresh)
+    monkeypatch.setattr("pipelines.workflows.finish_workflow_run", _fake_finish)
+
+    cli._finish_workflow_run_resilient(stale, run_id="run123", status="failed", error_text="boom")
+
+    assert seen == [(stale, "failed"), (fresh, "failed")]
+
+
 def test_spec_create_uses_workflow_registry(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -315,6 +335,49 @@ def test_analysis_run_uses_modal_by_default_for_workflow_specs(
     assert finished[-1]["result"]["requested_output_dir"] == str(out_dir)
     assert finished[-1]["result"]["results"] == {"probe": [{"layer": 34, "accuracy_mean": 0.576}]}
     assert "analysis123" in capsys.readouterr().out
+
+
+def test_capture_run_passes_add_generation_prompt_to_modal(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr("pipelines.cli._open_conn", lambda: _DummyConn())
+    monkeypatch.setattr(
+        "pipelines.cli._load_spec_from_args",
+        lambda spec_id, file_path: {
+            "id": "spec123",
+            "capture": {
+                "capture_generation": True,
+                "add_generation_prompt": True,
+                "enable_thinking": False,
+            },
+            "dataset": {
+                "source": {"mode": "table", "table": "interp_examples_v0"},
+                "label": {"mode": "direct", "expression_sql": "decision_type"},
+            },
+        },
+    )
+    monkeypatch.setattr(
+        "pipelines.workflows.get_latest_publication_for_spec",
+        lambda conn, spec_id: {"relation_name": "workflow_dataset_spec123_v1"},
+    )
+    monkeypatch.setattr(
+        "pipelines.workflows.start_workflow_run",
+        lambda conn, spec, run_type, source, resolved_config: {"id": "run123"},
+    )
+    monkeypatch.setattr(
+        "pipelines.workflows.finish_workflow_run",
+        lambda conn, run_id, status, result=None, error_text=None: None,
+    )
+    calls: list[list[str]] = []
+    monkeypatch.setattr("pipelines.cli._run_command", lambda cmd: calls.append(list(cmd)))
+
+    out_dir = tmp_path / "activations"
+    assert cli.main(["capture", "run", "--spec", "spec123", "--output-dir", str(out_dir)]) == 0
+
+    assert "--capture-generation" in calls[0]
+    assert "--add-generation-prompt" in calls[0]
+    assert "--no-enable-thinking" in calls[0]
 
 
 def test_modal_volume_get_creates_directory_for_remote_directory_download(

@@ -60,7 +60,9 @@ class VLLMCaptureWorker:
     max_model_len: int = modal.parameter(default=0)
     capture_residual: bool = modal.parameter(default=True)
     capture_layers_csv: str = modal.parameter(default="")
+    add_generation_prompt: bool = modal.parameter(default=False)
     capture_reasoning: bool = modal.parameter(default=True)
+    enable_thinking: bool = modal.parameter(default=True)
     reasoning_parser: str = modal.parameter(default="")
 
     @modal.enter()
@@ -181,6 +183,7 @@ class VLLMCaptureWorker:
         config = VLLMCaptureConfig(
             output_dir=output_dir,
             model_id=self.model_id,
+            add_generation_prompt=self.add_generation_prompt,
             layers=layers or self.capture_layer_ids or None,
             capture_router=capture_router and self.is_moe,
             capture_residual=capture_residual,
@@ -316,6 +319,7 @@ class VLLMCaptureWorker:
 
         config = VLLMCaptureConfig(
             model_id=self.model_id,
+            add_generation_prompt=self.add_generation_prompt,
             capture_reasoning=self.capture_reasoning,
             reasoning_parser=self.reasoning_parser,
             capture_residual=False,
@@ -339,6 +343,7 @@ class VLLMCaptureWorker:
                 temperature=generation_temperature,
                 top_p=generation_top_p,
                 top_k=-1,
+                chat_template_kwargs={"enable_thinking": self.enable_thinking},
             )
             metadata_rows.append(
                 {
@@ -536,8 +541,10 @@ def run_vllm_capture(
     capture_residual: bool = True,
     capture_generation: bool = False,
     capture_reasoning: bool = True,
+    enable_thinking: bool = True,
     batch_size: int = 10,
     model_id: str = "Qwen/Qwen3-30B-A3B",
+    add_generation_prompt: bool = False,
     pool: str = "",
     tensor_parallel_size: int = 1,
     gpu_memory_utilization: str = "0.90",
@@ -623,7 +630,11 @@ def run_vllm_capture(
         max_model_len=max_model_len,
         capture_residual=capture_residual,
         capture_layers_csv=",".join(str(layer) for layer in parsed_layers) if parsed_layers else "",
+        # Keep activation capture anchored to the raw prompt rather than the
+        # assistant-start token(s) added for decoding.
+        add_generation_prompt=False,
         capture_reasoning=capture_reasoning,
+        enable_thinking=enable_thinking,
         reasoning_parser=reasoning_parser,
     )
     generation_worker = None
@@ -635,7 +646,9 @@ def run_vllm_capture(
             max_model_len=max_model_len,
             capture_residual=False,
             capture_layers_csv="",
+            add_generation_prompt=add_generation_prompt,
             capture_reasoning=capture_reasoning,
+            enable_thinking=enable_thinking,
             reasoning_parser=reasoning_parser,
         )
 
@@ -878,8 +891,10 @@ def main(
     capture_residual: bool = True,
     capture_generation: bool = False,
     capture_reasoning: bool = True,
+    enable_thinking: bool = True,
     batch_size: int = 10,
     model_id: str = "Qwen/Qwen3-30B-A3B",
+    add_generation_prompt: bool = False,
     pool: str = "",
     tensor_parallel_size: int = 1,
     gpu_memory_utilization: str = "0.90",
@@ -908,8 +923,10 @@ def main(
         capture_residual=capture_residual,
         capture_generation=capture_generation,
         capture_reasoning=capture_reasoning,
+        enable_thinking=enable_thinking,
         batch_size=batch_size,
         model_id=model_id,
+        add_generation_prompt=add_generation_prompt,
         pool=pool,
         tensor_parallel_size=tensor_parallel_size,
         gpu_memory_utilization=gpu_memory_utilization,

@@ -37,8 +37,10 @@
     "model": "Qwen/Qwen3-30B-A3B",
     "max_model_len": 8192,
     "capture_generation": true,
-    "capture_reasoning": true,
-    "generation_max_tokens": 256,
+    "capture_reasoning": false,
+    "enable_thinking": false,
+    "add_generation_prompt": true,
+    "generation_max_tokens": 512,
     "generation_temperature": 0.0,
     "generation_top_p": 1.0,
     "layers": [

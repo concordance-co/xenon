@@ -71,6 +71,36 @@ def _open_conn():
     return conn
 
 
+def _finish_workflow_run_resilient(
+    conn: Any,
+    *,
+    run_id: str,
+    status: str,
+    result: dict[str, Any] | None = None,
+    error_text: str | None = None,
+) -> None:
+    from pipelines.workflows import finish_workflow_run
+
+    try:
+        finish_workflow_run(
+            conn,
+            run_id=run_id,
+            status=status,
+            result=result,
+            error_text=error_text,
+        )
+        return
+    except Exception:
+        with _open_conn() as retry_conn:
+            finish_workflow_run(
+                retry_conn,
+                run_id=run_id,
+                status=status,
+                result=result,
+                error_text=error_text,
+            )
+
+
 def _load_spec_from_args(spec_id: str | None, file_path: str | None) -> dict[str, Any]:
     from pipelines.workflows import get_workflow_spec, normalize_workflow_spec, upsert_workflow_spec
 
@@ -424,9 +454,9 @@ def _run_dataset_build(argv: list[str]) -> int:
         try:
             publication = publish_dataset(conn, spec, run_id=run["id"])
             result = {"publication": publication}
-            finish_workflow_run(conn, run_id=run["id"], status="succeeded", result=result)
+            _finish_workflow_run_resilient(conn, run_id=run["id"], status="succeeded", result=result)
         except Exception as exc:
-            finish_workflow_run(conn, run_id=run["id"], status="failed", error_text=str(exc))
+            _finish_workflow_run_resilient(conn, run_id=run["id"], status="failed", error_text=str(exc))
             raise
     _print_json({"run": run, "publication": publication})
     return 0
@@ -458,6 +488,7 @@ def _run_capture(argv: list[str]) -> int:
     parser.add_argument("--add-generation-prompt", action="store_true")
     parser.add_argument("--capture-generation", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--capture-reasoning", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--enable-thinking", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--reasoning-parser", default=None)
     parser.add_argument("--generation-max-tokens", type=int, default=None)
     parser.add_argument("--generation-temperature", type=float, default=None)
@@ -489,6 +520,7 @@ def _run_capture(argv: list[str]) -> int:
             "max_model_len": ns.max_model_len if ns.max_model_len is not None else capture_block.get("max_model_len"),
             "capture_generation": ns.capture_generation if ns.capture_generation is not None else bool(capture_block.get("capture_generation", False)),
             "capture_reasoning": ns.capture_reasoning if ns.capture_reasoning is not None else bool(capture_block.get("capture_reasoning", True)),
+            "enable_thinking": ns.enable_thinking if ns.enable_thinking is not None else bool(capture_block.get("enable_thinking", True)),
             "reasoning_parser": ns.reasoning_parser or capture_block.get("reasoning_parser") or "",
             "generation_max_tokens": ns.generation_max_tokens if ns.generation_max_tokens is not None else int(capture_block.get("generation_max_tokens") or 256),
             "generation_temperature": ns.generation_temperature if ns.generation_temperature is not None else float(capture_block.get("generation_temperature") or 0.0),
@@ -536,11 +568,17 @@ def _run_capture(argv: list[str]) -> int:
                         modal_args.append("--capture-reasoning")
                     else:
                         modal_args.append("--no-capture-reasoning")
+                    if bool(resolved["enable_thinking"]):
+                        modal_args.append("--enable-thinking")
+                    else:
+                        modal_args.append("--no-enable-thinking")
                     if str(resolved["reasoning_parser"]):
                         modal_args.extend(["--reasoning-parser", str(resolved["reasoning_parser"])])
                     modal_args.extend(["--generation-max-tokens", str(resolved["generation_max_tokens"])])
                     modal_args.extend(["--generation-temperature", str(resolved["generation_temperature"])])
                     modal_args.extend(["--generation-top-p", str(resolved["generation_top_p"])])
+                if bool(resolved["add_generation_prompt"]):
+                    modal_args.append("--add-generation-prompt")
                 if parsed_layers:
                     modal_args.extend(["--layers", ",".join(str(v) for v in parsed_layers)])
                 if bool(resolved["capture_router"]):
@@ -584,9 +622,9 @@ def _run_capture(argv: list[str]) -> int:
                     "publication": dataset_name,
                     "execution": "local",
                 }
-            finish_workflow_run(conn, run_id=run["id"], status="succeeded", result=result)
+            _finish_workflow_run_resilient(conn, run_id=run["id"], status="succeeded", result=result)
         except Exception as exc:
-            finish_workflow_run(conn, run_id=run["id"], status="failed", error_text=str(exc))
+            _finish_workflow_run_resilient(conn, run_id=run["id"], status="failed", error_text=str(exc))
             raise
     capture_payload = {
         "run_id": run["id"],
@@ -763,14 +801,14 @@ def _run_analysis(argv: list[str]) -> int:
                     "execution": "local",
                     "results": _load_json_if_exists(config.output_dir / "results.json"),
                 }
-            finish_workflow_run(
+            _finish_workflow_run_resilient(
                 conn,
                 run_id=run["id"],
                 status="succeeded",
                 result=results,
             )
         except Exception as exc:
-            finish_workflow_run(conn, run_id=run["id"], status="failed", error_text=str(exc))
+            _finish_workflow_run_resilient(conn, run_id=run["id"], status="failed", error_text=str(exc))
             raise
     _print_json({"run_id": run["id"], "labels_path": str(labels_path), "publication": publication_name})
     return 0

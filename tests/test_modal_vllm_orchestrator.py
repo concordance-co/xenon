@@ -80,3 +80,36 @@ def test_capture_batch_signature_matches_map_kwargs() -> None:
 
     assert map_kwargs
     assert map_kwargs <= capture_batch_args
+
+
+def test_run_vllm_capture_decouples_capture_and_generation_prompt_formatting() -> None:
+    source_path = Path(__file__).resolve().parents[1] / "pipelines" / "interp" / "modal_vllm_orchestrator.py"
+    module = ast.parse(source_path.read_text())
+
+    worker_call = None
+    generation_worker_call = None
+
+    for node in module.body:
+        if not isinstance(node, ast.FunctionDef) or node.name != "run_vllm_capture":
+            continue
+        for item in ast.walk(node):
+            if not isinstance(item, ast.Assign) or len(item.targets) != 1:
+                continue
+            target = item.targets[0]
+            if not isinstance(target, ast.Name) or not isinstance(item.value, ast.Call):
+                continue
+            if target.id == "worker":
+                worker_call = item.value
+            elif target.id == "generation_worker":
+                generation_worker_call = item.value
+
+    assert worker_call is not None
+    assert generation_worker_call is not None
+
+    worker_kwargs = {kw.arg: kw.value for kw in worker_call.keywords if kw.arg}
+    generation_worker_kwargs = {kw.arg: kw.value for kw in generation_worker_call.keywords if kw.arg}
+
+    assert isinstance(worker_kwargs["add_generation_prompt"], ast.Constant)
+    assert worker_kwargs["add_generation_prompt"].value is False
+    assert isinstance(generation_worker_kwargs["add_generation_prompt"], ast.Name)
+    assert generation_worker_kwargs["add_generation_prompt"].id == "add_generation_prompt"
