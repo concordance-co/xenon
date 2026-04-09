@@ -47,6 +47,17 @@ If the source dataset has a durable row identifier, declare it in
 `workflow_row_key` and `workflow_prompt_hash`, and capture reuse is checked
 against both the stable row identity and the prompt hash.
 
+For new synthetic datasets, do not scale immediately to the full target size.
+The recommended pattern is:
+
+1. publish a small smoke dataset first, usually a few hundred rows
+2. inspect slices manually
+3. run early behavioral and leakage checks
+4. only then scale to the larger publication
+
+This avoids spending capture and analysis cycles on a large dataset with obvious
+construction errors or trivial shortcuts.
+
 ## 3. Run Capture
 
 ```bash

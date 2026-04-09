@@ -122,6 +122,28 @@ Probe reports need to say:
 
 Without that, strong numbers are too easy to misread.
 
+### 7. Build up to large datasets iteratively
+
+We should not start by generating a massive, complex dataset.
+
+The safer pattern is:
+
+1. build a few-hundred-row version first
+2. inspect it manually
+3. run behavioral sanity checks
+4. run initial leakage / probe sanity checks
+5. only then scale up to the larger dataset
+
+This catches obvious issues early:
+
+- trivial leakage
+- label mistakes
+- weak conflict construction
+- prompt-template artifacts
+- slice definitions that do not support the intended analysis
+
+Large dataset generation should be the final scaling step, not the first validation step.
+
 ## Recommended Infra Improvements
 
 ### A. Synthetic dataset authoring flow
