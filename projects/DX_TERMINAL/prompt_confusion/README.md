@@ -3,6 +3,28 @@
 This effort directory holds the conflict-probe experiment across multiple
 bounded iterations.
 
+## Operator Stance
+
+Prompt Confusion should follow the canonical workflow model from the repo docs:
+
+`spec -> publication -> capture -> analysis -> report`
+
+For this project, the default execution stance is:
+
+- dataset publication is Neon-backed
+- capture runs on Modal
+- analysis runs on Modal
+- reports are built locally from analysis outputs
+
+Local one-off scripts may still exist for debugging or slice construction, but
+they are not the default operator surface for capture or analysis work.
+
+The running pipeline notes for this effort live at:
+
+```text
+projects/DX_TERMINAL/prompt_confusion/notes/pipelines.md
+```
+
 ## Workflow Spec
 
 The current phase-local workflow specs live at:
@@ -72,12 +94,12 @@ uv run -m pipelines.cli capture run \
   --output-dir data/activations/conflict_probe_v0
 ```
 
-Run analysis:
+Run analysis on Modal:
 
 ```bash
 uv run -m pipelines.cli analysis run \
   --spec conflict_probe_v0 \
-  --activations-dir data/activations/conflict_probe_v0 \
+  --execution modal \
   --output-dir data/analysis_results/conflict_probe_v0
 ```
 
@@ -87,8 +109,18 @@ Build a report:
 uv run -m pipelines.cli report build --spec conflict_probe_v0
 ```
 
-For a faster smoke run, override the capture configuration at runtime instead
-of editing the checked-in spec, for example with `--limit`, `--model-id`, and
+For workflow-driven analysis against a specific capture, prefer:
+
+```bash
+uv run -m pipelines.cli analysis run \
+  --capture-run <capture_run_id> \
+  --publication <relation_name> \
+  --execution modal \
+  --output-dir projects/DX_TERMINAL/prompt_confusion/<phase>/outputs/<analysis_name>
+```
+
+For a faster smoke run, override the capture configuration at runtime instead of
+editing the checked-in spec, for example with `--limit`, `--model-id`, and
 `--layers`.
 
 Phase 02 follows the same operator flow with `conflict_probe_v1` instead of

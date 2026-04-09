@@ -1,0 +1,136 @@
+{
+  "probe": [
+    {
+      "layer": 0,
+      "accuracy_mean": 0.8859,
+      "accuracy_std": 0.0174,
+      "balanced_accuracy": 0.8866,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4895,
+      "selectivity": 0.3964,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 4,
+      "accuracy_mean": 0.9009,
+      "accuracy_std": 0.0121,
+      "balanced_accuracy": 0.9015,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4534,
+      "selectivity": 0.4475,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 8,
+      "accuracy_mean": 0.9054,
+      "accuracy_std": 0.0208,
+      "balanced_accuracy": 0.9058,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4534,
+      "selectivity": 0.4521,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 12,
+      "accuracy_mean": 0.8978,
+      "accuracy_std": 0.0242,
+      "balanced_accuracy": 0.8983,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.497,
+      "selectivity": 0.4009,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 16,
+      "accuracy_mean": 0.8829,
+      "accuracy_std": 0.0358,
+      "balanced_accuracy": 0.8845,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4533,
+      "selectivity": 0.4296,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 20,
+      "accuracy_mean": 0.8859,
+      "accuracy_std": 0.0147,
+      "balanced_accuracy": 0.8875,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4789,
+      "selectivity": 0.4069,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 24,
+      "accuracy_mean": 0.8904,
+      "accuracy_std": 0.0193,
+      "balanced_accuracy": 0.8917,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4609,
+      "selectivity": 0.4295,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 28,
+      "accuracy_mean": 0.8934,
+      "accuracy_std": 0.0193,
+      "balanced_accuracy": 0.8942,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.5149,
+      "selectivity": 0.3785,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 32,
+      "accuracy_mean": 0.8964,
+      "accuracy_std": 0.0113,
+      "balanced_accuracy": 0.8974,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4489,
+      "selectivity": 0.4475,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 36,
+      "accuracy_mean": 0.9024,
+      "accuracy_std": 0.0164,
+      "balanced_accuracy": 0.9038,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4609,
+      "selectivity": 0.4415,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 40,
+      "accuracy_mean": 0.8904,
+      "accuracy_std": 0.0157,
+      "balanced_accuracy": 0.8921,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4939,
+      "selectivity": 0.3964,
+      "n_examples": 666,
+      "n_classes": 2
+    },
+    {
+      "layer": 44,
+      "accuracy_mean": 0.8964,
+      "accuracy_std": 0.0161,
+      "balanced_accuracy": 0.8973,
+      "baseline_majority": 0.521,
+      "baseline_shuffled": 0.4986,
+      "selectivity": 0.3978,
+      "n_examples": 666,
+      "n_classes": 2
+    }
+  ]
+}

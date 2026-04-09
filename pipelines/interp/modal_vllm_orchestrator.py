@@ -434,6 +434,35 @@ def _limit_uncaptured_rows(
     return filtered
 
 
+def _run_neon_transaction(transaction_fn, *, max_attempts: int = 2):
+    """Run a Neon transaction on a fresh connection, retrying once on stale SSL."""
+    from psycopg import OperationalError
+
+    from pipelines.db import connect_neon
+
+    last_exc: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        conn = connect_neon()
+        try:
+            result = transaction_fn(conn)
+            conn.commit()
+            return result
+        except OperationalError as exc:
+            last_exc = exc
+            if attempt >= max_attempts:
+                raise
+            print(
+                f"Neon transaction failed with OperationalError on attempt {attempt}/{max_attempts}; "
+                "reconnecting and retrying once"
+            )
+        finally:
+            conn.close()
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Neon transaction failed without raising an exception")
+
+
 @app.function(volumes={"/data": volume}, image=image, timeout=300)
 def write_metadata_to_volume(metadata_rows: list[dict], output_subdir: str = "") -> int:
     """Merge new metadata rows into metadata.parquet on the volume."""
@@ -565,7 +594,6 @@ def run_vllm_capture(
 ) -> str:
     """Load examples from Neon, fan out to GPU workers, and write metadata."""
     from psycopg import sql
-    from pipelines.db import connect_neon
     from pipelines.interp.local_capture import (
         _can_reuse_capture,
         _load_examples_from_neon,
@@ -584,6 +612,7 @@ def run_vllm_capture(
     spec_id = str(rows[0].get("workflow_spec_id") or "workflow_capture").strip()
     table_slug = re.sub(r"[^a-zA-Z0-9_]+", "_", spec_id).strip("_").lower() or "workflow_capture"
     response_table_name = f"capture_outputs_{table_slug}"
+    metadata_run_id = str(workflow_run_id or output_subdir or source_relation or "adhoc").strip()
 
     parsed_layers: list[int] | None = None
     if layers_str:
@@ -653,74 +682,81 @@ def run_vllm_capture(
         )
 
     all_metadata: list[dict] = []
-    db_conn = connect_neon()
-    with db_conn.cursor() as cur:
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS capture_metadata (
-                log_id                INT PRIMARY KEY,
-                row_key               TEXT,
-                artifact_id           TEXT,
-                source_prompt_hash    TEXT,
-                source_relation       TEXT,
-                workflow_spec_id      TEXT,
-                workflow_spec_version INT,
-                seq_len               INT NOT NULL,
-                prompt_hash           TEXT,
-                capture_timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
-                file_size_bytes       BIGINT NOT NULL DEFAULT 0,
-                elapsed_s             REAL NOT NULL DEFAULT 0,
-                has_router            BOOLEAN NOT NULL DEFAULT false,
-                captured_layers       TEXT,
-                pooling               TEXT NOT NULL DEFAULT 'none',
-                num_layers_captured INT NOT NULL DEFAULT 0,
-                hidden_dim          INT NOT NULL DEFAULT 0,
-                num_experts         INT
-            )
-            """
-        )
-        # Older deployments may already have capture_metadata with a narrower schema.
-        # Keep the table forward-compatible rather than requiring a manual drop.
-        for ddl in (
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS row_key TEXT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS artifact_id TEXT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS source_prompt_hash TEXT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS source_relation TEXT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS workflow_spec_id TEXT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS workflow_spec_version INT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS prompt_hash TEXT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS captured_layers TEXT",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS pooling TEXT NOT NULL DEFAULT 'none'",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS num_layers_captured INT NOT NULL DEFAULT 0",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS hidden_dim INT NOT NULL DEFAULT 0",
-            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS num_experts INT",
-        ):
-            cur.execute(ddl)
-        if capture_generation:
+    def _ensure_tables(conn) -> None:
+        with conn.cursor() as cur:
             cur.execute(
-                sql.SQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS {} (
-                        run_id                TEXT NOT NULL,
-                        log_id                INT NOT NULL,
-                        example_id            TEXT,
-                        row_key               TEXT,
-                        source_relation       TEXT,
-                        workflow_spec_id      TEXT NOT NULL,
-                        workflow_spec_version INT,
-                        model_id              TEXT NOT NULL,
-                        reasoning_parser      TEXT,
-                        capture_timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
-                        generated_text        TEXT NOT NULL DEFAULT '',
-                        generated_token_ids   JSONB NOT NULL DEFAULT '[]'::jsonb,
-                        finish_reason         TEXT NOT NULL DEFAULT '',
-                        reasoning_text        TEXT NOT NULL DEFAULT '',
-                        PRIMARY KEY (run_id, log_id)
-                    )
-                    """
-                ).format(sql.Identifier(response_table_name))
+                """
+                CREATE TABLE IF NOT EXISTS capture_metadata (
+                    run_id                TEXT NOT NULL DEFAULT '',
+                    log_id                INT PRIMARY KEY,
+                    row_key               TEXT,
+                    artifact_id           TEXT,
+                    source_prompt_hash    TEXT,
+                    source_relation       TEXT,
+                    workflow_spec_id      TEXT,
+                    workflow_spec_version INT,
+                    seq_len               INT NOT NULL,
+                    prompt_hash           TEXT,
+                    capture_timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    file_size_bytes       BIGINT NOT NULL DEFAULT 0,
+                    elapsed_s             REAL NOT NULL DEFAULT 0,
+                    has_router            BOOLEAN NOT NULL DEFAULT false,
+                    captured_layers       TEXT,
+                    pooling               TEXT NOT NULL DEFAULT 'none',
+                    num_layers_captured INT NOT NULL DEFAULT 0,
+                    hidden_dim          INT NOT NULL DEFAULT 0,
+                    num_experts         INT
+                )
+                """
             )
-    db_conn.commit()
+            # Older deployments may already have capture_metadata with a narrower schema.
+            # Keep the table forward-compatible rather than requiring a manual drop.
+            for ddl in (
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS row_key TEXT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS artifact_id TEXT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS source_prompt_hash TEXT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS source_relation TEXT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS workflow_spec_id TEXT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS workflow_spec_version INT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS prompt_hash TEXT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS captured_layers TEXT",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS pooling TEXT NOT NULL DEFAULT 'none'",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS num_layers_captured INT NOT NULL DEFAULT 0",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS hidden_dim INT NOT NULL DEFAULT 0",
+                "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS num_experts INT",
+                "ALTER TABLE capture_metadata DROP CONSTRAINT IF EXISTS capture_metadata_pkey",
+                "CREATE UNIQUE INDEX IF NOT EXISTS capture_metadata_run_log_id_idx ON capture_metadata (run_id, log_id)",
+                "CREATE INDEX IF NOT EXISTS capture_metadata_log_id_idx ON capture_metadata (log_id)",
+                "CREATE INDEX IF NOT EXISTS capture_metadata_source_row_idx ON capture_metadata (source_relation, row_key)",
+            ):
+                cur.execute(ddl)
+            if capture_generation:
+                cur.execute(
+                    sql.SQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS {} (
+                            run_id                TEXT NOT NULL,
+                            log_id                INT NOT NULL,
+                            example_id            TEXT,
+                            row_key               TEXT,
+                            source_relation       TEXT,
+                            workflow_spec_id      TEXT NOT NULL,
+                            workflow_spec_version INT,
+                            model_id              TEXT NOT NULL,
+                            reasoning_parser      TEXT,
+                            capture_timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
+                            generated_text        TEXT NOT NULL DEFAULT '',
+                            generated_token_ids   JSONB NOT NULL DEFAULT '[]'::jsonb,
+                            finish_reason         TEXT NOT NULL DEFAULT '',
+                            reasoning_text        TEXT NOT NULL DEFAULT '',
+                            PRIMARY KEY (run_id, log_id)
+                        )
+                        """
+                    ).format(sql.Identifier(response_table_name))
+                )
+
+    _run_neon_transaction(_ensure_tables)
 
     capture_iter = worker.capture_batch.map(
         batches,
@@ -766,100 +802,103 @@ def run_vllm_capture(
 
         all_metadata.extend(batch_meta)
         if batch_meta:
-            with db_conn.cursor() as cur:
-                for row in batch_meta:
-                    cur.execute(
-                        """
-                        INSERT INTO capture_metadata
-                            (log_id, row_key, artifact_id, source_prompt_hash, source_relation,
-                             workflow_spec_id, workflow_spec_version,
-                             seq_len, prompt_hash, capture_timestamp,
-                             file_size_bytes, elapsed_s, has_router, captured_layers,
-                             pooling, num_layers_captured, hidden_dim, num_experts)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (log_id) DO UPDATE SET
-                            row_key = EXCLUDED.row_key,
-                            artifact_id = EXCLUDED.artifact_id,
-                            source_prompt_hash = EXCLUDED.source_prompt_hash,
-                            source_relation = EXCLUDED.source_relation,
-                            workflow_spec_id = EXCLUDED.workflow_spec_id,
-                            workflow_spec_version = EXCLUDED.workflow_spec_version,
-                            seq_len = EXCLUDED.seq_len,
-                            file_size_bytes = EXCLUDED.file_size_bytes,
-                            elapsed_s = EXCLUDED.elapsed_s,
-                            has_router = EXCLUDED.has_router,
-                            captured_layers = EXCLUDED.captured_layers,
-                            pooling = EXCLUDED.pooling,
-                            num_layers_captured = EXCLUDED.num_layers_captured,
-                            hidden_dim = EXCLUDED.hidden_dim,
-                            num_experts = EXCLUDED.num_experts,
-                            capture_timestamp = EXCLUDED.capture_timestamp
-                        """,
-                        (
-                            row["log_id"],
-                            row.get("row_key"),
-                            row.get("artifact_id"),
-                            row.get("source_prompt_hash"),
-                            row.get("source_relation"),
-                            row.get("workflow_spec_id"),
-                            row.get("workflow_spec_version"),
-                            row["seq_len"],
-                            row.get("prompt_hash"),
-                            row["capture_timestamp"],
-                            row["file_size_bytes"],
-                            row["elapsed_s"],
-                            row.get("has_router", False),
-                            row.get("captured_layers"),
-                            row.get("pooling", "none"),
-                            row.get("num_layers_captured", 0),
-                            row.get("hidden_dim", 0),
-                            row.get("num_experts"),
-                        ),
-                    )
-                    if capture_generation:
+            def _flush_batch(conn) -> None:
+                with conn.cursor() as cur:
+                    for row in batch_meta:
                         cur.execute(
-                            sql.SQL(
-                                """
-                                INSERT INTO {} (
-                                    run_id, log_id, example_id, row_key, source_relation,
-                                    workflow_spec_id, workflow_spec_version, model_id, reasoning_parser,
-                                    capture_timestamp, generated_text, generated_token_ids,
-                                    finish_reason, reasoning_text
-                                )
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
-                                ON CONFLICT (run_id, log_id) DO UPDATE SET
-                                    example_id = EXCLUDED.example_id,
-                                    row_key = EXCLUDED.row_key,
-                                    source_relation = EXCLUDED.source_relation,
-                                    workflow_spec_id = EXCLUDED.workflow_spec_id,
-                                    workflow_spec_version = EXCLUDED.workflow_spec_version,
-                                    model_id = EXCLUDED.model_id,
-                                    reasoning_parser = EXCLUDED.reasoning_parser,
-                                    capture_timestamp = EXCLUDED.capture_timestamp,
-                                    generated_text = EXCLUDED.generated_text,
-                                    generated_token_ids = EXCLUDED.generated_token_ids,
-                                    finish_reason = EXCLUDED.finish_reason,
-                                    reasoning_text = EXCLUDED.reasoning_text
-                                """
-                            ).format(sql.Identifier(response_table_name)),
+                            """
+                            INSERT INTO capture_metadata
+                                (run_id, log_id, row_key, artifact_id, source_prompt_hash, source_relation,
+                                 workflow_spec_id, workflow_spec_version,
+                                 seq_len, prompt_hash, capture_timestamp,
+                                 file_size_bytes, elapsed_s, has_router, captured_layers,
+                                 pooling, num_layers_captured, hidden_dim, num_experts)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (run_id, log_id) DO UPDATE SET
+                                row_key = EXCLUDED.row_key,
+                                artifact_id = EXCLUDED.artifact_id,
+                                source_prompt_hash = EXCLUDED.source_prompt_hash,
+                                source_relation = EXCLUDED.source_relation,
+                                workflow_spec_id = EXCLUDED.workflow_spec_id,
+                                workflow_spec_version = EXCLUDED.workflow_spec_version,
+                                seq_len = EXCLUDED.seq_len,
+                                file_size_bytes = EXCLUDED.file_size_bytes,
+                                elapsed_s = EXCLUDED.elapsed_s,
+                                has_router = EXCLUDED.has_router,
+                                captured_layers = EXCLUDED.captured_layers,
+                                pooling = EXCLUDED.pooling,
+                                num_layers_captured = EXCLUDED.num_layers_captured,
+                                hidden_dim = EXCLUDED.hidden_dim,
+                                num_experts = EXCLUDED.num_experts,
+                                capture_timestamp = EXCLUDED.capture_timestamp
+                            """,
                             (
-                                workflow_run_id,
+                                metadata_run_id,
                                 row["log_id"],
-                                row.get("example_id"),
                                 row.get("row_key"),
+                                row.get("artifact_id"),
+                                row.get("source_prompt_hash"),
                                 row.get("source_relation"),
                                 row.get("workflow_spec_id"),
                                 row.get("workflow_spec_version"),
-                                model_id,
-                                reasoning_parser if capture_reasoning else "",
+                                row["seq_len"],
+                                row.get("prompt_hash"),
                                 row["capture_timestamp"],
-                                row.get("generated_text", ""),
-                                row.get("generated_token_ids", "[]"),
-                                row.get("finish_reason", ""),
-                                row.get("reasoning_text", ""),
+                                row["file_size_bytes"],
+                                row["elapsed_s"],
+                                row.get("has_router", False),
+                                row.get("captured_layers"),
+                                row.get("pooling", "none"),
+                                row.get("num_layers_captured", 0),
+                                row.get("hidden_dim", 0),
+                                row.get("num_experts"),
                             ),
                         )
-            db_conn.commit()
+                        if capture_generation:
+                            cur.execute(
+                                sql.SQL(
+                                    """
+                                    INSERT INTO {} (
+                                        run_id, log_id, example_id, row_key, source_relation,
+                                        workflow_spec_id, workflow_spec_version, model_id, reasoning_parser,
+                                        capture_timestamp, generated_text, generated_token_ids,
+                                        finish_reason, reasoning_text
+                                    )
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+                                    ON CONFLICT (run_id, log_id) DO UPDATE SET
+                                        example_id = EXCLUDED.example_id,
+                                        row_key = EXCLUDED.row_key,
+                                        source_relation = EXCLUDED.source_relation,
+                                        workflow_spec_id = EXCLUDED.workflow_spec_id,
+                                        workflow_spec_version = EXCLUDED.workflow_spec_version,
+                                        model_id = EXCLUDED.model_id,
+                                        reasoning_parser = EXCLUDED.reasoning_parser,
+                                        capture_timestamp = EXCLUDED.capture_timestamp,
+                                        generated_text = EXCLUDED.generated_text,
+                                        generated_token_ids = EXCLUDED.generated_token_ids,
+                                        finish_reason = EXCLUDED.finish_reason,
+                                        reasoning_text = EXCLUDED.reasoning_text
+                                    """
+                                ).format(sql.Identifier(response_table_name)),
+                                (
+                                    workflow_run_id,
+                                    row["log_id"],
+                                    row.get("example_id"),
+                                    row.get("row_key"),
+                                    row.get("source_relation"),
+                                    row.get("workflow_spec_id"),
+                                    row.get("workflow_spec_version"),
+                                    model_id,
+                                    reasoning_parser if capture_reasoning else "",
+                                    row["capture_timestamp"],
+                                    row.get("generated_text", ""),
+                                    row.get("generated_token_ids", "[]"),
+                                    row.get("finish_reason", ""),
+                                    row.get("reasoning_text", ""),
+                                ),
+                            )
+
+            _run_neon_transaction(_flush_batch)
             if capture_generation:
                 sample = batch_meta[0]
                 print(
@@ -873,7 +912,6 @@ def run_vllm_capture(
         if len(all_metadata) % 50 == 0 or len(all_metadata) == len(rows):
             write_metadata_to_volume.remote(all_metadata, output_subdir=output_subdir)
 
-    db_conn.close()
     if all_metadata:
         write_metadata_to_volume.remote(all_metadata, output_subdir=output_subdir)
 

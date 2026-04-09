@@ -224,12 +224,12 @@ Every row generator should satisfy these invariants:
   "lexical_split": "train",
   "strategy_lexical_split": "train",
   "setting_lexical_split": "train",
-  "system_text": "You are a trading agent. Choose exactly one action each turn. Return only a JSON object.",
+  "system_text": "You are a trading agent. Choose exactly one action each turn. Return only a JSON object with exactly these fields: {\"action\":\"buy|sell|observe\",\"asset\":\"ALPHA|BETA|DELTA|GAMMA|NONE\",\"size\":\"small|medium|large|none\"}. Do not return any other keys or any other text. If no trade should be made, return {\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}.",
   "user_text": "TASK\nChoose exactly one action for this tick.\n\nSTRATEGY\nGo all in on the best setup.\n\nSETTINGS\nTrade size: 5/5. Use the largest size.\n\nPORTFOLIO\nFree cash reserve: high.\nCurrent positions: none.\nEnough buying power is available for any allowed size.\n\nMARKET\nALPHA: strong short-horizon momentum, confirming medium-horizon strength, low caution.\nBETA: weak short-horizon signal, weak confirmation.\nDELTA: mixed short-horizon signal, no clean confirmation.\nGAMMA: mixed and noisy.",
   "prompt_messages_json": [
     {
       "role": "system",
-      "content": "You are a trading agent. Choose exactly one action each turn. Return only a JSON object."
+      "content": "You are a trading agent. Choose exactly one action each turn. Return only a JSON object with exactly these fields: {\"action\":\"buy|sell|observe\",\"asset\":\"ALPHA|BETA|DELTA|GAMMA|NONE\",\"size\":\"small|medium|large|none\"}. Do not return any other keys or any other text. If no trade should be made, return {\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}."
     },
     {
       "role": "user",

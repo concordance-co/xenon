@@ -43,6 +43,7 @@ def run_analysis(
     n_folds: int = 5,
     seed: int = 42,
     limit: int = 0,
+    group_column: str = "",
     relation_name: str = "",
     activations_subdir: str = "",
     output_subdir: str = "",
@@ -74,7 +75,12 @@ def run_analysis(
         labels_path = labels_path / f"{relation_name}.parquet"
         with connect_neon(autocommit=True) as conn:
             ensure_schema(conn)
-            export_publication_labels(conn, relation_name=relation_name, output_path=labels_path)
+            export_publication_labels(
+                conn,
+                relation_name=relation_name,
+                output_path=labels_path,
+                group_column=group_column or None,
+            )
 
     config = AnalysisConfig(
         activations_dir=activations_dir,
@@ -87,6 +93,7 @@ def run_analysis(
         n_folds=n_folds,
         layers=parsed_layers,
         limit=limit if limit > 0 else None,
+        group_column=group_column or None,
         seed=seed,
     )
 
@@ -105,6 +112,7 @@ def main(
     n_folds: int = 5,
     seed: int = 42,
     limit: int = 0,
+    group_column: str = "",
     relation_name: str = "",
     activations_subdir: str = "",
     output_subdir: str = "",
@@ -119,6 +127,7 @@ def main(
         n_folds=n_folds,
         seed=seed,
         limit=limit,
+        group_column=group_column,
         relation_name=relation_name,
         activations_subdir=activations_subdir,
         output_subdir=output_subdir,

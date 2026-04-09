@@ -666,6 +666,7 @@ def _run_analysis(argv: list[str]) -> int:
     parser.add_argument("--n-folds", type=int, default=None)
     parser.add_argument("--layers", default=None)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--group-column", default=None)
     parser.add_argument("--seed", type=int, default=None)
     ns = parser.parse_args(argv)
 
@@ -701,7 +702,12 @@ def _run_analysis(argv: list[str]) -> int:
         if str(resolved_execution) == "local" and activations_dir is None:
             raise SystemExit("Specify --activations-dir or --capture-run")
         labels_path = Path("data/workflows") / spec["id"] / "labels" / f"{publication_name}.parquet"
-        export_publication_labels(conn, relation_name=publication_name, output_path=labels_path)
+        export_publication_labels(
+            conn,
+            relation_name=publication_name,
+            output_path=labels_path,
+            group_column=ns.group_column or analysis_block.get("group_column"),
+        )
 
         methods = analysis_block.get("methods")
         default_mode = methods[0] if isinstance(methods, list) and methods else analysis_block.get("mode") or "probe"
@@ -720,6 +726,7 @@ def _run_analysis(argv: list[str]) -> int:
             "n_folds": ns.n_folds or int(analysis_block.get("n_folds") or probe_defaults.get("n_folds") or 5),
             "layers": ns.layers or analysis_block.get("layers") or probe_defaults.get("layers"),
             "limit": ns.limit if ns.limit is not None else analysis_block.get("limit") or probe_defaults.get("limit"),
+            "group_column": ns.group_column or analysis_block.get("group_column"),
             "seed": ns.seed if ns.seed is not None else int(analysis_block.get("seed") or 42),
             "output_dir": str(ns.output_dir),
         }
@@ -749,6 +756,8 @@ def _run_analysis(argv: list[str]) -> int:
                     str(resolved["n_folds"]),
                     "--seed",
                     str(resolved["seed"]),
+                    "--group-column",
+                    str(resolved["group_column"] or ""),
                     "--relation-name",
                     str(publication_name),
                     "--activations-subdir",
@@ -790,6 +799,7 @@ def _run_analysis(argv: list[str]) -> int:
                     n_folds=int(resolved["n_folds"]),
                     layers=parsed_layers,
                     limit=resolved["limit"],
+                    group_column=str(resolved["group_column"]) if resolved["group_column"] else None,
                     run_subdir=True,
                     seed=int(resolved["seed"]),
                 )

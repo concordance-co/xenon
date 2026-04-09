@@ -42,6 +42,7 @@ class AnalysisConfig:
     n_folds: int = 5
     layers: list[int] | None = None
     limit: int | None = None
+    group_column: str | None = None
     run_subdir: bool = False
     seed: int = 42
 
@@ -324,6 +325,22 @@ class AnalysisDataset:
                 f"'{self.config.target}' labels."
             )
 
+        self.groups: np.ndarray | None = None
+        if self.config.group_column:
+            missing = [
+                row for row in self.rows
+                if row.get(self.config.group_column) in (None, "")
+            ]
+            if missing:
+                raise ValueError(
+                    f"group column '{self.config.group_column}' is missing for "
+                    f"{len(missing)} filtered rows"
+                )
+            self.groups = np.array(
+                [str(row[self.config.group_column]) for row in self.rows],
+                dtype=object,
+            )
+
         # Determine available layers and build index mapping
         sample_meta = meta_by_id.get(int(self.rows[0]["log_id"]), {})
         self.num_layers = sample_meta.get("num_layers_captured", 48)
@@ -389,6 +406,7 @@ class AnalysisDataset:
 
         # Build log_id → row index for this dataset's rows
         row_log_ids = {int(r["log_id"]): i for i, r in enumerate(self.rows)}
+        coverage_counts = [0] * len(self.rows)
 
         self._feature_cache = {}
         if include_router_indices:
@@ -407,7 +425,7 @@ class AnalysisDataset:
                 row_idx = row_log_ids.get(int(lid))
                 if row_idx is not None:
                     layer_cache[row_idx] = features[ci]
-                    self._valid_mask[row_idx] = True
+                    coverage_counts[row_idx] += 1
 
             self._feature_cache[layer] = layer_cache
 
@@ -443,7 +461,19 @@ class AnalysisDataset:
 
                 self._ri_cache[layer] = ri_layer_cache
 
+        required_coverage = len(target_layers)
+        self._valid_mask = [count == required_coverage for count in coverage_counts]
         valid_count = sum(self._valid_mask)
+        if valid_count < len(self.rows):
+            print(
+                f"  Compact files cover {valid_count}/{len(self.rows)} examples; "
+                "falling back to per-example loads"
+            )
+            self._feature_cache = {}
+            if include_router_indices:
+                self._ri_cache = {}
+            self._valid_mask = []
+            return False
         print(f"  Loaded {valid_count} examples from {len(target_layers)} compact files")
         return True
 
@@ -595,7 +625,7 @@ class AnalysisDataset:
 # Probe sweep
 # ---------------------------------------------------------------------------
 
-def _probe_one_layer(layer, X, y, n_folds, seed, rng_state):
+def _probe_one_layer(layer, X, y, n_folds, seed, rng_state, groups=None):
     """Train probes for a single layer. Returns result dict or None."""
     from sklearn.linear_model import SGDClassifier
     from sklearn.model_selection import cross_validate, StratifiedKFold
@@ -608,7 +638,6 @@ def _probe_one_layer(layer, X, y, n_folds, seed, rng_state):
         return None
 
     min_class_count = min(np.bincount(y))
-    actual_folds = max(2, min(n_folds, len(y), min_class_count))
 
     def _make_pipe():
         return make_pipeline(
@@ -621,7 +650,27 @@ def _probe_one_layer(layer, X, y, n_folds, seed, rng_state):
             ),
         )
 
-    cv = StratifiedKFold(n_splits=actual_folds, shuffle=True, random_state=seed)
+    cv_kwargs = {}
+    split_mode = "stratified_kfold"
+    if groups is not None:
+        unique_groups = len(set(groups.tolist() if isinstance(groups, np.ndarray) else groups))
+        if unique_groups < 2:
+            return None
+        actual_folds = max(2, min(n_folds, unique_groups))
+        try:
+            from sklearn.model_selection import StratifiedGroupKFold
+
+            cv = StratifiedGroupKFold(n_splits=actual_folds, shuffle=True, random_state=seed)
+            split_mode = "stratified_group_kfold"
+        except ImportError:
+            from sklearn.model_selection import GroupKFold
+
+            cv = GroupKFold(n_splits=actual_folds)
+            split_mode = "group_kfold"
+        cv_kwargs["groups"] = groups
+    else:
+        actual_folds = max(2, min(n_folds, len(y), min_class_count))
+        cv = StratifiedKFold(n_splits=actual_folds, shuffle=True, random_state=seed)
 
     # Run real + shuffled CV in parallel across folds
     rng = np.random.RandomState(rng_state)
@@ -635,14 +684,16 @@ def _probe_one_layer(layer, X, y, n_folds, seed, rng_state):
         _make_pipe(), X, y, cv=cv,
         scoring=["accuracy", "balanced_accuracy"],
         n_jobs=-1,
+        **cv_kwargs,
     )
     scores = cv_results["test_accuracy"]
     balanced_scores = cv_results["test_balanced_accuracy"]
 
     try:
         s = cross_validate(
-            _make_pipe(), X, y_shuffled, cv=actual_folds,
+            _make_pipe(), X, y_shuffled, cv=cv,
             scoring=["accuracy"], n_jobs=-1,
+            **cv_kwargs,
         )
         baseline_shuffled = float(s["test_accuracy"].mean())
     except Exception:
@@ -660,6 +711,8 @@ def _probe_one_layer(layer, X, y, n_folds, seed, rng_state):
         "selectivity": round(selectivity, 4),
         "n_examples": len(y),
         "n_classes": len(np.unique(y)),
+        "split_mode": split_mode,
+        "n_groups": int(len(set(groups.tolist() if isinstance(groups, np.ndarray) else groups))) if groups is not None else None,
     }
 
 
@@ -680,6 +733,11 @@ def run_probe_sweep(config: AnalysisConfig) -> None:
     print(f"\nProbe sweep: target={config.target}, source={config.data_source}, "
           f"pooling={config.pooling}")
     print(f"  {len(dataset.rows)} examples, {actual_classes} classes present: {dist}")
+    if dataset.groups is not None:
+        print(
+            f"  Grouped evaluation: {config.group_column} "
+            f"({len(set(dataset.groups.tolist()))} groups)"
+        )
     if actual_classes < 2:
         print(f"  ERROR: need at least 2 classes for probes. "
               f"All examples are '{dataset.class_names[dataset.y[0]]}'. "
@@ -697,12 +755,13 @@ def run_probe_sweep(config: AnalysisConfig) -> None:
     for layer in layers:
         X, y = dataset.get_features(layer)
         rng_state = rng.randint(0, 2**31)
-        layer_args.append((layer, X, y, rng_state))
+        layer_groups = dataset.groups[np.array(dataset._valid_mask)] if dataset.groups is not None else None
+        layer_args.append((layer, X, y, rng_state, layer_groups))
 
     print(f"  Running {len(layer_args)} layers in parallel...")
     raw_results = Parallel(n_jobs=-1, prefer="processes")(
-        delayed(_probe_one_layer)(layer, X, y, config.n_folds, config.seed, rng_state)
-        for layer, X, y, rng_state in layer_args
+        delayed(_probe_one_layer)(layer, X, y, config.n_folds, config.seed, rng_state, groups)
+        for layer, X, y, rng_state, groups in layer_args
     )
 
     results = []
@@ -992,22 +1051,9 @@ def run_compact(config: AnalysisConfig) -> dict:
     from safetensors import safe_open
     from safetensors.numpy import save_file
 
-    meta_path = config.activations_dir / "metadata.parquet"
-    meta_table = pq.read_table(meta_path)
-    meta_rows = meta_table.to_pylist()
-
-    # Determine layers from first example
-    import json as _json
-    sample = meta_rows[0]
-    captured_raw = sample.get("captured_layers")
-    if captured_raw:
-        if isinstance(captured_raw, str):
-            captured_layers = _json.loads(captured_raw)
-        else:
-            captured_layers = list(captured_raw)
-    else:
-        captured_layers = list(range(sample.get("num_layers_captured", 48)))
-
+    meta_rows, captured_layers = _resolve_compaction_rows(config)
+    if not meta_rows:
+        raise ValueError("No activation rows resolved for compaction.")
     layer_to_idx = {layer: idx for idx, layer in enumerate(captured_layers)}
     layers = config.layers or captured_layers
 
@@ -1096,6 +1142,18 @@ def run_compact(config: AnalysisConfig) -> dict:
             print(f"  Layer {layer}: {out_path.name} ({size_mb:.1f} MB)")
             result["files"].append(str(out_path))
 
+    manifest_path = _compact_manifest_path(config)
+    manifest = {
+        "source_tag": _compact_source_tag(config),
+        "pooling": config.pooling,
+        "layers": [int(layer) for layer in layers],
+        "log_ids": sorted(int(row["log_id"]) for row in meta_rows),
+        "row_count": len(meta_rows),
+        "scope": "label_slice" if config.labels_path is not None else "full_capture",
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    print(f"  Manifest: {manifest_path.name} ({manifest['row_count']} rows)")
+
     return result
 
 
@@ -1122,10 +1180,103 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--layers", type=str, default="",
                    help="Comma-separated layer indices (default: all)")
     p.add_argument("--limit", type=int, default=0)
+    p.add_argument("--group-column", type=str, default=None)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--run-subdir", action="store_true",
                    help="Write analysis outputs into a timestamped subdirectory under output-dir.")
     return p
+
+
+def _captured_layers_from_meta_rows(meta_rows: list[dict[str, Any]]) -> list[int]:
+    if not meta_rows:
+        return []
+    sample = meta_rows[0]
+    captured_raw = sample.get("captured_layers")
+    if captured_raw:
+        if isinstance(captured_raw, str):
+            return [int(v) for v in json.loads(captured_raw)]
+        return [int(v) for v in captured_raw]
+    return list(range(int(sample.get("num_layers_captured", 48))))
+
+
+def _compact_source_tag(config: AnalysisConfig) -> str:
+    return "router" if config.data_source == "router" else "residual"
+
+
+def _compact_manifest_path(config: AnalysisConfig) -> Path:
+    return (
+        config.activations_dir
+        / "compact"
+        / f"{_compact_source_tag(config)}_{config.pooling}_manifest.json"
+    )
+
+
+def _load_compact_manifest(config: AnalysisConfig) -> dict[str, Any] | None:
+    manifest_path = _compact_manifest_path(config)
+    if not manifest_path.exists():
+        return None
+    try:
+        return json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _resolve_compaction_rows(config: AnalysisConfig) -> tuple[list[dict[str, Any]], list[int]]:
+    """Resolve only the metadata rows needed for the current analysis slice."""
+    meta_path = config.activations_dir / "metadata.parquet"
+    meta_rows = pq.read_table(meta_path).to_pylist()
+    captured_layers = _captured_layers_from_meta_rows(meta_rows)
+    if not meta_rows:
+        return [], captured_layers
+
+    meta_by_id: dict[int, dict[str, Any]] = {}
+    meta_by_identity: dict[str, dict[str, Any]] = {}
+    for row in meta_rows:
+        row["artifact_id"] = _artifact_basename_for_row(row)
+        if not row.get("source_prompt_hash"):
+            row["source_prompt_hash"] = _compute_source_prompt_hash(row.get("prompt_messages_json"))
+        log_id = row.get("log_id")
+        if log_id is not None:
+            meta_by_id[int(log_id)] = row
+        token = _row_identity_token(row)
+        if token is not None:
+            meta_by_identity[token] = row
+
+    if config.labels_path is None:
+        selected = list(meta_rows)
+        if config.limit:
+            selected = selected[: config.limit]
+        return selected, captured_layers
+
+    label_rows = AnalysisDataset._load_labels_from_parquet(config.labels_path)
+    joined: list[dict[str, Any]] = []
+    for label_row in label_rows:
+        matched_meta, _ = AnalysisDataset._match_metadata_row(
+            label_row,
+            meta_by_identity,
+            meta_by_id,
+        )
+        if matched_meta is None:
+            continue
+        label_prompt_hash = label_row.get("workflow_prompt_hash")
+        meta_prompt_hash = matched_meta.get("source_prompt_hash")
+        if label_prompt_hash and meta_prompt_hash and str(label_prompt_hash) != str(meta_prompt_hash):
+            continue
+        joined.append({**label_row, **matched_meta})
+
+    if config.limit:
+        joined = joined[: config.limit]
+
+    filtered_rows, _, _ = _encode_labels(joined, config.target)
+    selected: list[dict[str, Any]] = []
+    seen_log_ids: set[int] = set()
+    for row in filtered_rows:
+        log_id = int(row["log_id"])
+        if log_id in seen_log_ids:
+            continue
+        seen_log_ids.add(log_id)
+        selected.append(meta_by_id[log_id])
+    return selected, captured_layers
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -1146,6 +1297,7 @@ def main(argv: list[str] | None = None) -> None:
         n_folds=args.n_folds,
         layers=parsed_layers,
         limit=args.limit if args.limit > 0 else None,
+        group_column=args.group_column,
         run_subdir=args.run_subdir,
         seed=args.seed,
     )
@@ -1158,11 +1310,23 @@ def _needs_compact(config: AnalysisConfig) -> bool:
     compact_dir = config.activations_dir / "compact"
     if not compact_dir.exists():
         return True
-    source_tag = config.data_source  # "router" or "residual"
+    source_tag = _compact_source_tag(config)
     pooling = config.pooling
-    # Check if at least one compact file exists for this source+pooling
-    pattern = f"{source_tag}_{pooling}_layer*.safetensors"
-    return not any(compact_dir.glob(pattern))
+    _, captured_layers = _resolve_compaction_rows(config)
+    target_layers = config.layers or captured_layers
+    if not target_layers:
+        return True
+    for layer in target_layers:
+        path = compact_dir / f"{source_tag}_{pooling}_layer{layer}.safetensors"
+        if not path.exists():
+            return True
+    manifest = _load_compact_manifest(config)
+    if manifest is None:
+        return True
+    manifest_ids = {int(v) for v in manifest.get("log_ids", [])}
+    required_rows, _ = _resolve_compaction_rows(config)
+    required_ids = {int(row["log_id"]) for row in required_rows}
+    return not required_ids.issubset(manifest_ids)
 
 
 def _write_results_json(output_dir: Path, results: dict) -> Path:

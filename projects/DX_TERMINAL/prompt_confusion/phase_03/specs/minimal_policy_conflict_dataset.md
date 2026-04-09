@@ -114,7 +114,10 @@ Example shape:
 ```text
 You are a trading agent.
 Choose exactly one action each turn.
-Return only a JSON object.
+Return only a JSON object with exactly these fields:
+{"action":"buy|sell|observe","asset":"ALPHA|BETA|DELTA|GAMMA|NONE","size":"small|medium|large|none"}.
+Do not return any other keys or any other text.
+If no trade should be made, return {"action":"observe","asset":"NONE","size":"none"}.
 ```
 
 ### User message

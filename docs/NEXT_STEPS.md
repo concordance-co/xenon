@@ -30,6 +30,7 @@ The intended model is:
 
 - `pipelines.cli` plus workflow specs = control plane
 - Modal = execution path for capture and analysis
+- Neon views/relations = analysis slice surface
 
 The remaining work is to validate and tighten that connection.
 
@@ -81,6 +82,21 @@ uv run -m pipelines.cli capture run --spec <spec_id> --output-dir projects/<proj
 uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
 ```
 
+For narrower analysis, prefer an explicit slice publication and grouped
+evaluation when the rows are related:
+
+```bash
+uv run -m pipelines.cli analysis run \
+  --capture-run <run_id> \
+  --publication <slice_relation> \
+  --group-column matched_pair_id \
+  --execution modal \
+  --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
+```
+
+Analysis compaction is now slice-local rather than full-capture by default,
+which makes repeated Modal analysis on narrow slices much cheaper.
+
 6. Build report:
 
 ```bash
@@ -95,6 +111,8 @@ Capture these before changing code:
 - error output
 - whether failure was local CLI, Modal dispatch, capture output, or analysis/report chaining
 - relevant `workflow_runs` / `publication list` state
+- whether the analysis used an explicit publication slice
+- whether grouped evaluation was enabled, and with which group column
 
 ## Legacy Surfaces
 

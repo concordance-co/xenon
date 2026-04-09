@@ -530,6 +530,7 @@ def run_vllm_capture(
 
     batches = [rows[i : i + batch_size] for i in range(0, len(rows), batch_size)]
     print(f"  {len(batches)} batches of up to {batch_size}")
+    metadata_run_id = str(output_subdir or source_relation or "adhoc").strip()
 
     worker_kwargs: dict = {"gpu": gpu}
     if max_containers > 0:
@@ -552,6 +553,7 @@ def run_vllm_capture(
     with db_conn.cursor() as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS capture_metadata (
+                run_id            TEXT NOT NULL DEFAULT '',
                 log_id            INT PRIMARY KEY,
                 seq_len           INT NOT NULL,
                 prompt_hash       TEXT,
@@ -566,6 +568,13 @@ def run_vllm_capture(
                 num_experts       INT
             )
         """)
+        for ddl in (
+            "ALTER TABLE capture_metadata ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE capture_metadata DROP CONSTRAINT IF EXISTS capture_metadata_pkey",
+            "CREATE UNIQUE INDEX IF NOT EXISTS capture_metadata_run_log_id_idx ON capture_metadata (run_id, log_id)",
+            "CREATE INDEX IF NOT EXISTS capture_metadata_log_id_idx ON capture_metadata (log_id)",
+        ):
+            cur.execute(ddl)
     db_conn.commit()
 
     for batch_meta in worker.capture_batch.map(
@@ -588,11 +597,11 @@ def run_vllm_capture(
                 for row in batch_meta:
                     cur.execute("""
                         INSERT INTO capture_metadata
-                            (log_id, seq_len, prompt_hash, capture_timestamp,
+                            (run_id, log_id, seq_len, prompt_hash, capture_timestamp,
                              file_size_bytes, elapsed_s, has_router, captured_layers,
                              pooling, num_layers_captured, hidden_dim, num_experts)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (log_id) DO UPDATE SET
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (run_id, log_id) DO UPDATE SET
                             seq_len = EXCLUDED.seq_len,
                             file_size_bytes = EXCLUDED.file_size_bytes,
                             elapsed_s = EXCLUDED.elapsed_s,
@@ -604,7 +613,7 @@ def run_vllm_capture(
                             num_experts = EXCLUDED.num_experts,
                             capture_timestamp = EXCLUDED.capture_timestamp
                     """, (
-                        row["log_id"], row["seq_len"], row.get("prompt_hash"),
+                        metadata_run_id, row["log_id"], row["seq_len"], row.get("prompt_hash"),
                         row["capture_timestamp"], row["file_size_bytes"],
                         row["elapsed_s"], row.get("has_router", False),
                         row.get("captured_layers"), row.get("pooling", "none"),

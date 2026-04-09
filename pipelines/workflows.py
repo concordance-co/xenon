@@ -536,11 +536,14 @@ def export_publication_labels(
     relation_name: str,
     output_path: Path,
     label_column: str = "workflow_label",
+    group_column: str | None = None,
 ) -> Path:
     relation = validate_identifier(relation_name, label="publication relation_name")
     label_col = validate_identifier(label_column, label="label column")
-    columns = ["log_id", label_col]
     select_bits = ["log_id", f"{label_col} AS workflow_label"]
+    group_col = validate_identifier(group_column, label="group column") if group_column else None
+    if group_col and relation_has_column(conn, relation, group_col):
+        select_bits.append(group_col)
     if relation_has_column(conn, relation, "workflow_row_key"):
         select_bits.append("workflow_row_key")
     else:

@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import Any
 
 
-SYSTEM_TEXT = "You are a trading agent. Choose exactly one action each turn. Return only a JSON object."
+SYSTEM_TEXT = (
+    "You are a trading agent. Choose exactly one action each turn. "
+    "Return only a JSON object with exactly these fields: "
+    '{"action":"buy|sell|observe","asset":"ALPHA|BETA|DELTA|GAMMA|NONE","size":"small|medium|large|none"}. '
+    "Do not return any other keys or any other text. "
+    'If no trade should be made, return {"action":"observe","asset":"NONE","size":"none"}.'
+)
 OUTPUT_DIR = Path("projects/DX_TERMINAL/prompt_confusion/phase_03/outputs/phase_03_dataset")
 
 SETTING_BUCKETS: tuple[tuple[str, int, bool, int], ...] = (
@@ -98,9 +104,9 @@ ACTIVITY_TRADE_STRATEGIES = (
 )
 
 ACTIVITY_OBSERVE_STRATEGIES = (
-    StrategyVariant("activity_observe_v0", "This is a monitoring tick. Do not trade unless the case is overwhelming."),
-    StrategyVariant("activity_observe_v1", "Prioritize observation over turnover on this tick."),
-    StrategyVariant("activity_observe_v2", "Stand down and watch unless there is an exceptional reason to act."),
+    StrategyVariant("activity_observe_v0", "Capital preservation comes first. Do not trade unless the edge is clearly exceptional."),
+    StrategyVariant("activity_observe_v1", "Default to no action unless one setup is unusually strong."),
+    StrategyVariant("activity_observe_v2", "Stay disciplined and avoid forcing trades on marginal signals."),
 )
 
 DIV_CONCENTRATE_STRATEGIES = (

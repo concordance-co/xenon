@@ -50,7 +50,8 @@ snapshots stored per phase under `projects/<project>/phases/<phase>/specs/`.
     "methods": ["probe"],
     "targets": ["workflow_label"],
     "data_source": "router",
-    "pooling": "last_token"
+    "pooling": "last_token",
+    "group_column": "matched_pair_id"
   },
   "report": {
     "output_dir": "projects/<project>/phases/<phase>/reports"
@@ -81,6 +82,12 @@ snapshots stored per phase under `projects/<project>/phases/<phase>/specs/`.
   `dataset.identity.column` when `log_id` is synthetic or otherwise not durable.
 - Workflow publications also expose `workflow_prompt_hash` so capture reuse can
   detect prompt drift.
+- Workflow publications may also expose grouping columns such as
+  `matched_pair_id`. Analysis can export these columns and use them for grouped
+  evaluation.
 - Capture reads from that published relation.
 - Analysis can target `workflow_label` directly.
+- Analysis can also use `analysis.group_column` or `--group-column` to keep
+  dependent rows in the same fold during grouped CV. This should be preferred
+  over random row-level splits when rows share prompt structure.
 - Legacy `prep-targets` are deprecated and are no longer part of the canonical model.

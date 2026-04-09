@@ -67,6 +67,41 @@ uv run -m pipelines.cli analysis run \
 This exports workflow labels from the published Neon relation into a local
 parquet file and feeds that into the existing analysis toolkit.
 
+For workflow-driven analysis on a narrower slice, prefer passing an explicit
+publication relation or view:
+
+```bash
+uv run -m pipelines.cli analysis run \
+  --capture-run <run_id> \
+  --publication <slice_relation> \
+  --execution modal \
+  --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
+```
+
+This is the canonical way to analyze:
+
+- aligned vs strong-conflict slices
+- family-restricted slices
+- strong-conflict-only source-following slices
+
+Analysis compaction is slice-aware: it now compacts only the rows present in
+the exported label slice, not the entire capture by default.
+
+If the benchmark has dependent rows, prefer grouped evaluation:
+
+```bash
+uv run -m pipelines.cli analysis run \
+  --capture-run <run_id> \
+  --publication <slice_relation> \
+  --group-column matched_pair_id \
+  --execution modal \
+  --output-dir projects/<project>/phases/<phase>/outputs/<analysis_run>
+```
+
+Use `--group-column` whenever related rows should stay in the same fold. This
+is especially important for matched prompt pairs, template families, or other
+structured variants where random row-level CV would leak information.
+
 ## 5. Build A Report
 
 ```bash

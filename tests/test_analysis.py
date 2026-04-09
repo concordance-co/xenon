@@ -17,10 +17,12 @@ import pytest
 from pipelines.interp.analysis import (
     AnalysisConfig,
     AnalysisDataset,
+    _needs_compact,
     _encode_labels,
     dispatch,
     main,
     run_expert_analysis,
+    run_compact,
     run_pca,
     run_probe_sweep,
 )
@@ -142,6 +144,15 @@ def _make_labels(
     labels_path = tmp_path / "labels.parquet"
     table = pa.Table.from_pylist(rows)
     pq.write_table(table, labels_path)
+    return labels_path
+
+
+def _make_workflow_labels(
+    tmp_path: Path,
+    rows: list[dict[str, Any]],
+) -> Path:
+    labels_path = tmp_path / "workflow_labels.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), labels_path)
     return labels_path
 
 
@@ -389,6 +400,96 @@ class TestAnalysisDataset:
             AnalysisDataset(config)
 
 
+class TestSliceAwareCompaction:
+    def test_run_compact_only_writes_rows_for_label_slice(self, tmp_path):
+        log_ids = [100, 101, 102, 103, 104]
+        act_dir = _make_activations(tmp_path, log_ids, include_router=False)
+        labels_dir = tmp_path / "slice_labels"
+        labels_dir.mkdir()
+        labels_path = _make_labels(labels_dir, log_ids[:3])
+
+        config = AnalysisConfig(
+            activations_dir=act_dir,
+            labels_path=labels_path,
+            target="decision_type",
+            data_source="residual",
+            layers=[0],
+        )
+        run_compact(config)
+
+        manifest = json.loads((act_dir / "compact" / "residual_last_token_manifest.json").read_text())
+        assert manifest["log_ids"] == log_ids[:3]
+        assert manifest["row_count"] == 3
+
+        from safetensors import safe_open
+
+        compact_path = act_dir / "compact" / "residual_last_token_layer0.safetensors"
+        with safe_open(str(compact_path), framework="numpy") as handle:
+            features = handle.get_tensor("features")
+            compact_log_ids = handle.get_tensor("log_ids")
+
+        assert features.shape[0] == 3
+        assert compact_log_ids.tolist() == log_ids[:3]
+
+    def test_needs_compact_false_for_slice_subset_of_existing_manifest(self, tmp_path):
+        log_ids = [100, 101, 102, 103, 104]
+        act_dir = _make_activations(tmp_path, log_ids, include_router=False)
+
+        labels_dir_a = tmp_path / "slice_a"
+        labels_dir_a.mkdir()
+        labels_path_a = _make_labels(labels_dir_a, log_ids[:4])
+        config_a = AnalysisConfig(
+            activations_dir=act_dir,
+            labels_path=labels_path_a,
+            target="decision_type",
+            data_source="residual",
+            layers=[0],
+        )
+        run_compact(config_a)
+
+        labels_dir_b = tmp_path / "slice_b"
+        labels_dir_b.mkdir()
+        labels_path_b = _make_labels(labels_dir_b, log_ids[:2])
+        config_b = AnalysisConfig(
+            activations_dir=act_dir,
+            labels_path=labels_path_b,
+            target="decision_type",
+            data_source="residual",
+            layers=[0],
+        )
+
+        assert _needs_compact(config_b) is False
+
+    def test_needs_compact_true_when_slice_requires_new_rows(self, tmp_path):
+        log_ids = [100, 101, 102, 103, 104]
+        act_dir = _make_activations(tmp_path, log_ids, include_router=False)
+
+        labels_dir_a = tmp_path / "slice_a"
+        labels_dir_a.mkdir()
+        labels_path_a = _make_labels(labels_dir_a, log_ids[:3])
+        config_a = AnalysisConfig(
+            activations_dir=act_dir,
+            labels_path=labels_path_a,
+            target="decision_type",
+            data_source="residual",
+            layers=[0],
+        )
+        run_compact(config_a)
+
+        labels_dir_b = tmp_path / "slice_b"
+        labels_dir_b.mkdir()
+        labels_path_b = _make_labels(labels_dir_b, log_ids[:4])
+        config_b = AnalysisConfig(
+            activations_dir=act_dir,
+            labels_path=labels_path_b,
+            target="decision_type",
+            data_source="residual",
+            layers=[0],
+        )
+
+        assert _needs_compact(config_b) is True
+
+
 # ---------------------------------------------------------------------------
 # Probe sweep tests
 # ---------------------------------------------------------------------------
@@ -442,6 +543,64 @@ class TestProbeSweep:
         )
         results = run_probe_sweep(config)
         assert len(results) == 1
+
+    def test_probe_grouped_cv_blocks_group_identity_leakage(self, tmp_path):
+        log_ids = list(range(100, 140))
+        act_dir = _make_activations(
+            tmp_path,
+            log_ids,
+            include_router=False,
+            hidden_dim=40,
+            seed=0,
+        )
+
+        # Overwrite residual activations so each matched_pair_id has a unique feature
+        # basis shared by both rows. Random row CV can memorize this; grouped CV cannot.
+        res_dir = act_dir / "residual_stream"
+        for idx, lid in enumerate(log_ids):
+            group_id = idx // 2
+            vec = np.zeros((NUM_LAYERS, SEQ_LEN, 40), dtype=np.float16)
+            vec[:, :, group_id] = 1.0
+            _write_safetensors(res_dir / f"{lid}.safetensors", {"residual_stream": vec})
+
+        workflow_rows = []
+        for idx, lid in enumerate(log_ids):
+            group_id = idx // 2
+            workflow_rows.append(
+                {
+                    "log_id": lid,
+                    "workflow_label": "aligned" if group_id % 2 == 0 else "conflict",
+                    "matched_pair_id": f"pair_{group_id}",
+                }
+            )
+        labels_path = _make_workflow_labels(tmp_path, workflow_rows)
+
+        ungrouped = AnalysisConfig(
+            activations_dir=act_dir,
+            labels_path=labels_path,
+            output_dir=tmp_path / "ungrouped",
+            target="workflow_label",
+            data_source="residual",
+            layers=[0],
+            n_folds=5,
+        )
+        grouped = AnalysisConfig(
+            activations_dir=act_dir,
+            labels_path=labels_path,
+            output_dir=tmp_path / "grouped",
+            target="workflow_label",
+            data_source="residual",
+            layers=[0],
+            n_folds=5,
+            group_column="matched_pair_id",
+        )
+
+        ungrouped_results = run_probe_sweep(ungrouped)
+        grouped_results = run_probe_sweep(grouped)
+
+        assert ungrouped_results[0]["accuracy_mean"] >= 0.95
+        assert grouped_results[0]["accuracy_mean"] < 0.7
+        assert grouped_results[0]["split_mode"] == "stratified_group_kfold"
 
 
 # ---------------------------------------------------------------------------
