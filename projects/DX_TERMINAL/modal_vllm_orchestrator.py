@@ -98,7 +98,7 @@ class VLLMCaptureWorker:
             "model": local_path,
             "enforce_eager": True,
             "max_num_seqs": 1,
-            "enable_chunked_prefill": False,
+            "enable_chunked_prefill": True,
             "tensor_parallel_size": self.tensor_parallel_size,
             "gpu_memory_utilization": float(self.gpu_memory_utilization),
         }
@@ -144,6 +144,13 @@ class VLLMCaptureWorker:
             print("Router capture enabled on MoE blocks")
         else:
             print("Model has no MoE blocks; router capture disabled")
+
+    @modal.exit()
+    def teardown(self):
+        from pipelines.interp.modal_vllm_engine import _cleanup_cuda_memory, _destroy_llm
+
+        _destroy_llm(getattr(self, "llm", None))
+        _cleanup_cuda_memory()
 
     @modal.method()
     def capture_batch(
@@ -225,7 +232,12 @@ class VLLMCaptureWorker:
                 seq_len = len(input_ids)
                 if pool_on_capture:
                     residual, router_logits, router_indices = _apply_pooling(
-                        residual, router_logits, router_indices, pool_on_capture
+                        residual,
+                        router_logits,
+                        router_indices,
+                        pool_on_capture,
+                        input_ids=input_ids,
+                        eos_token_id=getattr(self.tokenizer, "eos_token_id", None),
                     )
 
                 file_size = 0
@@ -679,7 +691,7 @@ class CounterfactualVLLMCaptureWorker:
             "model": local_path,
             "enforce_eager": True,
             "max_num_seqs": 1,
-            "enable_chunked_prefill": False,
+            "enable_chunked_prefill": True,
             "tensor_parallel_size": self.tensor_parallel_size,
             "gpu_memory_utilization": float(self.gpu_memory_utilization),
         }
@@ -719,6 +731,13 @@ class CounterfactualVLLMCaptureWorker:
         self.is_moe = _init_router_capture_on_model(self.llm, max_tokens=buffer_size)
         if self.is_moe:
             print("Router capture enabled on MoE blocks")
+
+    @modal.exit()
+    def teardown(self):
+        from pipelines.interp.modal_vllm_engine import _cleanup_cuda_memory, _destroy_llm
+
+        _destroy_llm(getattr(self, "llm", None))
+        _cleanup_cuda_memory()
 
     @modal.method()
     def capture_batch(
@@ -1040,7 +1059,7 @@ class ResearchRerunVLLMCaptureWorker:
             "model": local_path,
             "enforce_eager": True,
             "max_num_seqs": 1,
-            "enable_chunked_prefill": False,
+            "enable_chunked_prefill": True,
             "tensor_parallel_size": self.tensor_parallel_size,
             "gpu_memory_utilization": float(self.gpu_memory_utilization),
         }
@@ -1077,6 +1096,13 @@ class ResearchRerunVLLMCaptureWorker:
         self.is_moe = _init_router_capture_on_model(self.llm, max_tokens=buffer_size)
         if self.is_moe:
             print("Router capture enabled on MoE blocks")
+
+    @modal.exit()
+    def teardown(self):
+        from pipelines.interp.modal_vllm_engine import _cleanup_cuda_memory, _destroy_llm
+
+        _destroy_llm(getattr(self, "llm", None))
+        _cleanup_cuda_memory()
 
     @modal.method()
     def capture_batch(

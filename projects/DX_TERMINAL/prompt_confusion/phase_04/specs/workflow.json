@@ -25,7 +25,7 @@
     },
     "probe_defaults": {
       "data_source": "residual",
-      "pooling": "last_token",
+      "pooling": "prompt_eos",
       "n_folds": 5
     },
     "identity": {
@@ -39,14 +39,14 @@
     "capture_generation": false,
     "capture_reasoning": false,
     "enable_thinking": false,
-    "add_generation_prompt": true,
+    "add_generation_prompt": false,
     "generation_max_tokens": 256,
     "generation_temperature": 0.0,
     "generation_top_p": 1.0,
     "layers": [
       0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44
     ],
-    "pooling": "last_token",
+    "pooling": "prompt_eos",
     "router": true,
     "residual": true
   },
@@ -58,8 +58,9 @@
       "workflow_label"
     ],
     "data_source": "residual",
-    "pooling": "last_token",
-    "n_folds": 5
+    "pooling": "prompt_eos",
+    "n_folds": 5,
+    "group_column": "matched_pair_id"
   },
   "report": {
     "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_04/reports"

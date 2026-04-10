@@ -1,0 +1,43 @@
+{
+  "capture_run_id": "7e71cf742002",
+  "relation_name": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+  "n_examples": 123,
+  "label_counts": {
+    "strategy": 72,
+    "setting": 51
+  },
+  "captured_layers": [
+    0,
+    4,
+    8,
+    12,
+    16,
+    20,
+    24,
+    28,
+    32,
+    36,
+    40,
+    44
+  ],
+  "router_section_rows": 25,
+  "best_policy_probe": {
+    "data_source": "residual",
+    "section_name": "settings",
+    "pooling": "mean",
+    "layer": 24,
+    "n_source_examples": 123,
+    "balanced_accuracy": 0.7647,
+    "balanced_accuracy_std": 0.1315,
+    "n_examples": 123,
+    "n_folds": 5,
+    "split_mode": "grouped"
+  },
+  "direction_spec": {
+    "section_name": "settings",
+    "pooling": "mean",
+    "layer": 24,
+    "direction_norm": 1.499601
+  },
+  "output_dir": "/data/analysis_results/prompt_confusion/phase_04/conflict_arbitration_stage1/section_attribution"
+}

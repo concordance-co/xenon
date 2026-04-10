@@ -1,0 +1,1813 @@
+{
+  "run_id": "16474bceae4e",
+  "output_table": "capture_outputs_conflict_probe_v3",
+  "dataset_relation": "workflow_dataset_conflict_probe_v3_v1",
+  "summary": {
+    "overall": {
+      "rows": 288,
+      "valid_output_true": 288,
+      "exact_expected_true": 148,
+      "behavior_side_counts": {
+        "strategy": 159,
+        "setting": 64,
+        "both": 0,
+        "neither": 65
+      },
+      "readout_side_counts": {
+        "strategy": 192,
+        "setting": 69,
+        "both": 0,
+        "neither": 27
+      },
+      "action_label_counts": {
+        "buy": 155,
+        "sell": 0,
+        "observe": 133,
+        "invalid": 0
+      },
+      "finish_reason_counts": {
+        "stop": 288
+      },
+      "valid_output_rate": 1.0,
+      "exact_expected_rate": 0.5139,
+      "strategy_follow_rate": 0.5521,
+      "setting_follow_rate": 0.2222,
+      "readout_strategy_rate": 0.6667,
+      "readout_setting_rate": 0.2396
+    },
+    "by_split": {
+      "aligned": {
+        "rows": 144,
+        "valid_output_true": 144,
+        "exact_expected_true": 102,
+        "behavior_side_counts": {
+          "strategy": 102,
+          "setting": 18,
+          "both": 0,
+          "neither": 24
+        },
+        "readout_side_counts": {
+          "strategy": 120,
+          "setting": 18,
+          "both": 0,
+          "neither": 6
+        },
+        "action_label_counts": {
+          "buy": 84,
+          "sell": 0,
+          "observe": 60,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.7083,
+        "strategy_follow_rate": 0.7083,
+        "setting_follow_rate": 0.125,
+        "readout_strategy_rate": 0.8333,
+        "readout_setting_rate": 0.125
+      },
+      "conflict": {
+        "rows": 144,
+        "valid_output_true": 144,
+        "exact_expected_true": 46,
+        "behavior_side_counts": {
+          "strategy": 57,
+          "setting": 46,
+          "both": 0,
+          "neither": 41
+        },
+        "readout_side_counts": {
+          "strategy": 72,
+          "setting": 51,
+          "both": 0,
+          "neither": 21
+        },
+        "action_label_counts": {
+          "buy": 71,
+          "sell": 0,
+          "observe": 73,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.3194,
+        "strategy_follow_rate": 0.3958,
+        "setting_follow_rate": 0.3194,
+        "readout_strategy_rate": 0.5,
+        "readout_setting_rate": 0.3542
+      }
+    },
+    "by_family": {
+      "activity_force_observe::aligned": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 36,
+        "behavior_side_counts": {
+          "strategy": 36,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 36,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 36,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_observe::conflict": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 31,
+          "setting": 0,
+          "both": 0,
+          "neither": 5
+        },
+        "readout_side_counts": {
+          "strategy": 31,
+          "setting": 5,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 5,
+          "sell": 0,
+          "observe": 31,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.8611,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.8611,
+        "readout_setting_rate": 0.1389
+      },
+      "activity_force_trade::aligned": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 18,
+          "both": 0,
+          "neither": 18
+        },
+        "readout_side_counts": {
+          "strategy": 18,
+          "setting": 18,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 18,
+          "sell": 0,
+          "observe": 18,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.5,
+        "readout_strategy_rate": 0.5,
+        "readout_setting_rate": 0.5
+      },
+      "activity_force_trade::conflict": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 21,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 21,
+          "both": 0,
+          "neither": 15
+        },
+        "readout_side_counts": {
+          "strategy": 15,
+          "setting": 21,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 15,
+          "sell": 0,
+          "observe": 21,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.5833,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.5833,
+        "readout_strategy_rate": 0.4167,
+        "readout_setting_rate": 0.5833
+      },
+      "trade_size_force_large::aligned": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 34,
+        "behavior_side_counts": {
+          "strategy": 34,
+          "setting": 0,
+          "both": 0,
+          "neither": 2
+        },
+        "readout_side_counts": {
+          "strategy": 34,
+          "setting": 0,
+          "both": 0,
+          "neither": 2
+        },
+        "action_label_counts": {
+          "buy": 34,
+          "sell": 0,
+          "observe": 2,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.9444,
+        "strategy_follow_rate": 0.9444,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.9444,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_large::conflict": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 18,
+        "behavior_side_counts": {
+          "strategy": 3,
+          "setting": 18,
+          "both": 0,
+          "neither": 15
+        },
+        "readout_side_counts": {
+          "strategy": 3,
+          "setting": 18,
+          "both": 0,
+          "neither": 15
+        },
+        "action_label_counts": {
+          "buy": 21,
+          "sell": 0,
+          "observe": 15,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.5,
+        "strategy_follow_rate": 0.0833,
+        "setting_follow_rate": 0.5,
+        "readout_strategy_rate": 0.0833,
+        "readout_setting_rate": 0.5
+      },
+      "trade_size_force_small::aligned": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 32,
+        "behavior_side_counts": {
+          "strategy": 32,
+          "setting": 0,
+          "both": 0,
+          "neither": 4
+        },
+        "readout_side_counts": {
+          "strategy": 32,
+          "setting": 0,
+          "both": 0,
+          "neither": 4
+        },
+        "action_label_counts": {
+          "buy": 32,
+          "sell": 0,
+          "observe": 4,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.8889,
+        "strategy_follow_rate": 0.8889,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.8889,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_small::conflict": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 7,
+        "behavior_side_counts": {
+          "strategy": 23,
+          "setting": 7,
+          "both": 0,
+          "neither": 6
+        },
+        "readout_side_counts": {
+          "strategy": 23,
+          "setting": 7,
+          "both": 0,
+          "neither": 6
+        },
+        "action_label_counts": {
+          "buy": 30,
+          "sell": 0,
+          "observe": 6,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.1944,
+        "strategy_follow_rate": 0.6389,
+        "setting_follow_rate": 0.1944,
+        "readout_strategy_rate": 0.6389,
+        "readout_setting_rate": 0.1944
+      }
+    },
+    "by_family_pressure": {
+      "activity_force_observe::aligned::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_observe::aligned::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_observe::aligned::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_observe::conflict::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_observe::conflict::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 7,
+          "setting": 0,
+          "both": 0,
+          "neither": 5
+        },
+        "readout_side_counts": {
+          "strategy": 7,
+          "setting": 5,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 5,
+          "sell": 0,
+          "observe": 7,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.5833,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.5833,
+        "readout_setting_rate": 0.4167
+      },
+      "activity_force_observe::conflict::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_trade::aligned::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 7,
+          "both": 0,
+          "neither": 5
+        },
+        "readout_side_counts": {
+          "strategy": 5,
+          "setting": 7,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 5,
+          "sell": 0,
+          "observe": 7,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.5833,
+        "readout_strategy_rate": 0.4167,
+        "readout_setting_rate": 0.5833
+      },
+      "activity_force_trade::aligned::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 0,
+          "both": 0,
+          "neither": 12
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_trade::aligned::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 11,
+          "both": 0,
+          "neither": 1
+        },
+        "readout_side_counts": {
+          "strategy": 1,
+          "setting": 11,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 1,
+          "sell": 0,
+          "observe": 11,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.9167,
+        "readout_strategy_rate": 0.0833,
+        "readout_setting_rate": 0.9167
+      },
+      "activity_force_trade::conflict::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 9,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 9,
+          "both": 0,
+          "neither": 3
+        },
+        "readout_side_counts": {
+          "strategy": 3,
+          "setting": 9,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 3,
+          "sell": 0,
+          "observe": 9,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.75,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.75,
+        "readout_strategy_rate": 0.25,
+        "readout_setting_rate": 0.75
+      },
+      "activity_force_trade::conflict::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 0,
+          "both": 0,
+          "neither": 12
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_trade::conflict::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 12,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 0,
+          "setting": 12,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 1.0,
+        "readout_strategy_rate": 0.0,
+        "readout_setting_rate": 1.0
+      },
+      "trade_size_force_large::aligned::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_large::aligned::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 10,
+        "behavior_side_counts": {
+          "strategy": 10,
+          "setting": 0,
+          "both": 0,
+          "neither": 2
+        },
+        "readout_side_counts": {
+          "strategy": 10,
+          "setting": 0,
+          "both": 0,
+          "neither": 2
+        },
+        "action_label_counts": {
+          "buy": 10,
+          "sell": 0,
+          "observe": 2,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.8333,
+        "strategy_follow_rate": 0.8333,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.8333,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_large::aligned::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_large::conflict::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 8,
+        "behavior_side_counts": {
+          "strategy": 1,
+          "setting": 8,
+          "both": 0,
+          "neither": 3
+        },
+        "readout_side_counts": {
+          "strategy": 1,
+          "setting": 8,
+          "both": 0,
+          "neither": 3
+        },
+        "action_label_counts": {
+          "buy": 9,
+          "sell": 0,
+          "observe": 3,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.6667,
+        "strategy_follow_rate": 0.0833,
+        "setting_follow_rate": 0.6667,
+        "readout_strategy_rate": 0.0833,
+        "readout_setting_rate": 0.6667
+      },
+      "trade_size_force_large::conflict::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 3,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 3,
+          "both": 0,
+          "neither": 9
+        },
+        "readout_side_counts": {
+          "strategy": 0,
+          "setting": 3,
+          "both": 0,
+          "neither": 9
+        },
+        "action_label_counts": {
+          "buy": 3,
+          "sell": 0,
+          "observe": 9,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.25,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.25,
+        "readout_strategy_rate": 0.0,
+        "readout_setting_rate": 0.25
+      },
+      "trade_size_force_large::conflict::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 7,
+        "behavior_side_counts": {
+          "strategy": 2,
+          "setting": 7,
+          "both": 0,
+          "neither": 3
+        },
+        "readout_side_counts": {
+          "strategy": 2,
+          "setting": 7,
+          "both": 0,
+          "neither": 3
+        },
+        "action_label_counts": {
+          "buy": 9,
+          "sell": 0,
+          "observe": 3,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.5833,
+        "strategy_follow_rate": 0.1667,
+        "setting_follow_rate": 0.5833,
+        "readout_strategy_rate": 0.1667,
+        "readout_setting_rate": 0.5833
+      },
+      "trade_size_force_small::aligned::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_small::aligned::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 8,
+        "behavior_side_counts": {
+          "strategy": 8,
+          "setting": 0,
+          "both": 0,
+          "neither": 4
+        },
+        "readout_side_counts": {
+          "strategy": 8,
+          "setting": 0,
+          "both": 0,
+          "neither": 4
+        },
+        "action_label_counts": {
+          "buy": 8,
+          "sell": 0,
+          "observe": 4,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.6667,
+        "strategy_follow_rate": 0.6667,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.6667,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_small::aligned::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_small::conflict::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 3,
+        "behavior_side_counts": {
+          "strategy": 9,
+          "setting": 3,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 9,
+          "setting": 3,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.25,
+        "strategy_follow_rate": 0.75,
+        "setting_follow_rate": 0.25,
+        "readout_strategy_rate": 0.75,
+        "readout_setting_rate": 0.25
+      },
+      "trade_size_force_small::conflict::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 6,
+          "setting": 0,
+          "both": 0,
+          "neither": 6
+        },
+        "readout_side_counts": {
+          "strategy": 6,
+          "setting": 0,
+          "both": 0,
+          "neither": 6
+        },
+        "action_label_counts": {
+          "buy": 6,
+          "sell": 0,
+          "observe": 6,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.5,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.5,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_small::conflict::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 4,
+        "behavior_side_counts": {
+          "strategy": 8,
+          "setting": 4,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 8,
+          "setting": 4,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.3333,
+        "strategy_follow_rate": 0.6667,
+        "setting_follow_rate": 0.3333,
+        "readout_strategy_rate": 0.6667,
+        "readout_setting_rate": 0.3333
+      }
+    },
+    "conflict_by_family": {
+      "activity_force_observe": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 31,
+          "setting": 0,
+          "both": 0,
+          "neither": 5
+        },
+        "readout_side_counts": {
+          "strategy": 31,
+          "setting": 5,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 5,
+          "sell": 0,
+          "observe": 31,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.8611,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.8611,
+        "readout_setting_rate": 0.1389
+      },
+      "activity_force_trade": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 21,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 21,
+          "both": 0,
+          "neither": 15
+        },
+        "readout_side_counts": {
+          "strategy": 15,
+          "setting": 21,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 15,
+          "sell": 0,
+          "observe": 21,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.5833,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.5833,
+        "readout_strategy_rate": 0.4167,
+        "readout_setting_rate": 0.5833
+      },
+      "trade_size_force_large": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 18,
+        "behavior_side_counts": {
+          "strategy": 3,
+          "setting": 18,
+          "both": 0,
+          "neither": 15
+        },
+        "readout_side_counts": {
+          "strategy": 3,
+          "setting": 18,
+          "both": 0,
+          "neither": 15
+        },
+        "action_label_counts": {
+          "buy": 21,
+          "sell": 0,
+          "observe": 15,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.5,
+        "strategy_follow_rate": 0.0833,
+        "setting_follow_rate": 0.5,
+        "readout_strategy_rate": 0.0833,
+        "readout_setting_rate": 0.5
+      },
+      "trade_size_force_small": {
+        "rows": 36,
+        "valid_output_true": 36,
+        "exact_expected_true": 7,
+        "behavior_side_counts": {
+          "strategy": 23,
+          "setting": 7,
+          "both": 0,
+          "neither": 6
+        },
+        "readout_side_counts": {
+          "strategy": 23,
+          "setting": 7,
+          "both": 0,
+          "neither": 6
+        },
+        "action_label_counts": {
+          "buy": 30,
+          "sell": 0,
+          "observe": 6,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.1944,
+        "strategy_follow_rate": 0.6389,
+        "setting_follow_rate": 0.1944,
+        "readout_strategy_rate": 0.6389,
+        "readout_setting_rate": 0.1944
+      }
+    },
+    "conflict_by_family_pressure": {
+      "activity_force_observe::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_observe::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 7,
+          "setting": 0,
+          "both": 0,
+          "neither": 5
+        },
+        "readout_side_counts": {
+          "strategy": 7,
+          "setting": 5,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 5,
+          "sell": 0,
+          "observe": 7,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.5833,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.5833,
+        "readout_setting_rate": 0.4167
+      },
+      "activity_force_observe::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 1.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_trade::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 9,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 9,
+          "both": 0,
+          "neither": 3
+        },
+        "readout_side_counts": {
+          "strategy": 3,
+          "setting": 9,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 3,
+          "sell": 0,
+          "observe": 9,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.75,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.75,
+        "readout_strategy_rate": 0.25,
+        "readout_setting_rate": 0.75
+      },
+      "activity_force_trade::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 0,
+          "both": 0,
+          "neither": 12
+        },
+        "readout_side_counts": {
+          "strategy": 12,
+          "setting": 0,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 1.0,
+        "readout_setting_rate": 0.0
+      },
+      "activity_force_trade::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 12,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 12,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 0,
+          "setting": 12,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 0,
+          "sell": 0,
+          "observe": 12,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 1.0,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 1.0,
+        "readout_strategy_rate": 0.0,
+        "readout_setting_rate": 1.0
+      },
+      "trade_size_force_large::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 8,
+        "behavior_side_counts": {
+          "strategy": 1,
+          "setting": 8,
+          "both": 0,
+          "neither": 3
+        },
+        "readout_side_counts": {
+          "strategy": 1,
+          "setting": 8,
+          "both": 0,
+          "neither": 3
+        },
+        "action_label_counts": {
+          "buy": 9,
+          "sell": 0,
+          "observe": 3,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.6667,
+        "strategy_follow_rate": 0.0833,
+        "setting_follow_rate": 0.6667,
+        "readout_strategy_rate": 0.0833,
+        "readout_setting_rate": 0.6667
+      },
+      "trade_size_force_large::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 3,
+        "behavior_side_counts": {
+          "strategy": 0,
+          "setting": 3,
+          "both": 0,
+          "neither": 9
+        },
+        "readout_side_counts": {
+          "strategy": 0,
+          "setting": 3,
+          "both": 0,
+          "neither": 9
+        },
+        "action_label_counts": {
+          "buy": 3,
+          "sell": 0,
+          "observe": 9,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.25,
+        "strategy_follow_rate": 0.0,
+        "setting_follow_rate": 0.25,
+        "readout_strategy_rate": 0.0,
+        "readout_setting_rate": 0.25
+      },
+      "trade_size_force_large::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 7,
+        "behavior_side_counts": {
+          "strategy": 2,
+          "setting": 7,
+          "both": 0,
+          "neither": 3
+        },
+        "readout_side_counts": {
+          "strategy": 2,
+          "setting": 7,
+          "both": 0,
+          "neither": 3
+        },
+        "action_label_counts": {
+          "buy": 9,
+          "sell": 0,
+          "observe": 3,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.5833,
+        "strategy_follow_rate": 0.1667,
+        "setting_follow_rate": 0.5833,
+        "readout_strategy_rate": 0.1667,
+        "readout_setting_rate": 0.5833
+      },
+      "trade_size_force_small::balanced": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 3,
+        "behavior_side_counts": {
+          "strategy": 9,
+          "setting": 3,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 9,
+          "setting": 3,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.25,
+        "strategy_follow_rate": 0.75,
+        "setting_follow_rate": 0.25,
+        "readout_strategy_rate": 0.75,
+        "readout_setting_rate": 0.25
+      },
+      "trade_size_force_small::setting_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 0,
+        "behavior_side_counts": {
+          "strategy": 6,
+          "setting": 0,
+          "both": 0,
+          "neither": 6
+        },
+        "readout_side_counts": {
+          "strategy": 6,
+          "setting": 0,
+          "both": 0,
+          "neither": 6
+        },
+        "action_label_counts": {
+          "buy": 6,
+          "sell": 0,
+          "observe": 6,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.0,
+        "strategy_follow_rate": 0.5,
+        "setting_follow_rate": 0.0,
+        "readout_strategy_rate": 0.5,
+        "readout_setting_rate": 0.0
+      },
+      "trade_size_force_small::strategy_favored": {
+        "rows": 12,
+        "valid_output_true": 12,
+        "exact_expected_true": 4,
+        "behavior_side_counts": {
+          "strategy": 8,
+          "setting": 4,
+          "both": 0,
+          "neither": 0
+        },
+        "readout_side_counts": {
+          "strategy": 8,
+          "setting": 4,
+          "both": 0,
+          "neither": 0
+        },
+        "action_label_counts": {
+          "buy": 12,
+          "sell": 0,
+          "observe": 0,
+          "invalid": 0
+        },
+        "valid_output_rate": 1.0,
+        "exact_expected_rate": 0.3333,
+        "strategy_follow_rate": 0.6667,
+        "setting_follow_rate": 0.3333,
+        "readout_strategy_rate": 0.6667,
+        "readout_setting_rate": 0.3333
+      }
+    }
+  },
+  "sample_rows": [
+    {
+      "log_id": 1,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v0:trading_activity_setting_1_v0:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 2,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v0:trading_activity_setting_1_v1:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 3,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v0:trading_activity_setting_5_v0:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 4,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v0:trading_activity_setting_5_v1:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 5,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v1:trading_activity_setting_1_v0:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 6,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v1:trading_activity_setting_1_v1:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 7,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v1:trading_activity_setting_5_v0:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 8,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v0:activity_observe_v1:trading_activity_setting_5_v1:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 9,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v0:trading_activity_setting_1_v0:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 10,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v0:trading_activity_setting_1_v1:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 11,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v0:trading_activity_setting_5_v0:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 12,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v0:trading_activity_setting_5_v1:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 13,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v1:trading_activity_setting_1_v0:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 14,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v1:trading_activity_setting_1_v1:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 15,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v1:trading_activity_setting_5_v0:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 16,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v1:activity_observe_v1:trading_activity_setting_5_v1:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 17,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v0:trading_activity_setting_1_v0:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 18,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v0:trading_activity_setting_1_v1:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 19,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v0:trading_activity_setting_5_v0:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 20,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v0:trading_activity_setting_5_v1:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 21,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v1:trading_activity_setting_1_v0:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 22,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v1:trading_activity_setting_1_v1:aligned",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": false,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 23,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v1:trading_activity_setting_5_v0:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    },
+    {
+      "log_id": 24,
+      "example_id": "pc4:activity_force_observe:balanced:activity_balanced_v2:activity_observe_v1:trading_activity_setting_5_v1:strong_conflict",
+      "strategy_family": "activity_force_observe",
+      "setting_family": "trading_activity",
+      "conflict_present": true,
+      "strategy_expected_action": "observe",
+      "setting_expected_action": "buy",
+      "behavior_side": "strategy",
+      "readout_side": "strategy",
+      "valid_output": true,
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}"
+    }
+  ]
+}

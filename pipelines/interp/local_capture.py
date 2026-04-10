@@ -140,7 +140,7 @@ class CaptureConfig:
     add_generation_prompt: bool = False
     capture_router: bool = True
     capture_residual: bool = True
-    pool_on_capture: str | None = None  # None = full sequence, "last_token", "mean_pool"
+    pool_on_capture: str | None = None  # None = full sequence, "last_token"|"prompt_eos"|"mean_pool"
     router_dtype: str = "float16"  # "float16" or "float32" for router logits storage
     metadata_flush_interval: int = 10  # write metadata.parquet every N examples
     source_relation: str | None = None
@@ -483,21 +483,49 @@ def _apply_pooling(
     router_logits: Any,
     router_indices: Any,
     pooling: str,
+    *,
+    input_ids: Any | None = None,
+    eos_token_id: int | None = None,
 ) -> tuple[Any, Any, Any]:
     """Pool the sequence dimension: (layers, seq_len, dim) → (layers, dim).
 
-    For router_indices with top-k, last_token gives (layers, top_k),
+    For router_indices with top-k, last_token/prompt_eos gives (layers, top_k),
     mean_pool gives (layers, num_experts) as a frequency histogram.
     """
     import torch
 
-    if pooling == "last_token":
+    def _resolve_last_token_index(seq_len: int) -> int:
+        if seq_len <= 0:
+            raise ValueError("Cannot pool empty sequence")
+        if input_ids is None or eos_token_id is None:
+            return seq_len - 1
+
+        ids = input_ids
+        if hasattr(ids, "tolist"):
+            ids = ids.tolist()
+        if ids and isinstance(ids[0], list):
+            ids = ids[0]
+        normalized_ids = [int(token) for token in ids]
+
+        last_match: int | None = None
+        upper = min(seq_len, len(normalized_ids))
+        for idx in range(upper - 1, -1, -1):
+            if normalized_ids[idx] == int(eos_token_id):
+                last_match = idx
+                break
+        return last_match if last_match is not None else seq_len - 1
+
+    if pooling in {"last_token", "prompt_eos"}:
+        token_index: int | None = None
         if residual is not None:
-            residual = residual[:, -1, :]       # (layers, dim)
+            token_index = _resolve_last_token_index(int(residual.shape[1]))
+            residual = residual[:, token_index, :]       # (layers, dim)
         if router_logits is not None:
-            router_logits = router_logits[:, -1, :]  # (layers, num_experts)
+            router_token_index = _resolve_last_token_index(int(router_logits.shape[1]))
+            router_logits = router_logits[:, router_token_index, :]  # (layers, num_experts)
         if router_indices is not None:
-            router_indices = router_indices[:, -1, :]  # (layers, top_k)
+            router_index_token = _resolve_last_token_index(int(router_indices.shape[1]))
+            router_indices = router_indices[:, router_index_token, :]  # (layers, top_k)
     elif pooling == "mean_pool":
         if residual is not None:
             residual = residual.mean(dim=1)     # (layers, dim)
@@ -615,7 +643,12 @@ def run_capture(config: CaptureConfig) -> dict[str, Any]:
             seq_len = int(input_ids.shape[1])
             if config.pool_on_capture:
                 residual, router_logits, router_indices = _apply_pooling(
-                    residual, router_logits, router_indices, config.pool_on_capture
+                    residual,
+                    router_logits,
+                    router_indices,
+                    config.pool_on_capture,
+                    input_ids=input_ids,
+                    eos_token_id=getattr(tokenizer, "eos_token_id", None),
                 )
 
             file_size = 0
@@ -760,7 +793,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--pool-on-capture",
-        choices=["last_token", "mean_pool"],
+        choices=["last_token", "prompt_eos", "mean_pool"],
         default=None,
         help="Pool the sequence dimension during capture to reduce file size ~9000x. "
              "Stores (layers, dim) instead of (layers, seq_len, dim).",
