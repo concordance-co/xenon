@@ -1,0 +1,108 @@
+{
+  "relation_name": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+  "model_id": "Qwen/Qwen3-30B-A3B",
+  "n_examples": 123,
+  "anchors": [
+    "prompt_eos",
+    "settings_eos",
+    "strategy_eos"
+  ],
+  "layers": [
+    20,
+    24,
+    36
+  ],
+  "probe_summary": [
+    {
+      "layer": 20,
+      "anchor": "prompt_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5318,
+      "balanced_accuracy_std": 0.0462,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 20,
+      "anchor": "settings_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.587,
+      "balanced_accuracy_std": 0.1512,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 20,
+      "anchor": "strategy_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5033,
+      "balanced_accuracy_std": 0.0994,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 24,
+      "anchor": "prompt_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5538,
+      "balanced_accuracy_std": 0.0302,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 24,
+      "anchor": "settings_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5351,
+      "balanced_accuracy_std": 0.1689,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 24,
+      "anchor": "strategy_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5134,
+      "balanced_accuracy_std": 0.0653,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 36,
+      "anchor": "prompt_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5436,
+      "balanced_accuracy_std": 0.0355,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 36,
+      "anchor": "settings_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5032,
+      "balanced_accuracy_std": 0.0842,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    },
+    {
+      "layer": 36,
+      "anchor": "strategy_eos",
+      "n_features": 5,
+      "balanced_accuracy": 0.5476,
+      "balanced_accuracy_std": 0.1379,
+      "n_examples": 123,
+      "n_folds": 5,
+      "split_mode": "grouped"
+    }
+  ],
+  "output_dir": "/data/analysis_results/prompt_confusion/phase_04/conflict_arbitration_stage2/attention_summary"
+}

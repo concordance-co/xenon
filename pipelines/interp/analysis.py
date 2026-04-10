@@ -156,6 +156,18 @@ def _encode_labels(
             labels.append(label_set[label_text])
         class_names = list(label_set.keys())
 
+    elif target == "strategy_family":
+        family_set: dict[str, int] = {}
+        for r in rows:
+            family = r.get("strategy_family")
+            if family is None:
+                continue
+            if family not in family_set:
+                family_set[family] = len(family_set)
+            filtered.append(r)
+            labels.append(family_set[family])
+        class_names = list(family_set.keys())
+
     else:
         raise ValueError(f"Unknown target: {target}")
 

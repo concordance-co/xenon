@@ -288,9 +288,9 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         "gpu_memory_utilization": config.gpu_memory_utilization,
     }
     reasoning_parser = (config.reasoning_parser or "").strip()
-    if not reasoning_parser and "qwen3" in config.model_id.lower():
+    if config.capture_reasoning and not reasoning_parser and "qwen3" in config.model_id.lower():
         reasoning_parser = "qwen3"
-    if reasoning_parser:
+    if config.capture_reasoning and reasoning_parser:
         kwargs["structured_outputs_config"] = {
             "reasoning_parser": reasoning_parser,
         }
