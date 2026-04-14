@@ -38,7 +38,7 @@ class VLLMCaptureConfig:
     add_generation_prompt: bool = False
     capture_router: bool = True
     capture_residual: bool = True
-    pool_on_capture: str | None = None  # None = full sequence, "last_token", "mean_pool"
+    pool_on_capture: str | None = None  # None = full sequence, "last_token"|"prompt_eos"|"mean_pool"
 
     # vLLM engine knobs
     tensor_parallel_size: int = 1
@@ -49,7 +49,7 @@ class VLLMCaptureConfig:
     max_num_seqs: int = 1  # >1 enables batched prefill (router capture requires 1)
     max_tokens_buffer: int = 8192  # pre-allocated router buffer size
     enable_prefix_caching: bool = True
-    enable_chunked_prefill: bool = False
+    enable_chunked_prefill: bool = True
     async_scheduling: bool | None = None
     worker_cls: str = ""
     request_scoped_patching: bool = False
@@ -252,6 +252,21 @@ def _destroy_llm(llm: Any | None) -> None:
         pass
 
 
+def _cleanup_cuda_memory() -> None:
+    """Best-effort GPU memory cleanup after destroying a vLLM engine."""
+    import gc
+
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+    except Exception:
+        pass
+
+
 def _create_llm(config: VLLMCaptureConfig) -> Any:
     """Create a vLLM ``LLM`` instance configured for activation capture.
 
@@ -273,9 +288,9 @@ def _create_llm(config: VLLMCaptureConfig) -> Any:
         "gpu_memory_utilization": config.gpu_memory_utilization,
     }
     reasoning_parser = (config.reasoning_parser or "").strip()
-    if not reasoning_parser and "qwen3" in config.model_id.lower():
+    if config.capture_reasoning and not reasoning_parser and "qwen3" in config.model_id.lower():
         reasoning_parser = "qwen3"
-    if reasoning_parser:
+    if config.capture_reasoning and reasoning_parser:
         kwargs["structured_outputs_config"] = {
             "reasoning_parser": reasoning_parser,
         }
@@ -1013,7 +1028,12 @@ def run_vllm_capture(config: VLLMCaptureConfig) -> dict[str, Any]:
             # Pool before saving if requested
             if config.pool_on_capture:
                 residual, router_logits, router_indices = _apply_pooling(
-                    residual, router_logits, router_indices, config.pool_on_capture
+                    residual,
+                    router_logits,
+                    router_indices,
+                    config.pool_on_capture,
+                    input_ids=input_ids,
+                    eos_token_id=getattr(tokenizer, "eos_token_id", None),
                 )
 
             file_size = 0
@@ -1159,7 +1179,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--pool-on-capture",
-        choices=["last_token", "mean_pool"],
+        choices=["last_token", "prompt_eos", "mean_pool"],
         default=None,
         help=(
             "Pool the sequence dimension during capture to reduce file size. "

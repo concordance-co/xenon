@@ -566,6 +566,8 @@ def export_publication_labels(
         select_bits.append("was_profitable_1h")
     if relation_has_column(conn, relation, "vault_risk_preference"):
         select_bits.append("vault_risk_preference")
+    if relation_has_column(conn, relation, "strategy_family"):
+        select_bits.append("strategy_family")
 
     query = "SELECT " + ", ".join(select_bits) + " FROM " + relation
     rows = conn.execute(query).fetchall()

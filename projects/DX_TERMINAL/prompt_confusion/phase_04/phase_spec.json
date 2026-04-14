@@ -1,0 +1,16 @@
+{
+  "id": "prompt_confusion_phase_04",
+  "name": "Prompt Confusion Phase 04",
+  "description": "Fourth prompt-confusion iteration: a smaller and more neutral synthetic dataset with explicit strategy-versus-settings semantics and prompt-only capture defaults.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Build a 200-400 row prompt-confusion dataset that is easier to audit, less sentiment-loaded, and safer to analyze mechanistically.",
+  "workflow_specs": [
+    "projects/DX_TERMINAL/prompt_confusion/phase_04/specs/workflow.json",
+    "projects/DX_TERMINAL/prompt_confusion/phase_04/specs/workflow_smoke.json"
+  ],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_04/reports",
+    "notes": "Stores the phase-04 design note, problems note, workflow specs, and small-dataset outputs."
+  }
+}

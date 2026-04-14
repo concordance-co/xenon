@@ -495,7 +495,8 @@ def _run_capture(argv: list[str]) -> int:
     parser.add_argument("--generation-top-p", type=float, default=None)
     parser.add_argument("--capture-router", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--capture-residual", action=argparse.BooleanOptionalAction, default=None)
-    parser.add_argument("--pool-on-capture", choices=["last_token", "mean_pool"], default=None)
+    parser.add_argument("--pool-on-capture", choices=["last_token", "prompt_eos", "mean_pool"], default=None)
+    parser.add_argument("--no-pool-on-capture", action="store_true")
     parser.add_argument("--router-dtype", choices=["float16", "float32"], default=None)
     parser.add_argument("--metadata-flush-interval", type=int, default=None)
     ns = parser.parse_args(argv)
@@ -527,7 +528,11 @@ def _run_capture(argv: list[str]) -> int:
             "generation_top_p": ns.generation_top_p if ns.generation_top_p is not None else float(capture_block.get("generation_top_p") or 1.0),
             "capture_router": ns.capture_router if ns.capture_router is not None else bool(capture_block.get("router", True)),
             "capture_residual": ns.capture_residual if ns.capture_residual is not None else bool(capture_block.get("residual", True)),
-            "pool_on_capture": ns.pool_on_capture or capture_block.get("pooling"),
+            "pool_on_capture": (
+                None
+                if ns.no_pool_on_capture
+                else (ns.pool_on_capture or capture_block.get("pooling"))
+            ),
             "router_dtype": ns.router_dtype or capture_block.get("router_dtype") or "float16",
             "metadata_flush_interval": ns.metadata_flush_interval or int(capture_block.get("metadata_flush_interval") or 10),
             "add_generation_prompt": ns.add_generation_prompt or bool(capture_block.get("add_generation_prompt")),
@@ -662,7 +667,7 @@ def _run_analysis(argv: list[str]) -> int:
     parser.add_argument("--mode", default=None)
     parser.add_argument("--target", default=None)
     parser.add_argument("--data-source", choices=["router", "residual"], default=None)
-    parser.add_argument("--pooling", choices=["last_token", "mean_pool"], default=None)
+    parser.add_argument("--pooling", choices=["last_token", "prompt_eos", "mean_pool"], default=None)
     parser.add_argument("--n-folds", type=int, default=None)
     parser.add_argument("--layers", default=None)
     parser.add_argument("--limit", type=int, default=None)

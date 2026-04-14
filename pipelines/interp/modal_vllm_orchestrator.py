@@ -57,9 +57,13 @@ class VLLMCaptureWorker:
     model_id: str = modal.parameter(default="Qwen/Qwen3-30B-A3B")
     tensor_parallel_size: int = modal.parameter(default=1)
     gpu_memory_utilization: str = modal.parameter(default="0.90")
+    enforce_eager: bool = modal.parameter(default=True)
+    max_num_seqs: int = modal.parameter(default=1)
+    enable_chunked_prefill: bool = modal.parameter(default=False)
     max_model_len: int = modal.parameter(default=0)
     capture_residual: bool = modal.parameter(default=True)
     capture_layers_csv: str = modal.parameter(default="")
+    init_router_capture: bool = modal.parameter(default=True)
     add_generation_prompt: bool = modal.parameter(default=False)
     capture_reasoning: bool = modal.parameter(default=True)
     enable_thinking: bool = modal.parameter(default=True)
@@ -87,9 +91,9 @@ class VLLMCaptureWorker:
 
         kwargs: dict = {
             "model": local_path,
-            "enforce_eager": True,
-            "max_num_seqs": 1,
-            "enable_chunked_prefill": False,
+            "enforce_eager": bool(self.enforce_eager),
+            "max_num_seqs": int(self.max_num_seqs),
+            "enable_chunked_prefill": bool(self.enable_chunked_prefill),
             "tensor_parallel_size": self.tensor_parallel_size,
             "gpu_memory_utilization": float(self.gpu_memory_utilization),
         }
@@ -129,11 +133,23 @@ class VLLMCaptureWorker:
         self.llm = LLM(**kwargs)
 
         buffer_size = self.max_model_len if self.max_model_len > 0 else 32768
-        self.is_moe = _init_router_capture_on_model(self.llm, max_tokens=buffer_size)
+        if self.init_router_capture:
+            self.is_moe = _init_router_capture_on_model(self.llm, max_tokens=buffer_size)
+        else:
+            self.is_moe = False
         if self.is_moe:
             print("Router capture enabled on MoE blocks")
-        else:
+        elif self.init_router_capture:
             print("Model has no MoE blocks; router capture disabled")
+        else:
+            print("Router capture initialization skipped for generation-only worker")
+
+    @modal.exit()
+    def teardown(self):
+        from pipelines.interp.modal_vllm_engine import _cleanup_cuda_memory, _destroy_llm
+
+        _destroy_llm(getattr(self, "llm", None))
+        _cleanup_cuda_memory()
 
     @modal.method()
     def capture_batch(
@@ -221,7 +237,12 @@ class VLLMCaptureWorker:
                 seq_len = len(input_ids)
                 if pool_on_capture:
                     residual, router_logits, router_indices = _apply_pooling(
-                        residual, router_logits, router_indices, pool_on_capture
+                        residual,
+                        router_logits,
+                        router_indices,
+                        pool_on_capture,
+                        input_ids=input_ids,
+                        eos_token_id=getattr(self.tokenizer, "eos_token_id", None),
                     )
 
                 file_size = 0
@@ -310,6 +331,7 @@ class VLLMCaptureWorker:
     ) -> list[dict]:
         """Generate model responses for a batch without activation capture."""
         import json
+        from datetime import UTC, datetime
 
         from pipelines.interp.local_capture import _parse_messages
         from pipelines.interp.modal_vllm_engine import (
@@ -334,30 +356,51 @@ class VLLMCaptureWorker:
             messages = _parse_messages(row)
             if not messages:
                 continue
-            generation_result = _generate_one_vllm(
-                llm=self.llm,
-                tokenizer=self.tokenizer,
-                messages=messages,
-                config=config,
-                max_tokens=generation_max_tokens,
-                temperature=generation_temperature,
-                top_p=generation_top_p,
-                top_k=-1,
-                chat_template_kwargs={"enable_thinking": self.enable_thinking},
-            )
-            metadata_rows.append(
-                {
-                    "log_id": int(log_id),
-                    "generated_text": generation_result.get("generated_text", ""),
-                    "generated_token_ids": json.dumps(generation_result.get("generated_token_ids", [])),
-                    "finish_reason": generation_result.get("finish_reason", ""),
-                    "reasoning_text": (
-                        generation_result.get("reasoning_text", "")
-                        if self.capture_reasoning
-                        else ""
-                    ),
-                }
-            )
+            try:
+                generation_result = _generate_one_vllm(
+                    llm=self.llm,
+                    tokenizer=self.tokenizer,
+                    messages=messages,
+                    config=config,
+                    max_tokens=generation_max_tokens,
+                    temperature=generation_temperature,
+                    top_p=generation_top_p,
+                    top_k=-1,
+                    chat_template_kwargs={"enable_thinking": self.enable_thinking},
+                )
+                metadata_rows.append(
+                    {
+                        "log_id": int(log_id),
+                        "capture_timestamp": datetime.now(UTC).isoformat(),
+                        "generated_text": generation_result.get("generated_text", ""),
+                        "generated_token_ids": json.dumps(generation_result.get("generated_token_ids", [])),
+                        "finish_reason": generation_result.get("finish_reason", ""),
+                        "reasoning_text": (
+                            generation_result.get("reasoning_text", "")
+                            if self.capture_reasoning
+                            else ""
+                        ),
+                    }
+                )
+            except Exception as exc:
+                import traceback
+
+                error_text = f"{exc.__class__.__name__}: {exc}"
+                print(f"  ERROR generating {log_id}: {error_text}")
+                traceback.print_exc()
+                metadata_rows.append(
+                    {
+                        "log_id": int(log_id),
+                        "capture_timestamp": datetime.now(UTC).isoformat(),
+                        "generated_text": "",
+                        "generated_token_ids": "[]",
+                        "finish_reason": "engine_dead" if exc.__class__.__name__ == "EngineDeadError" else "error",
+                        "reasoning_text": error_text,
+                    }
+                )
+                if exc.__class__.__name__ == "EngineDeadError":
+                    print("  Generation engine died; returning partial batch results")
+                    break
         return metadata_rows
 
 
@@ -656,9 +699,13 @@ def run_vllm_capture(
         model_id=model_id,
         tensor_parallel_size=tensor_parallel_size,
         gpu_memory_utilization=str(gpu_memory_utilization),
+        enforce_eager=True,
+        max_num_seqs=1,
+        enable_chunked_prefill=True,
         max_model_len=max_model_len,
         capture_residual=capture_residual,
         capture_layers_csv=",".join(str(layer) for layer in parsed_layers) if parsed_layers else "",
+        init_router_capture=True,
         # Keep activation capture anchored to the raw prompt rather than the
         # assistant-start token(s) added for decoding.
         add_generation_prompt=False,
@@ -672,9 +719,13 @@ def run_vllm_capture(
             model_id=model_id,
             tensor_parallel_size=tensor_parallel_size,
             gpu_memory_utilization=str(gpu_memory_utilization),
+            enforce_eager=False,
+            max_num_seqs=4,
+            enable_chunked_prefill=True,
             max_model_len=max_model_len,
             capture_residual=False,
             capture_layers_csv="",
+            init_router_capture=False,
             add_generation_prompt=add_generation_prompt,
             capture_reasoning=capture_reasoning,
             enable_thinking=enable_thinking,
@@ -758,6 +809,105 @@ def run_vllm_capture(
 
     _run_neon_transaction(_ensure_tables)
 
+    def _flush_capture_batch(conn, batch_rows: list[dict]) -> None:
+        with conn.cursor() as cur:
+            for row in batch_rows:
+                cur.execute(
+                    """
+                    INSERT INTO capture_metadata
+                        (run_id, log_id, row_key, artifact_id, source_prompt_hash, source_relation,
+                         workflow_spec_id, workflow_spec_version,
+                         seq_len, prompt_hash, capture_timestamp,
+                         file_size_bytes, elapsed_s, has_router, captured_layers,
+                         pooling, num_layers_captured, hidden_dim, num_experts)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (run_id, log_id) DO UPDATE SET
+                        row_key = EXCLUDED.row_key,
+                        artifact_id = EXCLUDED.artifact_id,
+                        source_prompt_hash = EXCLUDED.source_prompt_hash,
+                        source_relation = EXCLUDED.source_relation,
+                        workflow_spec_id = EXCLUDED.workflow_spec_id,
+                        workflow_spec_version = EXCLUDED.workflow_spec_version,
+                        seq_len = EXCLUDED.seq_len,
+                        file_size_bytes = EXCLUDED.file_size_bytes,
+                        elapsed_s = EXCLUDED.elapsed_s,
+                        has_router = EXCLUDED.has_router,
+                        captured_layers = EXCLUDED.captured_layers,
+                        pooling = EXCLUDED.pooling,
+                        num_layers_captured = EXCLUDED.num_layers_captured,
+                        hidden_dim = EXCLUDED.hidden_dim,
+                        num_experts = EXCLUDED.num_experts,
+                        capture_timestamp = EXCLUDED.capture_timestamp
+                    """,
+                    (
+                        metadata_run_id,
+                        row["log_id"],
+                        row.get("row_key"),
+                        row.get("artifact_id"),
+                        row.get("source_prompt_hash"),
+                        row.get("source_relation"),
+                        row.get("workflow_spec_id"),
+                        row.get("workflow_spec_version"),
+                        row["seq_len"],
+                        row.get("prompt_hash"),
+                        row["capture_timestamp"],
+                        row["file_size_bytes"],
+                        row["elapsed_s"],
+                        row.get("has_router", False),
+                        row.get("captured_layers"),
+                        row.get("pooling", "none"),
+                        row.get("num_layers_captured", 0),
+                        row.get("hidden_dim", 0),
+                        row.get("num_experts"),
+                    ),
+                )
+
+    def _flush_generation_batch(conn, batch_rows: list[dict]) -> None:
+        with conn.cursor() as cur:
+            for row in batch_rows:
+                cur.execute(
+                    sql.SQL(
+                        """
+                        INSERT INTO {} (
+                            run_id, log_id, example_id, row_key, source_relation,
+                            workflow_spec_id, workflow_spec_version, model_id, reasoning_parser,
+                            capture_timestamp, generated_text, generated_token_ids,
+                            finish_reason, reasoning_text
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+                        ON CONFLICT (run_id, log_id) DO UPDATE SET
+                            example_id = EXCLUDED.example_id,
+                            row_key = EXCLUDED.row_key,
+                            source_relation = EXCLUDED.source_relation,
+                            workflow_spec_id = EXCLUDED.workflow_spec_id,
+                            workflow_spec_version = EXCLUDED.workflow_spec_version,
+                            model_id = EXCLUDED.model_id,
+                            reasoning_parser = EXCLUDED.reasoning_parser,
+                            capture_timestamp = EXCLUDED.capture_timestamp,
+                            generated_text = EXCLUDED.generated_text,
+                            generated_token_ids = EXCLUDED.generated_token_ids,
+                            finish_reason = EXCLUDED.finish_reason,
+                            reasoning_text = EXCLUDED.reasoning_text
+                        """
+                    ).format(sql.Identifier(response_table_name)),
+                    (
+                        workflow_run_id,
+                        row["log_id"],
+                        row.get("example_id"),
+                        row.get("row_key"),
+                        row.get("source_relation"),
+                        row.get("workflow_spec_id"),
+                        row.get("workflow_spec_version"),
+                        model_id,
+                        reasoning_parser if capture_reasoning else "",
+                        row["capture_timestamp"],
+                        row.get("generated_text", ""),
+                        row.get("generated_token_ids", "[]"),
+                        row.get("finish_reason", ""),
+                        row.get("reasoning_text", ""),
+                    ),
+                )
+
     capture_iter = worker.capture_batch.map(
         batches,
         kwargs=dict(
@@ -770,7 +920,15 @@ def run_vllm_capture(
             output_subdir=output_subdir,
         ),
     )
-    generation_iter = None
+    for batch_meta in capture_iter:
+        all_metadata.extend(batch_meta)
+        if batch_meta:
+            _run_neon_transaction(lambda conn, batch_rows=batch_meta: _flush_capture_batch(conn, batch_rows))
+            print(f"  Flushed {len(batch_meta)} capture rows to Neon ({len(all_metadata)} total)")
+        if len(all_metadata) % 50 == 0 or len(all_metadata) == len(rows):
+            write_metadata_to_volume.remote(all_metadata, output_subdir=output_subdir)
+
+    generated_rows = 0
     if capture_generation and generation_worker is not None:
         generation_iter = generation_worker.generate_batch.map(
             batches,
@@ -780,137 +938,44 @@ def run_vllm_capture(
                 generation_top_p=generation_top_p,
             ),
         )
-
-    if generation_iter is None:
-        batch_stream = ((batch_meta, None) for batch_meta in capture_iter)
-    else:
-        batch_stream = zip(capture_iter, generation_iter, strict=True)
-
-    for batch_meta, generation_meta in batch_stream:
-        if generation_meta:
-            generation_by_log_id = {
-                int(row["log_id"]): row for row in generation_meta if row.get("log_id") is not None
+        for source_batch, generation_meta in zip(batches, generation_iter, strict=True):
+            source_by_log_id = {
+                int(row["log_id"]): row for row in source_batch if row.get("log_id") is not None
             }
-            for row in batch_meta:
-                generation_row = generation_by_log_id.get(int(row["log_id"]))
-                if generation_row is None:
+            enriched_generation_rows: list[dict] = []
+            for row in generation_meta:
+                log_id = row.get("log_id")
+                if log_id is None:
                     continue
-                row["generated_text"] = generation_row.get("generated_text", "")
-                row["generated_token_ids"] = generation_row.get("generated_token_ids", "[]")
-                row["finish_reason"] = generation_row.get("finish_reason", "")
-                row["reasoning_text"] = generation_row.get("reasoning_text", "")
-
-        all_metadata.extend(batch_meta)
-        if batch_meta:
-            def _flush_batch(conn) -> None:
-                with conn.cursor() as cur:
-                    for row in batch_meta:
-                        cur.execute(
-                            """
-                            INSERT INTO capture_metadata
-                                (run_id, log_id, row_key, artifact_id, source_prompt_hash, source_relation,
-                                 workflow_spec_id, workflow_spec_version,
-                                 seq_len, prompt_hash, capture_timestamp,
-                                 file_size_bytes, elapsed_s, has_router, captured_layers,
-                                 pooling, num_layers_captured, hidden_dim, num_experts)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (run_id, log_id) DO UPDATE SET
-                                row_key = EXCLUDED.row_key,
-                                artifact_id = EXCLUDED.artifact_id,
-                                source_prompt_hash = EXCLUDED.source_prompt_hash,
-                                source_relation = EXCLUDED.source_relation,
-                                workflow_spec_id = EXCLUDED.workflow_spec_id,
-                                workflow_spec_version = EXCLUDED.workflow_spec_version,
-                                seq_len = EXCLUDED.seq_len,
-                                file_size_bytes = EXCLUDED.file_size_bytes,
-                                elapsed_s = EXCLUDED.elapsed_s,
-                                has_router = EXCLUDED.has_router,
-                                captured_layers = EXCLUDED.captured_layers,
-                                pooling = EXCLUDED.pooling,
-                                num_layers_captured = EXCLUDED.num_layers_captured,
-                                hidden_dim = EXCLUDED.hidden_dim,
-                                num_experts = EXCLUDED.num_experts,
-                                capture_timestamp = EXCLUDED.capture_timestamp
-                            """,
-                            (
-                                metadata_run_id,
-                                row["log_id"],
-                                row.get("row_key"),
-                                row.get("artifact_id"),
-                                row.get("source_prompt_hash"),
-                                row.get("source_relation"),
-                                row.get("workflow_spec_id"),
-                                row.get("workflow_spec_version"),
-                                row["seq_len"],
-                                row.get("prompt_hash"),
-                                row["capture_timestamp"],
-                                row["file_size_bytes"],
-                                row["elapsed_s"],
-                                row.get("has_router", False),
-                                row.get("captured_layers"),
-                                row.get("pooling", "none"),
-                                row.get("num_layers_captured", 0),
-                                row.get("hidden_dim", 0),
-                                row.get("num_experts"),
-                            ),
-                        )
-                        if capture_generation:
-                            cur.execute(
-                                sql.SQL(
-                                    """
-                                    INSERT INTO {} (
-                                        run_id, log_id, example_id, row_key, source_relation,
-                                        workflow_spec_id, workflow_spec_version, model_id, reasoning_parser,
-                                        capture_timestamp, generated_text, generated_token_ids,
-                                        finish_reason, reasoning_text
-                                    )
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
-                                    ON CONFLICT (run_id, log_id) DO UPDATE SET
-                                        example_id = EXCLUDED.example_id,
-                                        row_key = EXCLUDED.row_key,
-                                        source_relation = EXCLUDED.source_relation,
-                                        workflow_spec_id = EXCLUDED.workflow_spec_id,
-                                        workflow_spec_version = EXCLUDED.workflow_spec_version,
-                                        model_id = EXCLUDED.model_id,
-                                        reasoning_parser = EXCLUDED.reasoning_parser,
-                                        capture_timestamp = EXCLUDED.capture_timestamp,
-                                        generated_text = EXCLUDED.generated_text,
-                                        generated_token_ids = EXCLUDED.generated_token_ids,
-                                        finish_reason = EXCLUDED.finish_reason,
-                                        reasoning_text = EXCLUDED.reasoning_text
-                                    """
-                                ).format(sql.Identifier(response_table_name)),
-                                (
-                                    workflow_run_id,
-                                    row["log_id"],
-                                    row.get("example_id"),
-                                    row.get("row_key"),
-                                    row.get("source_relation"),
-                                    row.get("workflow_spec_id"),
-                                    row.get("workflow_spec_version"),
-                                    model_id,
-                                    reasoning_parser if capture_reasoning else "",
-                                    row["capture_timestamp"],
-                                    row.get("generated_text", ""),
-                                    row.get("generated_token_ids", "[]"),
-                                    row.get("finish_reason", ""),
-                                    row.get("reasoning_text", ""),
-                                ),
-                            )
-
-            _run_neon_transaction(_flush_batch)
-            if capture_generation:
-                sample = batch_meta[0]
+                source_row = source_by_log_id.get(int(log_id))
+                if source_row is None:
+                    continue
+                enriched_generation_rows.append(
+                    {
+                        "log_id": int(log_id),
+                        "example_id": source_row.get("example_id"),
+                        "row_key": source_row.get("row_key"),
+                        "source_relation": source_row.get("source_relation"),
+                        "workflow_spec_id": source_row.get("workflow_spec_id"),
+                        "workflow_spec_version": source_row.get("workflow_spec_version"),
+                        "capture_timestamp": row.get("capture_timestamp") or source_row.get("capture_timestamp") or "",
+                        "generated_text": row.get("generated_text", ""),
+                        "generated_token_ids": row.get("generated_token_ids", "[]"),
+                        "finish_reason": row.get("finish_reason", ""),
+                        "reasoning_text": row.get("reasoning_text", ""),
+                    }
+                )
+            if enriched_generation_rows:
+                _run_neon_transaction(
+                    lambda conn, batch_rows=enriched_generation_rows: _flush_generation_batch(conn, batch_rows)
+                )
+                generated_rows += len(enriched_generation_rows)
+                sample = enriched_generation_rows[0]
                 print(
-                    f"  Flushed {len(batch_meta)} rows to Neon ({len(all_metadata)} total), "
-                    f"including generated outputs to {response_table_name}; "
-                    f"sample text_chars={len(sample.get('generated_text', '') or '')}, "
+                    f"  Flushed {len(enriched_generation_rows)} generation rows to {response_table_name} "
+                    f"({generated_rows} total); sample text_chars={len(sample.get('generated_text', '') or '')}, "
                     f"reasoning_chars={len(sample.get('reasoning_text', '') or '')}"
                 )
-            else:
-                print(f"  Flushed {len(batch_meta)} rows to Neon ({len(all_metadata)} total)")
-        if len(all_metadata) % 50 == 0 or len(all_metadata) == len(rows):
-            write_metadata_to_volume.remote(all_metadata, output_subdir=output_subdir)
 
     if all_metadata:
         write_metadata_to_volume.remote(all_metadata, output_subdir=output_subdir)

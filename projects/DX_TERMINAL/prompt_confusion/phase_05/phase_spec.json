@@ -1,0 +1,16 @@
+{
+  "id": "prompt_confusion_phase_05",
+  "name": "Prompt Confusion Phase 05",
+  "description": "Fifth prompt-confusion iteration: family-controlled arbitration analysis and dataset expansion to separate cross-family mechanism from family-specific structure.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Determine whether the arbitration signal found in Phase 04 reflects a cross-family source-selection mechanism or family-specific prompt structure, and strengthen the dataset to support that claim.",
+  "workflow_specs": [
+    "projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow.json",
+    "projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow_smoke.json"
+  ],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_05/reports",
+    "notes": "Phase 05 reports and analysis outputs."
+  }
+}

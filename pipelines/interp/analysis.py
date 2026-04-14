@@ -38,7 +38,7 @@ class AnalysisConfig:
     mode: str = "probe"  # probe | experts | pca | all
     target: str = "decision_type"
     data_source: str = "router"  # router | residual
-    pooling: str = "last_token"  # last_token | mean_pool
+    pooling: str = "last_token"  # last_token | prompt_eos | mean_pool
     n_folds: int = 5
     layers: list[int] | None = None
     limit: int | None = None
@@ -155,6 +155,18 @@ def _encode_labels(
             filtered.append(r)
             labels.append(label_set[label_text])
         class_names = list(label_set.keys())
+
+    elif target == "strategy_family":
+        family_set: dict[str, int] = {}
+        for r in rows:
+            family = r.get("strategy_family")
+            if family is None:
+                continue
+            if family not in family_set:
+                family_set[family] = len(family_set)
+            filtered.append(r)
+            labels.append(family_set[family])
+        class_names = list(family_set.keys())
 
     else:
         raise ValueError(f"Unknown target: {target}")
@@ -546,6 +558,11 @@ class AnalysisDataset:
 
                 if layer_data.ndim == 1:
                     vec = layer_data
+                elif pooling == "prompt_eos":
+                    raise ValueError(
+                        "prompt_eos analysis requires capture-time prompt_eos pooling; "
+                        "full-sequence activations do not retain the EOS index."
+                    )
                 elif pooling == "last_token":
                     vec = layer_data[-1]
                 else:
@@ -558,6 +575,10 @@ class AnalysisDataset:
                         layer_ri = ri_tensor[tensor_idx]
                         if layer_ri.ndim == 1:
                             self._ri_cache[layer].append(layer_ri)
+                        elif pooling == "prompt_eos":
+                            raise ValueError(
+                                "prompt_eos router analysis requires capture-time prompt_eos pooling."
+                            )
                         elif pooling == "last_token":
                             self._ri_cache[layer].append(layer_ri[-1])
                         else:
@@ -892,12 +913,19 @@ def run_pca(config: AnalysisConfig) -> None:
     from sklearn.preprocessing import StandardScaler
 
     dataset = AnalysisDataset(config)
-    L = dataset.num_layers
 
     if config.layers:
         layers = config.layers
     else:
-        layers = sorted(set([0, L // 3, 2 * L // 3, L - 1]))
+        available_layers = list(dataset.captured_layers)
+        if not available_layers:
+            raise ValueError("No captured layers available for PCA.")
+        if len(available_layers) <= 4:
+            layers = available_layers
+        else:
+            max_idx = len(available_layers) - 1
+            rep_indices = sorted(set([0, max_idx // 3, (2 * max_idx) // 3, max_idx]))
+            layers = [available_layers[idx] for idx in rep_indices]
 
     print(f"\nPCA/LDA visualization: target={config.target}, source={config.data_source}")
     print(f"  {len(dataset.rows)} examples, classes: {dataset.class_names}")
@@ -1104,6 +1132,11 @@ def run_compact(config: AnalysisConfig) -> dict:
 
                 if layer_data.ndim == 1:
                     vec = layer_data
+                elif pooling == "prompt_eos":
+                    raise ValueError(
+                        "prompt_eos compaction requires capture-time prompt_eos pooling; "
+                        "full-sequence activations do not retain the EOS index."
+                    )
                 elif pooling == "last_token":
                     vec = layer_data[-1]
                 else:
@@ -1115,6 +1148,10 @@ def run_compact(config: AnalysisConfig) -> dict:
                     layer_ri_data = ri_tensor[tidx]
                     if layer_ri_data.ndim == 1:
                         layer_ri[layer].append(layer_ri_data)
+                    elif pooling == "prompt_eos":
+                        raise ValueError(
+                            "prompt_eos router compaction requires capture-time prompt_eos pooling."
+                        )
                     elif pooling == "last_token":
                         layer_ri[layer].append(layer_ri_data[-1])
                     else:
@@ -1173,9 +1210,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target", default="decision_type",
                    choices=["decision_type", "trade_side", "was_profitable_1h",
                             "executed_valence", "forced_observe",
-                            "risk_tolerance", "asset"])
+                            "risk_tolerance", "asset", "workflow_label"])
     p.add_argument("--data-source", choices=["router", "residual"], default="router")
-    p.add_argument("--pooling", choices=["last_token", "mean_pool"], default="last_token")
+    p.add_argument("--pooling", choices=["last_token", "prompt_eos", "mean_pool"], default="last_token")
     p.add_argument("--n-folds", type=int, default=5)
     p.add_argument("--layers", type=str, default="",
                    help="Comma-separated layer indices (default: all)")

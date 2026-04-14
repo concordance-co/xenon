@@ -60,8 +60,14 @@ def _make_patched_forward(block: Any) -> Any:
 
         # --- CAPTURE ---
         if block._router_capture_enabled:
-            block._router_logits_buffer[:num_tokens].copy_(router_logits.float())
-            block._router_num_captured = num_tokens
+            start = int(getattr(block, "_router_num_captured", 0))
+            capacity = int(block._router_logits_buffer.shape[0])
+            end = min(start + num_tokens, capacity)
+            if end > start:
+                block._router_logits_buffer[start:end].copy_(
+                    router_logits[: end - start].float()
+                )
+            block._router_num_captured = end
 
         shared_out, fused_out = block.experts(
             hidden_states=hidden_states,

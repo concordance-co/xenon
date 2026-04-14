@@ -1,0 +1,89 @@
+{
+  "relation_name": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+  "base_relation": "workflow_dataset_conflict_probe_v3_v1",
+  "n_examples": 123,
+  "label_counts": {
+    "strategy": 72,
+    "setting": 51
+  },
+  "baselines": [
+    {
+      "baseline_name": "family_only",
+      "n_examples": 123,
+      "n_folds": 5,
+      "n_groups": 43,
+      "split_mode": "grouped",
+      "accuracy_mean": 0.7609,
+      "accuracy_std": 0.1143,
+      "balanced_accuracy": 0.7633,
+      "balanced_accuracy_std": 0.1265
+    },
+    {
+      "baseline_name": "pressure_only",
+      "n_examples": 123,
+      "n_folds": 5,
+      "n_groups": 43,
+      "split_mode": "grouped",
+      "accuracy_mean": 0.5463,
+      "accuracy_std": 0.035,
+      "balanced_accuracy": 0.5728,
+      "balanced_accuracy_std": 0.0328
+    },
+    {
+      "baseline_name": "family_plus_pressure",
+      "n_examples": 123,
+      "n_folds": 5,
+      "n_groups": 43,
+      "split_mode": "grouped",
+      "accuracy_mean": 0.8081,
+      "accuracy_std": 0.0767,
+      "balanced_accuracy": 0.8035,
+      "balanced_accuracy_std": 0.0851
+    },
+    {
+      "baseline_name": "lexical_ids",
+      "n_examples": 123,
+      "n_folds": 5,
+      "n_groups": 43,
+      "split_mode": "grouped",
+      "accuracy_mean": 0.6436,
+      "accuracy_std": 0.1022,
+      "balanced_accuracy": 0.6507,
+      "balanced_accuracy_std": 0.1029
+    },
+    {
+      "baseline_name": "metadata_all",
+      "n_examples": 123,
+      "n_folds": 5,
+      "n_groups": 43,
+      "split_mode": "grouped",
+      "accuracy_mean": 0.669,
+      "accuracy_std": 0.0528,
+      "balanced_accuracy": 0.674,
+      "balanced_accuracy_std": 0.0539
+    },
+    {
+      "baseline_name": "length_position_numeric",
+      "n_examples": 123,
+      "n_folds": 5,
+      "n_groups": 43,
+      "split_mode": "grouped",
+      "accuracy_mean": 0.4763,
+      "accuracy_std": 0.1086,
+      "balanced_accuracy": 0.4873,
+      "balanced_accuracy_std": 0.0997
+    },
+    {
+      "baseline_name": "user_text_ngram",
+      "n_examples": 123,
+      "n_folds": 5,
+      "n_groups": 43,
+      "split_mode": "grouped",
+      "accuracy_mean": 0.6883,
+      "accuracy_std": 0.1021,
+      "balanced_accuracy": 0.701,
+      "balanced_accuracy_std": 0.1095
+    }
+  ],
+  "output_dir": "/data/analysis_results/prompt_confusion/phase_04/conflict_arbitration_stage2/confound_checks"
+}

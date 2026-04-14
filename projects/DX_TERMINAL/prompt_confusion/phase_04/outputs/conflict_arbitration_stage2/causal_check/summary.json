@@ -1,0 +1,35 @@
+{
+  "target_layer": 24,
+  "section_name": "settings",
+  "pooling": "mean",
+  "strength": 1.0,
+  "n_rows": 123,
+  "analysis_subdir": "prompt_confusion/phase_04/conflict_arbitration_stage1",
+  "conditions": [
+    {
+      "condition": "baseline",
+      "n_rows": 123,
+      "strategy_rate": 0.5366,
+      "setting_rate": 0.4553,
+      "neither_rate": 0.0081,
+      "family_breakdown_json": "{\"activity_force_observe\": {\"neither\": 0, \"setting\": 6, \"strategy\": 30}, \"activity_force_trade\": {\"neither\": 0, \"setting\": 22, \"strategy\": 14}, \"trade_size_force_large\": {\"neither\": 0, \"setting\": 21, \"strategy\": 0}, \"trade_size_force_small\": {\"neither\": 1, \"setting\": 7, \"strategy\": 22}}"
+    },
+    {
+      "condition": "setting_push",
+      "n_rows": 123,
+      "strategy_rate": 0.4878,
+      "setting_rate": 0.4878,
+      "neither_rate": 0.0244,
+      "family_breakdown_json": "{\"activity_force_observe\": {\"neither\": 0, \"setting\": 5, \"strategy\": 31}, \"activity_force_trade\": {\"neither\": 0, \"setting\": 23, \"strategy\": 13}, \"trade_size_force_large\": {\"neither\": 0, \"setting\": 21, \"strategy\": 0}, \"trade_size_force_small\": {\"neither\": 3, \"setting\": 11, \"strategy\": 16}}"
+    },
+    {
+      "condition": "strategy_push",
+      "n_rows": 123,
+      "strategy_rate": 0.626,
+      "setting_rate": 0.3659,
+      "neither_rate": 0.0081,
+      "family_breakdown_json": "{\"activity_force_observe\": {\"neither\": 0, \"setting\": 5, \"strategy\": 31}, \"activity_force_trade\": {\"neither\": 0, \"setting\": 20, \"strategy\": 16}, \"trade_size_force_large\": {\"neither\": 0, \"setting\": 15, \"strategy\": 6}, \"trade_size_force_small\": {\"neither\": 1, \"setting\": 5, \"strategy\": 24}}"
+    }
+  ],
+  "output_dir": "/data/analysis_results/prompt_confusion/phase_04/conflict_arbitration_stage2/causal_check"
+}
