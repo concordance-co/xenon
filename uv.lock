@@ -1885,14 +1885,15 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },
+    { name = "numpy" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyarrow" },
+    { name = "safetensors" },
 ]
 
 [package.optional-dependencies]
 analysis = [
     { name = "matplotlib" },
-    { name = "numpy" },
     { name = "safetensors" },
     { name = "scikit-learn" },
     { name = "torch" },
@@ -1914,10 +1915,11 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.3" },
     { name = "matplotlib", marker = "extra == 'analysis'", specifier = ">=3.8.0" },
     { name = "modal", marker = "extra == 'modal'", specifier = ">=0.73.0" },
-    { name = "numpy", marker = "extra == 'analysis'", specifier = ">=1.26.0" },
+    { name = "numpy", specifier = ">=1.26.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0" },
     { name = "pyarrow", specifier = ">=23.0.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "safetensors", specifier = ">=0.4.0" },
     { name = "safetensors", marker = "extra == 'analysis'", specifier = ">=0.4.0" },
     { name = "safetensors", marker = "extra == 'interp'", specifier = ">=0.4.0" },
     { name = "scikit-learn", marker = "extra == 'analysis'", specifier = ">=1.4.0" },

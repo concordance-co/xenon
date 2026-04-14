@@ -1,0 +1,977 @@
+{
+  "dataset": {
+    "case_columns": [
+      "matched_pair_id",
+      "strategy_variant_id",
+      "setting_lexical_family_id",
+      "context_variant_id"
+    ],
+    "case_key_column": "matched_pair_id",
+    "example_key_column": "example_id",
+    "kind": "dataset",
+    "label_columns": [
+      "conflict_present",
+      "pair_member",
+      "strategy_family",
+      "strategy_variant_id",
+      "setting_family",
+      "setting_lexical_family_id",
+      "environment_pressure_bucket",
+      "context_variant_id",
+      "lexical_split",
+      "strategy_lexical_split",
+      "setting_lexical_split",
+      "expected_output_json",
+      "strategy_expected_action",
+      "strategy_expected_asset",
+      "strategy_expected_size",
+      "setting_expected_action",
+      "setting_expected_asset",
+      "setting_expected_size"
+    ],
+    "mode": "postgres",
+    "name": "prompt_confusion_phase_04",
+    "prompt_column": "prompt_messages_json",
+    "source": {
+      "kind": "postgres",
+      "url_env_var": "XENON_DATABASE_URL"
+    },
+    "table": "conflict_probe_examples_v2"
+  },
+  "goal": "Use phase_04 as the first end-to-end proof that the new library can run a remote dataset-backed GPU capture workflow, fan out artifact-bound analysis on cheaper CPU runtimes, and produce an artifact-driven report for prompt-confusion prompt-state analysis.",
+  "kind": "arch2_target",
+  "phase": "phase_04",
+  "project_id": "DX_TERMINAL",
+  "runners": {
+    "analysis_cpu": {
+      "artifacts": {
+        "kind": "modal_volume",
+        "name": "xenon-data",
+        "root": "/data/artifacts/prompt_confusion_phase_04"
+      },
+      "catalog": {
+        "kind": "postgres",
+        "source": {
+          "kind": "postgres",
+          "url_env_var": "XENON_DATABASE_URL"
+        }
+      },
+      "kind": "modal",
+      "resources": {
+        "cpu": 6,
+        "memory_mb": 24576,
+        "secrets": [
+          {
+            "env_vars": [
+              "XENON_DATABASE_URL"
+            ],
+            "name": "xenon-db"
+          }
+        ]
+      }
+    },
+    "capture_gpu": {
+      "artifacts": {
+        "kind": "modal_volume",
+        "name": "xenon-data",
+        "root": "/data/artifacts/prompt_confusion_phase_04"
+      },
+      "catalog": {
+        "kind": "postgres",
+        "source": {
+          "kind": "postgres",
+          "url_env_var": "XENON_DATABASE_URL"
+        }
+      },
+      "kind": "modal",
+      "resources": {
+        "gpu": "A100-80GB",
+        "secrets": [
+          {
+            "env_vars": [
+              "XENON_DATABASE_URL"
+            ],
+            "name": "xenon-db"
+          }
+        ],
+        "volumes": [
+          {
+            "commit_on_success": false,
+            "create_if_missing": false,
+            "mount_path": "/models",
+            "name": "xenon-models"
+          }
+        ]
+      }
+    },
+    "report_local": {
+      "kind": "local"
+    }
+  },
+  "schema_version": 1,
+  "subproject": "prompt_confusion",
+  "workflows": {
+    "behavioral_followon": {
+      "kind": "workflow",
+      "name": "prompt_confusion_phase_04_behavioral_followon",
+      "schema_version": 1,
+      "steps": [
+        {
+          "name": "capture_with_generation",
+          "runner": "capture_gpu",
+          "spec": {
+            "dataset": {
+              "kind": "dataset_ref",
+              "ref": "phase_dataset"
+            },
+            "engine": {
+              "enforce_eager": false,
+              "kind": "vllm",
+              "max_model_len": 8192,
+              "max_num_seqs": 2,
+              "model_id": "/models/Qwen/Qwen3-30B-A3B"
+            },
+            "generation": {
+              "capture_reasoning": false,
+              "enabled": true,
+              "max_tokens": 128,
+              "structured_output": {
+                "name": "phase_04_decision",
+                "type": "json_schema"
+              },
+              "temperature": 0.0
+            },
+            "kind": "capture",
+            "schema_version": 1,
+            "sites": [
+              {
+                "layers": [
+                  12,
+                  24,
+                  36,
+                  44
+                ],
+                "name": "resid_prompt_boundary",
+                "site": "resid_post",
+                "storage": {
+                  "dtype": "float16",
+                  "format": "safetensors"
+                },
+                "tokens": {
+                  "kind": "last"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "label_behavior",
+          "runner": "analysis_cpu",
+          "spec": {
+            "builder": {
+              "import_path": "projects.DX_TERMINAL.prompt_confusion.phase_04.specs.arch2_target:build_phase_04_behavior_labels",
+              "local_python_sources": [
+                "."
+              ]
+            },
+            "inputs": {
+              "generations": {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "capture_with_generation"
+              },
+              "setting_expected_action": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "setting_expected_action"
+              },
+              "setting_expected_asset": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "setting_expected_asset"
+              },
+              "setting_expected_size": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "setting_expected_size"
+              },
+              "strategy_expected_action": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "strategy_expected_action"
+              },
+              "strategy_expected_asset": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "strategy_expected_asset"
+              },
+              "strategy_expected_size": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "strategy_expected_size"
+              },
+              "workflow_expected": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "expected_output_json"
+              }
+            },
+            "kind": "transform",
+            "schema_version": 1
+          }
+        },
+        {
+          "name": "probe_behavior_source_following",
+          "runner": "analysis_cpu",
+          "spec": {
+            "baselines": [
+              "majority",
+              "shuffled_label"
+            ],
+            "feature": {
+              "feature_name": "resid_prompt_boundary",
+              "kind": "step_feature_ref",
+              "step": "capture_with_generation"
+            },
+            "group_by": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "case_set",
+              "name": "matched_pair_id"
+            },
+            "kind": "probe",
+            "labels": {
+              "kind": "step_label_ref",
+              "label_name": "source_following_side",
+              "step": "label_behavior"
+            },
+            "metrics": [
+              "accuracy",
+              "balanced_accuracy",
+              "auroc",
+              "selectivity"
+            ],
+            "pooling": {
+              "kind": "mean"
+            },
+            "schema_version": 1,
+            "split": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "lexical_split"
+            },
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "behavior_report",
+          "runner": "report_local",
+          "spec": {
+            "inputs": [
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "capture_with_generation"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "label_behavior"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "probe_behavior_source_following"
+              }
+            ],
+            "kind": "report",
+            "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_04/reports",
+            "schema_version": 1,
+            "template": "prompt_confusion_phase_04_behavioral_followon"
+          }
+        }
+      ]
+    },
+    "prompt_state": {
+      "kind": "workflow",
+      "name": "prompt_confusion_phase_04_prompt_state",
+      "schema_version": 1,
+      "steps": [
+        {
+          "name": "capture_prompt_state_residual",
+          "runner": "capture_gpu",
+          "spec": {
+            "dataset": {
+              "kind": "dataset_ref",
+              "ref": "phase_dataset"
+            },
+            "engine": {
+              "enforce_eager": false,
+              "kind": "vllm",
+              "max_model_len": 8192,
+              "max_num_seqs": 2,
+              "model_id": "/models/Qwen/Qwen3-30B-A3B"
+            },
+            "generation": {
+              "capture_reasoning": false,
+              "enabled": false,
+              "max_tokens": 0,
+              "temperature": 0.0
+            },
+            "kind": "capture",
+            "prompt_metadata_builder": {
+              "import_path": "projects.DX_TERMINAL.prompt_confusion.phase_04.specs.arch2_target:build_phase_04_prompt_metadata",
+              "local_python_sources": [
+                "."
+              ]
+            },
+            "schema_version": 1,
+            "sites": [
+              {
+                "layers": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  44
+                ],
+                "name": "resid_last_prompt_token",
+                "site": "resid_post",
+                "storage": {
+                  "dtype": "float16",
+                  "format": "safetensors"
+                },
+                "tokens": {
+                  "kind": "last"
+                }
+              },
+              {
+                "layers": [
+                  12,
+                  24,
+                  36,
+                  44
+                ],
+                "name": "resid_strategy_section",
+                "site": "resid_post",
+                "storage": {
+                  "dtype": "float16",
+                  "format": "safetensors"
+                },
+                "tokens": {
+                  "kind": "section",
+                  "value": "STRATEGY"
+                }
+              },
+              {
+                "layers": [
+                  12,
+                  24,
+                  36,
+                  44
+                ],
+                "name": "resid_settings_section",
+                "site": "resid_post",
+                "storage": {
+                  "dtype": "float16",
+                  "format": "safetensors"
+                },
+                "tokens": {
+                  "kind": "section",
+                  "value": "SETTINGS"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "depends_on": [
+            "capture_prompt_state_residual"
+          ],
+          "name": "capture_prompt_state_router",
+          "runner": "capture_gpu",
+          "spec": {
+            "dataset": {
+              "kind": "dataset_ref",
+              "ref": "phase_dataset"
+            },
+            "engine": {
+              "enforce_eager": false,
+              "kind": "vllm",
+              "max_model_len": 8192,
+              "max_num_seqs": 1,
+              "model_id": "/models/Qwen/Qwen3-30B-A3B"
+            },
+            "generation": {
+              "capture_reasoning": false,
+              "enabled": false,
+              "max_tokens": 0,
+              "temperature": 0.0
+            },
+            "kind": "capture",
+            "schema_version": 1,
+            "sites": [
+              {
+                "layers": [
+                  12,
+                  24,
+                  36,
+                  44
+                ],
+                "name": "router_last_prompt_token",
+                "record": [
+                  {
+                    "kind": "gate_logits",
+                    "params": {
+                      "dtype": "float16"
+                    }
+                  },
+                  {
+                    "kind": "topk_from_gate",
+                    "params": {
+                      "include_weights": true,
+                      "k": 8
+                    }
+                  },
+                  {
+                    "kind": "expert_load",
+                    "params": {
+                      "source": "topk_from_gate"
+                    }
+                  }
+                ],
+                "tokens": {
+                  "kind": "last"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "probe_conflict",
+          "runner": "analysis_cpu",
+          "spec": {
+            "baselines": [
+              "majority",
+              "shuffled_label"
+            ],
+            "feature": {
+              "feature_name": "resid_last_prompt_token",
+              "kind": "step_feature_ref",
+              "step": "capture_prompt_state_residual"
+            },
+            "group_by": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "case_set",
+              "name": "matched_pair_id"
+            },
+            "kind": "probe",
+            "labels": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "conflict_present"
+            },
+            "metrics": [
+              "accuracy",
+              "balanced_accuracy",
+              "auroc",
+              "selectivity"
+            ],
+            "pooling": {
+              "kind": "mean"
+            },
+            "schema_version": 1,
+            "split": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "lexical_split"
+            },
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "probe_strategy_family",
+          "runner": "analysis_cpu",
+          "spec": {
+            "baselines": [
+              "majority"
+            ],
+            "feature": {
+              "feature_name": "resid_last_prompt_token",
+              "kind": "step_feature_ref",
+              "step": "capture_prompt_state_residual"
+            },
+            "group_by": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "case_set",
+              "name": "strategy_variant_id"
+            },
+            "kind": "probe",
+            "labels": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "strategy_family"
+            },
+            "metrics": [
+              "accuracy",
+              "balanced_accuracy"
+            ],
+            "pooling": {
+              "kind": "mean"
+            },
+            "schema_version": 1,
+            "split": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "lexical_split"
+            },
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "probe_setting_lexical_family",
+          "runner": "analysis_cpu",
+          "spec": {
+            "baselines": [
+              "majority"
+            ],
+            "feature": {
+              "feature_name": "resid_last_prompt_token",
+              "kind": "step_feature_ref",
+              "step": "capture_prompt_state_residual"
+            },
+            "group_by": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "case_set",
+              "name": "setting_lexical_family_id"
+            },
+            "kind": "probe",
+            "labels": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "setting_lexical_family_id"
+            },
+            "metrics": [
+              "accuracy",
+              "balanced_accuracy"
+            ],
+            "pooling": {
+              "kind": "mean"
+            },
+            "schema_version": 1,
+            "split": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "lexical_split"
+            },
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "probe_environment_pressure",
+          "runner": "analysis_cpu",
+          "spec": {
+            "baselines": [
+              "majority"
+            ],
+            "feature": {
+              "feature_name": "resid_last_prompt_token",
+              "kind": "step_feature_ref",
+              "step": "capture_prompt_state_residual"
+            },
+            "group_by": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "case_set",
+              "name": "context_variant_id"
+            },
+            "kind": "probe",
+            "labels": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "environment_pressure_bucket"
+            },
+            "metrics": [
+              "accuracy",
+              "balanced_accuracy"
+            ],
+            "pooling": {
+              "kind": "mean"
+            },
+            "schema_version": 1,
+            "split": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "lexical_split"
+            },
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "label_conflict_dimension",
+          "runner": "analysis_cpu",
+          "spec": {
+            "default_value": null,
+            "kind": "label_map",
+            "mapping": {
+              "activity_force_observe": "action",
+              "activity_force_trade": "action",
+              "diversification_force_concentrate": "asset",
+              "holding_force_exit": "action",
+              "trade_size_force_large": "size",
+              "trade_size_force_small": "size"
+            },
+            "output_name": "conflict_dimension",
+            "schema_version": 1,
+            "source": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "label_set",
+              "name": "strategy_family"
+            },
+            "strict": true
+          }
+        },
+        {
+          "name": "pair_delta",
+          "runner": "analysis_cpu",
+          "spec": {
+            "case": {
+              "dataset": {
+                "kind": "dataset_ref",
+                "ref": "phase_dataset"
+              },
+              "kind": "case_set",
+              "name": "matched_pair_id"
+            },
+            "feature": {
+              "feature_name": "resid_last_prompt_token",
+              "kind": "step_feature_ref",
+              "step": "capture_prompt_state_residual"
+            },
+            "kind": "pair_delta",
+            "labels": {
+              "conflict_dimension": {
+                "kind": "step_label_ref",
+                "label_name": "conflict_dimension",
+                "step": "label_conflict_dimension"
+              },
+              "lexical_split": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "lexical_split"
+              },
+              "matched_pair_id": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "case_set",
+                "name": "matched_pair_id"
+              }
+            },
+            "negative": {
+              "kind": "label_predicate",
+              "label_set": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "pair_member"
+              },
+              "op": "equals",
+              "value": "aligned"
+            },
+            "pooling": {
+              "kind": "mean"
+            },
+            "positive": {
+              "kind": "label_predicate",
+              "label_set": {
+                "dataset": {
+                  "kind": "dataset_ref",
+                  "ref": "phase_dataset"
+                },
+                "kind": "label_set",
+                "name": "pair_member"
+              },
+              "op": "equals",
+              "value": "strong_conflict"
+            },
+            "schema_version": 1,
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "probe_pair_delta_conflict_dimension",
+          "runner": "analysis_cpu",
+          "spec": {
+            "baselines": [
+              "majority",
+              "shuffled_label"
+            ],
+            "feature": {
+              "feature_name": "delta",
+              "kind": "step_feature_ref",
+              "step": "pair_delta"
+            },
+            "kind": "probe",
+            "labels": {
+              "kind": "step_label_ref",
+              "label_name": "conflict_dimension",
+              "step": "pair_delta"
+            },
+            "metrics": [
+              "accuracy",
+              "balanced_accuracy",
+              "auroc",
+              "selectivity"
+            ],
+            "pooling": {
+              "kind": "mean"
+            },
+            "schema_version": 1,
+            "split": {
+              "kind": "step_label_ref",
+              "label_name": "lexical_split",
+              "step": "pair_delta"
+            },
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "basis_pair_delta",
+          "runner": "analysis_cpu",
+          "spec": {
+            "by": {
+              "kind": "step_label_ref",
+              "label_name": "conflict_dimension",
+              "step": "pair_delta"
+            },
+            "components": 4,
+            "feature": {
+              "feature_name": "delta",
+              "kind": "step_feature_ref",
+              "step": "pair_delta"
+            },
+            "kind": "basis",
+            "layers": [
+              12,
+              24,
+              36,
+              44
+            ],
+            "method": "pca",
+            "pooling": {
+              "kind": "mean"
+            },
+            "schema_version": 1,
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "direction_pair_delta_size_vs_action",
+          "runner": "analysis_cpu",
+          "spec": {
+            "feature": {
+              "feature_name": "delta",
+              "kind": "step_feature_ref",
+              "step": "pair_delta"
+            },
+            "kind": "direction",
+            "layers": [
+              12,
+              24,
+              36,
+              44
+            ],
+            "negative": {
+              "kind": "label_predicate",
+              "label_set": {
+                "kind": "step_label_ref",
+                "label_name": "conflict_dimension",
+                "step": "pair_delta"
+              },
+              "op": "equals",
+              "value": "action"
+            },
+            "pooling": {
+              "kind": "mean"
+            },
+            "positive": {
+              "kind": "label_predicate",
+              "label_set": {
+                "kind": "step_label_ref",
+                "label_name": "conflict_dimension",
+                "step": "pair_delta"
+              },
+              "op": "equals",
+              "value": "size"
+            },
+            "schema_version": 1,
+            "tokens": {
+              "kind": "full_sequence"
+            }
+          }
+        },
+        {
+          "name": "report",
+          "runner": "report_local",
+          "spec": {
+            "inputs": [
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "capture_prompt_state_residual"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "capture_prompt_state_router"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "probe_conflict"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "probe_strategy_family"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "probe_setting_lexical_family"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "probe_environment_pressure"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "label_conflict_dimension"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "pair_delta"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "probe_pair_delta_conflict_dimension"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "basis_pair_delta"
+              },
+              {
+                "kind": "step_ref",
+                "output": "artifact",
+                "step": "direction_pair_delta_size_vs_action"
+              }
+            ],
+            "kind": "report",
+            "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_04/reports",
+            "schema_version": 1,
+            "template": "prompt_confusion_phase_04_summary"
+          }
+        }
+      ]
+    }
+  }
+}

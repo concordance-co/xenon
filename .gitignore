@@ -22,4 +22,4 @@ wheels/
 tmp/
 
 # Local ingestion artifacts
-data/
+/data/
