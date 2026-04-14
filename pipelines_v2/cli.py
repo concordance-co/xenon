@@ -97,7 +97,11 @@ def _workflow_run(ns: argparse.Namespace) -> int:
         workflow_fn_name=ns.workflow_fn,
     )
     orchestrator = WorkflowOrchestrator(runners=_build_runners(ns, runner_specs))
-    result = orchestrator.run(workflow)
+    result = orchestrator.run(
+        workflow,
+        resume_run_id=ns.resume_run_id,
+        reuse_completed=bool(ns.reuse_completed),
+    )
     print(json.dumps(_workflow_result_payload(workflow.name, result), indent=2, sort_keys=True))
     return 0
 
@@ -177,7 +181,12 @@ def _workflow_result_payload(name: str | None, result: WorkflowResult) -> dict[s
             steps[step_name] = step_payload
         else:
             steps[step_name] = value
-    return {"workflow": name, "steps": steps}
+    return {
+        "workflow": name,
+        "run_id": result.run_id,
+        "workflow_hash": result.workflow_hash,
+        "steps": steps,
+    }
 
 
 def _load_python_module(path: str | Path) -> ModuleType:
@@ -325,6 +334,17 @@ def _build_parser() -> argparse.ArgumentParser:
             default="tmp/pipelines_v2_cli_local_reports",
             help="Local artifact root for optional report_local steps.",
         )
+        if name == "run":
+            command.add_argument(
+                "--resume-run-id",
+                default=None,
+                help="Resume a previously recorded workflow run id.",
+            )
+            command.add_argument(
+                "--reuse-completed",
+                action="store_true",
+                help="Reuse latest completed step artifacts whose semantic lineage matches.",
+            )
 
     return parser
 

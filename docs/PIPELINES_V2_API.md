@@ -42,6 +42,13 @@ Current runner support:
 
 - `LocalRunner`: local execution
 - `ModalRunner`: remote execution on Modal
+- `LocalRunnerSpec` / `ModalRunnerSpec`: serializable runner-profile definitions for Python workflow files
+
+Current workflow persistence support:
+
+- workflow runs and workflow step records are persisted when runners share one non-null catalog
+- `WorkflowOrchestrator.run(..., resume_run_id=..., reuse_completed=...)` is implemented
+- artifact manifests carry workflow provenance in `workflow_context`
 
 ## Core Concepts
 
@@ -57,6 +64,8 @@ Current runner support:
   - consumes feature or label refs from existing artifacts instead of talking to a model
 - `Runner`
   - executes one spec under one resource profile
+- `RunnerSpec`
+  - serializable execution-profile definition that materializes a concrete runner
 - `WorkflowOrchestrator`
   - coordinates multiple steps across named runners
 
@@ -654,6 +663,21 @@ Behavior:
 - capture runs through `spec.engine.capture(...)`
 - analysis/report runs through artifact-bound execution helpers
 
+### `LocalRunnerSpec`
+
+What it is:
+- serializable definition of one local execution profile
+
+Fields:
+- `resources`
+- `artifacts`
+- `catalog`
+
+Methods:
+- `to_runner()`
+- `to_dict()`
+- `from_dict(payload)`
+
 ### `ModalVolumeMount`
 
 Fields:
@@ -699,6 +723,25 @@ Methods:
 Behavior:
 - validates required secret bindings at plan time
 - ships one spec to a remote runtime
+
+### `ModalRunnerSpec`
+
+What it is:
+- serializable definition of one Modal execution profile
+
+Fields:
+- `resources`
+- `artifacts`
+- `catalog`
+
+Methods:
+- `to_runner()`
+- `to_dict()`
+- `from_dict(payload)`
+
+Use when:
+- a Python workflow file should fully describe its named runners via `build_runner_specs()`
+- you want one checked-in workflow definition to materialize concrete runners without CLI-only glue
 
 ## Storage and Artifacts
 
@@ -747,18 +790,28 @@ Behavior:
 
 #### `Catalog`
 
-Protocol method:
+Protocol methods:
 - `record_artifact(manifest)`
+- `load_artifact(artifact_id)`
+- `record_workflow_run(record)`
+- `load_workflow_run(run_id)`
+- `record_workflow_step(record)`
+- `list_workflow_steps(run_id)`
+- `find_latest_reusable_step(step_name=..., step_semantic_hash=..., input_artifact_refs=...)`
 
 #### `FileCatalog`
 
 What it does:
 - writes one manifest JSON per artifact to a local directory
+- also stores workflow runs and workflow step records
+- does not currently implement alias resolution or spec snapshot storage
 
 #### `PostgresCatalog`
 
 What it does:
-- upserts manifests into `pipelines_v2_artifacts`
+- upserts artifact manifests into `pipelines_v2_artifacts`
+- stores workflow runs and workflow step records in Postgres
+- does not currently implement alias resolution or spec snapshot storage
 
 #### `NullCatalog`
 
@@ -769,6 +822,14 @@ What it does:
 
 What it is:
 - canonical summary of one produced artifact
+
+Important fields:
+- `operation_spec_hash`
+- `operation_semantic_hash`
+- `input_artifact_refs`
+- `example_coverage`
+- `storage_refs`
+- `workflow_context`
 
 Methods:
 - `to_dict()`
@@ -910,6 +971,11 @@ What it is:
 What it is:
 - result bundle for a finished workflow
 
+Fields:
+- `run_id`
+- `workflow_hash`
+- `step_results`
+
 Methods:
 - `step(name)`
 
@@ -924,11 +990,100 @@ Fields:
 
 Methods:
 - `plan(workflow)`
-- `run(workflow)`
+- `run(workflow, *, resume_run_id=None, reuse_completed=False)`
 
 Behavior:
 - resolves step refs before execution
 - can run independent ready steps in parallel
+- persists workflow runs and workflow step records when runners share one non-null catalog
+- `resume_run_id=...` reloads completed prior step artifacts from the shared catalog
+- `reuse_completed=True` reuses latest completed step artifacts whose semantic lineage matches
+- resume/reuse require every participating runner to point at the same catalog identity
+
+### `WorkflowRunRecord`
+
+What it is:
+- persisted record for one workflow execution attempt
+
+Important fields:
+- `run_id`
+- `workflow_name`
+- `workflow_hash`
+- `workflow_spec_hash`
+- `workflow_payload`
+- `status`
+- `started_at`
+- `finished_at`
+- `error`
+
+### `WorkflowStepRecord`
+
+What it is:
+- persisted record for one workflow step within one workflow run
+
+Important fields:
+- `run_id`
+- `workflow_hash`
+- `workflow_step_key`
+- `step_name`
+- `step_index`
+- `runner`
+- `status`
+- `step_semantic_hash`
+- `step_spec_hash`
+- `input_artifact_refs`
+- `artifact_id`
+- `artifact_kind`
+- `started_at`
+- `finished_at`
+- `reused_from_run_id`
+- `reused_from_artifact_id`
+
+### `WorkflowStepContext`
+
+What it is:
+- workflow provenance attached to one concrete runner execution and written into the artifact manifest
+
+Important fields:
+- `run_id`
+- `workflow_name`
+- `workflow_hash`
+- `workflow_spec_hash`
+- `step_name`
+- `step_index`
+- `runner`
+- `step_semantic_hash`
+- `step_spec_hash`
+
+## CLI Surface
+
+Current entrypoint:
+
+```bash
+uv run python -m pipelines_v2.cli workflow plan --file path/to/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file path/to/workflow.py
+```
+
+Current scope:
+- the CLI currently loads Python workflow definition files
+- JSON workflow loading through the CLI is not implemented yet, even though many individual specs are serializable
+
+Workflow file contract:
+- `build_dataset() -> Dataset`
+- `build_workflow(dataset: Dataset | None = None) -> WorkflowSpec`
+- optional `build_runner_specs() -> dict[str, RunnerSpec]`
+
+If `build_runner_specs()` is present:
+- the CLI materializes those runner specs directly
+- CLI resource flags become unnecessary for that file
+
+If `build_runner_specs()` is absent:
+- the CLI builds conventional `capture_gpu`, `analysis_cpu`, and optional `report_local` runners from flags
+
+Important run flags:
+- `--resume-run-id <run_id>`
+- `--reuse-completed`
+- `--catalog-postgres-env <ENV_VAR>`
 
 ## Practical Patterns
 
@@ -1022,3 +1177,7 @@ probe_artifact = result.step("probe")
 - artifact-bound analysis currently expects residual-style features.
 - `VLLMEngine` currently rejects MoE routing capture with `max_num_seqs > 1`.
 - large remote reads are blocked by default unless the store transfer policy allows them.
+- workflow resume/reuse require one shared non-null catalog across all runners in the workflow.
+- there is still no first-class "rerun this one step and automatically invalidate downstream steps" API.
+- catalog aliases and spec snapshots described in `ARCH2` are not implemented yet.
+- the orchestrator supports dependency-aware parallelism and failure cancellation, but not a configurable retry policy yet.

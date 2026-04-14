@@ -62,6 +62,16 @@ class Example:
             "case_key": self.case_key,
         }
 
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "key": self.key,
+            "prompt_hash": self.prompt_hash,
+            "labels": dict(self.labels),
+            "metadata": dict(self.metadata),
+            "cases": dict(self.cases),
+            "case_key": self.case_key,
+        }
+
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "Example":
         return cls(
@@ -99,6 +109,14 @@ class LabelPredicate:
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.label_set.runtime_secrets()
+
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "label_set": self.label_set.semantic_dict() if hasattr(self.label_set, "semantic_dict") else self.label_set,
+            "op": self.op,
+            "value": self.value,
+        }
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "LabelPredicate":
@@ -155,6 +173,13 @@ class LabelSet:
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.dataset.runtime_secrets()
 
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "name": self.name,
+            "dataset": self.dataset.semantic_dict(),
+        }
+
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "LabelSet":
         return cls(
@@ -191,6 +216,13 @@ class CaseSet:
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.dataset.runtime_secrets()
+
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "name": self.name,
+            "dataset": self.dataset.semantic_dict(),
+        }
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "CaseSet":
@@ -487,6 +519,24 @@ class Dataset:
             "example_count": len(self.examples),
             "example_keys": self.example_keys(),
             "prompt_hashes": {example.key: example.prompt_hash for example in self.examples},
+        }
+
+    def semantic_dict(self) -> dict[str, Any]:
+        if self.is_deferred:
+            fetch = dict(self.fetch or {})
+            fetch.pop("id", None)
+            fetch.pop("name", None)
+            return {
+                "kind": "dataset",
+                "mode": "deferred",
+                "source": dict(self.source or {}),
+                "fetch": fetch,
+                "selection": dict(self.selection),
+            }
+        return {
+            "kind": "dataset",
+            "mode": "materialized",
+            "examples": [example.semantic_dict() for example in self.examples],
         }
 
     def to_dict(self) -> dict[str, Any]:

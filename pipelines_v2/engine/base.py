@@ -34,6 +34,10 @@ class Engine(Protocol):
         """Return a serializable engine descriptor."""
         ...
 
+    def semantic_identity(self) -> dict[str, Any]:
+        """Return the semantic engine descriptor used for reuse and invalidation."""
+        ...
+
     def capabilities(self) -> set[EngineCapability]:
         """Return the feature set this engine can satisfy."""
         ...

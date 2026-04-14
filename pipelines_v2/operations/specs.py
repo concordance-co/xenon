@@ -121,6 +121,11 @@ class PromptMetadataBuilder:
             "local_python_sources": list(self.local_python_sources),
         }
 
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "import_path": self.import_path,
+        }
+
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "PromptMetadataBuilder":
         return cls(
@@ -197,6 +202,11 @@ class TransformBuilder:
         return {
             "import_path": self.import_path,
             "local_python_sources": list(self.local_python_sources),
+        }
+
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "import_path": self.import_path,
         }
 
     @classmethod
@@ -393,6 +403,11 @@ class CaptureSpec(OperationSpec):
     def to_dict(self) -> dict[str, Any]:
         data = super(CaptureSpec, self).to_dict()
         data["engine"] = self.engine.identity() if self.engine is not None else None
+        return data
+
+    def semantic_dict(self) -> dict[str, Any]:
+        data = super(CaptureSpec, self).semantic_dict()
+        data["engine"] = self.engine.semantic_identity() if self.engine is not None else None
         return data
 
     def required_capabilities(self) -> set[EngineCapability]:
@@ -719,6 +734,11 @@ class ActivationPatchSpec(OperationSpec):
         data["engine"] = self.engine.identity() if self.engine is not None else None
         return data
 
+    def semantic_dict(self) -> dict[str, Any]:
+        data = super(ActivationPatchSpec, self).semantic_dict()
+        data["engine"] = self.engine.semantic_identity() if self.engine is not None else None
+        return data
+
     def required_capabilities(self) -> set[EngineCapability]:
         return {EngineCapability.ACTIVATION_PATCHING}
 
@@ -762,6 +782,11 @@ class ReportSpec(OperationSpec):
 
     def runtime_spec(self) -> Any | None:
         return _analysis_runtime_spec()
+
+    def semantic_dict(self) -> dict[str, Any]:
+        data = super(ReportSpec, self).semantic_dict()
+        data.pop("output_dir", None)
+        return data
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ReportSpec":

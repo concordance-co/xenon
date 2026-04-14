@@ -23,6 +23,7 @@ from pipelines_v2.storage.artifacts import (
 from pipelines_v2.storage.base import Catalog
 from pipelines_v2.storage.features import write_capture_features
 from pipelines_v2.storage.local import LocalArtifactStore, NullCatalog
+from pipelines_v2.workflow.records import WorkflowStepContext
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,16 +71,16 @@ class LocalRunner:
             errors=tuple(errors),
         )
 
-    def run(self, spec: OperationSpec) -> Any:
+    def run(self, spec: OperationSpec, *, workflow_context: WorkflowStepContext | None = None) -> Any:
         """Execute one supported spec locally and return its artifact."""
         self.plan(spec).validate()
         if isinstance(spec, CaptureSpec):
-            return self._run_capture(spec)
+            return self._run_capture(spec, workflow_context=workflow_context)
         if isinstance(spec, _ARTIFACT_BOUND_SPECS):
-            return self._run_artifact_operation(spec)
+            return self._run_artifact_operation(spec, workflow_context=workflow_context)
         raise NotImplementedError(f"LocalRunner cannot run {spec.kind!r} specs yet")
 
-    def _run_capture(self, spec: CaptureSpec) -> CaptureArtifact:
+    def _run_capture(self, spec: CaptureSpec, *, workflow_context: WorkflowStepContext | None = None) -> CaptureArtifact:
         engine = spec.bound_engine()
         if engine is None:
             raise RuntimeError("CaptureSpec is missing a bound engine")
@@ -102,6 +103,7 @@ class LocalRunner:
             artifact_kind="capture",
             schema_version=1,
             operation_spec_hash=spec.spec_hash(),
+            operation_semantic_hash=spec.semantic_hash(),
             created_at=utc_now_iso(),
             engine=engine.identity(),
             runner=self.identity(),
@@ -109,6 +111,7 @@ class LocalRunner:
             example_coverage=resolved_spec.dataset.coverage(),
             storage_refs=storage_refs,
             metadata=result.metadata,
+            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
         )
         storage_refs["manifest"] = self.artifacts.write_json(
             artifact_id,
@@ -118,7 +121,12 @@ class LocalRunner:
         self.catalog.record_artifact(manifest)
         return CaptureArtifact(_manifest=manifest, store=self.artifacts)
 
-    def _run_artifact_operation(self, spec: OperationSpec) -> OperationArtifact:
+    def _run_artifact_operation(
+        self,
+        spec: OperationSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+    ) -> OperationArtifact:
         from pipelines_v2.operations.execute import execute_artifact_operation
 
         artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
@@ -150,6 +158,7 @@ class LocalRunner:
             artifact_kind=spec.kind,
             schema_version=1,
             operation_spec_hash=spec.spec_hash(),
+            operation_semantic_hash=spec.semantic_hash(),
             created_at=utc_now_iso(),
             engine={},
             runner=self.identity(),
@@ -157,6 +166,7 @@ class LocalRunner:
             example_coverage=result.example_coverage,
             storage_refs=storage_refs,
             metadata=metadata,
+            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
         )
         storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
         self.catalog.record_artifact(manifest)

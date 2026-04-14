@@ -57,6 +57,16 @@ class VLLMEngine:
             "extra": self.extra,
         }
 
+    def semantic_identity(self) -> dict[str, Any]:
+        return {
+            "kind": "vllm",
+            "model_id": self.model_id,
+            "max_model_len": self.max_model_len,
+            "add_generation_prompt": self.add_generation_prompt,
+            "reasoning_parser": self.reasoning_parser,
+            "extra": self.extra,
+        }
+
     def capabilities(self) -> set[EngineCapability]:
         return {
             EngineCapability.GENERATION,

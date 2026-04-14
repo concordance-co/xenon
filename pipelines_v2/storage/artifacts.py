@@ -16,6 +16,7 @@ class ArtifactManifest:
     artifact_kind: str
     schema_version: int
     operation_spec_hash: str
+    operation_semantic_hash: str
     created_at: str
     engine: Mapping[str, Any]
     runner: Mapping[str, Any]
@@ -23,6 +24,7 @@ class ArtifactManifest:
     example_coverage: Mapping[str, Any]
     storage_refs: Mapping[str, Any]
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    workflow_context: Mapping[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "ArtifactManifest":
@@ -31,6 +33,7 @@ class ArtifactManifest:
             artifact_kind=str(payload["artifact_kind"]),
             schema_version=int(payload["schema_version"]),
             operation_spec_hash=str(payload["operation_spec_hash"]),
+            operation_semantic_hash=str(payload.get("operation_semantic_hash", payload["operation_spec_hash"])),
             created_at=str(payload["created_at"]),
             engine=dict(payload["engine"]),
             runner=dict(payload["runner"]),
@@ -38,6 +41,7 @@ class ArtifactManifest:
             example_coverage=dict(payload["example_coverage"]),
             storage_refs=dict(payload["storage_refs"]),
             metadata=dict(payload.get("metadata", {})),
+            workflow_context=dict(payload.get("workflow_context", {})),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -46,6 +50,7 @@ class ArtifactManifest:
             "artifact_kind": self.artifact_kind,
             "schema_version": self.schema_version,
             "operation_spec_hash": self.operation_spec_hash,
+            "operation_semantic_hash": self.operation_semantic_hash,
             "created_at": self.created_at,
             "engine": dict(self.engine),
             "runner": dict(self.runner),
@@ -53,6 +58,7 @@ class ArtifactManifest:
             "example_coverage": dict(self.example_coverage),
             "storage_refs": dict(self.storage_refs),
             "metadata": dict(self.metadata),
+            "workflow_context": dict(self.workflow_context),
         }
 
 
@@ -374,6 +380,13 @@ class OperationArtifact:
             _manifest=ArtifactManifest.from_dict(payload["_manifest"]),
             store=artifact_store_from_dict(dict(payload["store"])),
         )
+
+
+def artifact_from_manifest(manifest: ArtifactManifest, *, store: Any) -> CaptureArtifact | OperationArtifact:
+    """Construct the correct typed artifact handle for a manifest and store."""
+    if manifest.artifact_kind == "capture":
+        return CaptureArtifact(_manifest=manifest, store=store)
+    return OperationArtifact(_manifest=manifest, store=store)
 
 
 def artifact_from_dict(payload: Mapping[str, Any]) -> CaptureArtifact | OperationArtifact:

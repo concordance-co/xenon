@@ -18,7 +18,6 @@ from typing import Any
 from pipelines_v2.api import (
     CaptureSpec,
     Dataset,
-    Example,
     GenerationSpec,
     LocalArtifactStore,
     LocalRunnerSpec,
@@ -38,7 +37,6 @@ from pipelines_v2.api import (
     StepRef,
     TokenPooling,
     TokenSelector,
-    ToyEngine,
     VLLMEngine,
     WorkflowOrchestrator,
     WorkflowSpec,
@@ -306,167 +304,6 @@ def build_runner_specs() -> dict[str, object]:
 
 def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
     return build_phase_04_prompt_state_workflow(dataset)
-
-
-def build_phase_04_local_smoke_dataset() -> Dataset:
-    examples: list[Example] = []
-    token_sections = {
-        "TASK": [0],
-        "STRATEGY": [1, 2],
-        "SETTINGS": [3, 4],
-        "PORTFOLIO": [5, 6],
-        "MARKET": [7],
-    }
-    family_specs = (
-        {
-            "strategy_family": "trade_size_force_large",
-            "setting_family": "trade_size",
-            "context_family": "size_entry_case",
-            "strategy_expected": {"action": "buy", "asset": "ALPHA", "size": "large"},
-            "setting_expected": {"action": "buy", "asset": "ALPHA", "size": "small"},
-            "market_expected": {"action": "buy", "asset": "ALPHA"},
-        },
-        {
-            "strategy_family": "trade_size_force_small",
-            "setting_family": "trade_size",
-            "context_family": "size_entry_case",
-            "strategy_expected": {"action": "buy", "asset": "ALPHA", "size": "small"},
-            "setting_expected": {"action": "buy", "asset": "ALPHA", "size": "large"},
-            "market_expected": {"action": "buy", "asset": "ALPHA"},
-        },
-        {
-            "strategy_family": "activity_force_trade",
-            "setting_family": "trading_activity",
-            "context_family": "activity_entry_case",
-            "strategy_expected": {"action": "buy", "asset": "ALPHA", "size": "medium"},
-            "setting_expected": {"action": "observe", "asset": "NONE", "size": "none"},
-            "market_expected": {"action": "buy", "asset": "ALPHA"},
-        },
-        {
-            "strategy_family": "activity_force_observe",
-            "setting_family": "trading_activity",
-            "context_family": "activity_entry_case",
-            "strategy_expected": {"action": "observe", "asset": "NONE", "size": "none"},
-            "setting_expected": {"action": "buy", "asset": "ALPHA", "size": "medium"},
-            "market_expected": {"action": "buy", "asset": "ALPHA"},
-        },
-    )
-    split_specs = (
-        ("train", "v0", "balanced"),
-        ("test", "v1", "setting_favored"),
-    )
-
-    for family_index, family in enumerate(family_specs, start=1):
-        for split, suffix, pressure in split_specs:
-            matched_pair_id = f"pc4pair_smoke_{family_index}_{suffix}"
-            strategy_variant_id = f"{family['strategy_family']}_{suffix}"
-            setting_lexical_family_id = f"{family['setting_family']}_lexical_{suffix}"
-            context_variant_id = f"{family['context_family']}_{pressure}_{suffix}"
-            for pair_member, conflict_present, conflict_strength in (
-                ("aligned", False, 0),
-                ("strong_conflict", True, 2),
-            ):
-                setting_value = 5 if pair_member == "aligned" else 1
-                if family["strategy_family"] in {"trade_size_force_small", "activity_force_observe"}:
-                    setting_value = 1 if pair_member == "aligned" else 5
-                setting_variant_id = f"{family['setting_family']}_setting_{setting_value}_{suffix}"
-                expected_output = (
-                    family["strategy_expected"]
-                    if pair_member == "aligned"
-                    else family["setting_expected"]
-                )
-                prompt = "\n\n".join(
-                    [
-                        "TASK\nChoose exactly one action for this tick.",
-                        f"STRATEGY\n{family['strategy_family']} strategy variant {suffix}.",
-                        (
-                            "SETTINGS\n"
-                            f"{family['setting_family']} setting variant {suffix}. "
-                            f"Bucket={pair_member}. Value={setting_value}."
-                        ),
-                        (
-                            "PORTFOLIO\n"
-                            "Free cash reserve: high.\n"
-                            "Current positions: none.\n"
-                            "Enough buying power is available for any allowed size."
-                        ),
-                        (
-                            "MARKET\n"
-                            "ALPHA: leading setup with enough confirmation.\n"
-                            "BETA: weaker case.\n"
-                            "DELTA: mixed signal.\n"
-                            "GAMMA: mixed and noisy."
-                        ),
-                    ]
-                )
-                example_key = f"pc4_smoke_{family_index}_{suffix}_{pair_member}"
-                examples.append(
-                    Example(
-                        key=example_key,
-                        prompt=prompt,
-                        labels={
-                            "conflict_present": conflict_present,
-                            "pair_member": pair_member,
-                            "strategy_family": family["strategy_family"],
-                            "strategy_variant_id": strategy_variant_id,
-                            "setting_family": family["setting_family"],
-                            "setting_lexical_family_id": setting_lexical_family_id,
-                            "setting_variant_id": setting_variant_id,
-                            "setting_value": setting_value,
-                            "setting_bucket": pair_member,
-                            "conflict_strength": conflict_strength,
-                            "environment_pressure_bucket": pressure,
-                            "context_family": family["context_family"],
-                            "context_variant_id": context_variant_id,
-                            "portfolio_state_family": "empty_cash_rich",
-                            "portfolio_variant_id": "empty_cash_rich_v0",
-                            "lexical_split": split,
-                            "strategy_lexical_split": split,
-                            "setting_lexical_split": split,
-                            "market_expected_action": family["market_expected"]["action"],
-                            "market_expected_asset": family["market_expected"]["asset"],
-                            "strategy_expected_action": family["strategy_expected"]["action"],
-                            "strategy_expected_asset": family["strategy_expected"]["asset"],
-                            "strategy_expected_size": family["strategy_expected"]["size"],
-                            "setting_expected_action": family["setting_expected"]["action"],
-                            "setting_expected_asset": family["setting_expected"]["asset"],
-                            "setting_expected_size": family["setting_expected"]["size"],
-                            "expected_output_json": dict(expected_output),
-                        },
-                        metadata={"token_sections": token_sections},
-                        cases={
-                            "matched_pair_id": matched_pair_id,
-                            "strategy_variant_id": strategy_variant_id,
-                            "setting_lexical_family_id": setting_lexical_family_id,
-                            "setting_variant_id": setting_variant_id,
-                            "context_variant_id": context_variant_id,
-                        },
-                        case_key=matched_pair_id,
-                    )
-                )
-
-    return Dataset.from_examples(examples, name="prompt_confusion_phase_04_local_smoke")
-
-
-def build_phase_04_local_smoke_runner_specs(root: str | Path) -> dict[str, object]:
-    root = Path(root)
-    shared_store = LocalArtifactStore(root / "artifacts")
-    return {
-        "capture_gpu": LocalRunnerSpec(artifacts=shared_store),
-        "analysis_cpu": LocalRunnerSpec(artifacts=shared_store),
-        "report_local": LocalRunnerSpec(artifacts=shared_store),
-    }
-
-
-def build_phase_04_local_smoke_runners(root: str | Path) -> dict[str, object]:
-    return {
-        name: spec.to_runner()
-        for name, spec in build_phase_04_local_smoke_runner_specs(root).items()
-    }
-
-
-def build_phase_04_local_smoke_orchestrator(root: str | Path) -> WorkflowOrchestrator:
-    return WorkflowOrchestrator(runners=build_phase_04_local_smoke_runners(root))
 
 
 def build_phase_04_orchestrator() -> WorkflowOrchestrator:

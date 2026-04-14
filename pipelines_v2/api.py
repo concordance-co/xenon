@@ -61,7 +61,19 @@ from .storage import (
     NullCatalog,
     PostgresCatalog,
 )
-from .workflow import StepFeatureRef, StepLabelRef, StepRef, WorkflowOrchestrator, WorkflowPlan, WorkflowResult, WorkflowSpec, WorkflowStep
+from .workflow import (
+    StepFeatureRef,
+    StepLabelRef,
+    StepRef,
+    WorkflowOrchestrator,
+    WorkflowPlan,
+    WorkflowResult,
+    WorkflowRunRecord,
+    WorkflowSpec,
+    WorkflowStep,
+    WorkflowStepContext,
+    WorkflowStepRecord,
+)
 
 __all__ = [
     "ActivationPatchSpec",
@@ -135,7 +147,10 @@ __all__ = [
     "WorkflowOrchestrator",
     "WorkflowPlan",
     "WorkflowResult",
+    "WorkflowRunRecord",
     "WorkflowSpec",
     "WorkflowStep",
+    "WorkflowStepContext",
+    "WorkflowStepRecord",
     "PairDeltaSpec",
 ]

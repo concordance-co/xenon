@@ -18,6 +18,7 @@ def execute_remote(
     runner_config: dict[str, Any],
     store_config: dict[str, Any],
     spec_payload: dict[str, Any],
+    workflow_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute a serialized operation in a remote worker."""
     spec = operation_spec_from_dict(spec_payload)
@@ -28,12 +29,14 @@ def execute_remote(
             runner_config=runner_config,
             store=store,
             spec=spec,
+            workflow_context=workflow_context,
         )
     if isinstance(spec, _ARTIFACT_BOUND_SPECS):
         return _execute_artifact_operation(
             runner_config=runner_config,
             store=store,
             spec=spec,
+            workflow_context=workflow_context,
         )
     raise NotImplementedError(f"Remote executor cannot run {spec.kind!r} specs yet")
 
@@ -43,6 +46,7 @@ def _execute_capture(
     runner_config: dict[str, Any],
     store: Any,
     spec: CaptureSpec,
+    workflow_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
@@ -66,6 +70,7 @@ def _execute_capture(
         artifact_kind=spec.kind,
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
+        operation_semantic_hash=spec.semantic_hash(),
         created_at=utc_now_iso(),
         engine=engine.identity(),
         runner=runner_config,
@@ -73,6 +78,7 @@ def _execute_capture(
         example_coverage=resolved_spec.dataset.coverage(),
         storage_refs=storage_refs,
         metadata=result.metadata,
+        workflow_context=dict(workflow_context or {}),
     )
     storage_refs["manifest"] = store.write_json(
         artifact_id,
@@ -87,6 +93,7 @@ def _execute_artifact_operation(
     runner_config: dict[str, Any],
     store: Any,
     spec: OperationSpec,
+    workflow_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from pipelines_v2.operations.execute import execute_artifact_operation
 
@@ -113,6 +120,7 @@ def _execute_artifact_operation(
         artifact_kind=spec.kind,
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
+        operation_semantic_hash=spec.semantic_hash(),
         created_at=utc_now_iso(),
         engine={},
         runner=runner_config,
@@ -120,6 +128,7 @@ def _execute_artifact_operation(
         example_coverage=result.example_coverage,
         storage_refs=storage_refs,
         metadata=result.metadata,
+        workflow_context=dict(workflow_context or {}),
     )
     storage_refs["manifest"] = store.write_json(
         artifact_id,

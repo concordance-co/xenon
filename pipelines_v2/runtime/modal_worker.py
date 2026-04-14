@@ -27,6 +27,7 @@ def run_on_modal(
     runner_config: dict[str, Any],
     store_config: dict[str, Any],
     spec_payload: dict[str, Any],
+    workflow_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Submit serialized work to Modal and return the remote result."""
 
@@ -78,6 +79,7 @@ def run_on_modal(
         remote_runner_config: dict[str, Any],
         remote_store_config: dict[str, Any],
         remote_spec_payload: dict[str, Any],
+        remote_workflow_context: dict[str, Any] | None,
     ) -> dict[str, Any]:
         from pipelines_v2.runtime.remote_executor import execute_remote
 
@@ -85,6 +87,7 @@ def run_on_modal(
             runner_config=remote_runner_config,
             store_config=remote_store_config,
             spec_payload=remote_spec_payload,
+            workflow_context=remote_workflow_context,
         )
         warnings = _commit_mounted_volumes(mounted_volumes)
         if warnings:
@@ -92,7 +95,7 @@ def run_on_modal(
         return result
 
     with app.run():
-        return _remote_execute.remote(runner_config, store_config, spec_payload)
+        return _remote_execute.remote(runner_config, store_config, spec_payload, workflow_context)
 
 
 def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any]) -> tuple[MountedVolume, ...]:

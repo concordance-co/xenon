@@ -6,7 +6,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from pipelines_v2.core.types import SpecValidationError
+from pipelines_v2.core.types import SpecValidationError, stable_hash, to_semantic_primitive
 from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.runtime import ExecutionPlan
 
@@ -63,6 +63,19 @@ class WorkflowStep:
             "spec": self.spec.to_dict(),
             "depends_on": list(self.depends_on),
         }
+
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "spec": to_semantic_primitive(self.spec),
+            "depends_on": list(self.resolved_depends_on()),
+        }
+
+    def semantic_hash(self) -> str:
+        return stable_hash(self.semantic_dict())
+
+    def spec_hash(self) -> str:
+        return stable_hash(self.to_dict())
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "WorkflowStep":
@@ -183,6 +196,20 @@ class WorkflowSpec:
             "name": self.name,
             "steps": [step.to_dict() for step in self.steps],
         }
+
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "kind": "workflow",
+            "schema_version": self.schema_version,
+            "name": self.name,
+            "steps": [step.semantic_dict() for step in self.ordered_steps()],
+        }
+
+    def semantic_hash(self) -> str:
+        return stable_hash(self.semantic_dict())
+
+    def spec_hash(self) -> str:
+        return stable_hash(self.to_dict())
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "WorkflowSpec":

@@ -157,6 +157,27 @@ def _test_behavior_transform(
     )
 
 
+class _FailOnceRunner:
+    def __init__(self, inner: Any, *, fail_step: str | None = None) -> None:
+        self.inner = inner
+        self.fail_step = fail_step
+        self.failed = False
+        self.calls: list[str] = []
+        self.catalog = inner.catalog
+        self.artifacts = inner.artifacts
+
+    def plan(self, spec: Any) -> Any:
+        return self.inner.plan(spec)
+
+    def run(self, spec: Any, *, workflow_context: Any | None = None) -> Any:
+        step_name = workflow_context.step_name if workflow_context is not None else "<unknown>"
+        self.calls.append(step_name)
+        if self.fail_step == step_name and not self.failed:
+            self.failed = True
+            raise RuntimeError(f"intentional failure for {step_name}")
+        return self.inner.run(spec, workflow_context=workflow_context)
+
+
 def test_dataset_labels_cases_and_selection_stay_aligned() -> None:
     dataset = Dataset.from_examples(
         [
@@ -1405,6 +1426,201 @@ def test_workflow_orchestrator_infers_dependencies_and_fans_out_parallel() -> No
     assert elapsed < 0.55
 
 
+def test_capture_spec_semantic_hash_ignores_vllm_batching_runtime_tuning() -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha"),
+        ]
+    )
+    spec_a = CaptureSpec(
+        engine=VLLMEngine(
+            model_id="/models/Qwen/Qwen3-30B-A3B",
+            enforce_eager=True,
+            max_num_seqs=1,
+            gpu_memory_utilization=0.8,
+        ),
+        dataset=dataset,
+        sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0])],
+    )
+    spec_b = CaptureSpec(
+        engine=VLLMEngine(
+            model_id="/models/Qwen/Qwen3-30B-A3B",
+            enforce_eager=False,
+            max_num_seqs=16,
+            gpu_memory_utilization=0.95,
+        ),
+        dataset=dataset,
+        sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0])],
+    )
+
+    assert spec_a.spec_hash() != spec_b.spec_hash()
+    assert spec_a.semantic_hash() == spec_b.semantic_hash()
+
+
+def test_workflow_orchestrator_records_workflow_lineage_and_can_resume(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos", "split": "train"}, case_key="c1"),
+            Example(key="b", prompt="beta", labels={"class": "neg", "split": "train"}, case_key="c2"),
+            Example(key="c", prompt="gamma", labels={"class": "pos", "split": "test"}, case_key="c3"),
+            Example(key="d", prompt="delta", labels={"class": "neg", "split": "test"}, case_key="c4"),
+        ],
+        name="resume_dataset",
+    )
+    catalog = FileCatalog(tmp_path / "catalog")
+    shared_store = LocalArtifactStore(tmp_path / "artifacts")
+    capture_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    analysis_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    report_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog), fail_step="report")
+    orchestrator = WorkflowOrchestrator(
+        runners={
+            "capture": capture_runner,
+            "analysis": analysis_runner,
+            "report": report_runner,
+        }
+    )
+    workflow = WorkflowSpec(
+        name="resume_workflow",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture",
+                spec=CaptureSpec(
+                    engine=ToyEngine(hidden_size=4, num_layers=2),
+                    dataset=dataset,
+                    sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+                ),
+            ),
+            WorkflowStep(
+                name="probe",
+                runner="analysis",
+                spec=ProbeSpec(
+                    feature=StepRef("capture").feature("resid_last"),
+                    labels=dataset.labels("class"),
+                    split=dataset.labels("split"),
+                    folds=2,
+                    baselines=["majority"],
+                ),
+            ),
+            WorkflowStep(
+                name="report",
+                runner="report",
+                spec=ReportSpec(
+                    template="resume_test",
+                    output_dir=str(tmp_path / "reports"),
+                    inputs=[StepRef("capture"), StepRef("probe")],
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="intentional failure"):
+        orchestrator.run(workflow)
+
+    run_files = sorted((tmp_path / "catalog" / "workflow_runs").glob("*.json"))
+    assert len(run_files) == 1
+    run_id = run_files[0].stem
+    first_run = catalog.load_workflow_run(run_id)
+    assert first_run is not None
+    assert first_run.status == "failed"
+
+    step_records = {record.step_name: record for record in catalog.list_workflow_steps(run_id)}
+    assert step_records["capture"].status == "completed"
+    assert step_records["probe"].status == "completed"
+    assert step_records["report"].status == "failed"
+
+    capture_manifest = catalog.load_artifact(step_records["capture"].artifact_id or "")
+    assert capture_manifest is not None
+    assert capture_manifest.workflow_context["workflow_step_key"] == f"{workflow.semantic_hash()}.capture"
+    assert capture_manifest.workflow_context["run_id"] == run_id
+
+    resumed = orchestrator.run(workflow, resume_run_id=run_id)
+    assert resumed.run_id == run_id
+    assert resumed.step("report").manifest().artifact_kind == "report"
+    assert capture_runner.calls.count("capture") == 1
+    assert analysis_runner.calls.count("probe") == 1
+    assert report_runner.calls.count("report") == 2
+
+    resumed_run = catalog.load_workflow_run(run_id)
+    assert resumed_run is not None
+    assert resumed_run.status == "completed"
+
+
+def test_workflow_orchestrator_reuses_matching_completed_steps_across_runs(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos", "split": "train"}, case_key="c1"),
+            Example(key="b", prompt="beta", labels={"class": "neg", "split": "train"}, case_key="c2"),
+            Example(key="c", prompt="gamma", labels={"class": "pos", "split": "test"}, case_key="c3"),
+            Example(key="d", prompt="delta", labels={"class": "neg", "split": "test"}, case_key="c4"),
+        ]
+    )
+    catalog = FileCatalog(tmp_path / "catalog")
+    shared_store = LocalArtifactStore(tmp_path / "artifacts")
+    capture_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    analysis_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    report_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    orchestrator = WorkflowOrchestrator(
+        runners={
+            "capture": capture_runner,
+            "analysis": analysis_runner,
+            "report": report_runner,
+        }
+    )
+
+    def build_workflow(template: str) -> WorkflowSpec:
+        return WorkflowSpec(
+            name=f"reuse_{template}",
+            steps=(
+                WorkflowStep(
+                    name="capture",
+                    runner="capture",
+                    spec=CaptureSpec(
+                        engine=ToyEngine(hidden_size=4, num_layers=2),
+                        dataset=dataset,
+                        sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+                    ),
+                ),
+                WorkflowStep(
+                    name="probe",
+                    runner="analysis",
+                    spec=ProbeSpec(
+                        feature=StepRef("capture").feature("resid_last"),
+                        labels=dataset.labels("class"),
+                        split=dataset.labels("split"),
+                        folds=2,
+                        baselines=["majority"],
+                    ),
+                ),
+                WorkflowStep(
+                    name="report",
+                    runner="report",
+                    spec=ReportSpec(
+                        template=template,
+                        output_dir=str(tmp_path / "reports" / template),
+                        inputs=[StepRef("capture"), StepRef("probe")],
+                    ),
+                ),
+            ),
+        )
+
+    first = orchestrator.run(build_workflow("v1"))
+    first_capture_id = first.step("capture").id
+    first_probe_id = first.step("probe").id
+
+    second = orchestrator.run(build_workflow("v2"), reuse_completed=True)
+    assert second.step("capture").id == first_capture_id
+    assert second.step("probe").id == first_probe_id
+    assert second.step("report").id != first.step("report").id
+
+    second_run = catalog.load_workflow_run(second.run_id or "")
+    assert second_run is not None
+    second_steps = {record.step_name: record for record in catalog.list_workflow_steps(second.run_id or "")}
+    assert second_steps["capture"].status == "reused"
+    assert second_steps["probe"].status == "reused"
+    assert second_steps["report"].status == "completed"
+
+
 def test_postgres_catalog_records_manifest(monkeypatch: pytest.MonkeyPatch) -> None:
     executed: list[tuple[str, tuple[object, ...] | None]] = []
     committed = {"value": False}
@@ -1441,6 +1657,7 @@ def test_postgres_catalog_records_manifest(monkeypatch: pytest.MonkeyPatch) -> N
         artifact_kind="probe",
         schema_version=1,
         operation_spec_hash="abc123",
+        operation_semantic_hash="abc123",
         created_at="2026-04-13T00:00:00+00:00",
         engine={},
         runner={"kind": "local"},
@@ -1448,6 +1665,7 @@ def test_postgres_catalog_records_manifest(monkeypatch: pytest.MonkeyPatch) -> N
         example_coverage={"example_count": 4},
         storage_refs={"result": {"store": "local", "path": "/tmp/result.json"}},
         metadata={},
+        workflow_context={},
     )
 
     PostgresCatalog(source=PostgresSource.from_env("XENON_DATABASE_URL")).record_artifact(manifest)
@@ -1775,6 +1993,7 @@ def test_transform_spec_emits_project_specific_behavior_labels(tmp_path: Path) -
         artifact_kind="capture",
         schema_version=1,
         operation_spec_hash="abc",
+        operation_semantic_hash="abc",
         created_at="2026-04-13T00:00:00+00:00",
         engine={"kind": "toy"},
         runner={"kind": "local"},
@@ -1782,6 +2001,7 @@ def test_transform_spec_emits_project_specific_behavior_labels(tmp_path: Path) -
         example_coverage={"example_count": 2},
         storage_refs={"generations": generations_ref},
         metadata={},
+        workflow_context={},
     )
     capture_artifact = CaptureArtifact(_manifest=manifest, store=store)
     dataset = Dataset.from_examples(
@@ -2012,31 +2232,6 @@ def test_phase_04_arch2_target_workflows_plan_cleanly() -> None:
         plan = orchestrator.plan(workflow)
         assert plan.steps
         assert all(not step.execution.errors for step in plan.steps)
-
-
-def test_phase_04_arch2_target_local_smoke_executes(tmp_path: Path) -> None:
-    module_path = Path("projects/DX_TERMINAL/prompt_confusion/phase_04/specs/arch2_target.py")
-    spec = importlib.util.spec_from_file_location("phase_04_arch2_target", module_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    dataset = module.build_phase_04_local_smoke_dataset()
-    orchestrator = module.build_phase_04_local_smoke_orchestrator(tmp_path)
-    toy_engine = ToyEngine(hidden_size=8, num_layers=48, sequence_length=8, num_experts=8, top_k=2)
-
-    prompt_state = module.build_phase_04_prompt_state_workflow(
-        dataset=dataset,
-        residual_engine=toy_engine,
-        router_engine=toy_engine,
-        report_output_dir=str(tmp_path / "reports" / "prompt_state"),
-    )
-
-    prompt_state_result = orchestrator.run(prompt_state)
-
-    assert prompt_state_result.step("probe_conflict_present").manifest().artifact_kind == "probe"
-    assert prompt_state_result.step("report").manifest().artifact_kind == "report"
-    assert Path(prompt_state_result.step("report").uri).exists()
 
 
 def test_pipelines_v2_modal_smoke_file_builders() -> None:

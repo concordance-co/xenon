@@ -114,6 +114,34 @@ def to_primitive(value: Any) -> Any:
         return data
     return value
 
+
+def to_semantic_primitive(value: Any) -> Any:
+    """Convert public API objects into stable semantic JSON-like values."""
+
+    semantic_dict = getattr(value, "semantic_dict", None)
+    if callable(semantic_dict):
+        return to_semantic_primitive(semantic_dict())
+    semantic_identity = getattr(value, "semantic_identity", None)
+    if callable(semantic_identity):
+        return to_semantic_primitive(semantic_identity())
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, Mapping):
+        return {str(k): to_semantic_primitive(v) for k, v in value.items()}
+    if isinstance(value, tuple | list):
+        return [to_semantic_primitive(v) for v in value]
+    if dataclasses.is_dataclass(value):
+        data: dict[str, Any] = {}
+        for field in dataclasses.fields(value):
+            data[field.name] = to_semantic_primitive(getattr(value, field.name))
+        kind = getattr(value, "kind", None)
+        if isinstance(kind, str):
+            data.setdefault("kind", kind)
+        return data
+    return value
+
 @dataclass(frozen=True, slots=True)
 class OperationSpec:
     """Serializable description of a unit of work."""
@@ -131,6 +159,16 @@ class OperationSpec:
 
     def spec_hash(self) -> str:
         return stable_hash(self.to_dict())
+
+    def semantic_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {}
+        for field in dataclasses.fields(self):
+            data[field.name] = to_semantic_primitive(getattr(self, field.name))
+        data["kind"] = self.kind
+        return data
+
+    def semantic_hash(self) -> str:
+        return stable_hash(self.semantic_dict())
 
     def required_capabilities(self) -> set[EngineCapability]:
         return set()

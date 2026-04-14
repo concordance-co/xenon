@@ -58,6 +58,7 @@ def assert_artifact_manifest_valid(manifest: ArtifactManifest | dict[str, Any]) 
         "artifact_kind",
         "schema_version",
         "operation_spec_hash",
+        "operation_semantic_hash",
         "created_at",
         "engine",
         "runner",
@@ -65,6 +66,7 @@ def assert_artifact_manifest_valid(manifest: ArtifactManifest | dict[str, Any]) 
         "example_coverage",
         "storage_refs",
         "metadata",
+        "workflow_context",
     }
     missing = required - set(data)
     assert not missing, f"Artifact manifest missing keys: {sorted(missing)}"
@@ -146,6 +148,7 @@ class CatalogContractSuite:
             artifact_kind="capture",
             schema_version=1,
             operation_spec_hash="abc",
+            operation_semantic_hash="abc",
             created_at="2026-01-01T00:00:00+00:00",
             engine={"kind": "toy"},
             runner={"kind": "local"},
@@ -153,6 +156,7 @@ class CatalogContractSuite:
             example_coverage={"example_count": 0},
             storage_refs={},
             metadata={},
+            workflow_context={},
         )
         catalog = self.catalog_factory(Path(tmp_path) / "catalog")
         catalog.record_artifact(manifest)

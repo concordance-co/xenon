@@ -48,6 +48,9 @@ class ToyEngine:
             "top_k": self.top_k,
         }
 
+    def semantic_identity(self) -> dict[str, Any]:
+        return self.identity()
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ToyEngine":
         data = dict(payload)

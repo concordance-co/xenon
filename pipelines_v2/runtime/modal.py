@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -13,6 +14,7 @@ from pipelines_v2.storage.artifacts import ArtifactManifest, CaptureArtifact, Op
 from pipelines_v2.storage.base import Catalog
 from pipelines_v2.storage.local import NullCatalog
 from pipelines_v2.storage.modal import ModalVolumeStore
+from pipelines_v2.workflow.records import WorkflowStepContext
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,19 +133,33 @@ class ModalRunner:
             errors=tuple(errors),
         )
 
-    def run(self, spec: OperationSpec) -> Any:
+    def run(self, spec: OperationSpec, *, workflow_context: WorkflowStepContext | None = None) -> Any:
         """Execute one supported spec remotely and return its artifact."""
         self.plan(spec).validate()
         if isinstance(spec, (CaptureSpec, *_ARTIFACT_BOUND_SPECS)):
-            return self._run_remote(spec)
+            return self._run_remote(spec, workflow_context=workflow_context)
         raise NotImplementedError(f"ModalRunner cannot run {spec.kind!r} specs yet")
 
-    def _run_remote(self, spec: OperationSpec) -> CaptureArtifact | OperationArtifact:
-        manifest_payload = run_on_modal(
-            runner_config=self.identity(),
-            store_config=self.artifacts.identity(),
-            spec_payload=spec.to_dict(),
-        )
+    def _run_remote(
+        self,
+        spec: OperationSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+    ) -> CaptureArtifact | OperationArtifact:
+        run_kwargs = {
+            "runner_config": self.identity(),
+            "store_config": self.artifacts.identity(),
+            "spec_payload": spec.to_dict(),
+        }
+        try:
+            signature = inspect.signature(run_on_modal)
+        except (TypeError, ValueError):
+            signature = None
+        if signature is None or "workflow_context" in signature.parameters:
+            run_kwargs["workflow_context"] = (
+                workflow_context.to_manifest_dict() if workflow_context is not None else None
+            )
+        manifest_payload = run_on_modal(**run_kwargs)
         if manifest_payload is None:
             raise RuntimeError("Modal runner did not receive a manifest payload; the remote run was likely cancelled")
         manifest = ArtifactManifest.from_dict(manifest_payload)

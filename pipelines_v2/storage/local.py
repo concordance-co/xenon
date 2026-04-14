@@ -12,6 +12,7 @@ from safetensors.numpy import load_file, save_file
 
 from pipelines_v2.storage.artifacts import ArtifactManifest
 from pipelines_v2.storage.json import json_default
+from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,11 +115,90 @@ class FileCatalog:
 
     def record_artifact(self, manifest: ArtifactManifest) -> None:
         Path(self.root).mkdir(parents=True, exist_ok=True)
-        path = Path(self.root) / f"{manifest.artifact_id}.json"
+        path = self._artifacts_root() / f"{manifest.artifact_id}.json"
         tmp = path.with_suffix(".json.tmp")
         with tmp.open("w", encoding="utf-8") as f:
             json.dump(manifest.to_dict(), f, sort_keys=True, indent=2, default=json_default)
         os.replace(tmp, path)
+
+    def load_artifact(self, artifact_id: str) -> ArtifactManifest | None:
+        path = self._artifacts_root() / f"{artifact_id}.json"
+        if not path.exists():
+            return None
+        with path.open("r", encoding="utf-8") as f:
+            return ArtifactManifest.from_dict(json.load(f))
+
+    def record_workflow_run(self, record: WorkflowRunRecord) -> None:
+        path = self._workflow_runs_root() / f"{record.run_id}.json"
+        tmp = path.with_suffix(".json.tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(record.to_dict(), f, sort_keys=True, indent=2, default=json_default)
+        os.replace(tmp, path)
+
+    def load_workflow_run(self, run_id: str) -> WorkflowRunRecord | None:
+        path = self._workflow_runs_root() / f"{run_id}.json"
+        if not path.exists():
+            return None
+        with path.open("r", encoding="utf-8") as f:
+            return WorkflowRunRecord.from_dict(json.load(f))
+
+    def record_workflow_step(self, record: WorkflowStepRecord) -> None:
+        path = self._workflow_steps_root(record.run_id) / f"{record.step_name}.json"
+        tmp = path.with_suffix(".json.tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(record.to_dict(), f, sort_keys=True, indent=2, default=json_default)
+        os.replace(tmp, path)
+
+    def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
+        root = self._workflow_steps_root(run_id)
+        if not root.exists():
+            return []
+        records: list[WorkflowStepRecord] = []
+        for path in sorted(root.glob("*.json")):
+            with path.open("r", encoding="utf-8") as f:
+                records.append(WorkflowStepRecord.from_dict(json.load(f)))
+        return records
+
+    def find_latest_reusable_step(
+        self,
+        *,
+        step_name: str,
+        step_semantic_hash: str,
+        input_artifact_refs: tuple[str, ...],
+    ) -> WorkflowStepRecord | None:
+        latest: WorkflowStepRecord | None = None
+        runs_root = self._workflow_runs_root()
+        if not runs_root.exists():
+            return None
+        for path in runs_root.glob("*.json"):
+            run_id = path.stem
+            for record in self.list_workflow_steps(run_id):
+                if record.step_name != step_name:
+                    continue
+                if record.status not in {"completed", "reused"}:
+                    continue
+                if record.step_semantic_hash != step_semantic_hash:
+                    continue
+                if tuple(record.input_artifact_refs) != tuple(input_artifact_refs):
+                    continue
+                if latest is None or (record.finished_at or "") > (latest.finished_at or ""):
+                    latest = record
+        return latest
+
+    def _artifacts_root(self) -> Path:
+        root = Path(self.root)
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
+    def _workflow_runs_root(self) -> Path:
+        root = Path(self.root) / "workflow_runs"
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
+    def _workflow_steps_root(self, run_id: str) -> Path:
+        root = Path(self.root) / "workflow_steps" / run_id
+        root.mkdir(parents=True, exist_ok=True)
+        return root
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,4 +214,28 @@ class NullCatalog:
         return {"kind": self.kind}
 
     def record_artifact(self, manifest: ArtifactManifest) -> None:
+        return None
+
+    def load_artifact(self, artifact_id: str) -> ArtifactManifest | None:
+        return None
+
+    def record_workflow_run(self, record: WorkflowRunRecord) -> None:
+        return None
+
+    def load_workflow_run(self, run_id: str) -> WorkflowRunRecord | None:
+        return None
+
+    def record_workflow_step(self, record: WorkflowStepRecord) -> None:
+        return None
+
+    def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
+        return []
+
+    def find_latest_reusable_step(
+        self,
+        *,
+        step_name: str,
+        step_semantic_hash: str,
+        input_artifact_refs: tuple[str, ...],
+    ) -> WorkflowStepRecord | None:
         return None
