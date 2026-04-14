@@ -131,7 +131,7 @@ dataset = Dataset.from_postgres(
     source=PostgresSource.from_env("XENON_DATABASE_URL"),
     sql="""
         SELECT example_id, prompt_messages_json, conflict_present
-        FROM conflict_probe_examples_v2
+        FROM conflict_probe_examples_v3
         WHERE lexical_split in ('train', 'test')
     """,
     prompt_column="prompt_messages_json",
@@ -965,7 +965,7 @@ probe = LocalRunner().run(
 ```python
 dataset = Dataset.from_postgres(
     source=PostgresSource.from_env("XENON_DATABASE_URL"),
-    table="conflict_probe_examples_v2",
+    table="conflict_probe_examples_v3",
     prompt_column="prompt_messages_json",
     example_key_column="example_id",
     label_columns=["conflict_present", "lexical_split"],

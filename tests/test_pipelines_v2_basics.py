@@ -1975,27 +1975,27 @@ def test_phase_04_arch2_target_builders_and_json_loader() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    workflow = module.build_phase_04_prompt_state_workflow()
+    workflow = module.build_workflow()
     loaded = module.load_phase_04_target_json()
 
     assert isinstance(workflow, WorkflowSpec)
-    assert [step.name for step in workflow.steps[:2]] == [
+    assert [step.name for step in workflow.steps] == [
         "capture_prompt_state_residual",
         "capture_prompt_state_router",
+        "probe_conflict_present",
+        "report",
     ]
+    assert "capture_gpu" in module.build_runner_specs()
     assert "prompt_state" in loaded["workflows"]
     assert isinstance(loaded["workflows"]["prompt_state"], WorkflowSpec)
     assert isinstance(loaded["orchestrator"], WorkflowOrchestrator)
-    assert loaded["dataset"].fetch["table"] == "conflict_probe_examples_v2"
+    assert "conflict_probe_examples_v3" in loaded["dataset"].fetch["sql"]
     assert loaded["dataset"].fetch["case_key_column"] == "matched_pair_id"
-    assert loaded["dataset"].fetch["metadata_columns"] == ()
+    assert loaded["dataset"].fetch.get("metadata_columns", ()) == ()
     prompt_state = loaded["workflows"]["prompt_state"]
-    probe_conflict = next(step.spec for step in prompt_state.steps if step.name == "probe_conflict")
-    basis_pair_delta = next(step.spec for step in prompt_state.steps if step.name == "basis_pair_delta")
+    probe_conflict = next(step.spec for step in prompt_state.steps if step.name == "probe_conflict_present")
     assert probe_conflict.tokens.kind == "full_sequence"
-    assert probe_conflict.pooling.kind == "mean"
-    assert basis_pair_delta.tokens.kind == "full_sequence"
-    assert basis_pair_delta.pooling.kind == "mean"
+    assert probe_conflict.pooling.kind == "last"
 
 
 def test_phase_04_arch2_target_workflows_plan_cleanly() -> None:
@@ -2031,22 +2031,12 @@ def test_phase_04_arch2_target_local_smoke_executes(tmp_path: Path) -> None:
         router_engine=toy_engine,
         report_output_dir=str(tmp_path / "reports" / "prompt_state"),
     )
-    behavioral = module.build_phase_04_behavioral_followon_workflow(
-        dataset=dataset,
-        generation_engine=toy_engine,
-        report_output_dir=str(tmp_path / "reports" / "behavioral"),
-    )
 
     prompt_state_result = orchestrator.run(prompt_state)
-    behavioral_result = orchestrator.run(behavioral)
 
-    assert prompt_state_result.step("probe_conflict").manifest().artifact_kind == "probe"
+    assert prompt_state_result.step("probe_conflict_present").manifest().artifact_kind == "probe"
     assert prompt_state_result.step("report").manifest().artifact_kind == "report"
     assert Path(prompt_state_result.step("report").uri).exists()
-
-    assert behavioral_result.step("label_behavior").manifest().artifact_kind == "transform"
-    assert behavioral_result.step("behavior_report").manifest().artifact_kind == "report"
-    assert Path(behavioral_result.step("behavior_report").uri).exists()
 
 
 def test_pipelines_v2_modal_smoke_file_builders() -> None:
