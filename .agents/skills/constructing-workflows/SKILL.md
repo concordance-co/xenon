@@ -255,6 +255,26 @@ of burying core methodology in a transform.
 If a report needs more than summary/provenance + direct analysis results, add
 the missing reporting behavior deliberately instead of sneaking it into CLI glue.
 
+### Reports run locally, not on Modal
+
+Report steps must be assigned to a local runner (for example, `report_local`
+backed by `LocalRunnerSpec` + `LocalArtifactStore`). The chart/plot stack
+(`matplotlib`, `pipelines_v2.reporting`) is intentionally not part of the
+Modal capture or analysis runtime image.
+
+Rules of thumb:
+
+- Do not assign a `ReportSpec` step to a Modal runner.
+- Do not add `matplotlib` or `pipelines_v2.reporting` to capture/analysis
+  runtime dependencies just to make a remote report step work.
+- If a new chart or plotting behavior is needed, add it under
+  `pipelines_v2.reporting` and keep any imports of it lazy in modules that
+  load on Modal (capture engines, analysis runtime paths).
+
+If you find yourself wanting matplotlib on a Modal runner, stop — the
+artifact that report step needs should be pulled back locally first and
+rendered in a `report_local` step.
+
 ## When To Use `TransformSpec`
 
 Use `TransformSpec` only when:

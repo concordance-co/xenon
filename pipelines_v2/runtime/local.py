@@ -27,7 +27,6 @@ from pipelines_v2.operations.specs import (
     TransformSpec,
 )
 from pipelines_v2.runtime.base import ExecutionPlan
-from pipelines_v2.reporting import generate_report_assets
 from pipelines_v2.storage.artifacts import (
     ArtifactLabelRef,
     ArtifactManifest,
@@ -318,6 +317,7 @@ def _materialize_local_report_outputs(
     )
     if downloaded_results:
         materialized_payload["local_results"] = list(downloaded_results)
+    from pipelines_v2.reporting import generate_report_assets
     asset_outputs = generate_report_assets(report_root=output_dir, payload=materialized_payload)
 
     _write_json(report_json_path, materialized_payload)

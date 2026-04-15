@@ -305,6 +305,11 @@ Important fields:
 - `enable_chunked_prefill`
 - `add_generation_prompt`
 - `reasoning_parser`
+- `enable_thinking`
+  - pass-through to the tokenizer's chat template for models that
+    support an enable_thinking kwarg (e.g., Qwen3). `None` leaves the
+    template default; set `False` to skip the reasoning prefix and
+    make short `max_tokens` generation usable.
 - `extra`
 
 Important methods:
@@ -752,6 +757,16 @@ Fields:
 Current implementation:
 - emits a structured summary artifact
 - `LocalRunner` can also materialize report files under `output_dir`
+
+Runtime boundary:
+- `ReportSpec` steps are intended to run on a local runner.
+- The chart/plot stack (`matplotlib`, `pipelines_v2.reporting`) is
+  deliberately not part of the Modal capture or analysis runtime image.
+- Do not assign a `ReportSpec` step to a Modal runner.
+- Any new code that lives on the Modal import path must keep
+  `pipelines_v2.reporting` imports lazy (inside the function that needs
+  them), so capture/analysis containers do not pull matplotlib at
+  container import time.
 
 ## Runner Layer
 

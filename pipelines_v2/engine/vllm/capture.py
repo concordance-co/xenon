@@ -112,6 +112,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                     add_generation_prompt=bool(engine.add_generation_prompt),
                     require_sections=wants_sections,
                     prompt_metadata_builder=spec.prompt_metadata_builder,
+                    enable_thinking=engine.enable_thinking,
                 )
                 for record in batch_records:
                     example = record["example"]
@@ -158,6 +159,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                     add_generation_prompt=bool(engine.add_generation_prompt),
                     require_sections=wants_sections,
                     prompt_metadata_builder=spec.prompt_metadata_builder,
+                    enable_thinking=engine.enable_thinking,
                 )
                 token_sections = prompt_token_ids["token_sections"]
                 prompt_token_ids = prompt_token_ids["token_ids"]
@@ -307,8 +309,14 @@ def _prompt_token_ids(
     add_generation_prompt: bool,
     require_sections: bool,
     prompt_metadata_builder: Any | None,
+    enable_thinking: bool | None = None,
 ) -> dict[str, Any]:
-    rendered = _render_prompt(tokenizer=tokenizer, prompt=example.prompt, add_generation_prompt=add_generation_prompt)
+    rendered = _render_prompt(
+        tokenizer=tokenizer,
+        prompt=example.prompt,
+        add_generation_prompt=add_generation_prompt,
+        enable_thinking=enable_thinking,
+    )
     metadata = resolve_prompt_metadata(
         metadata=example.metadata,
         rendered_prompt=rendered,
@@ -329,13 +337,21 @@ def _prompt_token_ids(
     }
 
 
-def _render_prompt(*, tokenizer: Any, prompt: Any, add_generation_prompt: bool) -> str:
+def _render_prompt(
+    *,
+    tokenizer: Any,
+    prompt: Any,
+    add_generation_prompt: bool,
+    enable_thinking: bool | None = None,
+) -> str:
     if isinstance(prompt, list):
-        rendered = tokenizer.apply_chat_template(
-            prompt,
-            tokenize=False,
-            add_generation_prompt=add_generation_prompt,
-        )
+        template_kwargs: dict[str, Any] = {
+            "tokenize": False,
+            "add_generation_prompt": add_generation_prompt,
+        }
+        if enable_thinking is not None:
+            template_kwargs["enable_thinking"] = enable_thinking
+        rendered = tokenizer.apply_chat_template(prompt, **template_kwargs)
         return str(rendered)
     if isinstance(prompt, str):
         return prompt
@@ -410,6 +426,7 @@ def _capture_residual_batch(
     add_generation_prompt: bool,
     require_sections: bool,
     prompt_metadata_builder: Any | None,
+    enable_thinking: bool | None = None,
 ) -> list[dict[str, Any]]:
     import torch
     from safetensors.torch import load_file
@@ -424,6 +441,7 @@ def _capture_residual_batch(
             add_generation_prompt=add_generation_prompt,
             require_sections=require_sections,
             prompt_metadata_builder=prompt_metadata_builder,
+            enable_thinking=enable_thinking,
         )
         prompt_token_ids = tokenized_prompt["token_ids"]
         prompts.append({"prompt_token_ids": prompt_token_ids})

@@ -24,6 +24,7 @@ class VLLMEngine:
     enable_chunked_prefill: bool = False
     add_generation_prompt: bool = False
     reasoning_parser: str | None = None
+    enable_thinking: bool | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -54,6 +55,7 @@ class VLLMEngine:
             "enable_chunked_prefill": self.enable_chunked_prefill,
             "add_generation_prompt": self.add_generation_prompt,
             "reasoning_parser": self.reasoning_parser,
+            "enable_thinking": self.enable_thinking,
             "extra": self.extra,
         }
 
@@ -64,6 +66,7 @@ class VLLMEngine:
             "max_model_len": self.max_model_len,
             "add_generation_prompt": self.add_generation_prompt,
             "reasoning_parser": self.reasoning_parser,
+            "enable_thinking": self.enable_thinking,
             "extra": self.extra,
         }
 
