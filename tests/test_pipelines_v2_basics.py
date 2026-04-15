@@ -287,6 +287,93 @@ def _make_phase5_like_dataset() -> Dataset:
     )
 
 
+def _write_cli_local_workflow_file(tmp_path: Path) -> Path:
+    workflow_file = tmp_path / "cli_local_workflow.py"
+    workflow_file.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "",
+                "from pipelines_v2.api import (",
+                "    CaptureSpec,",
+                "    Dataset,",
+                "    Example,",
+                "    LocalArtifactStore,",
+                "    LocalRunnerSpec,",
+                "    ProbeSpec,",
+                "    ReportSpec,",
+                "    ResidualSite,",
+                "    StepRef,",
+                "    ToyEngine,",
+                "    WorkflowSpec,",
+                "    WorkflowStep,",
+                ")",
+                "",
+                f"ARTIFACT_ROOT = Path({tmp_path.joinpath('artifacts').as_posix()!r})",
+                f"REPORT_ARTIFACT_ROOT = Path({tmp_path.joinpath('report_artifacts').as_posix()!r})",
+                f"REPORT_OUTPUT_ROOT = {str(tmp_path.joinpath('published_reports'))!r}",
+                "",
+                "def build_dataset():",
+                "    return Dataset.from_examples(",
+                "        [",
+                "            Example(key='a', prompt='alpha', labels={'class': 'pos'}, case_key='c1'),",
+                "            Example(key='b', prompt='beta', labels={'class': 'neg'}, case_key='c2'),",
+                "            Example(key='c', prompt='gamma', labels={'class': 'pos'}, case_key='c3'),",
+                "            Example(key='d', prompt='delta', labels={'class': 'neg'}, case_key='c4'),",
+                "        ],",
+                "        name='cli_local_workflow_dataset',",
+                "    )",
+                "",
+                "def build_runner_specs():",
+                "    return {",
+                "        'capture_gpu': LocalRunnerSpec(artifacts=LocalArtifactStore(ARTIFACT_ROOT)),",
+                "        'analysis_cpu': LocalRunnerSpec(artifacts=LocalArtifactStore(ARTIFACT_ROOT)),",
+                "        'report_local': LocalRunnerSpec(artifacts=LocalArtifactStore(REPORT_ARTIFACT_ROOT)),",
+                "    }",
+                "",
+                "def build_workflow(dataset=None):",
+                "    dataset = dataset or build_dataset()",
+                "    return WorkflowSpec(",
+                "        name='cli_local_workflow',",
+                "        steps=(",
+                "            WorkflowStep(",
+                "                name='capture',",
+                "                runner='capture_gpu',",
+                "                spec=CaptureSpec(",
+                "                    engine=ToyEngine(hidden_size=4, num_layers=2),",
+                "                    dataset=dataset,",
+                "                    sites=[ResidualSite(name='resid_last', site='resid_post', layers=[0, 1])],",
+                "                ),",
+                "            ),",
+                "            WorkflowStep(",
+                "                name='probe',",
+                "                runner='analysis_cpu',",
+                "                spec=ProbeSpec(",
+                "                    feature=StepRef('capture').feature('resid_last'),",
+                "                    labels=dataset.labels('class'),",
+                "                    folds=2,",
+                "                    baselines=['majority'],",
+                "                ),",
+                "            ),",
+                "            WorkflowStep(",
+                "                name='report',",
+                "                runner='report_local',",
+                "                spec=ReportSpec(",
+                "                    template='cli_local_workflow',",
+                "                    output_dir=REPORT_OUTPUT_ROOT,",
+                "                    inputs=[StepRef('capture'), StepRef('probe')],",
+                "                ),",
+                "            ),",
+                "        ),",
+                "    )",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return workflow_file
+
+
 class _FailOnceRunner:
     def __init__(self, inner: Any, *, fail_step: str | None = None, delay_seconds: float = 0.0) -> None:
         self.inner = inner
@@ -3482,6 +3569,133 @@ def test_load_python_workflow_file_passes_dataset_into_optional_dataset_builder(
 
     assert dataset.name == "limited_dataset"
     assert workflow.steps[0].spec.dataset.name == "limited_dataset"
+
+
+def test_pipelines_v2_cli_tracks_runs_in_local_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    workflow_file = _write_cli_local_workflow_file(tmp_path)
+    monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "run",
+            "--file",
+            str(workflow_file),
+        ]
+    )
+    run_payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert run_payload["workflow"] == "cli_local_workflow"
+    run_id = run_payload["run_id"]
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "runs",
+            "--file",
+            str(workflow_file),
+        ]
+    )
+    runs_payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert [record["run_id"] for record in runs_payload["runs"]] == [run_id]
+    assert runs_payload["runs"][0]["status"] == "completed"
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "show",
+            "--run-id",
+            run_id,
+        ]
+    )
+    show_payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert show_payload["run"]["run_id"] == run_id
+    assert [step["step_name"] for step in show_payload["steps"]] == ["capture", "probe", "report"]
+
+
+def test_pipelines_v2_cli_rerun_step_and_from_step_use_prior_run_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    workflow_file = _write_cli_local_workflow_file(tmp_path)
+    monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "run",
+            "--file",
+            str(workflow_file),
+        ]
+    )
+    initial_payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    initial_run_id = initial_payload["run_id"]
+    initial_capture_id = initial_payload["steps"]["capture"]["artifact_id"]
+    initial_probe_id = initial_payload["steps"]["probe"]["artifact_id"]
+    initial_report_id = initial_payload["steps"]["report"]["artifact_id"]
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "rerun-step",
+            "--file",
+            str(workflow_file),
+            "--run-id",
+            initial_run_id,
+            "--step",
+            "report",
+        ]
+    )
+    rerun_step_payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    rerun_step_run_id = rerun_step_payload["run_id"]
+    assert rerun_step_payload["steps"]["capture"]["artifact_id"] == initial_capture_id
+    assert rerun_step_payload["steps"]["probe"]["artifact_id"] == initial_probe_id
+    assert rerun_step_payload["steps"]["report"]["artifact_id"] != initial_report_id
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "rerun-from-step",
+            "--file",
+            str(workflow_file),
+            "--run-id",
+            initial_run_id,
+            "--step",
+            "probe",
+        ]
+    )
+    rerun_from_payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    rerun_from_run_id = rerun_from_payload["run_id"]
+    assert rerun_from_payload["steps"]["capture"]["artifact_id"] == initial_capture_id
+    assert rerun_from_payload["steps"]["probe"]["artifact_id"] != initial_probe_id
+    assert rerun_from_payload["steps"]["report"]["artifact_id"] != initial_report_id
+
+    catalog = FileCatalog(Path(tmp_path / ".xenon" / "pipelines_v2" / "catalog"))
+    rerun_step_run = catalog.load_workflow_run(rerun_step_run_id)
+    rerun_from_run = catalog.load_workflow_run(rerun_from_run_id)
+    assert rerun_step_run is not None
+    assert rerun_step_run.parent_run_id == initial_run_id
+    assert rerun_from_run is not None
+    assert rerun_from_run.parent_run_id == initial_run_id
+
+    rerun_step_records = {record.step_name: record for record in catalog.list_workflow_steps(rerun_step_run_id)}
+    assert rerun_step_records["capture"].status == "reused"
+    assert rerun_step_records["probe"].status == "reused"
+    assert rerun_step_records["report"].status == "completed"
+
+    rerun_from_records = {record.step_name: record for record in catalog.list_workflow_steps(rerun_from_run_id)}
+    assert rerun_from_records["capture"].status == "reused"
+    assert rerun_from_records["probe"].status == "completed"
+    assert rerun_from_records["report"].status == "completed"
 
 
 def test_runner_spec_round_trips_from_dict() -> None:

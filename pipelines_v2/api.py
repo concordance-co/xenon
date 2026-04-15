@@ -42,6 +42,7 @@ from .storage.artifacts import ArtifactLabelRef
 from .storage import (
     ArtifactStore,
     Catalog,
+    CompositeCatalog,
     FileCatalog,
     LocalArtifactStore,
     ModalVolumeStore,
@@ -73,6 +74,7 @@ __all__ = [
     "CaptureSpec",
     "CaseSet",
     "Catalog",
+    "CompositeCatalog",
     "Dataset",
     "DirectionSpec",
     "Engine",

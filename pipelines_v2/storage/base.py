@@ -85,6 +85,17 @@ class Catalog(Protocol):
         """Load one workflow run by id."""
         ...
 
+    def list_workflow_runs(
+        self,
+        *,
+        workflow_name: str | None = None,
+        workflow_hash: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[WorkflowRunRecord]:
+        """List workflow runs, optionally filtered by workflow identity and status."""
+        ...
+
     def record_workflow_step(self, record: WorkflowStepRecord) -> None:
         """Record or update one workflow step run."""
         ...

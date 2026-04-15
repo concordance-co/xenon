@@ -7,12 +7,16 @@ import importlib.util
 import inspect
 import json
 import sys
+from collections import defaultdict, deque
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Sequence
 
+from pipelines_v2.core.paths import pipelines_v2_catalog_root
 from pipelines_v2.api import (
+    CompositeCatalog,
     Dataset,
+    FileCatalog,
     LocalArtifactStore,
     LocalRunner,
     ModalResources,
@@ -27,6 +31,7 @@ from pipelines_v2.api import (
     WorkflowOrchestrator,
     WorkflowResult,
     WorkflowSpec,
+    WorkflowStep,
 )
 
 
@@ -58,6 +63,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _workflow_plan(ns)
         if ns.workflow_command == "run":
             return _workflow_run(ns)
+        if ns.workflow_command == "resume":
+            return _workflow_resume(ns)
+        if ns.workflow_command == "runs":
+            return _workflow_runs(ns)
+        if ns.workflow_command == "show":
+            return _workflow_show(ns)
+        if ns.workflow_command == "rerun-step":
+            return _workflow_rerun_step(ns, include_downstream=False)
+        if ns.workflow_command == "rerun-from-step":
+            return _workflow_rerun_step(ns, include_downstream=True)
     parser.print_help()
     return 1
 
@@ -106,13 +121,97 @@ def _workflow_run(ns: argparse.Namespace) -> int:
     return 0
 
 
+def _workflow_resume(ns: argparse.Namespace) -> int:
+    _, workflow, runner_specs = load_python_workflow_file(
+        path=ns.file,
+        dataset_fn_name=ns.dataset_fn,
+        workflow_fn_name=ns.workflow_fn,
+    )
+    local_catalog = _local_registry_catalog(ns)
+    run_id = ns.run_id or _select_latest_run_id(
+        local_catalog,
+        workflow=workflow,
+        status="failed",
+    )
+    if run_id is None:
+        raise RuntimeError("Could not resolve a workflow run id to resume")
+    orchestrator = WorkflowOrchestrator(runners=_build_runners(ns, runner_specs))
+    result = orchestrator.run(workflow, resume_run_id=run_id)
+    print(json.dumps(_workflow_result_payload(workflow.name, result), indent=2, sort_keys=True))
+    return 0
+
+
+def _workflow_runs(ns: argparse.Namespace) -> int:
+    local_catalog = _local_registry_catalog(ns)
+    workflow_name = None
+    if ns.file:
+        _, workflow, _ = load_python_workflow_file(
+            path=ns.file,
+            dataset_fn_name=ns.dataset_fn,
+            workflow_fn_name=ns.workflow_fn,
+        )
+        workflow_name = workflow.name
+    records = local_catalog.list_workflow_runs(
+        workflow_name=workflow_name,
+        status=ns.status,
+        limit=ns.limit,
+    )
+    payload = {
+        "workflow": workflow_name,
+        "runs": [record.to_dict() for record in records],
+    }
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0
+
+
+def _workflow_show(ns: argparse.Namespace) -> int:
+    local_catalog = _local_registry_catalog(ns)
+    run = local_catalog.load_workflow_run(ns.run_id)
+    if run is None:
+        raise RuntimeError(f"Unknown workflow run id: {ns.run_id}")
+    payload = {
+        "run": run.to_dict(),
+        "steps": [record.to_dict() for record in local_catalog.list_workflow_steps(ns.run_id)],
+    }
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0
+
+
+def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) -> int:
+    _, workflow, runner_specs = load_python_workflow_file(
+        path=ns.file,
+        dataset_fn_name=ns.dataset_fn,
+        workflow_fn_name=ns.workflow_fn,
+    )
+    local_catalog = _local_registry_catalog(ns)
+    source_run_id = ns.run_id or _select_latest_run_id(local_catalog, workflow=workflow, status="completed")
+    if source_run_id is None:
+        raise RuntimeError("Could not resolve a completed workflow run id for rerun")
+    subworkflow = _workflow_slice_for_step(workflow, step_name=ns.step, include_downstream=include_downstream)
+    orchestrator = WorkflowOrchestrator(runners=_build_runners(ns, runner_specs))
+    result = orchestrator.run(
+        subworkflow,
+        reuse_from_run_id=source_run_id,
+        force_rerun_steps=_forced_steps_for_rerun(
+            workflow=subworkflow,
+            target_step=ns.step,
+            include_downstream=include_downstream,
+        ),
+        parent_run_id=source_run_id,
+    )
+    print(json.dumps(_workflow_result_payload(subworkflow.name, result), indent=2, sort_keys=True))
+    return 0
+
+
 def _build_runners(
     ns: argparse.Namespace,
     runner_specs: dict[str, RunnerSpec] | None,
 ) -> dict[str, object]:
     if runner_specs is not None:
-        return {name: spec.to_runner() for name, spec in runner_specs.items()}
-    return _build_runners_from_args(ns)
+        runners = {name: spec.to_runner() for name, spec in runner_specs.items()}
+    else:
+        runners = _build_runners_from_args(ns)
+    return _attach_local_registry(runners, _local_registry_catalog(ns))
 
 
 def _build_runners_from_args(ns: argparse.Namespace) -> dict[str, object]:
@@ -157,6 +256,109 @@ def _build_catalog(env_var: str | None) -> object:
     if not env_var:
         return NullCatalog()
     return PostgresCatalog(source=PostgresSource.from_env(env_var))
+
+
+def _local_registry_catalog(ns: argparse.Namespace) -> FileCatalog:
+    root = Path(ns.local_catalog_root) if getattr(ns, "local_catalog_root", None) else pipelines_v2_catalog_root()
+    return FileCatalog(root=root)
+
+
+def _attach_local_registry(runners: dict[str, object], local_catalog: FileCatalog) -> dict[str, object]:
+    for runner in runners.values():
+        current = getattr(runner, "catalog", NullCatalog())
+        if getattr(current, "kind", "none") == "none":
+            runner.catalog = local_catalog
+            continue
+        if hasattr(current, "identity") and current.identity() == local_catalog.identity():
+            runner.catalog = local_catalog
+            continue
+        runner.catalog = CompositeCatalog((local_catalog, current))
+    return runners
+
+
+def _select_latest_run_id(
+    catalog: FileCatalog,
+    *,
+    workflow: WorkflowSpec,
+    status: str | None = None,
+) -> str | None:
+    records = catalog.list_workflow_runs(
+        workflow_name=workflow.name,
+        workflow_hash=workflow.semantic_hash(),
+        status=status,
+        limit=1,
+    )
+    if not records:
+        return None
+    return records[0].run_id
+
+
+def _workflow_slice_for_step(
+    workflow: WorkflowSpec,
+    *,
+    step_name: str,
+    include_downstream: bool,
+) -> WorkflowSpec:
+    step_by_name = {step.name: step for step in workflow.steps}
+    try:
+        target = step_by_name[step_name]
+    except KeyError as exc:
+        raise RuntimeError(f"Workflow does not contain step {step_name!r}") from exc
+
+    ancestors: set[str] = set()
+    queue: deque[str] = deque([step_name])
+    while queue:
+        current = queue.popleft()
+        deps = step_by_name[current].resolved_depends_on()
+        for dependency in deps:
+            if dependency in ancestors:
+                continue
+            ancestors.add(dependency)
+            queue.append(dependency)
+
+    included = set(ancestors)
+    included.add(step_name)
+    if include_downstream:
+        dependents: dict[str, list[str]] = defaultdict(list)
+        for step in workflow.steps:
+            for dependency in step.resolved_depends_on():
+                dependents[dependency].append(step.name)
+        queue = deque([step_name])
+        while queue:
+            current = queue.popleft()
+            for dependent in dependents.get(current, ()):
+                if dependent in included:
+                    continue
+                included.add(dependent)
+                queue.append(dependent)
+
+    steps = tuple(step for step in workflow.ordered_steps() if step.name in included)
+    return WorkflowSpec(name=workflow.name, schema_version=workflow.schema_version, steps=steps)
+
+
+def _forced_steps_for_rerun(
+    *,
+    workflow: WorkflowSpec,
+    target_step: str,
+    include_downstream: bool,
+) -> set[str]:
+    if not include_downstream:
+        return {target_step}
+    step_by_name = {step.name: step for step in workflow.steps}
+    dependents: dict[str, list[str]] = defaultdict(list)
+    for step in workflow.steps:
+        for dependency in step.resolved_depends_on():
+            dependents[dependency].append(step.name)
+    forced = {target_step}
+    queue: deque[str] = deque([target_step])
+    while queue:
+        current = queue.popleft()
+        for dependent in dependents.get(current, ()):
+            if dependent in forced or dependent not in step_by_name:
+                continue
+            forced.add(dependent)
+            queue.append(dependent)
+    return forced
 
 
 def _workflow_result_payload(name: str | None, result: WorkflowResult) -> dict[str, Any]:
@@ -298,82 +500,141 @@ def _build_parser() -> argparse.ArgumentParser:
     workflow_parser = subparsers.add_parser("workflow", help="Plan or run a workflow from a Python file.")
     workflow_subparsers = workflow_parser.add_subparsers(dest="workflow_command")
 
-    for name in ("plan", "run"):
-        command = workflow_subparsers.add_parser(name, help=f"{name.title()} a workflow from a Python file.")
-        command.add_argument("--file", required=True, help="Python file exporting build_dataset() and build_workflow(...).")
-        command.add_argument("--dataset-fn", default="build_dataset", help="Dataset builder function name.")
-        command.add_argument("--workflow-fn", default="build_workflow", help="Workflow builder function name.")
-        command.add_argument("--capture-runner-name", default="capture_gpu", help="Runner name used by capture steps.")
-        command.add_argument("--analysis-runner-name", default="analysis_cpu", help="Runner name used by analysis steps.")
-        command.add_argument(
-            "--report-runner-name",
-            default="report_local",
-            help="Optional local report runner name to register for workflows that use it.",
-        )
-        command.add_argument(
-            "--artifact-volume-name",
-            default="xenon-data",
-            help="Modal volume name for shared artifacts.",
-        )
-        command.add_argument(
-            "--artifact-root",
-            default="/data/artifacts/pipelines_v2_cli_workflow",
-            help="Root path inside the artifact volume.",
-        )
-        command.add_argument(
-            "--local-cache-root",
-            default=None,
-            help="Optional local cache root for Modal volume downloads.",
-        )
-        command.add_argument("--capture-gpu", default="L4", help="GPU resource for the capture runner.")
-        command.add_argument("--analysis-cpu", type=float, default=6, help="CPU resource for the analysis runner.")
-        command.add_argument(
-            "--analysis-memory-mb",
-            type=int,
-            default=24 * 1024,
-            help="Memory for the analysis runner in MiB.",
-        )
-        command.add_argument(
-            "--timeout-seconds",
-            type=int,
-            default=7200,
-            help="Timeout applied to Modal runners.",
-        )
-        command.add_argument(
-            "--secret",
-            action="append",
-            default=[],
-            help="Modal secret binding as NAME:ENV_VAR[,ENV_VAR2]. Repeat as needed.",
-        )
-        command.add_argument(
-            "--capture-volume",
-            action="append",
-            default=[],
-            help="Extra capture volume mount as NAME:MOUNT_PATH. Repeat as needed.",
-        )
-        command.add_argument(
-            "--catalog-postgres-env",
-            default=None,
-            help="Optional env var name for a Postgres-backed catalog.",
-        )
-        command.add_argument(
-            "--report-artifact-root",
-            default="tmp/pipelines_v2_cli_local_reports",
-            help="Local artifact root for optional report_local steps.",
-        )
-        if name == "run":
-            command.add_argument(
-                "--resume-run-id",
-                default=None,
-                help="Resume a previously recorded workflow run id.",
-            )
-            command.add_argument(
-                "--reuse-completed",
-                action="store_true",
-                help="Reuse latest completed step artifacts whose semantic lineage matches.",
-            )
+    plan = workflow_subparsers.add_parser("plan", help="Plan a workflow from a Python file.")
+    _add_workflow_file_args(plan, required=True)
+    _add_workflow_runner_args(plan)
+
+    run = workflow_subparsers.add_parser("run", help="Run a workflow from a Python file.")
+    _add_workflow_file_args(run, required=True)
+    _add_workflow_runner_args(run)
+    run.add_argument(
+        "--resume-run-id",
+        default=None,
+        help="Resume a previously recorded workflow run id.",
+    )
+    run.add_argument(
+        "--reuse-completed",
+        action="store_true",
+        help="Reuse latest completed step artifacts whose semantic lineage matches.",
+    )
+
+    resume = workflow_subparsers.add_parser("resume", help="Resume the latest failed or a specific workflow run.")
+    _add_workflow_file_args(resume, required=True)
+    _add_workflow_runner_args(resume)
+    resume.add_argument("--run-id", default=None, help="Explicit workflow run id to resume.")
+    resume.add_argument(
+        "--latest-failed",
+        action="store_true",
+        help="Resume the latest failed run for the current workflow file.",
+    )
+
+    runs = workflow_subparsers.add_parser("runs", help="List locally tracked workflow runs.")
+    _add_workflow_file_args(runs, required=False)
+    runs.add_argument("--status", default=None, help="Optional run status filter.")
+    runs.add_argument("--limit", type=int, default=20, help="Maximum runs to return.")
+    runs.add_argument(
+        "--local-catalog-root",
+        default=None,
+        help="Optional local workflow state root; defaults under ~/.xenon/pipelines_v2/catalog.",
+    )
+
+    show = workflow_subparsers.add_parser("show", help="Show one locally tracked workflow run.")
+    show.add_argument("--run-id", required=True, help="Workflow run id to inspect.")
+    show.add_argument(
+        "--local-catalog-root",
+        default=None,
+        help="Optional local workflow state root; defaults under ~/.xenon/pipelines_v2/catalog.",
+    )
+
+    rerun_step = workflow_subparsers.add_parser("rerun-step", help="Rerun one workflow step using artifacts from a prior run.")
+    _add_workflow_file_args(rerun_step, required=True)
+    _add_workflow_runner_args(rerun_step)
+    rerun_step.add_argument("--run-id", default=None, help="Source workflow run id. Defaults to latest completed for the workflow file.")
+    rerun_step.add_argument("--step", required=True, help="Step name to rerun.")
+
+    rerun_from = workflow_subparsers.add_parser("rerun-from-step", help="Rerun one step and all downstream dependents.")
+    _add_workflow_file_args(rerun_from, required=True)
+    _add_workflow_runner_args(rerun_from)
+    rerun_from.add_argument("--run-id", default=None, help="Source workflow run id. Defaults to latest completed for the workflow file.")
+    rerun_from.add_argument("--step", required=True, help="Step name to rerun from.")
 
     return parser
+
+
+def _add_workflow_file_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    parser.add_argument(
+        "--file",
+        required=required,
+        help="Python file exporting build_dataset() and build_workflow(...).",
+    )
+    parser.add_argument("--dataset-fn", default="build_dataset", help="Dataset builder function name.")
+    parser.add_argument("--workflow-fn", default="build_workflow", help="Workflow builder function name.")
+
+
+def _add_workflow_runner_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--capture-runner-name", default="capture_gpu", help="Runner name used by capture steps.")
+    parser.add_argument("--analysis-runner-name", default="analysis_cpu", help="Runner name used by analysis steps.")
+    parser.add_argument(
+        "--report-runner-name",
+        default="report_local",
+        help="Optional local report runner name to register for workflows that use it.",
+    )
+    parser.add_argument(
+        "--artifact-volume-name",
+        default="xenon-data",
+        help="Modal volume name for shared artifacts.",
+    )
+    parser.add_argument(
+        "--artifact-root",
+        default="/data/artifacts/pipelines_v2_cli_workflow",
+        help="Root path inside the artifact volume.",
+    )
+    parser.add_argument(
+        "--local-cache-root",
+        default=None,
+        help="Optional local cache root for Modal volume downloads.",
+    )
+    parser.add_argument("--capture-gpu", default="L4", help="GPU resource for the capture runner.")
+    parser.add_argument("--analysis-cpu", type=float, default=6, help="CPU resource for the analysis runner.")
+    parser.add_argument(
+        "--analysis-memory-mb",
+        type=int,
+        default=24 * 1024,
+        help="Memory for the analysis runner in MiB.",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=7200,
+        help="Timeout applied to Modal runners.",
+    )
+    parser.add_argument(
+        "--secret",
+        action="append",
+        default=[],
+        help="Modal secret binding as NAME:ENV_VAR[,ENV_VAR2]. Repeat as needed.",
+    )
+    parser.add_argument(
+        "--capture-volume",
+        action="append",
+        default=[],
+        help="Extra capture volume mount as NAME:MOUNT_PATH. Repeat as needed.",
+    )
+    parser.add_argument(
+        "--catalog-postgres-env",
+        default=None,
+        help="Optional env var name for a Postgres-backed catalog.",
+    )
+    parser.add_argument(
+        "--report-artifact-root",
+        default="tmp/pipelines_v2_cli_local_reports",
+        help="Local artifact root for optional report_local steps.",
+    )
+    parser.add_argument(
+        "--local-catalog-root",
+        default=None,
+        help="Optional local workflow state root; defaults under ~/.xenon/pipelines_v2/catalog.",
+    )
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ class WorkflowRunRecord:
     workflow_payload: Mapping[str, Any]
     status: str
     started_at: str
+    parent_run_id: str | None = None
     finished_at: str | None = None
     error: str | None = None
 
@@ -29,6 +30,7 @@ class WorkflowRunRecord:
             "workflow_payload": dict(self.workflow_payload),
             "status": self.status,
             "started_at": self.started_at,
+            "parent_run_id": self.parent_run_id,
             "finished_at": self.finished_at,
             "error": self.error,
         }
@@ -43,6 +45,9 @@ class WorkflowRunRecord:
             workflow_payload=dict(payload.get("workflow_payload", {})),
             status=str(payload["status"]),
             started_at=str(payload["started_at"]),
+            parent_run_id=(
+                str(payload["parent_run_id"]) if payload.get("parent_run_id") is not None else None
+            ),
             finished_at=str(payload["finished_at"]) if payload.get("finished_at") is not None else None,
             error=str(payload["error"]) if payload.get("error") is not None else None,
         )

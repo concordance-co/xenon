@@ -1,7 +1,8 @@
-"""Workspace path helpers used by spec and runtime serialization."""
+"""Workspace and local-state path helpers."""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -40,3 +41,24 @@ def resolve_workspace_path(path: str | Path, *, workspace_root: Path | None = No
         return resolved.resolve()
     root = workspace_root or find_workspace_root()
     return (root / resolved).resolve()
+
+
+def xenon_home() -> Path:
+    """Return the default local Xenon home directory."""
+
+    override = os.environ.get("XENON_HOME")
+    if override:
+        return Path(override).expanduser().resolve()
+    return (Path.home() / ".xenon").resolve()
+
+
+def pipelines_v2_state_root() -> Path:
+    """Return the default local pipelines_v2 state root."""
+
+    return xenon_home() / "pipelines_v2"
+
+
+def pipelines_v2_catalog_root() -> Path:
+    """Return the default local catalog mirror root."""
+
+    return pipelines_v2_state_root() / "catalog"

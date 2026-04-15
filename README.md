@@ -6,6 +6,16 @@ The canonical flow is:
 
 `spec -> published Neon dataset object -> capture run -> analysis run -> report`
 
+There are currently two operator surfaces in the repo:
+
+- `pipelines.cli`
+  - the older Neon/publication-driven runtime documented below
+  - deprecated for new development; keep using it only for existing workflows that have not moved yet
+- `pipelines_v2`
+  - the newer Python workflow / artifact-oriented runtime
+  - documented in [docs/PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
+  - supports local run tracking under `~/.xenon/pipelines_v2/catalog`, workflow resume, `rerun-step`, and `rerun-from-step`
+
 The canonical operator surface is the CLI:
 
 ```bash
@@ -123,6 +133,11 @@ Environment:
 XENON_NEON_DATABASE_URL=postgresql://...
 ```
 
-## Legacy Surfaces
+## Operator Docs
 
-`pipelines.cli` is the only recommended path.
+For the older Neon/publication runtime, use the `pipelines.cli` docs above.
+
+For new `pipelines_v2` workflow authoring and operation, start with:
+
+- [docs/PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
+- [docs/ARCH2.md](/Users/brockelmore/concordance/xenon/docs/ARCH2.md)

@@ -84,6 +84,9 @@ class WorkflowOrchestrator:
         *,
         resume_run_id: str | None = None,
         reuse_completed: bool = False,
+        reuse_from_run_id: str | None = None,
+        force_rerun_steps: set[str] | frozenset[str] = frozenset(),
+        parent_run_id: str | None = None,
     ) -> WorkflowResult:
         """Execute a workflow, resolving step refs as dependencies complete."""
 
@@ -95,17 +98,29 @@ class WorkflowOrchestrator:
         step_by_name = {step.name: step for step in ordered_steps}
         step_index_by_name = {step.name: index for index, step in enumerate(ordered_steps)}
         dependencies = {step.name: set(step.resolved_depends_on()) for step in ordered_steps}
+        forced_steps = {str(name) for name in force_rerun_steps}
+        unknown_forced = sorted(name for name in forced_steps if name not in step_by_name)
+        if unknown_forced:
+            raise SpecValidationError(f"Unknown forced rerun steps: {unknown_forced}")
         workflow_hash = workflow.semantic_hash()
         workflow_spec_hash = workflow.spec_hash()
         run_id = resume_run_id or f"wr_{workflow_hash[:12]}_{uuid.uuid4().hex[:8]}"
         catalog = self._workflow_catalog()
         existing_step_records: dict[str, WorkflowStepRecord] = {}
+        reusable_step_records: dict[str, WorkflowStepRecord] = {}
         step_started_at: dict[str, str] = {}
         workflow_started_at = utc_now_iso()
+
+        if resume_run_id is not None and (reuse_from_run_id is not None or forced_steps or parent_run_id is not None):
+            raise SpecValidationError("resume_run_id cannot be combined with reuse_from_run_id, force_rerun_steps, or parent_run_id")
 
         if (resume_run_id is not None or reuse_completed) and catalog is None:
             raise SpecValidationError(
                 "Workflow resume/reuse requires at least one shared non-null catalog across runners"
+            )
+        if (reuse_from_run_id is not None or forced_steps or parent_run_id is not None) and catalog is None:
+            raise SpecValidationError(
+                "Workflow rerun/reuse-from-run requires at least one shared non-null catalog across runners"
             )
 
         if catalog is not None:
@@ -119,6 +134,7 @@ class WorkflowOrchestrator:
                         workflow_payload=workflow.to_dict(),
                         status="running",
                         started_at=workflow_started_at,
+                        parent_run_id=parent_run_id,
                     )
                 )
             else:
@@ -140,12 +156,19 @@ class WorkflowOrchestrator:
                         workflow_payload=workflow.to_dict(),
                         status="running",
                         started_at=prior.started_at,
+                        parent_run_id=prior.parent_run_id,
                         finished_at=None,
                         error=None,
                     )
                 )
                 existing_step_records = {
                     record.step_name: record for record in catalog.list_workflow_steps(run_id)
+                }
+            if reuse_from_run_id is not None:
+                if catalog.load_workflow_run(reuse_from_run_id) is None:
+                    raise SpecValidationError(f"Unknown workflow run id for reuse: {reuse_from_run_id}")
+                reusable_step_records = {
+                    record.step_name: record for record in catalog.list_workflow_steps(reuse_from_run_id)
                 }
 
         results: dict[str, Any] = {}
@@ -155,6 +178,8 @@ class WorkflowOrchestrator:
 
         if catalog is not None and existing_step_records:
             for step_name, record in existing_step_records.items():
+                if step_name in forced_steps:
+                    continue
                 if record.status not in {"completed", "reused", "running"}:
                     continue
                 manifest = _load_manifest_for_workflow_step(catalog, record)
@@ -221,10 +246,49 @@ class WorkflowOrchestrator:
                                 resumed is not None
                                 and resumed.status in {"completed", "reused"}
                                 and resumed.artifact_id
+                                and step.name not in forced_steps
                             ):
                                 pending.remove(step.name)
                                 progress_made = True
                                 continue
+                            if step.name not in forced_steps:
+                                reusable = reusable_step_records.get(step.name)
+                                if (
+                                    reusable is not None
+                                    and reusable.status in {"completed", "reused"}
+                                    and reusable.artifact_id
+                                    and reusable.step_semantic_hash == step_context.step_semantic_hash
+                                    and tuple(reusable.input_artifact_refs) == input_artifact_refs
+                                ):
+                                    manifest = _load_manifest_for_workflow_step(catalog, reusable)
+                                    store = getattr(runner, "artifacts", None)
+                                    if manifest is not None and store is not None:
+                                        results[step.name] = artifact_from_manifest(manifest, store=store)
+                                        now = utc_now_iso()
+                                        catalog.record_workflow_step(
+                                            WorkflowStepRecord(
+                                                run_id=run_id,
+                                                workflow_hash=workflow_hash,
+                                                workflow_step_key=step_context.workflow_step_key,
+                                                step_name=step.name,
+                                                step_index=step_index_by_name[step.name],
+                                                runner=step.runner,
+                                                status="reused",
+                                                step_semantic_hash=step_context.step_semantic_hash,
+                                                step_spec_hash=step_context.step_spec_hash,
+                                                input_artifact_refs=input_artifact_refs,
+                                                artifact_id=reusable.artifact_id,
+                                                artifact_kind=reusable.artifact_kind,
+                                                started_at=now,
+                                                finished_at=now,
+                                                runtime_app_id=reusable.runtime_app_id,
+                                                reused_from_run_id=reusable.run_id,
+                                                reused_from_artifact_id=reusable.artifact_id,
+                                            )
+                                        )
+                                        pending.remove(step.name)
+                                        progress_made = True
+                                        continue
                             if reuse_completed:
                                 reusable = catalog.find_latest_reusable_step(
                                     step_name=step.name,
@@ -383,6 +447,7 @@ class WorkflowOrchestrator:
                         workflow_payload=workflow.to_dict(),
                         status="failed",
                         started_at=workflow_started_at,
+                        parent_run_id=parent_run_id,
                         finished_at=finished_at,
                         error=str(first_failure),
                     )
@@ -399,6 +464,7 @@ class WorkflowOrchestrator:
                     workflow_payload=workflow.to_dict(),
                     status="completed",
                     started_at=workflow_started_at,
+                    parent_run_id=parent_run_id,
                     finished_at=utc_now_iso(),
                 )
             )

@@ -123,16 +123,18 @@ class PostgresCatalog:
                         workflow_spec_hash,
                         status,
                         started_at,
+                        parent_run_id,
                         finished_at,
                         error,
                         workflow_payload
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
                     ON CONFLICT (run_id) DO UPDATE SET
                         workflow_name = EXCLUDED.workflow_name,
                         workflow_hash = EXCLUDED.workflow_hash,
                         workflow_spec_hash = EXCLUDED.workflow_spec_hash,
                         status = EXCLUDED.status,
                         started_at = EXCLUDED.started_at,
+                        parent_run_id = EXCLUDED.parent_run_id,
                         finished_at = EXCLUDED.finished_at,
                         error = EXCLUDED.error,
                         workflow_payload = EXCLUDED.workflow_payload
@@ -144,6 +146,7 @@ class PostgresCatalog:
                         record.workflow_spec_hash,
                         record.status,
                         record.started_at,
+                        record.parent_run_id,
                         record.finished_at,
                         record.error,
                         json.dumps(record.to_dict()["workflow_payload"], sort_keys=True),
@@ -166,6 +169,7 @@ class PostgresCatalog:
                         workflow_spec_hash,
                         status,
                         started_at,
+                        parent_run_id,
                         finished_at,
                         error,
                         workflow_payload
@@ -185,11 +189,79 @@ class PostgresCatalog:
                 "workflow_spec_hash": row[3],
                 "status": row[4],
                 "started_at": row[5].isoformat() if hasattr(row[5], "isoformat") else row[5],
-                "finished_at": row[6].isoformat() if row[6] is not None and hasattr(row[6], "isoformat") else row[6],
-                "error": row[7],
-                "workflow_payload": row[8],
+                "parent_run_id": row[6],
+                "finished_at": row[7].isoformat() if row[7] is not None and hasattr(row[7], "isoformat") else row[7],
+                "error": row[8],
+                "workflow_payload": row[9],
             }
         )
+
+    def list_workflow_runs(
+        self,
+        *,
+        workflow_name: str | None = None,
+        workflow_hash: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[WorkflowRunRecord]:
+        import psycopg
+
+        predicates: list[str] = []
+        params: list[Any] = []
+        if workflow_name is not None:
+            predicates.append("workflow_name = %s")
+            params.append(workflow_name)
+        if workflow_hash is not None:
+            predicates.append("workflow_hash = %s")
+            params.append(workflow_hash)
+        if status is not None:
+            predicates.append("status = %s")
+            params.append(status)
+        where = f"WHERE {' AND '.join(predicates)}" if predicates else ""
+        limit_clause = "LIMIT %s" if limit is not None else ""
+        if limit is not None:
+            params.append(int(limit))
+        query = f"""
+            SELECT
+                run_id,
+                workflow_name,
+                workflow_hash,
+                workflow_spec_hash,
+                status,
+                started_at,
+                parent_run_id,
+                finished_at,
+                error,
+                workflow_payload
+            FROM pipelines_v2_workflow_runs
+            {where}
+            ORDER BY started_at DESC, run_id DESC
+            {limit_clause}
+        """
+        with psycopg.connect(self.source.connection_url()) as conn:
+            with conn.cursor() as cur:
+                self._ensure_schema(cur)
+                cur.execute(query, tuple(params))
+                rows = cur.fetchall()
+        records: list[WorkflowRunRecord] = []
+        for row in rows:
+            records.append(
+                WorkflowRunRecord.from_dict(
+                    {
+                        "run_id": row[0],
+                        "workflow_name": row[1],
+                        "workflow_hash": row[2],
+                        "workflow_spec_hash": row[3],
+                        "status": row[4],
+                        "started_at": row[5].isoformat() if hasattr(row[5], "isoformat") else row[5],
+                        "parent_run_id": row[6],
+                        "finished_at": row[7].isoformat() if row[7] is not None and hasattr(row[7], "isoformat") else row[7],
+                        "error": row[8],
+                        "workflow_payload": row[9],
+                    }
+                )
+            )
+        return records
 
     def record_workflow_step(self, record: WorkflowStepRecord) -> None:
         import json
@@ -411,10 +483,17 @@ class PostgresCatalog:
                 workflow_spec_hash TEXT NOT NULL,
                 status TEXT NOT NULL,
                 started_at TIMESTAMPTZ NOT NULL,
+                parent_run_id TEXT NULL,
                 finished_at TIMESTAMPTZ NULL,
                 error TEXT NULL,
                 workflow_payload JSONB NOT NULL
             )
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_workflow_runs
+            ADD COLUMN IF NOT EXISTS parent_run_id TEXT NULL
             """
         )
         cur.execute(

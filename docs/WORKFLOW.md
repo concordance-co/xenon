@@ -6,6 +6,33 @@ The canonical Xenon workflow is:
 
 For real jobs, capture and analysis run on Modal. The CLI/spec layer is the control surface.
 
+## `pipelines_v2` Operator Surface
+
+In parallel with the older `pipelines.cli` path, the repo now has a Python
+workflow / artifact-oriented runtime in `pipelines_v2`.
+
+Use it when:
+
+- you want one Python workflow file that defines dataset + runners + workflow
+- you want artifact-driven multi-step orchestration
+- you need workflow resume or targeted reruns (`rerun-step`, `rerun-from-step`)
+- you want a local run registry under `~/.xenon/pipelines_v2/catalog`
+
+Typical commands:
+
+```bash
+uv run python -m pipelines_v2.cli workflow plan --file projects/.../specs/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py
+uv run python -m pipelines_v2.cli workflow resume --file projects/.../specs/workflow.py --latest-failed
+uv run python -m pipelines_v2.cli workflow rerun-step --file projects/.../specs/workflow.py --run-id wr_... --step report
+uv run python -m pipelines_v2.cli workflow rerun-from-step --file projects/.../specs/workflow.py --run-id wr_... --step capture_prompt_eos_router
+uv run python -m pipelines_v2.cli workflow runs --file projects/.../specs/workflow.py
+uv run python -m pipelines_v2.cli workflow show --run-id wr_...
+```
+
+The detailed library and CLI contract is documented in
+[PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md).
+
 ## 1. Create Or Update A Spec
 
 To scaffold a new umbrella project and first phase:

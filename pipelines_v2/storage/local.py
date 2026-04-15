@@ -161,6 +161,31 @@ class FileCatalog:
         with path.open("r", encoding="utf-8") as f:
             return WorkflowRunRecord.from_dict(json.load(f))
 
+    def list_workflow_runs(
+        self,
+        *,
+        workflow_name: str | None = None,
+        workflow_hash: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[WorkflowRunRecord]:
+        root = self._workflow_runs_root()
+        records: list[WorkflowRunRecord] = []
+        for path in sorted(root.glob("*.json"), reverse=True):
+            with path.open("r", encoding="utf-8") as f:
+                record = WorkflowRunRecord.from_dict(json.load(f))
+            if workflow_name is not None and record.workflow_name != workflow_name:
+                continue
+            if workflow_hash is not None and record.workflow_hash != workflow_hash:
+                continue
+            if status is not None and record.status != status:
+                continue
+            records.append(record)
+        records.sort(key=lambda item: (item.started_at, item.run_id), reverse=True)
+        if limit is not None:
+            return records[:limit]
+        return records
+
     def record_workflow_step(self, record: WorkflowStepRecord) -> None:
         path = self._workflow_steps_root(record.run_id) / f"{record.step_name}.json"
         tmp = path.with_suffix(".json.tmp")
@@ -251,6 +276,16 @@ class NullCatalog:
 
     def load_workflow_run(self, run_id: str) -> WorkflowRunRecord | None:
         return None
+
+    def list_workflow_runs(
+        self,
+        *,
+        workflow_name: str | None = None,
+        workflow_hash: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[WorkflowRunRecord]:
+        return []
 
     def record_workflow_step(self, record: WorkflowStepRecord) -> None:
         return None

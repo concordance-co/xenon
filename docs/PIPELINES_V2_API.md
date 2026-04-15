@@ -52,8 +52,10 @@ Current workflow persistence support:
 
 - workflow runs and workflow step records are persisted when runners share one non-null catalog
 - `WorkflowOrchestrator.run(..., resume_run_id=..., reuse_completed=...)` is implemented
+- `WorkflowOrchestrator.run(..., reuse_from_run_id=..., force_rerun_steps=..., parent_run_id=...)` is implemented
 - artifact manifests carry workflow provenance in `workflow_context`
 - workflow step records capture `runtime_app_id` when a runner reports one back during execution
+- the CLI always mirrors workflow state into a local file catalog under `~/.xenon/pipelines_v2/catalog` by default
 
 Current operation-module layout:
 
@@ -930,9 +932,17 @@ Protocol methods:
 - `load_artifact(artifact_id)`
 - `record_workflow_run(record)`
 - `load_workflow_run(run_id)`
+- `list_workflow_runs(...)`
 - `record_workflow_step(record)`
 - `list_workflow_steps(run_id)`
 - `find_latest_reusable_step(step_name=..., step_semantic_hash=..., input_artifact_refs=...)`
+
+#### `CompositeCatalog`
+
+What it does:
+- mirrors catalog writes into multiple backends
+- reads from the first backend that has the requested record
+- used by the CLI to combine the default local run registry with an external catalog such as Postgres
 
 #### `FileCatalog`
 
@@ -1125,7 +1135,7 @@ Fields:
 
 Methods:
 - `plan(workflow)`
-- `run(workflow, *, resume_run_id=None, reuse_completed=False)`
+- `run(workflow, *, resume_run_id=None, reuse_completed=False, reuse_from_run_id=None, force_rerun_steps=frozenset(), parent_run_id=None)`
 
 Behavior:
 - resolves step refs before execution
@@ -1134,6 +1144,11 @@ Behavior:
 - persists workflow runs and workflow step records when runners share one non-null catalog
 - `resume_run_id=...` reloads completed prior step artifacts from the shared catalog
 - `reuse_completed=True` reuses latest completed step artifacts whose semantic lineage matches
+- `reuse_from_run_id=...` reuses matching completed step artifacts from one specific prior run
+- `force_rerun_steps={...}` prevents those named steps from being reused
+- the intended pattern is:
+  - `resume`: keep the same `run_id` and continue a failed/interrupted run
+  - `rerun-step` / `rerun-from-step`: create a new run, reuse upstream artifacts from a prior run, and force the selected step set to execute again
 - resume/reuse require every participating runner to point at the same catalog identity
 
 ### `WorkflowRunRecord`
@@ -1149,6 +1164,7 @@ Important fields:
 - `workflow_payload`
 - `status`
 - `started_at`
+- `parent_run_id`
 - `finished_at`
 - `error`
 
@@ -1198,6 +1214,11 @@ Current entrypoint:
 ```bash
 uv run python -m pipelines_v2.cli workflow plan --file path/to/workflow.py
 uv run python -m pipelines_v2.cli workflow run --file path/to/workflow.py
+uv run python -m pipelines_v2.cli workflow runs --file path/to/workflow.py
+uv run python -m pipelines_v2.cli workflow show --run-id wr_...
+uv run python -m pipelines_v2.cli workflow resume --file path/to/workflow.py --latest-failed
+uv run python -m pipelines_v2.cli workflow rerun-step --file path/to/workflow.py --run-id wr_... --step report
+uv run python -m pipelines_v2.cli workflow rerun-from-step --file path/to/workflow.py --run-id wr_... --step capture_prompt_eos_router
 ```
 
 Current scope:
@@ -1216,10 +1237,31 @@ If `build_runner_specs()` is present:
 If `build_runner_specs()` is absent:
 - the CLI builds conventional `capture_gpu`, `analysis_cpu`, and optional `report_local` runners from flags
 
+Default local run tracking:
+- the CLI always mirrors workflow state into a local `FileCatalog`
+- default location:
+  - `~/.xenon/pipelines_v2/catalog`
+- override with:
+  - `--local-catalog-root /path/to/catalog`
+- if an external catalog is also configured, the CLI uses a `CompositeCatalog` so local tracking and external provenance both update together
+
 Important run flags:
 - `--resume-run-id <run_id>`
 - `--reuse-completed`
 - `--catalog-postgres-env <ENV_VAR>`
+- `--local-catalog-root <PATH>`
+
+Additional workflow commands:
+- `workflow runs`
+  - list locally tracked runs
+- `workflow show --run-id <run_id>`
+  - show one persisted run plus its step records
+- `workflow resume`
+  - resume a failed run in place
+- `workflow rerun-step --run-id <run_id> --step <name>`
+  - create a new run that reuses upstream artifacts from the source run and reruns only the named step
+- `workflow rerun-from-step --run-id <run_id> --step <name>`
+  - create a new run that reuses upstream artifacts from the source run and reruns the named step plus downstream dependents
 
 ## Practical Patterns
 
@@ -1315,6 +1357,6 @@ probe_artifact = result.step("probe")
 - `VLLMEngine` currently requires `enforce_eager=True` for MoE routing capture.
 - large remote reads are blocked by default unless the store transfer policy allows them.
 - workflow resume/reuse require one shared non-null catalog across all runners in the workflow.
-- there is still no first-class "rerun this one step and automatically invalidate downstream steps" API.
+- step reruns now exist through the CLI, but there is not yet a richer workflow-edit API for mutating a checked-in workflow spec and automatically planning invalidation from the diff.
 - catalog aliases and spec snapshots described in `ARCH2` are not implemented yet.
 - the orchestrator supports dependency-aware parallelism and failure cancellation, but not a configurable retry policy yet.
