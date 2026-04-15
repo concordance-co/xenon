@@ -24,5 +24,10 @@ tmp/
 # Generated local pipelines_v2 report materializations
 projects/**/reports/pipelines_v2/report_*/
 
+# Phase-level pipeline outputs: dataset jsonl, pipelines_v2 artifact
+# caches, and auto-generated report materializations. Curated
+# markdown/pdf lives under phase_*/reports/ and is NOT ignored.
+projects/**/phase_*/outputs/
+
 # Local ingestion artifacts
 /data/
