@@ -27,6 +27,7 @@ from pipelines_v2.operations.specs import (
     TransformSpec,
 )
 from pipelines_v2.runtime.base import ExecutionPlan
+from pipelines_v2.reporting import generate_report_assets
 from pipelines_v2.storage.artifacts import (
     ArtifactLabelRef,
     ArtifactManifest,
@@ -317,10 +318,11 @@ def _materialize_local_report_outputs(
     )
     if downloaded_results:
         materialized_payload["local_results"] = list(downloaded_results)
+    asset_outputs = generate_report_assets(report_root=output_dir, payload=materialized_payload)
 
     _write_json(report_json_path, materialized_payload)
     _write_json(summary_json_path, materialized_payload.get("summary", materialized_payload))
-    _write_text(report_md_path, _render_report_markdown(spec=spec, payload=materialized_payload))
+    _write_text(report_md_path, _render_report_markdown(spec=spec, payload=materialized_payload, report_root=output_dir))
 
     return (
         {
@@ -343,6 +345,9 @@ def _materialize_local_report_outputs(
             "summary_path": str(summary_json_path),
             "report_json_path": str(report_json_path),
             "results_dir": str(output_dir / "results"),
+            "tables_dir": asset_outputs["tables_dir"],
+            "assets_dir": asset_outputs["assets_dir"],
+            "asset_manifest_path": asset_outputs["manifest_path"],
             "downloaded_results": list(downloaded_results),
         },
     )
@@ -416,31 +421,83 @@ def _write_text(path: Path, payload: str) -> None:
     os.replace(tmp, path)
 
 
-def _render_report_markdown(*, spec: ReportSpec, payload: dict[str, Any]) -> str:
+def _render_report_markdown(*, spec: ReportSpec, payload: dict[str, Any], report_root: Path) -> str:
+    summary = payload.get("summary", {})
     lines = [
         f"# {spec.template}",
         "",
         f"- template: `{spec.template}`",
-        f"- input_count: {payload.get('summary', {}).get('input_count', len(payload.get('inputs', [])))}",
+        f"- input_count: {summary.get('input_count', len(payload.get('inputs', [])))}",
+        f"- example_count: {summary.get('example_count')}",
+        f"- manifest: `assets/manifest.json`",
+        f"- summary: `summary.json`",
         "",
         "## Inputs",
         "",
     ]
     for item in payload.get("inputs", []):
         if isinstance(item, dict):
-            artifact_id = item.get("artifact_id")
-            artifact_kind = item.get("artifact_kind")
-            if artifact_id and artifact_kind:
-                lines.append(f"- `{artifact_id}` ({artifact_kind})")
-            else:
-                lines.append(f"- `{json.dumps(item, sort_keys=True)}`")
+            name = item.get("name") or item.get("artifact_id") or "input"
+            lines.append(f"### {name}")
+            lines.append("")
+            if item.get("artifact_id"):
+                lines.append(f"- artifact_id: `{item['artifact_id']}`")
+            if item.get("artifact_kind"):
+                lines.append(f"- artifact_kind: `{item['artifact_kind']}`")
+            workflow = item.get("workflow")
+            if isinstance(workflow, dict):
+                lines.append(
+                    "- provenance: "
+                    f"run `{workflow.get('run_id')}` "
+                    f"/ step `{workflow.get('step_name')}` "
+                    f"/ index `{workflow.get('step_index')}`"
+                )
+            runtime = item.get("runtime")
+            if isinstance(runtime, dict):
+                lines.append(
+                    "- runtime: "
+                    f"runner `{runtime.get('runner_kind')}`"
+                    + (
+                        f" / app `{runtime.get('runtime_app_id')}`"
+                        if runtime.get("runtime_app_id")
+                        else ""
+                    )
+                )
+            downloaded_result_path = item.get("downloaded_result_path")
+            if downloaded_result_path:
+                lines.append(
+                    f"- results: `{_report_relative_path(report_root, str(downloaded_result_path))}`"
+                )
+            if item.get("table_path"):
+                lines.append(f"- table: `{item['table_path']}`")
+            headline_metrics = item.get("headline_metrics")
+            if isinstance(headline_metrics, dict) and headline_metrics:
+                lines.append("- headline_metrics:")
+                lines.append("```json")
+                lines.append(json.dumps(headline_metrics, sort_keys=True, indent=2))
+                lines.append("```")
+            figures = item.get("assets")
+            if isinstance(figures, list) and figures:
+                lines.append("- figures:")
+                for figure in figures:
+                    if not isinstance(figure, dict):
+                        continue
+                    primary = " (primary)" if figure.get("primary") else ""
+                    lines.append(f"  - `{figure.get('path')}`{primary}: {figure.get('title')}")
+            lines.append("")
         else:
             lines.append(f"- `{item}`")
-    lines.append("")
     lines.append("## Summary")
     lines.append("")
     lines.append("```json")
-    lines.append(json.dumps(payload.get("summary", {}), sort_keys=True, indent=2))
+    lines.append(json.dumps(summary, sort_keys=True, indent=2))
     lines.append("```")
     lines.append("")
     return "\n".join(lines)
+
+
+def _report_relative_path(report_root: Path, path: str) -> str:
+    try:
+        return str(Path(path).relative_to(report_root))
+    except ValueError:
+        return str(path)

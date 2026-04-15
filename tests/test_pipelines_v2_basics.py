@@ -374,6 +374,96 @@ def _write_cli_local_workflow_file(tmp_path: Path) -> Path:
     return workflow_file
 
 
+def _write_cli_mixed_catalog_workflow_file(tmp_path: Path) -> Path:
+    workflow_file = tmp_path / "cli_mixed_catalog_workflow.py"
+    workflow_file.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "",
+                "from pipelines_v2.api import (",
+                "    CaptureSpec,",
+                "    Dataset,",
+                "    Example,",
+                "    FileCatalog,",
+                "    LocalArtifactStore,",
+                "    LocalRunnerSpec,",
+                "    ProbeSpec,",
+                "    ReportSpec,",
+                "    ResidualSite,",
+                "    StepRef,",
+                "    ToyEngine,",
+                "    WorkflowSpec,",
+                "    WorkflowStep,",
+                ")",
+                "",
+                f"ARTIFACT_ROOT = Path({tmp_path.joinpath('artifacts').as_posix()!r})",
+                f"REPORT_ARTIFACT_ROOT = Path({tmp_path.joinpath('report_artifacts').as_posix()!r})",
+                f"REPORT_OUTPUT_ROOT = {str(tmp_path.joinpath('published_reports'))!r}",
+                f"SHARED_CATALOG_ROOT = Path({tmp_path.joinpath('shared_catalog').as_posix()!r})",
+                "",
+                "def build_dataset():",
+                "    return Dataset.from_examples(",
+                "        [",
+                "            Example(key='a', prompt='alpha', labels={'class': 'pos'}, case_key='c1'),",
+                "            Example(key='b', prompt='beta', labels={'class': 'neg'}, case_key='c2'),",
+                "            Example(key='c', prompt='gamma', labels={'class': 'pos'}, case_key='c3'),",
+                "            Example(key='d', prompt='delta', labels={'class': 'neg'}, case_key='c4'),",
+                "        ],",
+                "        name='cli_mixed_catalog_workflow_dataset',",
+                "    )",
+                "",
+                "def build_runner_specs():",
+                "    shared_catalog = FileCatalog(SHARED_CATALOG_ROOT)",
+                "    return {",
+                "        'capture_gpu': LocalRunnerSpec(artifacts=LocalArtifactStore(ARTIFACT_ROOT), catalog=shared_catalog),",
+                "        'analysis_cpu': LocalRunnerSpec(artifacts=LocalArtifactStore(ARTIFACT_ROOT), catalog=shared_catalog),",
+                "        'report_local': LocalRunnerSpec(artifacts=LocalArtifactStore(REPORT_ARTIFACT_ROOT)),",
+                "    }",
+                "",
+                "def build_workflow(dataset=None):",
+                "    dataset = dataset or build_dataset()",
+                "    return WorkflowSpec(",
+                "        name='cli_mixed_catalog_workflow',",
+                "        steps=(",
+                "            WorkflowStep(",
+                "                name='capture',",
+                "                runner='capture_gpu',",
+                "                spec=CaptureSpec(",
+                "                    engine=ToyEngine(hidden_size=4, num_layers=2),",
+                "                    dataset=dataset,",
+                "                    sites=[ResidualSite(name='resid_last', site='resid_post', layers=[0, 1])],",
+                "                ),",
+                "            ),",
+                "            WorkflowStep(",
+                "                name='probe',",
+                "                runner='analysis_cpu',",
+                "                spec=ProbeSpec(",
+                "                    feature=StepRef('capture').feature('resid_last'),",
+                "                    labels=dataset.labels('class'),",
+                "                    folds=2,",
+                "                    baselines=['majority'],",
+                "                ),",
+                "            ),",
+                "            WorkflowStep(",
+                "                name='report',",
+                "                runner='report_local',",
+                "                spec=ReportSpec(",
+                "                    template='cli_mixed_catalog_workflow',",
+                "                    output_dir=REPORT_OUTPUT_ROOT,",
+                "                    inputs=[StepRef('capture'), StepRef('probe')],",
+                "                ),",
+                "            ),",
+                "        ),",
+                "    )",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return workflow_file
+
+
 class _FailOnceRunner:
     def __init__(self, inner: Any, *, fail_step: str | None = None, delay_seconds: float = 0.0) -> None:
         self.inner = inner
@@ -2856,6 +2946,9 @@ def test_local_report_runner_materializes_output_dir(tmp_path: Path) -> None:
     assert Path(published["output_dir"]).exists()
     assert Path(published["report_path"]).exists()
     assert Path(published["summary_path"]).exists()
+    assert Path(published["asset_manifest_path"]).exists()
+    assert Path(published["assets_dir"]).exists()
+    assert Path(published["tables_dir"]).exists()
     assert report.manifest().storage_refs["report"]["path"].endswith("report.md")
 
 
@@ -2929,12 +3022,20 @@ def test_local_report_runner_downloads_only_direct_operation_inputs(tmp_path: Pa
     published = report.manifest().metadata["published_report"]
     results_dir = Path(published["results_dir"])
     report_json_path = Path(published["report_json_path"])
+    manifest_path = Path(published["asset_manifest_path"])
+    tables_dir = Path(published["tables_dir"])
+    assets_dir = Path(published["assets_dir"])
     probe_results_path = results_dir / "probe_results.json"
     capture_results_path = results_dir / "capture_results.json"
+    probe_table_path = tables_dir / "probe.json"
+    probe_chart_path = assets_dir / "probe" / "balanced_accuracy_by_layer.png"
 
     assert results_dir.exists()
     assert probe_results_path.exists()
     assert not capture_results_path.exists()
+    assert manifest_path.exists()
+    assert probe_table_path.exists()
+    assert probe_chart_path.exists()
     assert published["downloaded_results"] == [
         {
             "name": "probe",
@@ -2956,10 +3057,22 @@ def test_local_report_runner_downloads_only_direct_operation_inputs(tmp_path: Pa
 
     with report_json_path.open("r", encoding="utf-8") as f:
         report_payload = json.load(f)
+    with manifest_path.open("r", encoding="utf-8") as f:
+        manifest_payload = json.load(f)
     capture_input = report_payload["inputs"][0]
     probe_input = report_payload["inputs"][1]
     assert "downloaded_result_path" not in capture_input
     assert probe_input["downloaded_result_path"] == str(probe_results_path)
+    assert capture_input.get("assets") in (None, [])
+    assert probe_input["table_path"] == "tables/probe.json"
+    assert probe_input["assets"]
+    assert probe_input["headline_metrics"]["best_layer"] is not None
+    assert report_payload["summary"]["figures"]
+    assert report_payload["summary"]["tables"]["probe"]["path"] == "tables/probe.json"
+    assert report_payload["summary"]["step_summaries"]["probe"]["kind"] == "probe_result"
+    assert manifest_payload["figures"]
+    assert manifest_payload["tables"]["probe"]["path"] == "tables/probe.json"
+    assert manifest_payload["unsupported_inputs"] == []
 
 
 def test_report_spec_includes_richer_artifact_input_details(tmp_path: Path) -> None:
@@ -3696,6 +3809,49 @@ def test_pipelines_v2_cli_rerun_step_and_from_step_use_prior_run_artifacts(
     assert rerun_from_records["capture"].status == "reused"
     assert rerun_from_records["probe"].status == "completed"
     assert rerun_from_records["report"].status == "completed"
+
+
+def test_pipelines_v2_cli_rerun_step_supports_mixed_shared_and_local_catalog_runners(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    workflow_file = _write_cli_mixed_catalog_workflow_file(tmp_path)
+    monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "run",
+            "--file",
+            str(workflow_file),
+        ]
+    )
+    initial_payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    initial_run_id = initial_payload["run_id"]
+    initial_capture_id = initial_payload["steps"]["capture"]["artifact_id"]
+    initial_probe_id = initial_payload["steps"]["probe"]["artifact_id"]
+    initial_report_id = initial_payload["steps"]["report"]["artifact_id"]
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "rerun-step",
+            "--file",
+            str(workflow_file),
+            "--run-id",
+            initial_run_id,
+            "--step",
+            "report",
+        ]
+    )
+    rerun_payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert rerun_payload["steps"]["capture"]["artifact_id"] == initial_capture_id
+    assert rerun_payload["steps"]["probe"]["artifact_id"] == initial_probe_id
+    assert rerun_payload["steps"]["report"]["artifact_id"] != initial_report_id
 
 
 def test_runner_spec_round_trips_from_dict() -> None:

@@ -264,8 +264,34 @@ def _local_registry_catalog(ns: argparse.Namespace) -> FileCatalog:
 
 
 def _attach_local_registry(runners: dict[str, object], local_catalog: FileCatalog) -> dict[str, object]:
+    shared_secondary: Any | None = None
+    shared_secondary_identity: dict[str, Any] | None = None
     for runner in runners.values():
         current = getattr(runner, "catalog", NullCatalog())
+        if getattr(current, "kind", "none") == "none":
+            continue
+        if hasattr(current, "identity") and current.identity() == local_catalog.identity():
+            continue
+        if shared_secondary is None:
+            shared_secondary = current
+            shared_secondary_identity = current.identity() if hasattr(current, "identity") else None
+            continue
+        current_identity = current.identity() if hasattr(current, "identity") else None
+        if current_identity != shared_secondary_identity:
+            shared_secondary = None
+            shared_secondary_identity = None
+            break
+
+    for runner in runners.values():
+        current = getattr(runner, "catalog", NullCatalog())
+        if shared_secondary is not None:
+            current_identity = current.identity() if hasattr(current, "identity") else None
+            if getattr(current, "kind", "none") == "none" or current_identity == local_catalog.identity():
+                runner.catalog = CompositeCatalog((local_catalog, shared_secondary))
+                continue
+            if current_identity == shared_secondary_identity:
+                runner.catalog = CompositeCatalog((local_catalog, current))
+                continue
         if getattr(current, "kind", "none") == "none":
             runner.catalog = local_catalog
             continue
