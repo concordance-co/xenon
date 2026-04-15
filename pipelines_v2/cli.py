@@ -6,12 +6,14 @@ import argparse
 import importlib.util
 import inspect
 import json
+import os
 import sys
 from collections import defaultdict, deque
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Sequence
 
+from pipelines_v2.core.config import WorkspaceConfig, load_workspace_config
 from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
 from pipelines_v2.api import (
@@ -60,6 +62,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     load_dotenv_if_present()
     parser = _build_parser()
     ns = parser.parse_args(list(argv) if argv is not None else None)
+    setattr(ns, "_workspace_config", load_workspace_config(_config_start_path(ns)))
     if ns.command == "workflow":
         if ns.workflow_command == "plan":
             return _workflow_plan(ns)
@@ -129,7 +132,7 @@ def _workflow_resume(ns: argparse.Namespace) -> int:
         dataset_fn_name=ns.dataset_fn,
         workflow_fn_name=ns.workflow_fn,
     )
-    local_catalog = _local_registry_catalog(ns)
+    local_catalog = _registry_catalog(ns)
     run_id = ns.run_id or _select_latest_run_id(
         local_catalog,
         workflow=workflow,
@@ -144,7 +147,7 @@ def _workflow_resume(ns: argparse.Namespace) -> int:
 
 
 def _workflow_runs(ns: argparse.Namespace) -> int:
-    local_catalog = _local_registry_catalog(ns)
+    local_catalog = _registry_catalog(ns)
     workflow_name = None
     if ns.file:
         _, workflow, _ = load_python_workflow_file(
@@ -167,7 +170,7 @@ def _workflow_runs(ns: argparse.Namespace) -> int:
 
 
 def _workflow_show(ns: argparse.Namespace) -> int:
-    local_catalog = _local_registry_catalog(ns)
+    local_catalog = _registry_catalog(ns)
     run = local_catalog.load_workflow_run(ns.run_id)
     if run is None:
         raise RuntimeError(f"Unknown workflow run id: {ns.run_id}")
@@ -185,7 +188,7 @@ def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) ->
         dataset_fn_name=ns.dataset_fn,
         workflow_fn_name=ns.workflow_fn,
     )
-    local_catalog = _local_registry_catalog(ns)
+    local_catalog = _registry_catalog(ns)
     source_run_id = ns.run_id or _select_latest_run_id(local_catalog, workflow=workflow, status="completed")
     if source_run_id is None:
         raise RuntimeError("Could not resolve a completed workflow run id for rerun")
@@ -211,6 +214,7 @@ def _build_runners(
 ) -> dict[str, object]:
     if runner_specs is not None:
         runners = {name: spec.to_runner() for name, spec in runner_specs.items()}
+        _apply_workspace_catalog_defaults(runners, ns)
     else:
         runners = _build_runners_from_args(ns)
     return _attach_local_registry(runners, _local_registry_catalog(ns))
@@ -219,7 +223,7 @@ def _build_runners(
 def _build_runners_from_args(ns: argparse.Namespace) -> dict[str, object]:
     secrets = tuple(_parse_secret_binding(value) for value in ns.secret)
     capture_volumes = tuple(_parse_volume_mount(value) for value in ns.capture_volume)
-    catalog = _build_catalog(ns.catalog_postgres_env)
+    catalog = _build_catalog(_configured_catalog_postgres_env(ns))
     artifact_store = ModalVolumeStore(
         name=ns.artifact_volume_name,
         root=ns.artifact_root,
@@ -261,8 +265,62 @@ def _build_catalog(env_var: str | None) -> object:
 
 
 def _local_registry_catalog(ns: argparse.Namespace) -> FileCatalog:
-    root = Path(ns.local_catalog_root) if getattr(ns, "local_catalog_root", None) else pipelines_v2_catalog_root()
+    configured = _configured_local_catalog_root(ns)
+    root = configured if configured is not None else pipelines_v2_catalog_root()
     return FileCatalog(root=root)
+
+
+def _registry_catalog(ns: argparse.Namespace) -> Any:
+    local = _local_registry_catalog(ns)
+    env_var = _configured_catalog_postgres_env(ns)
+    if not env_var:
+        return local
+    return CompositeCatalog((local, PostgresCatalog(source=PostgresSource.from_env(env_var))))
+
+
+def _workspace_config_for_ns(ns: argparse.Namespace) -> WorkspaceConfig:
+    existing = getattr(ns, "_workspace_config", None)
+    if isinstance(existing, WorkspaceConfig):
+        return existing
+    config = load_workspace_config(_config_start_path(ns))
+    setattr(ns, "_workspace_config", config)
+    return config
+
+
+def _config_start_path(ns: argparse.Namespace) -> Path | None:
+    path = getattr(ns, "file", None)
+    if path:
+        return Path(path)
+    return None
+
+
+def _configured_catalog_postgres_env(ns: argparse.Namespace) -> str | None:
+    explicit = getattr(ns, "catalog_postgres_env", None)
+    if explicit:
+        return str(explicit)
+    config = _workspace_config_for_ns(ns)
+    configured = config.workflow_catalog_postgres_env()
+    if configured and os.environ.get(configured):
+        return configured
+    return None
+
+
+def _configured_local_catalog_root(ns: argparse.Namespace) -> Path | None:
+    explicit = getattr(ns, "local_catalog_root", None)
+    if explicit:
+        return Path(str(explicit)).expanduser().resolve()
+    return _workspace_config_for_ns(ns).workflow_local_catalog_root()
+
+
+def _apply_workspace_catalog_defaults(runners: dict[str, object], ns: argparse.Namespace) -> None:
+    env_var = _configured_catalog_postgres_env(ns)
+    if not env_var:
+        return
+    shared_catalog = PostgresCatalog(source=PostgresSource.from_env(env_var))
+    for runner in runners.values():
+        current = getattr(runner, "catalog", NullCatalog())
+        if getattr(current, "kind", "none") == "none":
+            runner.catalog = shared_catalog
 
 
 def _attach_local_registry(runners: dict[str, object], local_catalog: FileCatalog) -> dict[str, object]:
@@ -651,7 +709,7 @@ def _add_workflow_runner_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--catalog-postgres-env",
         default=None,
-        help="Optional env var name for a Postgres-backed catalog.",
+        help="Optional env var name for a Postgres-backed catalog. Falls back to xenon.toml when omitted.",
     )
     parser.add_argument(
         "--report-artifact-root",
@@ -661,7 +719,7 @@ def _add_workflow_runner_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--local-catalog-root",
         default=None,
-        help="Optional local workflow state root; defaults under ~/.xenon/pipelines_v2/catalog.",
+        help="Optional local workflow state root; falls back to xenon.toml or ~/.xenon/pipelines_v2/catalog.",
     )
 
 

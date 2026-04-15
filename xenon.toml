@@ -1,0 +1,6 @@
+[pipelines_v2]
+catalog_postgres_env = "XENON_NEON_DATABASE_URL"
+
+[pipelines_v2.dashboard]
+use_workspace_catalog = true
+static_dir = "dashboard/dist"

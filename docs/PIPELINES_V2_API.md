@@ -1260,6 +1260,13 @@ Default local run tracking:
   - `--local-catalog-root /path/to/catalog`
 - if an external catalog is also configured, the CLI uses a `CompositeCatalog` so local tracking and external provenance both update together
 
+Workspace config:
+- the CLI and dashboard also read repo-root `xenon.toml` when present
+- shared defaults such as `catalog_postgres_env` belong there
+- CLI flags override `xenon.toml`
+- workflow runner specs that already set a catalog override the workspace default
+- dashboard defaults such as `static_dir` can also live there
+
 Important run flags:
 - `--resume-run-id <run_id>`
 - `--reuse-completed`

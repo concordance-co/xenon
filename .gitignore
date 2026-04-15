@@ -31,3 +31,11 @@ projects/**/phase_*/outputs/
 
 # Local ingestion artifacts
 /data/
+
+# Dashboard frontend
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.vite/
+dashboard/tsconfig.tsbuildinfo
+dashboard/src/**/*.js

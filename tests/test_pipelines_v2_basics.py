@@ -2427,16 +2427,145 @@ def test_postgres_catalog_records_manifest(monkeypatch: pytest.MonkeyPatch) -> N
         example_coverage={"example_count": 4},
         storage_refs={"result": {"store": "local", "path": "/tmp/result.json"}},
         metadata={},
-        workflow_context={},
+        workflow_context={
+            "run_id": "run_123",
+            "step_name": "probe",
+            "workflow_step_key": "workflow_hash.probe",
+        },
     )
 
     PostgresCatalog(source=PostgresSource.from_env("XENON_DATABASE_URL")).record_artifact(manifest)
 
     assert committed["value"] is True
     assert any("CREATE TABLE IF NOT EXISTS pipelines_v2_artifacts" in sql for sql, _ in executed)
+    assert any("CREATE TABLE IF NOT EXISTS pipelines_v2_workflow_step_inputs" in sql for sql, _ in executed)
+    assert any("pipelines_v2_workflow_steps_run_id_fkey" in sql for sql, _ in executed)
     insert = next(params for sql, params in executed if "INSERT INTO pipelines_v2_artifacts" in sql)
     assert insert is not None
     assert insert[0] == "probe_123"
+    assert insert[6] == "run_123:probe"
+    assert insert[7] == "run_123"
+    assert insert[8] == "probe"
+    assert insert[9] == "workflow_hash.probe"
+
+
+def test_postgres_catalog_records_step_input_edges(monkeypatch: pytest.MonkeyPatch) -> None:
+    executed: list[tuple[str, tuple[object, ...] | None]] = []
+    committed = {"value": False}
+    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon")
+
+    class FakeCursor:
+        def __enter__(self) -> "FakeCursor":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def execute(self, sql: str, params: tuple[object, ...] | None = None) -> None:
+            executed.append((" ".join(sql.split()), params))
+
+    class FakeConnection:
+        def __enter__(self) -> "FakeConnection":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return FakeCursor()
+
+        def commit(self) -> None:
+            committed["value"] = True
+
+    fake_psycopg = types.SimpleNamespace(connect=lambda url: FakeConnection())
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+
+    record = WorkflowStepRecord(
+        run_id="run_123",
+        workflow_hash="workflow_hash",
+        workflow_step_key="workflow_hash.probe",
+        step_name="probe",
+        step_index=1,
+        runner="analysis",
+        status="completed",
+        step_semantic_hash="sem_hash",
+        step_spec_hash="spec_hash",
+        input_artifact_refs=("capture_a", "labels_b"),
+        artifact_id="probe_123",
+        artifact_kind="probe",
+        started_at="2026-04-13T00:00:00+00:00",
+        finished_at="2026-04-13T00:01:00+00:00",
+    )
+
+    PostgresCatalog(source=PostgresSource.from_env("XENON_DATABASE_URL")).record_workflow_step(record)
+
+    assert committed["value"] is True
+    delete = next(
+        params for sql, params in executed if "DELETE FROM pipelines_v2_workflow_step_inputs" in sql
+    )
+    assert delete == ("run_123:probe",)
+    inserts = [
+        params for sql, params in executed if "INSERT INTO pipelines_v2_workflow_step_inputs" in sql
+    ]
+    assert inserts == [
+        ("run_123:probe", 0, "capture_a"),
+        ("run_123:probe", 1, "labels_b"),
+    ]
+
+
+def test_postgres_catalog_finds_artifact_for_workflow_step_via_relational_columns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executed: list[tuple[str, tuple[object, ...] | None]] = []
+    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon")
+
+    class FakeCursor:
+        def __enter__(self) -> "FakeCursor":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def execute(self, sql: str, params: tuple[object, ...] | None = None) -> None:
+            executed.append((" ".join(sql.split()), params))
+
+        def fetchone(self) -> None:
+            return None
+
+    class FakeConnection:
+        def __enter__(self) -> "FakeConnection":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return FakeCursor()
+
+    fake_psycopg = types.SimpleNamespace(connect=lambda url: FakeConnection())
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+
+    result = PostgresCatalog(source=PostgresSource.from_env("XENON_DATABASE_URL")).find_artifact_for_workflow_step(
+        run_id="run_123",
+        workflow_step_key="workflow_hash.probe",
+    )
+
+    assert result is None
+    select_sql, params = next(
+        (sql, params)
+        for sql, params in executed
+        if "SELECT a.manifest FROM pipelines_v2_artifacts a" in sql
+    )
+    assert "SELECT workflow_step_id" in select_sql
+    assert "a.produced_by_step_id = step.workflow_step_id" in select_sql
+    assert params == (
+        "run_123",
+        "workflow_hash.probe",
+        "run_123",
+        "workflow_hash.probe",
+        "run_123",
+        "workflow_hash.probe",
+    )
 
 
 def test_local_runner_pair_delta_produces_feature_and_label_artifact(tmp_path: Path) -> None:
