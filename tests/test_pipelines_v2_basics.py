@@ -611,6 +611,36 @@ def test_deferred_dataset_label_and_case_refs_round_trip() -> None:
     assert restored.group_by.name == "case_id"
 
 
+def test_readout_specs_persist_predictions_round_trip() -> None:
+    dataset = _make_phase5_like_dataset()
+
+    probe = ProbeSpec(
+        feature="placeholder_feature",
+        labels=dataset.labels("conflict_present"),
+        group_by=dataset.cases("matched_pair_id"),
+        persist_predictions=True,
+    )
+    transfer = TransferProbeSpec(
+        feature="placeholder_feature",
+        labels=dataset.labels("conflict_present"),
+        cohort_by=dataset.labels("family_group"),
+        persist_predictions=True,
+    )
+    text = TextBaselineSpec(
+        text=dataset.labels("user_text"),
+        labels=dataset.labels("strategy_family"),
+        persist_predictions=True,
+    )
+
+    restored_probe = ProbeSpec.from_dict(probe.to_dict())
+    restored_transfer = TransferProbeSpec.from_dict(transfer.to_dict())
+    restored_text = TextBaselineSpec.from_dict(text.to_dict())
+
+    assert restored_probe.persist_predictions is True
+    assert restored_transfer.persist_predictions is True
+    assert restored_text.persist_predictions is True
+
+
 def test_deferred_postgres_dataset_rejects_raw_url_serialization() -> None:
     source = PostgresSource(url="postgresql://example/xenon")
 
@@ -3572,16 +3602,130 @@ def test_phase5_style_specs_execute_over_residual_router_and_text(tmp_path: Path
 
     assert residual_transfer_payload["kind"] == "transfer_probe_result"
     assert residual_transfer_payload["layers"][0]["cross_cohort_transfer"]
+    assert "test_predictions" not in residual_transfer_payload["layers"][0]["cross_cohort_transfer"]["size_to_activity"]
     assert router_transfer_payload["kind"] == "transfer_probe_result"
     assert "size_to_activity" in router_transfer_payload["layers"][0]["cross_cohort_transfer"]
     assert text_baseline_payload["kind"] == "text_baseline_result"
     assert text_baseline_payload["mode"] == "grouped_cv"
+    assert "test_predictions" not in text_baseline_payload["results"]["grouped_cv"]
     assert residualized_payload["kind"] == "residualized_probe_result"
     assert residualized_payload["layers"][0]["family_subspace_rank"] >= 1
     assert geometry_pca_payload["kind"] == "geometry_result"
     assert geometry_pca_payload["layers"][0]["example_count"] == 4
     assert geometry_lda_payload["kind"] == "geometry_result"
     assert geometry_lda_payload["layers"][0]["label_name"] == "strategy_family"
+
+
+def test_probe_grouped_cv_persists_prediction_rows_when_requested(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = _make_phase5_like_dataset()
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=6, num_layers=1, sequence_length=1),
+            dataset=dataset,
+            sites=[ResidualSite(name="residual_prompt_eos", site="resid_post", layers=[0], tokens=TokenSelector.last())],
+        )
+    )
+
+    probe = runner.run(
+        ProbeSpec(
+            feature=capture.feature("residual_prompt_eos"),
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_pair_id"),
+            metrics=("balanced_accuracy", "auroc"),
+            persist_predictions=True,
+        )
+    )
+
+    payload = probe.result()
+    layer_payload = payload["layers"][0]
+    prediction_rows = layer_payload["test_predictions"]
+
+    assert layer_payload["test_prediction_count"] == len(dataset.example_keys())
+    assert len(prediction_rows) == len(dataset.example_keys())
+    assert {row["example_key"] for row in prediction_rows} == set(dataset.example_keys())
+
+    first = prediction_rows[0]
+    assert first["evaluation_kind"] == "probe"
+    assert first["layer"] == 0
+    assert first["split_mode"] in {"group_kfold", "stratified_group_kfold", "stratified_kfold"}
+    assert isinstance(first["fold_index"], int)
+    assert isinstance(first["correct"], bool)
+    assert first["binary_outcome"] in {"true_positive", "false_positive", "false_negative", "true_negative"}
+    assert "positive_class_probability" in first
+
+
+def test_transfer_probe_cross_cohort_persists_prediction_rows_when_requested(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = _make_phase5_like_dataset()
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=6, num_layers=1, sequence_length=1),
+            dataset=dataset,
+            sites=[ResidualSite(name="residual_prompt_eos", site="resid_post", layers=[0], tokens=TokenSelector.last())],
+        )
+    )
+
+    transfer = runner.run(
+        TransferProbeSpec(
+            feature=capture.feature("residual_prompt_eos"),
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_pair_id"),
+            cohort_by=dataset.labels("family_group"),
+            cohort_values=("size", "activity"),
+            metrics=("balanced_accuracy", "auroc"),
+            persist_predictions=True,
+        )
+    )
+
+    payload = transfer.result()
+    layer_payload = payload["layers"][0]
+    cross_payload = layer_payload["cross_cohort_transfer"]["size_to_activity"]
+    within_payload = layer_payload["within_cohort_baseline"]["activity"]
+
+    assert cross_payload["test_prediction_count"] == 4
+    assert len(cross_payload["test_predictions"]) == 4
+    assert within_payload["test_prediction_count"] == 4
+
+    first = cross_payload["test_predictions"][0]
+    assert first["evaluation_kind"] == "cross_cohort_transfer"
+    assert first["layer"] == 0
+    assert first["train_cohort"] == "size"
+    assert first["test_cohort"] == "activity"
+    assert first["split_mode"] == "cross_transfer"
+    assert "positive_class_probability" in first
+
+
+def test_text_baseline_grouped_cv_persists_prediction_rows_when_requested(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = _make_phase5_like_dataset()
+
+    baseline = runner.run(
+        TextBaselineSpec(
+            text=dataset.labels("user_text"),
+            labels=dataset.labels("strategy_family"),
+            group_by=dataset.cases("matched_pair_id"),
+            model="countvectorizer_logreg",
+            metrics=("balanced_accuracy", "auroc"),
+            persist_predictions=True,
+        )
+    )
+
+    payload = baseline.result()
+    grouped = payload["results"]["grouped_cv"]
+    prediction_rows = grouped["test_predictions"]
+
+    assert grouped["test_prediction_count"] == len(dataset.example_keys())
+    assert len(prediction_rows) == len(dataset.example_keys())
+    assert {row["example_key"] for row in prediction_rows} == set(dataset.example_keys())
+
+    first = prediction_rows[0]
+    assert first["evaluation_kind"] == "grouped_cv"
+    assert first["model"] == "countvectorizer_logreg"
+    assert first["split_mode"] in {"group_kfold", "stratified_group_kfold", "stratified_kfold"}
+    assert isinstance(first["fold_index"], int)
+    assert isinstance(first["correct"], bool)
+    assert "class_probabilities" in first
 
 
 def test_probe_rows_align_subset_dataset_to_feature_rows(tmp_path: Path) -> None:

@@ -35,6 +35,7 @@ class TransferProbeSpec(OperationSpec):
     compare_direction_similarity: bool = True
     tokens: TokenSelector = field(default_factory=TokenSelector.full_sequence)
     pooling: TokenPooling = field(default_factory=TokenPooling.mean)
+    persist_predictions: bool = False
 
     kind: ClassVar[str] = "transfer_probe"
 
@@ -71,6 +72,7 @@ class TransferProbeSpec(OperationSpec):
             compare_direction_similarity=bool(payload.get("compare_direction_similarity", True)),
             tokens=TokenSelector.from_dict(payload.get("tokens", {"kind": "full_sequence"})),
             pooling=TokenPooling.from_dict(payload.get("pooling", {"kind": "mean"})),
+            persist_predictions=bool(payload.get("persist_predictions", False)),
         )
 
 
