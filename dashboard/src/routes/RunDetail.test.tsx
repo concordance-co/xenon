@@ -40,7 +40,11 @@ describe("RunDetail", () => {
     expect(screen.getAllByText("probe").length).toBeGreaterThan(0);
     expect(screen.getAllByText("report").length).toBeGreaterThan(0);
 
-    // Each step card fetches its detail via api.getStep — one call per step.
-    await waitFor(() => expect((api.getStep as Mock).mock.calls.length).toBeGreaterThanOrEqual(3));
+    // The overview page only fetches step detail for capture steps (to pull
+    // the sites visualization). Analysis/report steps use getStepResult /
+    // getReport respectively — no need to hit getStep for those.
+    await waitFor(() =>
+      expect((api.getStep as Mock).mock.calls.length).toBeGreaterThanOrEqual(1),
+    );
   });
 });

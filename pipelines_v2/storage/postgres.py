@@ -33,6 +33,11 @@ class PostgresCatalog:
         import psycopg
 
         payload = manifest.to_dict()
+        workflow_context = dict(manifest.workflow_context)
+        produced_by_step_id = _workflow_step_id(
+            _optional_text(workflow_context.get("run_id")),
+            _optional_text(workflow_context.get("step_name")),
+        )
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
                 self._ensure_schema(cur)
@@ -44,14 +49,22 @@ class PostgresCatalog:
                         operation_spec_hash,
                         operation_semantic_hash,
                         created_at,
-                        manifest
-                    ) VALUES (%s, %s, %s, %s, %s, %s::jsonb)
+                        manifest,
+                        produced_by_step_id,
+                        produced_by_run_id,
+                        produced_by_step_name,
+                        produced_by_workflow_step_key
+                    ) VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s)
                     ON CONFLICT (artifact_id) DO UPDATE SET
                         artifact_kind = EXCLUDED.artifact_kind,
                         operation_spec_hash = EXCLUDED.operation_spec_hash,
                         operation_semantic_hash = EXCLUDED.operation_semantic_hash,
                         created_at = EXCLUDED.created_at,
-                        manifest = EXCLUDED.manifest
+                        manifest = EXCLUDED.manifest,
+                        produced_by_step_id = EXCLUDED.produced_by_step_id,
+                        produced_by_run_id = EXCLUDED.produced_by_run_id,
+                        produced_by_step_name = EXCLUDED.produced_by_step_name,
+                        produced_by_workflow_step_key = EXCLUDED.produced_by_workflow_step_key
                     """,
                     (
                         manifest.artifact_id,
@@ -60,6 +73,10 @@ class PostgresCatalog:
                         manifest.operation_semantic_hash,
                         manifest.created_at,
                         json.dumps(payload, sort_keys=True),
+                        produced_by_step_id,
+                        _optional_text(workflow_context.get("run_id")),
+                        _optional_text(workflow_context.get("step_name")),
+                        _optional_text(workflow_context.get("workflow_step_key")),
                     ),
                 )
             conn.commit()
@@ -92,14 +109,46 @@ class PostgresCatalog:
                 self._ensure_schema(cur)
                 cur.execute(
                     """
-                    SELECT manifest
-                    FROM pipelines_v2_artifacts
-                    WHERE manifest->'workflow_context'->>'run_id' = %s
-                      AND manifest->'workflow_context'->>'workflow_step_key' = %s
+                    WITH target_step AS (
+                        SELECT workflow_step_id
+                        FROM pipelines_v2_workflow_steps
+                        WHERE run_id = %s
+                          AND workflow_step_key = %s
+                        LIMIT 1
+                    )
+                    SELECT a.manifest
+                    FROM pipelines_v2_artifacts a
+                    LEFT JOIN target_step step ON TRUE
+                    WHERE (
+                        step.workflow_step_id IS NOT NULL
+                        AND a.produced_by_step_id = step.workflow_step_id
+                    )
+                    OR (
+                        a.produced_by_step_id IS NULL
+                        AND (
+                            (
+                                a.produced_by_run_id = %s
+                                AND a.produced_by_workflow_step_key = %s
+                            )
+                            OR (
+                                a.produced_by_run_id IS NULL
+                                AND a.produced_by_workflow_step_key IS NULL
+                                AND a.manifest->'workflow_context'->>'run_id' = %s
+                                AND a.manifest->'workflow_context'->>'workflow_step_key' = %s
+                            )
+                        )
+                    )
                     ORDER BY created_at DESC
                     LIMIT 1
                     """,
-                    (run_id, workflow_step_key),
+                    (
+                        run_id,
+                        workflow_step_key,
+                        run_id,
+                        workflow_step_key,
+                        run_id,
+                        workflow_step_key,
+                    ),
                 )
                 row = cur.fetchone()
         if row is None:
@@ -275,6 +324,7 @@ class PostgresCatalog:
                     """
                     INSERT INTO pipelines_v2_workflow_steps (
                         run_id,
+                        workflow_step_id,
                         step_name,
                         workflow_hash,
                         workflow_step_key,
@@ -291,8 +341,9 @@ class PostgresCatalog:
                         runtime_app_id,
                         reused_from_run_id,
                         reused_from_artifact_id
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (run_id, step_name) DO UPDATE SET
+                        workflow_step_id = EXCLUDED.workflow_step_id,
                         workflow_hash = EXCLUDED.workflow_hash,
                         workflow_step_key = EXCLUDED.workflow_step_key,
                         step_index = EXCLUDED.step_index,
@@ -311,6 +362,7 @@ class PostgresCatalog:
                     """,
                     (
                         record.run_id,
+                        _workflow_step_id(record.run_id, record.step_name),
                         record.step_name,
                         record.workflow_hash,
                         record.workflow_step_key,
@@ -329,6 +381,7 @@ class PostgresCatalog:
                         record.reused_from_artifact_id,
                     ),
                 )
+                self._replace_workflow_step_inputs(cur, record)
             conn.commit()
 
     def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
@@ -341,6 +394,7 @@ class PostgresCatalog:
                     """
                     SELECT
                         run_id,
+                        workflow_step_id,
                         workflow_hash,
                         workflow_step_key,
                         step_name,
@@ -370,22 +424,22 @@ class PostgresCatalog:
                 WorkflowStepRecord.from_dict(
                     {
                         "run_id": row[0],
-                        "workflow_hash": row[1],
-                        "workflow_step_key": row[2],
-                        "step_name": row[3],
-                        "step_index": row[4],
-                        "runner": row[5],
-                        "status": row[6],
-                        "step_semantic_hash": row[7],
-                        "step_spec_hash": row[8],
-                        "input_artifact_refs": row[9],
-                        "artifact_id": row[10],
-                        "artifact_kind": row[11],
-                        "started_at": row[12].isoformat() if row[12] is not None and hasattr(row[12], "isoformat") else row[12],
-                        "finished_at": row[13].isoformat() if row[13] is not None and hasattr(row[13], "isoformat") else row[13],
-                        "runtime_app_id": row[14],
-                        "reused_from_run_id": row[15],
-                        "reused_from_artifact_id": row[16],
+                        "workflow_hash": row[2],
+                        "workflow_step_key": row[3],
+                        "step_name": row[4],
+                        "step_index": row[5],
+                        "runner": row[6],
+                        "status": row[7],
+                        "step_semantic_hash": row[8],
+                        "step_spec_hash": row[9],
+                        "input_artifact_refs": row[10],
+                        "artifact_id": row[11],
+                        "artifact_kind": row[12],
+                        "started_at": row[13].isoformat() if row[13] is not None and hasattr(row[13], "isoformat") else row[13],
+                        "finished_at": row[14].isoformat() if row[14] is not None and hasattr(row[14], "isoformat") else row[14],
+                        "runtime_app_id": row[15],
+                        "reused_from_run_id": row[16],
+                        "reused_from_artifact_id": row[17],
                     }
                 )
             )
@@ -470,8 +524,29 @@ class PostgresCatalog:
                 operation_spec_hash TEXT NOT NULL,
                 operation_semantic_hash TEXT NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL,
-                manifest JSONB NOT NULL
+                manifest JSONB NOT NULL,
+                produced_by_run_id TEXT NULL,
+                produced_by_step_name TEXT NULL,
+                produced_by_workflow_step_key TEXT NULL
             )
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_artifacts
+            ADD COLUMN IF NOT EXISTS produced_by_run_id TEXT NULL
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_artifacts
+            ADD COLUMN IF NOT EXISTS produced_by_step_name TEXT NULL
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_artifacts
+            ADD COLUMN IF NOT EXISTS produced_by_workflow_step_key TEXT NULL
             """
         )
         cur.execute(
@@ -501,6 +576,7 @@ class PostgresCatalog:
             CREATE TABLE IF NOT EXISTS pipelines_v2_workflow_steps (
                 run_id TEXT NOT NULL,
                 step_name TEXT NOT NULL,
+                workflow_step_id TEXT NULL,
                 workflow_hash TEXT NOT NULL,
                 workflow_step_key TEXT NOT NULL,
                 step_index INTEGER NOT NULL,
@@ -526,3 +602,237 @@ class PostgresCatalog:
             ADD COLUMN IF NOT EXISTS runtime_app_id TEXT NULL
             """
         )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_workflow_steps
+            ADD COLUMN IF NOT EXISTS workflow_step_id TEXT NULL
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_artifacts
+            ADD COLUMN IF NOT EXISTS produced_by_step_id TEXT NULL
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pipelines_v2_workflow_step_inputs (
+                workflow_step_id TEXT NOT NULL,
+                input_index INTEGER NOT NULL,
+                artifact_id TEXT NOT NULL,
+                PRIMARY KEY (workflow_step_id, input_index),
+                FOREIGN KEY (workflow_step_id)
+                    REFERENCES pipelines_v2_workflow_steps (workflow_step_id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (artifact_id)
+                    REFERENCES pipelines_v2_artifacts (artifact_id)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_workflow_step_inputs
+            ADD COLUMN IF NOT EXISTS workflow_step_id TEXT NULL
+            """
+        )
+        self._ensure_constraint(
+            cur,
+            table="pipelines_v2_workflow_runs",
+            name="pipelines_v2_workflow_runs_parent_run_id_fkey",
+            ddl="""
+                ALTER TABLE pipelines_v2_workflow_runs
+                ADD CONSTRAINT pipelines_v2_workflow_runs_parent_run_id_fkey
+                FOREIGN KEY (parent_run_id)
+                REFERENCES pipelines_v2_workflow_runs (run_id)
+                ON DELETE SET NULL
+                NOT VALID
+            """,
+        )
+        self._ensure_constraint(
+            cur,
+            table="pipelines_v2_workflow_steps",
+            name="pipelines_v2_workflow_steps_workflow_step_id_key",
+            ddl="""
+                ALTER TABLE pipelines_v2_workflow_steps
+                ADD CONSTRAINT pipelines_v2_workflow_steps_workflow_step_id_key
+                UNIQUE (workflow_step_id)
+            """,
+        )
+        self._ensure_constraint(
+            cur,
+            table="pipelines_v2_workflow_steps",
+            name="pipelines_v2_workflow_steps_run_id_fkey",
+            ddl="""
+                ALTER TABLE pipelines_v2_workflow_steps
+                ADD CONSTRAINT pipelines_v2_workflow_steps_run_id_fkey
+                FOREIGN KEY (run_id)
+                REFERENCES pipelines_v2_workflow_runs (run_id)
+                ON DELETE CASCADE
+                NOT VALID
+            """,
+        )
+        self._ensure_constraint(
+            cur,
+            table="pipelines_v2_workflow_steps",
+            name="pipelines_v2_workflow_steps_artifact_id_fkey",
+            ddl="""
+                ALTER TABLE pipelines_v2_workflow_steps
+                ADD CONSTRAINT pipelines_v2_workflow_steps_artifact_id_fkey
+                FOREIGN KEY (artifact_id)
+                REFERENCES pipelines_v2_artifacts (artifact_id)
+                ON DELETE SET NULL
+                NOT VALID
+            """,
+        )
+        self._ensure_constraint(
+            cur,
+            table="pipelines_v2_workflow_steps",
+            name="pipelines_v2_workflow_steps_reused_from_run_id_fkey",
+            ddl="""
+                ALTER TABLE pipelines_v2_workflow_steps
+                ADD CONSTRAINT pipelines_v2_workflow_steps_reused_from_run_id_fkey
+                FOREIGN KEY (reused_from_run_id)
+                REFERENCES pipelines_v2_workflow_runs (run_id)
+                ON DELETE SET NULL
+                NOT VALID
+            """,
+        )
+        self._ensure_constraint(
+            cur,
+            table="pipelines_v2_workflow_steps",
+            name="pipelines_v2_workflow_steps_reused_from_artifact_id_fkey",
+            ddl="""
+                ALTER TABLE pipelines_v2_workflow_steps
+                ADD CONSTRAINT pipelines_v2_workflow_steps_reused_from_artifact_id_fkey
+                FOREIGN KEY (reused_from_artifact_id)
+                REFERENCES pipelines_v2_artifacts (artifact_id)
+                ON DELETE SET NULL
+                NOT VALID
+            """,
+        )
+        self._ensure_constraint(
+            cur,
+            table="pipelines_v2_artifacts",
+            name="pipelines_v2_artifacts_produced_by_step_id_fkey",
+            ddl="""
+                ALTER TABLE pipelines_v2_artifacts
+                ADD CONSTRAINT pipelines_v2_artifacts_produced_by_step_id_fkey
+                FOREIGN KEY (produced_by_step_id)
+                REFERENCES pipelines_v2_workflow_steps (workflow_step_id)
+                ON DELETE SET NULL
+                NOT VALID
+            """,
+        )
+        self._ensure_index(
+            cur,
+            ddl="""
+                CREATE INDEX IF NOT EXISTS pipelines_v2_artifacts_produced_by_step_id_idx
+                ON pipelines_v2_artifacts (produced_by_step_id)
+            """,
+        )
+        self._ensure_index(
+            cur,
+            ddl="""
+                CREATE INDEX IF NOT EXISTS pipelines_v2_workflow_steps_artifact_id_idx
+                ON pipelines_v2_workflow_steps (artifact_id)
+            """,
+        )
+        self._ensure_index(
+            cur,
+            ddl="""
+                CREATE INDEX IF NOT EXISTS pipelines_v2_workflow_steps_reused_from_run_id_idx
+                ON pipelines_v2_workflow_steps (reused_from_run_id)
+            """,
+        )
+        self._ensure_index(
+            cur,
+            ddl="""
+                CREATE INDEX IF NOT EXISTS pipelines_v2_workflow_steps_reused_from_artifact_id_idx
+                ON pipelines_v2_workflow_steps (reused_from_artifact_id)
+            """,
+        )
+        self._ensure_index(
+            cur,
+            ddl="""
+                CREATE INDEX IF NOT EXISTS pipelines_v2_workflow_step_inputs_artifact_id_idx
+                ON pipelines_v2_workflow_step_inputs (artifact_id)
+            """,
+        )
+        self._ensure_index(
+            cur,
+            ddl="""
+                CREATE INDEX IF NOT EXISTS pipelines_v2_workflow_steps_run_key_idx
+                ON pipelines_v2_workflow_steps (run_id, workflow_step_key)
+            """,
+        )
+        self._ensure_index(
+            cur,
+            ddl="""
+                CREATE INDEX IF NOT EXISTS pipelines_v2_workflow_steps_reuse_lookup_idx
+                ON pipelines_v2_workflow_steps (
+                    step_name,
+                    step_semantic_hash,
+                    finished_at DESC
+                )
+            """,
+        )
+
+    def _replace_workflow_step_inputs(self, cur: Any, record: WorkflowStepRecord) -> None:
+        workflow_step_id = _workflow_step_id(record.run_id, record.step_name)
+        cur.execute(
+            """
+            DELETE FROM pipelines_v2_workflow_step_inputs
+            WHERE workflow_step_id = %s
+            """,
+            (workflow_step_id,),
+        )
+        for input_index, artifact_id in enumerate(record.input_artifact_refs):
+            cur.execute(
+                """
+                INSERT INTO pipelines_v2_workflow_step_inputs (
+                    workflow_step_id,
+                    input_index,
+                    artifact_id
+                ) VALUES (%s, %s, %s)
+                ON CONFLICT (workflow_step_id, input_index) DO UPDATE SET
+                    artifact_id = EXCLUDED.artifact_id
+                """,
+                (workflow_step_id, input_index, artifact_id),
+            )
+
+    def _ensure_constraint(self, cur: Any, *, table: str, name: str, ddl: str) -> None:
+        cur.execute(
+            f"""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = '{name}'
+                      AND conrelid = '{table}'::regclass
+                ) THEN
+                    {ddl};
+                END IF;
+            END
+            $$;
+            """
+        )
+
+    def _ensure_index(self, cur: Any, *, ddl: str) -> None:
+        cur.execute(ddl)
+
+
+def _optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value)
+    return text if text else None
+
+
+def _workflow_step_id(run_id: str | None, step_name: str | None) -> str | None:
+    run_text = _optional_text(run_id)
+    step_text = _optional_text(step_name)
+    if run_text is None or step_text is None:
+        return None
+    return f"{run_text}:{step_text}"

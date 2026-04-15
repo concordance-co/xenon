@@ -476,6 +476,43 @@ def test_bulk_steps_detail_endpoint(tmp_path: Path) -> None:
     assert names == ["cap", "probe"]
 
 
+def test_bulk_steps_detail_includes_pending_workflow_steps(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from pipelines_v2.dashboard.server import create_app
+    from pipelines_v2.storage.composite import CompositeCatalog
+    from pipelines_v2.storage.local import FileCatalog
+
+    root = tmp_path / "catalog"
+    local = FileCatalog(root=root)
+    composite = CompositeCatalog(catalogs=(local,))
+    wf = _workflow_payload(
+        [
+            _capture_step_payload("cap"),
+            _probe_step_payload("probe", depends_on=["cap"]),
+        ]
+    )
+    run = _make_run_record(
+        run_id="run_pending",
+        workflow_payload=wf,
+        started_at="2026-04-15T00:00:00Z",
+        status="running",
+    )
+    local.record_workflow_run(run)
+    local.record_workflow_step(
+        _make_step_record(run_id="run_pending", step_index=0, step_name="cap", runner="capture")
+    )
+
+    app = create_app(catalog=DashboardCatalog(local=local, composite=composite, raw=composite, local_root=root, postgres_env=None))
+    client = TestClient(app)
+
+    resp = client.get("/api/runs/run_pending/steps-detail")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert [d["step"]["step_name"] for d in payload["step_details"]] == ["cap", "probe"]
+    assert payload["step_details"][1]["step"]["status"] == "pending"
+
+
 def test_api_run_detail_404_for_unknown_run(tmp_path: Path) -> None:
     from fastapi.testclient import TestClient
 
@@ -762,6 +799,68 @@ def test_prompt_preview_section_selector_without_builder_is_hard_unresolved(tmp_
     # Should be a hard unresolved state — no fake spans invented.
     assert payload["available"] is False
     assert "STRATEGY" in (payload["reason"] or "") or "section" in (payload["reason"] or "").lower()
+
+
+def test_prompt_preview_reuses_cached_tokenizer_loads(tmp_path: Path, monkeypatch) -> None:
+    import sys
+    import types
+
+    from fastapi.testclient import TestClient
+
+    from pipelines_v2.api import CaptureSpec, Dataset, Example, GenerationSpec, VLLMEngine
+    from pipelines_v2.dashboard.catalog import DashboardCatalog
+    from pipelines_v2.dashboard.server import create_app
+    from pipelines_v2.operations.capture.sites import ResidualSite
+    from pipelines_v2.storage.composite import CompositeCatalog
+    from pipelines_v2.storage.local import FileCatalog
+    from pipelines_v2.workflow.specs import WorkflowSpec, WorkflowStep
+
+    calls = {"count": 0}
+
+    class _FakeTokenizer:
+        def __call__(self, text: str, *, add_special_tokens: bool, return_offsets_mapping: bool):
+            return {
+                "offset_mapping": [(0, len(text))],
+            }
+
+    class _FakeAutoTokenizer:
+        @staticmethod
+        def from_pretrained(model_id: str, trust_remote_code: bool = False):
+            calls["count"] += 1
+            return _FakeTokenizer()
+
+    monkeypatch.setitem(sys.modules, "transformers", types.SimpleNamespace(AutoTokenizer=_FakeAutoTokenizer))
+
+    dataset = Dataset.from_examples([Example(key="a", prompt="hello", labels={"cls": "x"})])
+    capture = WorkflowStep(
+        name="cap",
+        runner="capture",
+        spec=CaptureSpec(
+            engine=VLLMEngine(model_id="fake/model"),
+            dataset=dataset,
+            sites=(ResidualSite(name="resid", site="post", layers=(0,)),),
+            generation=GenerationSpec(max_tokens=1),
+        ),
+    )
+    workflow = WorkflowSpec(name="tokenizer_cache", steps=(capture,))
+
+    root = tmp_path / "catalog"
+    local = FileCatalog(root=root)
+    composite = CompositeCatalog(catalogs=(local,))
+    run = _make_run_record(run_id="run_tok", workflow_payload=workflow.to_dict(), started_at="2026-04-15T00:00:00Z")
+    local.record_workflow_run(run)
+    local.record_workflow_step(_make_step_record(run_id="run_tok", step_index=0, step_name="cap", runner="capture"))
+    dash = DashboardCatalog(local=local, composite=composite, raw=composite, local_root=root, postgres_env=None)
+
+    app = create_app(catalog=dash)
+    client = TestClient(app)
+
+    first = client.get("/api/runs/run_tok/steps/cap/prompt-preview")
+    second = client.get("/api/runs/run_tok/steps/cap/prompt-preview")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert calls["count"] == 1
 
 
 # ---------------------------------------------------------------------------

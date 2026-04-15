@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type {
   DatasetPreview,
   LabelDistribution,
+  LabelDistributionBucket,
   StepDetail,
   StepSummary,
 } from "@/types/api";
@@ -11,9 +12,10 @@ import { api } from "@/lib/api";
 import { formatDuration, shortHash, truncate } from "@/lib/format";
 
 /**
- * Operator-focused overview. Reads as a quick brief of what this step is
- * doing: where we capture, what the dataset looks like, what labels flow
- * through it. Timing and hash noise is tucked under a `details` toggle.
+ * Operator-focused overview. Layout is a tile grid rather than a paragraph
+ * stack — each panel answers one question visually (where, what, how much,
+ * what-do-the-prompts-look-like) instead of assaulting the reader with
+ * mono-text walls.
  */
 export function OverviewTab({
   step,
@@ -25,6 +27,7 @@ export function OverviewTab({
   stepDetail: StepDetail | null;
 }) {
   const hasCapture = Boolean(stepDetail?.has_dataset);
+  const isCapture = stepDetail?.spec?.kind === "capture";
 
   const datasetQ = useQuery({
     queryKey: ["dataset", runId, step.step_name, 3, "overview"],
@@ -40,97 +43,37 @@ export function OverviewTab({
   const dataset = datasetQ.data ?? null;
   const labels = labelQ.data ?? null;
 
-  const sites = extractSites(stepDetail?.spec);
-
   return (
     <div className="p-3 space-y-3">
-      {/* Where we capture */}
-      {sites.length > 0 ? (
-        <Panel title="capture sites" hint={`${sites.length}`}>
-          <ul className="divide-y divide-ink-800">
-            {sites.map((site, i) => (
-              <li key={(site.name as string) ?? i} className="py-1.5 first:pt-0 last:pb-0">
-                <SiteLine site={site} />
-              </li>
-            ))}
-          </ul>
-        </Panel>
+      <FlowMap step={step} stepDetail={stepDetail} runId={runId} />
+
+      {isCapture ? (
+        <CaptureSitesTile spec={stepDetail!.spec} />
       ) : null}
 
-      {/* Dataset at a glance */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {hasCapture ? (
+          <DatasetTile dataset={dataset} loading={datasetQ.isLoading} />
+        ) : null}
+        {hasCapture ? (
+          <LabelsTile
+            labels={labels?.labels ?? []}
+            available={labels?.available ?? false}
+            reason={labels?.reason ?? null}
+            loading={labelQ.isLoading}
+          />
+        ) : null}
+      </div>
+
       {hasCapture ? (
-        <Panel
-          title="dataset"
-          hint={
-            dataset?.source
-              ? [
-                  dataset.source.name,
-                  dataset.source.total_examples != null
-                    ? `${dataset.source.total_examples} rows`
-                    : dataset.source.deferred
-                      ? "deferred"
-                      : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              : undefined
-          }
-        >
-          {datasetQ.isLoading ? (
-            <Note>loading…</Note>
-          ) : !dataset?.available ? (
-            <Note tone="warn">{dataset?.reason ?? "unavailable"}</Note>
-          ) : (
-            <DatasetSnapshot dataset={dataset} stepDetail={stepDetail} />
-          )}
-        </Panel>
+        <PromptsTile
+          rows={dataset?.rows ?? []}
+          available={dataset?.available ?? false}
+          reason={dataset?.reason ?? null}
+          loading={datasetQ.isLoading}
+        />
       ) : null}
 
-      {/* Labels / behaviors */}
-      {hasCapture ? (
-        <Panel
-          title="labels"
-          hint={labels?.available ? `${labels.labels.length} fields` : undefined}
-        >
-          {labelQ.isLoading ? (
-            <Note>loading…</Note>
-          ) : !labels?.available ? (
-            <Note tone="warn">{labels?.reason ?? "unavailable"}</Note>
-          ) : labels.labels.length === 0 ? (
-            <Note>no labels on the sampled rows</Note>
-          ) : (
-            <ul className="divide-y divide-ink-800">
-              {labels.labels.map((l) => (
-                <li key={l.label_name} className="py-1.5 first:pt-0 last:pb-0">
-                  <LabelLine dist={l} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-      ) : null}
-
-      {/* Upstream / downstream — compact, not a bloated section */}
-      {(step.resolved_depends_on.length > 0 || stepDetail?.downstream.length) ? (
-        <Panel title="flow">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-2xs font-mono">
-            <span className="field-label pt-0.5">upstream</span>
-            <DepChips
-              names={step.resolved_depends_on}
-              linkBase={`/runs/${runId}`}
-              fallback="—"
-            />
-            <span className="field-label pt-0.5">downstream</span>
-            <DepChips
-              names={(stepDetail?.downstream ?? []).map((d) => d.step_name)}
-              linkBase={`/runs/${runId}`}
-              fallback="—"
-            />
-          </div>
-        </Panel>
-      ) : null}
-
-      {/* Report link — prominent if available */}
       {stepDetail?.report_artifact_id ? (
         <div className="border border-accent/40 bg-accent/5 px-3 py-2 text-xs font-mono flex items-center gap-2">
           <span className="text-accent">→</span>
@@ -143,177 +86,406 @@ export function OverviewTab({
         </div>
       ) : null}
 
-      {/* Noisy stuff — collapsed */}
       <CollapsibleDetails step={step} runId={runId} />
     </div>
   );
 }
 
-/* ------------------------------------------------------------------------ */
+/* =========================================================================
+ * FLOW MAP  —  [upstream] ─▶ THIS ─▶ [downstream]
+ * ========================================================================= */
+
+function FlowMap({
+  step,
+  stepDetail,
+  runId: _runId,
+}: {
+  step: StepSummary;
+  stepDetail: StepDetail | null;
+  runId: string;
+}) {
+  const upstream = step.resolved_depends_on ?? [];
+  const downstream = (stepDetail?.downstream ?? []).map((d) => d.step_name);
+  if (upstream.length === 0 && downstream.length === 0) return null;
+  return (
+    <Tile>
+      <TileHeader label="flow" />
+      <div className="flex items-center gap-1.5 flex-wrap text-[0.7rem] font-mono">
+        <FlowChips names={upstream} align="right" />
+        <Arrow hidden={upstream.length === 0} />
+        <span
+          className="px-2 py-1 bg-accent/15 border border-accent text-accent rounded-[2px] font-semibold truncate max-w-[16rem]"
+          title={step.step_name}
+        >
+          {step.step_name}
+        </span>
+        <Arrow hidden={downstream.length === 0} />
+        <FlowChips names={downstream} align="left" />
+      </div>
+    </Tile>
+  );
+}
+
+function FlowChips({ names, align }: { names: string[]; align: "left" | "right" }) {
+  if (names.length === 0) return null;
+  const visible = names.slice(0, 3);
+  const rest = names.length - visible.length;
+  const nodes = visible.map((n) => (
+    <span
+      key={n}
+      className="px-1.5 py-0.5 border border-ink-700 text-ink-200 rounded-[2px] truncate max-w-[10rem]"
+      title={n}
+    >
+      {n}
+    </span>
+  ));
+  const more =
+    rest > 0 ? (
+      <span key="more" className="text-ink-500 text-[0.625rem]">
+        +{rest}
+      </span>
+    ) : null;
+  return (
+    <div
+      className={[
+        "flex items-center gap-1 flex-wrap min-w-0",
+        align === "right" ? "justify-end" : "justify-start",
+      ].join(" ")}
+    >
+      {nodes}
+      {more}
+    </div>
+  );
+}
+
+function Arrow({ hidden }: { hidden?: boolean }) {
+  if (hidden) return null;
+  return <span className="text-ink-600 select-none shrink-0">─▶</span>;
+}
+
+/* =========================================================================
+ * CAPTURE SITES — visual layer strip + token strip
+ * ========================================================================= */
 
 type Site = Record<string, unknown>;
 
-function extractSites(spec: Record<string, unknown> | undefined): Site[] {
-  if (!spec) return [];
-  const sitesRaw = spec["sites"];
-  return Array.isArray(sitesRaw) ? (sitesRaw as Site[]) : [];
+function CaptureSitesTile({ spec }: { spec: Record<string, unknown> }) {
+  const sitesRaw = spec.sites;
+  if (!Array.isArray(sitesRaw) || sitesRaw.length === 0) return null;
+  const sites = sitesRaw as Site[];
+  const numLayers = detectNumLayers(spec, sites);
+  return (
+    <Tile>
+      <TileHeader
+        label="capture sites"
+        meta={`${sites.length} site${sites.length === 1 ? "" : "s"}`}
+      />
+      <ul className="space-y-2.5">
+        {sites.map((site, i) => (
+          <li key={(site.name as string) ?? i}>
+            <SiteVisual site={site} numLayers={numLayers} />
+          </li>
+        ))}
+      </ul>
+    </Tile>
+  );
 }
 
-function SiteLine({ site }: { site: Site }) {
+function detectNumLayers(spec: Record<string, unknown>, sites: Site[]): number {
+  const engine = spec.engine as Record<string, unknown> | undefined;
+  const engineLayers =
+    typeof engine?.num_layers === "number" ? (engine.num_layers as number) : null;
+  if (engineLayers && engineLayers > 0) return engineLayers;
+  let max = 0;
+  for (const site of sites) {
+    const layers = site.layers;
+    if (Array.isArray(layers)) {
+      for (const l of layers) {
+        if (typeof l === "number" && l > max) max = l;
+      }
+    }
+  }
+  return Math.max(max + 1, 8);
+}
+
+function SiteVisual({ site, numLayers }: { site: Site; numLayers: number }) {
   const name = (site.name as string) ?? "—";
-  const layers = site.layers as unknown;
-  const layersStr = Array.isArray(layers)
-    ? (layers as unknown[]).map(String).join(",")
-    : "—";
+  const layers = Array.isArray(site.layers) ? (site.layers as number[]) : [];
   const tokens = site.tokens as { kind?: string; value?: unknown } | undefined;
-  const tokenLabel = tokens
-    ? tokens.kind === "section"
-      ? `section(${String(tokens.value)})`
-      : tokens.kind === "slice"
-        ? `slice`
-        : tokens.kind ?? "—"
-    : "—";
   const record = site.record as unknown;
   const isMoE = Array.isArray(record);
   const siteKind = (site.site as string | undefined) ?? (isMoE ? "moe" : "residual");
+  const captured = new Set(layers);
   return (
-    <div className="flex items-center gap-2 flex-wrap text-[0.7rem] font-mono">
-      <span className="chip chip-muted text-ink-200 shrink-0">
-        {isMoE ? "moe" : "residual"}
-      </span>
-      <span className="text-ink-50 font-semibold truncate">{name}</span>
-      {!isMoE ? <span className="text-ink-500 shrink-0">@ {siteKind}</span> : null}
-      <span className="text-ink-500 shrink-0">
-        · layers <span className="text-ink-200">{layersStr}</span>
-      </span>
-      <span className="text-ink-500 shrink-0">
-        · tokens <span className="text-ink-200">{tokenLabel}</span>
-      </span>
-      {isMoE ? (
-        <span className="text-ink-500 shrink-0 truncate">
-          · record{" "}
-          <span className="text-ink-200">
-            {(record as Array<Record<string, unknown>>)
-              .map((r) => String(r.kind))
-              .join(", ")}
-          </span>
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------------ */
-
-function DatasetSnapshot({
-  dataset,
-  stepDetail,
-}: {
-  dataset: DatasetPreview;
-  stepDetail: StepDetail | null;
-}) {
-  const src = dataset.source;
-  const rows = dataset.rows ?? [];
-  const promptColumn =
-    src?.prompt_column ??
-    (stepDetail?.spec?.dataset as Record<string, unknown> | undefined)?.prompt_column;
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-2xs font-mono">
-        <KVRow label="kind" value={src?.kind ?? "—"} />
-        {src?.name ? <KVRow label="name" value={src.name} /> : null}
-        {typeof promptColumn === "string" ? (
-          <KVRow label="prompt_col" value={promptColumn} />
-        ) : null}
-        {src?.table ? <KVRow label="table" value={src.table} /> : null}
-        {src?.env_var ? <KVRow label="env" value={src.env_var} /> : null}
-        {dataset.resolved_from_step ? (
-          <KVRow label="from_step" value={dataset.resolved_from_step} />
-        ) : null}
-      </div>
-      {rows.length > 0 ? (
-        <div>
-          <div className="field-label mb-1">sample prompts</div>
-          <ul className="space-y-1.5">
-            {rows.map((r) => (
-              <PromptTile
-                key={r.example_key}
-                exampleKey={r.example_key}
-                caseKey={r.case_key ?? null}
-                text={r.prompt_preview}
-              />
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------------ */
-
-const PROMPT_COLLAPSED_CHARS = 320;
-
-function PromptTile({
-  exampleKey,
-  caseKey,
-  text,
-}: {
-  exampleKey: string;
-  caseKey: string | null;
-  text: string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const needsToggle = text.length > PROMPT_COLLAPSED_CHARS;
-  const shown = expanded || !needsToggle ? text : truncate(text, PROMPT_COLLAPSED_CHARS);
-  return (
-    <li className="border border-ink-800 bg-ink-950/40">
-      <button
-        type="button"
-        onClick={() => needsToggle && setExpanded((s) => !s)}
-        disabled={!needsToggle}
-        className={[
-          "w-full text-left px-2 py-1.5",
-          needsToggle ? "cursor-pointer hover:bg-ink-900/40" : "cursor-default",
-        ].join(" ")}
-        aria-expanded={expanded}
-      >
-        <div className="flex items-center gap-2 mb-0.5 text-[0.58rem] font-mono uppercase tracking-widest text-ink-500">
-          <span>{exampleKey}</span>
-          {caseKey ? (
-            <>
-              <span>·</span>
-              <span className="text-ink-400 normal-case">{caseKey}</span>
-            </>
-          ) : null}
-          {needsToggle ? (
-            <span className="ml-auto text-ink-600">
-              {expanded ? "▾ collapse" : `▸ expand · ${text.length} chars`}
-            </span>
-          ) : null}
-        </div>
-        <div
+    <div>
+      <div className="flex items-center gap-2 flex-wrap text-[0.7rem] font-mono mb-1">
+        <span
           className={[
-            "mono text-[0.7rem] text-ink-200 whitespace-pre-wrap break-words leading-snug",
-            expanded ? "max-h-[32rem] overflow-auto" : "",
+            "px-1.5 py-0.5 rounded-[2px] border text-[0.58rem] uppercase tracking-widest",
+            isMoE
+              ? "border-fuchsia-400/40 text-fuchsia-300"
+              : "border-amber-400/40 text-amber-300",
           ].join(" ")}
         >
-          {shown}
-        </div>
-      </button>
-    </li>
+          {isMoE ? "moe" : "residual"}
+        </span>
+        <span className="text-ink-50 font-semibold truncate">{name}</span>
+        {!isMoE ? <span className="text-ink-500">@ {siteKind}</span> : null}
+        <span className="ml-auto text-ink-600 text-[0.625rem]">
+          {layers.length}/{numLayers} layers
+        </span>
+      </div>
+      <LayerStrip numLayers={numLayers} captured={captured} />
+      <div className="mt-1.5 flex items-center gap-3 text-[0.65rem] font-mono text-ink-400">
+        <span className="flex items-center gap-1.5">
+          <span className="field-label">tokens</span>
+          <TokenStrip tokens={tokens} />
+          <span className="text-ink-300">{tokenLabel(tokens)}</span>
+        </span>
+        {isMoE ? (
+          <span className="flex items-center gap-1 flex-wrap">
+            <span className="field-label">record</span>
+            {(record as Array<Record<string, unknown>>).map((r, i) => (
+              <span
+                key={i}
+                className="px-1 py-0.5 border border-ink-700 rounded-[2px] text-[0.58rem] text-ink-300"
+              >
+                {String(r.kind)}
+              </span>
+            ))}
+          </span>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
-function LabelLine({ dist }: { dist: LabelDistribution }) {
+function LayerStrip({
+  numLayers,
+  captured,
+}: {
+  numLayers: number;
+  captured: Set<number>;
+}) {
+  const cells = Array.from({ length: numLayers }, (_, i) => i);
+  return (
+    <div
+      className="flex items-end gap-[2px] h-6"
+      title={
+        captured.size > 0
+          ? `layers ${[...captured].sort((a, b) => a - b).join(", ")}`
+          : "no layers"
+      }
+    >
+      {cells.map((i) => {
+        const hit = captured.has(i);
+        return (
+          <span
+            key={i}
+            className={[
+              "rounded-sm min-w-[3px] relative",
+              hit
+                ? "bg-amber-400/80 h-full flex items-center justify-center flex-[3]"
+                : "bg-ink-800 h-1/2 flex-1",
+            ].join(" ")}
+          >
+            {hit ? (
+              <span className="text-[0.55rem] font-mono font-semibold text-ink-950 tabular-nums leading-none px-[1px]">
+                {i}
+              </span>
+            ) : null}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function TokenStrip({
+  tokens,
+}: {
+  tokens: { kind?: string; value?: unknown } | undefined;
+}) {
+  // Schematic 7-cell strip showing which token positions the selector picks.
+  const kind = tokens?.kind;
+  const cells = 7;
+  const selected = new Set<number>();
+  if (kind === "last") selected.add(cells - 1);
+  else if (kind === "first") selected.add(0);
+  else if (kind === "full_sequence") for (let i = 0; i < cells; i++) selected.add(i);
+  else if (kind === "section") for (let i = 2; i <= 4; i++) selected.add(i);
+  else if (kind === "slice") {
+    const v = tokens?.value as { start?: number; stop?: number } | undefined;
+    const start = Math.min(Math.max(0, v?.start ?? 0), cells - 1);
+    const stop = Math.min(Math.max(start + 1, v?.stop ?? start + 1), cells);
+    for (let i = start; i < stop; i++) selected.add(i);
+  }
+  return (
+    <span className="inline-flex items-center gap-[1px]" aria-hidden>
+      {Array.from({ length: cells }, (_, i) => (
+        <span
+          key={i}
+          className={[
+            "w-1.5 h-3 rounded-[1px]",
+            selected.has(i) ? "bg-accent" : "bg-ink-700",
+          ].join(" ")}
+        />
+      ))}
+    </span>
+  );
+}
+
+function tokenLabel(
+  tokens: { kind?: string; value?: unknown } | undefined,
+): string {
+  if (!tokens) return "—";
+  if (tokens.kind === "section") return `section("${String(tokens.value)}")`;
+  if (tokens.kind === "slice") {
+    const v = tokens.value as { start?: number; stop?: number } | undefined;
+    return `slice(${v?.start ?? ""}..${v?.stop ?? ""})`;
+  }
+  return tokens.kind ?? "—";
+}
+
+/* =========================================================================
+ * DATASET TILE — iconic, not encyclopedic
+ * ========================================================================= */
+
+function DatasetTile({
+  dataset,
+  loading,
+}: {
+  dataset: DatasetPreview | null;
+  loading: boolean;
+}) {
+  return (
+    <Tile>
+      <TileHeader label="dataset" meta={dataset?.source?.name ?? null} />
+      {loading ? (
+        <Note>loading…</Note>
+      ) : !dataset?.available ? (
+        <Note tone="warn">{dataset?.reason ?? "unavailable"}</Note>
+      ) : (
+        <DatasetBody dataset={dataset} />
+      )}
+    </Tile>
+  );
+}
+
+function DatasetBody({ dataset }: { dataset: DatasetPreview }) {
+  const src = dataset.source;
+  const count =
+    dataset.total_rows ??
+    src?.total_examples ??
+    (src?.deferred ? null : dataset.rows.length);
+  const countLabel = src?.deferred
+    ? "deferred"
+    : count != null
+      ? count.toLocaleString()
+      : "—";
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline gap-3">
+        <span className="text-xl font-semibold text-ink-50 tabular-nums leading-none">
+          {countLabel}
+        </span>
+        <span className="text-[0.625rem] font-mono uppercase tracking-widest text-ink-500">
+          {src?.deferred ? src.kind : "examples"}
+        </span>
+      </div>
+      <div className="text-[0.65rem] font-mono text-ink-400 space-y-0.5">
+        {src?.kind ? <div>source · <span className="text-ink-200">{src.kind}</span></div> : null}
+        {src?.env_var ? (
+          <div>env · <span className="text-ink-200">{src.env_var}</span></div>
+        ) : null}
+        {src?.table ? (
+          <div>table · <span className="text-ink-200">{src.table}</span></div>
+        ) : null}
+        {src?.prompt_column ? (
+          <div>prompt_col · <span className="text-ink-200">{src.prompt_column}</span></div>
+        ) : null}
+        {dataset.resolved_from_step ? (
+          <div>
+            from_step · <span className="text-ink-200">{dataset.resolved_from_step}</span>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+ * LABELS TILE — real bar charts
+ * ========================================================================= */
+
+function LabelsTile({
+  labels,
+  available,
+  reason,
+  loading,
+}: {
+  labels: LabelDistribution[];
+  available: boolean;
+  reason: string | null;
+  loading: boolean;
+}) {
+  return (
+    <Tile>
+      <TileHeader
+        label="labels"
+        meta={available ? `${labels.length} field${labels.length === 1 ? "" : "s"}` : null}
+      />
+      {loading ? (
+        <Note>loading…</Note>
+      ) : !available ? (
+        <Note tone="warn">{reason ?? "unavailable"}</Note>
+      ) : labels.length === 0 ? (
+        <Note>no labels on the sampled rows</Note>
+      ) : (
+        <ul className="space-y-2.5">
+          {labels.map((l) => (
+            <li key={l.label_name}>
+              <LabelBar dist={l} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Tile>
+  );
+}
+
+const BUCKET_PALETTE = [
+  "bg-amber-400/80",
+  "bg-amber-400/50",
+  "bg-amber-400/30",
+  "bg-amber-400/20",
+  "bg-amber-400/10",
+];
+
+function LabelBar({ dist }: { dist: LabelDistribution }) {
   if (dist.numeric_summary) {
     const ns = dist.numeric_summary;
+    const { min, max, mean } = ns;
+    const pct = max > min ? ((mean - min) / (max - min)) * 100 : 50;
     return (
-      <div className="flex items-baseline gap-2 text-[0.7rem] font-mono">
-        <span className="text-ink-50 font-semibold truncate min-w-0">{dist.label_name}</span>
-        <span className="text-ink-500 shrink-0 ml-auto tabular-nums">
-          μ={ns.mean.toFixed(3)} · σ={ns.stddev.toFixed(3)} · [{ns.min.toFixed(2)}, {ns.max.toFixed(2)}]
-        </span>
+      <div>
+        <div className="flex items-baseline justify-between gap-2 text-[0.7rem] font-mono">
+          <span className="text-ink-50 font-semibold truncate">{dist.label_name}</span>
+          <span className="text-ink-500 tabular-nums text-[0.625rem]">
+            μ={ns.mean.toFixed(3)} · σ={ns.stddev.toFixed(3)}
+          </span>
+        </div>
+        <div className="relative h-1.5 mt-1 bg-ink-800 rounded-sm">
+          <span
+            className="absolute top-0 h-full w-[2px] bg-accent"
+            style={{ left: `${Math.max(0, Math.min(100, pct))}%` }}
+            aria-hidden
+          />
+        </div>
+        <div className="flex justify-between text-[0.58rem] font-mono text-ink-600 tabular-nums mt-0.5">
+          <span>{min.toFixed(2)}</span>
+          <span>{max.toFixed(2)}</span>
+        </div>
       </div>
     );
   }
@@ -321,64 +493,202 @@ function LabelLine({ dist }: { dist: LabelDistribution }) {
   const extra = dist.buckets.length - top.length;
   return (
     <div>
-      <div className="flex items-baseline gap-2 text-[0.7rem] font-mono">
-        <span className="text-ink-50 font-semibold truncate min-w-0">{dist.label_name}</span>
-        <span className="text-ink-500 shrink-0 text-[0.625rem]">
-          {dist.unique_values} unique
-        </span>
+      <div className="flex items-baseline justify-between gap-2 text-[0.7rem] font-mono">
+        <span className="text-ink-50 font-semibold truncate">{dist.label_name}</span>
+        <span className="text-ink-500 text-[0.625rem]">{dist.unique_values} unique</span>
       </div>
-      <div className="mt-0.5 flex items-center gap-1 flex-wrap text-[0.625rem] font-mono">
-        {top.map((b) => (
-          <span
-            key={b.value}
-            className="inline-flex items-center gap-1 border border-ink-800 bg-ink-950/40 px-1.5 py-0.5 rounded-[2px]"
-          >
-            <span className="text-ink-200 truncate max-w-[10rem]">{b.value}</span>
-            <span className="text-ink-500 tabular-nums">
-              {(b.fraction * 100).toFixed(0)}%
-            </span>
-          </span>
+      <StackedBar buckets={dist.buckets} />
+      <ul className="mt-1.5 space-y-0.5">
+        {top.map((b, i) => (
+          <BucketRow key={b.value} bucket={b} color={BUCKET_PALETTE[i] ?? BUCKET_PALETTE[BUCKET_PALETTE.length - 1]} />
         ))}
-        {extra > 0 ? <span className="text-ink-600">+{extra}</span> : null}
-      </div>
+        {extra > 0 ? (
+          <li className="text-[0.58rem] font-mono text-ink-600">+{extra} more</li>
+        ) : null}
+      </ul>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------------ */
-
-function DepChips({
-  names,
-  linkBase,
-  fallback,
-}: {
-  names: string[];
-  linkBase: string;
-  fallback: string;
-}) {
-  if (names.length === 0) return <span className="text-ink-600">{fallback}</span>;
+function StackedBar({ buckets }: { buckets: LabelDistributionBucket[] }) {
+  if (buckets.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1">
-      {names.map((d) => (
-        <Link
-          key={d}
-          to={linkBase}
-          className="chip chip-muted text-ink-200 hover:text-accent hover:border-accent/50"
-        >
-          {d}
-        </Link>
+    <div
+      className="flex h-2 mt-1 overflow-hidden rounded-sm bg-ink-800"
+      role="img"
+      aria-label="label distribution"
+    >
+      {buckets.map((b, i) => (
+        <span
+          key={b.value}
+          className={BUCKET_PALETTE[i] ?? BUCKET_PALETTE[BUCKET_PALETTE.length - 1]}
+          style={{ width: `${Math.max(1, b.fraction * 100)}%` }}
+          title={`${b.value} · ${(b.fraction * 100).toFixed(1)}% (${b.count})`}
+        />
       ))}
     </div>
   );
 }
 
-function CollapsibleDetails({
-  step,
-  runId,
+function BucketRow({
+  bucket,
+  color,
 }: {
-  step: StepSummary;
-  runId: string;
+  bucket: LabelDistributionBucket;
+  color: string;
 }) {
+  return (
+    <li className="flex items-center gap-2 text-[0.625rem] font-mono">
+      <span className={`w-1.5 h-1.5 rounded-sm shrink-0 ${color}`} aria-hidden />
+      <span className="text-ink-200 truncate flex-1 min-w-0" title={bucket.value}>
+        {bucket.value}
+      </span>
+      <span className="text-ink-500 tabular-nums shrink-0">
+        {(bucket.fraction * 100).toFixed(0)}%
+      </span>
+    </li>
+  );
+}
+
+/* =========================================================================
+ * PROMPTS TILE — compact cards, click to expand
+ * ========================================================================= */
+
+function PromptsTile({
+  rows,
+  available,
+  reason,
+  loading,
+}: {
+  rows: DatasetPreview["rows"];
+  available: boolean;
+  reason: string | null;
+  loading: boolean;
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  return (
+    <Tile>
+      <TileHeader
+        label="sample prompts"
+        meta={available ? `${rows.length}` : null}
+      />
+      {loading ? (
+        <Note>loading…</Note>
+      ) : !available ? (
+        <Note tone="warn">{reason ?? "unavailable"}</Note>
+      ) : rows.length === 0 ? (
+        <Note>no rows sampled</Note>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {rows.map((r) => (
+            <PromptCard
+              key={r.example_key}
+              exampleKey={r.example_key}
+              caseKey={r.case_key ?? null}
+              text={r.prompt_preview}
+              labels={r.labels ?? {}}
+              expanded={expanded === r.example_key}
+              onToggle={() =>
+                setExpanded(expanded === r.example_key ? null : r.example_key)
+              }
+            />
+          ))}
+        </div>
+      )}
+    </Tile>
+  );
+}
+
+function PromptCard({
+  exampleKey,
+  caseKey,
+  text,
+  labels,
+  expanded,
+  onToggle,
+}: {
+  exampleKey: string;
+  caseKey: string | null;
+  text: string;
+  labels: Record<string, unknown>;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const preview = firstLine(text, 120);
+  const labelPills = Object.entries(labels).slice(0, 3);
+  return (
+    <div
+      className={[
+        "border transition-colors rounded-[2px]",
+        expanded
+          ? "col-span-full border-accent/60 bg-ink-950/60"
+          : "border-ink-800 bg-ink-950/40 hover:border-ink-600",
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full text-left px-2 py-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+        aria-expanded={expanded}
+      >
+        <div className="flex items-center gap-1.5 text-[0.58rem] font-mono uppercase tracking-widest text-ink-500">
+          <span>{exampleKey}</span>
+          {caseKey ? (
+            <>
+              <span>·</span>
+              <span className="text-ink-400 normal-case">{caseKey}</span>
+            </>
+          ) : null}
+          <span className="ml-auto text-ink-600">{expanded ? "▾" : "▸"}</span>
+        </div>
+        <div
+          className={[
+            "mono text-[0.7rem] text-ink-200 leading-snug mt-1",
+            expanded ? "whitespace-pre-wrap break-words" : "truncate",
+          ].join(" ")}
+        >
+          {expanded ? text : preview}
+        </div>
+        {labelPills.length > 0 ? (
+          <div className="mt-1 flex items-center gap-1 flex-wrap">
+            {labelPills.map(([k, v]) => (
+              <span
+                key={k}
+                className="px-1 py-[1px] text-[0.58rem] font-mono text-ink-300 border border-ink-700 rounded-[2px]"
+                title={`${k}=${stringify(v)}`}
+              >
+                {stringify(v)}
+              </span>
+            ))}
+            {Object.keys(labels).length > labelPills.length ? (
+              <span className="text-[0.58rem] font-mono text-ink-600">
+                +{Object.keys(labels).length - labelPills.length}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </button>
+    </div>
+  );
+}
+
+function firstLine(text: string, max: number): string {
+  const line = text.split("\n").find((l) => l.trim().length > 0) ?? text;
+  return truncate(line, max);
+}
+
+function stringify(v: unknown): string {
+  if (v == null) return "null";
+  if (typeof v === "string") return v.length > 16 ? `${v.slice(0, 15)}…` : v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return "…";
+}
+
+/* =========================================================================
+ * COLLAPSIBLE DETAILS — hashes, runtime ids, timing (unchanged from before)
+ * ========================================================================= */
+
+function CollapsibleDetails({ step, runId }: { step: StepSummary; runId: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border-t border-dashed border-ink-800 pt-2">
@@ -436,39 +746,6 @@ function CollapsibleDetails({
   );
 }
 
-/* ------------------------------------------------------------------------ */
-
-function Panel({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section>
-      <div className="flex items-baseline gap-2 mb-1">
-        <div className="field-label">{title}</div>
-        {hint ? (
-          <div className="text-[0.58rem] font-mono text-ink-600 tracking-widest">{hint}</div>
-        ) : null}
-      </div>
-      <div className="border border-ink-800 bg-ink-900 rounded-sm p-2">{children}</div>
-    </section>
-  );
-}
-
-function KVRow({ label, value }: { label: string; value: string | number | null | undefined }) {
-  return (
-    <>
-      <dt className="field-label">{label}</dt>
-      <dd className="text-ink-200 break-words">{value ?? "—"}</dd>
-    </>
-  );
-}
-
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <>
@@ -478,7 +755,38 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Note({ children, tone = "muted" }: { children: ReactNode; tone?: "muted" | "warn" }) {
+/* =========================================================================
+ * Primitives
+ * ========================================================================= */
+
+function Tile({ children }: { children: ReactNode }) {
+  return (
+    <section className="border border-ink-800 bg-ink-900 rounded-sm p-2.5">
+      {children}
+    </section>
+  );
+}
+
+function TileHeader({ label, meta }: { label: string; meta?: string | null }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 mb-1.5">
+      <span className="field-label">{label}</span>
+      {meta ? (
+        <span className="text-[0.58rem] font-mono text-ink-600 tracking-widest truncate">
+          {meta}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function Note({
+  children,
+  tone = "muted",
+}: {
+  children: ReactNode;
+  tone?: "muted" | "warn";
+}) {
   return (
     <div
       className={`text-2xs font-mono ${tone === "warn" ? "text-status-warn" : "text-ink-500"}`}

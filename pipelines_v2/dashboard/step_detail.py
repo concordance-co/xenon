@@ -12,6 +12,7 @@ from typing import Any, Mapping  # noqa: F401
 from pipelines_v2.dashboard.models import (
     ArtifactSummary,
     ResolvedDep,
+    RunDetail,
     ResultSummary,
     StepDetail,
     StepSummary,
@@ -19,7 +20,6 @@ from pipelines_v2.dashboard.models import (
 from pipelines_v2.dashboard.normalize import build_run_detail
 from pipelines_v2.storage.artifacts import ArtifactManifest
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
-from pipelines_v2.workflow.specs import WorkflowSpec
 
 
 def build_step_detail(
@@ -32,6 +32,24 @@ def build_step_detail(
 ) -> StepDetail:
     """Shape a single step's detail response."""
     run_detail = build_run_detail(run, step_records)
+    return build_step_detail_from_run_detail(
+        run=run,
+        run_detail=run_detail,
+        target_step=target_step,
+        artifact_manifest=artifact_manifest,
+        report_artifact_id=report_artifact_id,
+    )
+
+
+def build_step_detail_from_run_detail(
+    *,
+    run: WorkflowRunRecord,
+    run_detail: RunDetail,
+    target_step: str,
+    artifact_manifest: ArtifactManifest | None,
+    report_artifact_id: str | None = None,
+) -> StepDetail:
+    """Shape a single step detail response from a precomputed run detail."""
     target = next((s for s in run_detail.steps if s.step_name == target_step), None)
     if target is None:
         raise LookupError(f"Unknown step: {target_step}")

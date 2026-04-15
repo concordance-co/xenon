@@ -27,7 +27,6 @@ from pipelines_v2.operations.specs import (
     TransformSpec,
 )
 from pipelines_v2.runtime.base import ExecutionPlan
-from pipelines_v2.reporting import generate_report_assets
 from pipelines_v2.storage.artifacts import (
     ArtifactLabelRef,
     ArtifactManifest,
@@ -302,6 +301,8 @@ def _materialize_local_report_outputs(
     spec: ReportSpec,
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    from pipelines_v2.reporting import generate_report_assets
+
     if not spec.output_dir:
         return {}, None
     output_dir = Path(spec.output_dir) / artifact_id

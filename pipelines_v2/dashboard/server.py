@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pipelines_v2.core.config import load_workspace_config
 from pipelines_v2.dashboard.catalog import DashboardCatalog, build_catalog
@@ -18,28 +19,31 @@ from pipelines_v2.dashboard.models import (
     StepDetail,
     StepDetailList,
 )
-from pipelines_v2.dashboard.normalize import (
-    build_run_detail,
-    build_run_summary,
-    build_run_summary_from_counts,
-)
+from pipelines_v2.dashboard.normalize import build_run_detail, build_run_summary
 from pipelines_v2.dashboard.previews import (
     DEFAULT_SAMPLE_SIZE,
     build_dataset_preview,
     build_label_preview,
     clear_resolved_dataset_cache,
 )
-from pipelines_v2.dashboard.prompt_preview import build_prompt_preview
+from pipelines_v2.dashboard.prompt_preview import build_prompt_preview, clear_tokenizer_cache
 from pipelines_v2.dashboard.result_preview import read_result_payload
 from pipelines_v2.dashboard.reports import (
     ReportUnavailable,
     build_report_detail,
     safe_asset_path,
 )
-from pipelines_v2.dashboard.step_detail import build_step_detail
+from pipelines_v2.dashboard.step_detail import build_step_detail_from_run_detail
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
+
+
+@dataclass(frozen=True, slots=True)
+class _RunBundle:
+    run: Any
+    step_records: list[Any]
+    run_detail: RunDetail
 
 
 def create_app(
@@ -67,6 +71,7 @@ def create_app(
     from fastapi import FastAPI, HTTPException, Query
     from fastapi.middleware.cors import CORSMiddleware
 
+    workspace_config = load_workspace_config()
     dash = catalog or build_catalog(
         local_root=local_root,
         catalog_postgres_env=catalog_postgres_env,
@@ -170,40 +175,21 @@ def create_app(
 
     @app.get("/api/runs/{run_id}", response_model=RunDetail)
     def get_run(run_id: str) -> RunDetail:
-        run = dash.composite.load_workflow_run(run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
-        steps = dash.composite.list_workflow_steps(run_id)
-        return build_run_detail(run, steps)
+        return _load_run_bundle(dash, run_id).run_detail
 
     @app.get("/api/runs/{run_id}/steps/{step_name}", response_model=StepDetail)
     def get_step(run_id: str, step_name: str) -> StepDetail:
-        run = dash.composite.load_workflow_run(run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
-        steps = dash.composite.list_workflow_steps(run_id)
-        target = next((s for s in steps if s.step_name == step_name), None)
-        # The step may exist in the workflow spec but not yet have a record.
-        # build_step_detail gracefully handles missing records via build_run_detail.
-
-        manifest = None
-        if target is not None:
-            manifest = dash.composite.find_artifact_for_workflow_step(
-                run_id=run_id,
-                workflow_step_key=target.workflow_step_key,
-            )
-            if manifest is None and target.artifact_id is not None:
-                manifest = dash.composite.load_artifact(target.artifact_id)
-
-        report_artifact_id = _nearest_report_artifact(run, steps, step_name)
+        bundle = _load_run_bundle(dash, run_id)
+        manifest_by_step = _resolve_manifests_for_steps(dash, run_id, bundle.step_records)
+        report_artifact_by_step = _report_artifact_ids_by_step(bundle.run_detail)
 
         try:
-            return build_step_detail(
-                run=run,
-                step_records=steps,
+            return build_step_detail_from_run_detail(
+                run=bundle.run,
+                run_detail=bundle.run_detail,
                 target_step=step_name,
-                artifact_manifest=manifest,
-                report_artifact_id=report_artifact_id,
+                artifact_manifest=manifest_by_step.get(step_name),
+                report_artifact_id=report_artifact_by_step.get(step_name),
             )
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
@@ -214,60 +200,19 @@ def create_app(
         round-trip's worth of DB work (three queries total against Postgres,
         independent of step count).
         """
-        run = dash.composite.load_workflow_run(run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
-        step_records = dash.composite.list_workflow_steps(run_id)
-
-        # Resolve all step artifacts in at most two queries:
-        # 1) batch_load_artifacts for step records that have a recorded
-        #    artifact_id (the common case once a step has completed).
-        # 2) find_artifacts_for_run for any remaining steps (runtime-written
-        #    artifacts whose artifact_id isn't back-filled on the step row yet).
-        manifest_by_step: dict[str, Any] = {}
-        if dash.pg is not None:
-            try:
-                artifact_ids = [
-                    s.artifact_id for s in step_records if s.artifact_id is not None
-                ]
-                if artifact_ids:
-                    by_aid = dash.pg.batch_load_artifacts(artifact_ids)
-                    for s in step_records:
-                        if s.artifact_id and s.artifact_id in by_aid:
-                            manifest_by_step[s.step_name] = by_aid[s.artifact_id]
-                missing = [s for s in step_records if s.step_name not in manifest_by_step]
-                if missing:
-                    by_key = dash.pg.find_artifacts_for_run(run_id)
-                    for s in missing:
-                        m = by_key.get(s.workflow_step_key)
-                        if m is not None:
-                            manifest_by_step[s.step_name] = m
-            except Exception:
-                manifest_by_step = {}
-
-        # Fallback through the cached composite catalog for anything pg
-        # didn't resolve (typically local-only catalog entries).
+        bundle = _load_run_bundle(dash, run_id)
+        manifest_by_step = _resolve_manifests_for_steps(dash, run_id, bundle.step_records)
+        report_artifact_by_step = _report_artifact_ids_by_step(bundle.run_detail)
         details: list[StepDetail] = []
-        for step_record in step_records:
-            manifest = manifest_by_step.get(step_record.step_name)
-            if manifest is None:
-                manifest = dash.composite.find_artifact_for_workflow_step(
-                    run_id=run_id,
-                    workflow_step_key=step_record.workflow_step_key,
-                )
-                if manifest is None and step_record.artifact_id is not None:
-                    manifest = dash.composite.load_artifact(step_record.artifact_id)
-            report_artifact_id = _nearest_report_artifact(
-                run, step_records, step_record.step_name
-            )
+        for step in bundle.run_detail.steps:
             try:
                 details.append(
-                    build_step_detail(
-                        run=run,
-                        step_records=step_records,
-                        target_step=step_record.step_name,
-                        artifact_manifest=manifest,
-                        report_artifact_id=report_artifact_id,
+                    build_step_detail_from_run_detail(
+                        run=bundle.run,
+                        run_detail=bundle.run_detail,
+                        target_step=step.step_name,
+                        artifact_manifest=manifest_by_step.get(step.step_name),
+                        report_artifact_id=report_artifact_by_step.get(step.step_name),
                     )
                 )
             except LookupError:
@@ -284,7 +229,9 @@ def create_app(
         else:
             result["catalog_cache"] = "not cached"
         clear_resolved_dataset_cache()
+        clear_tokenizer_cache()
         result["resolved_datasets"] = "cleared"
+        result["tokenizers"] = "cleared"
         return result
 
     @app.get("/api/cache/stats")
@@ -369,22 +316,13 @@ def create_app(
         response_model=ResultPreview,
     )
     def step_result(run_id: str, step_name: str) -> ResultPreview:
-        run = dash.composite.load_workflow_run(run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
-        steps = dash.composite.list_workflow_steps(run_id)
-        target = next((s for s in steps if s.step_name == step_name), None)
-        artifact = None
-        if target is not None:
-            artifact = dash.composite.find_artifact_for_workflow_step(
-                run_id=run_id,
-                workflow_step_key=target.workflow_step_key,
-            )
-            if artifact is None and target.artifact_id is not None:
-                artifact = dash.composite.load_artifact(target.artifact_id)
+        bundle = _load_run_bundle(dash, run_id)
+        if not any(step.step_name == step_name for step in bundle.run_detail.steps):
+            raise HTTPException(status_code=404, detail=f"Unknown step: {step_name}")
+        artifact = _resolve_manifests_for_steps(dash, run_id, bundle.step_records).get(step_name)
         # If a downstream report step owns a copy of this step's result on
         # disk, we can surface that even if the step's own result ref is remote.
-        report_aid = _nearest_report_artifact(run, steps, step_name)
+        report_aid = _report_artifact_ids_by_step(bundle.run_detail).get(step_name)
         report_manifest = dash.composite.load_artifact(report_aid) if report_aid else None
         return read_result_payload(
             artifact_manifest=artifact,
@@ -406,7 +344,7 @@ def create_app(
             raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
         return build_prompt_preview(run=run, target_step=step_name, max_examples=max_examples)
 
-    resolved_static_dir = Path(static_dir) if static_dir is not None else load_workspace_config().dashboard_static_dir()
+    resolved_static_dir = Path(static_dir) if static_dir is not None else workspace_config.dashboard_static_dir()
     if resolved_static_dir is not None:
         _mount_static(app, Path(resolved_static_dir))
 
@@ -443,56 +381,83 @@ def _summary_from_light(row: dict[str, Any], status_counts: dict[str, int]):
     )
 
 
-def _nearest_report_artifact(
-    run: Any,
-    steps: list[Any],
-    step_name: str,
-) -> str | None:
-    """Return the artifact id of a report step that consumes this step.
+def _load_run_bundle(dash: DashboardCatalog, run_id: str) -> _RunBundle:
+    from fastapi import HTTPException
 
-    Used by the inspector Results tab to show a 'open report' link. The
-    heuristic is intentionally simple: any downstream step whose kind is
-    `report` and which has a recorded artifact_id. If the current step is
-    itself a report, return its own artifact id.
-    """
-    from pipelines_v2.workflow.specs import WorkflowSpec
+    run = dash.composite.load_workflow_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
+    step_records = dash.composite.list_workflow_steps(run_id)
+    return _RunBundle(
+        run=run,
+        step_records=step_records,
+        run_detail=build_run_detail(run, step_records),
+    )
 
-    try:
-        spec = WorkflowSpec.from_dict(run.workflow_payload)
-    except Exception:
-        return None
 
-    steps_by_name = {s.step_name: s for s in steps}
-    report_names: set[str] = set()
-    for wf_step in spec.steps:
-        if getattr(wf_step.spec, "kind", None) == "report":
-            report_names.add(wf_step.name)
-    if not report_names:
-        return None
+def _resolve_manifests_for_steps(
+    dash: DashboardCatalog,
+    run_id: str,
+    step_records: list[Any],
+) -> dict[str, Any]:
+    """Resolve step_name -> manifest using batched pg paths when available."""
+    manifest_by_step: dict[str, Any] = {}
+    if dash.pg is not None:
+        try:
+            artifact_ids = [record.artifact_id for record in step_records if record.artifact_id is not None]
+            if artifact_ids:
+                by_aid = dash.pg.batch_load_artifacts(artifact_ids)
+                for record in step_records:
+                    if record.artifact_id and record.artifact_id in by_aid:
+                        manifest_by_step[record.step_name] = by_aid[record.artifact_id]
+            missing = [record for record in step_records if record.step_name not in manifest_by_step]
+            if missing:
+                by_key = dash.pg.find_artifacts_for_run(run_id)
+                for record in missing:
+                    manifest = by_key.get(record.workflow_step_key)
+                    if manifest is not None:
+                        manifest_by_step[record.step_name] = manifest
+        except Exception:
+            manifest_by_step = {}
 
-    if step_name in report_names:
-        record = steps_by_name.get(step_name)
-        return record.artifact_id if record else None
-
-    # Walk the dependency closure forward from `step_name`.
-    children: dict[str, list[str]] = {s.name: [] for s in spec.steps}
-    for s in spec.steps:
-        for dep in s.resolved_depends_on():
-            children.setdefault(dep, []).append(s.name)
-
-    visited: set[str] = set()
-    stack = [step_name]
-    while stack:
-        node = stack.pop()
-        if node in visited:
+    for record in step_records:
+        if record.step_name in manifest_by_step:
             continue
-        visited.add(node)
-        if node in report_names:
-            record = steps_by_name.get(node)
-            if record and record.artifact_id:
-                return record.artifact_id
-        stack.extend(children.get(node, ()))
-    return None
+        manifest = dash.composite.find_artifact_for_workflow_step(
+            run_id=run_id,
+            workflow_step_key=record.workflow_step_key,
+        )
+        if manifest is None and record.artifact_id is not None:
+            manifest = dash.composite.load_artifact(record.artifact_id)
+        if manifest is not None:
+            manifest_by_step[record.step_name] = manifest
+    return manifest_by_step
+
+
+def _report_artifact_ids_by_step(run_detail: RunDetail) -> dict[str, str]:
+    """Map each step to a downstream report artifact, if one exists.
+
+    The first report step in workflow order wins for shared ancestors. This
+    keeps the mapping stable and avoids repeatedly traversing the DAG.
+    """
+    by_name = {step.step_name: step for step in run_detail.steps}
+    result: dict[str, str] = {}
+    for step in run_detail.steps:
+        if step.spec_kind != "report" or not step.artifact_id:
+            continue
+        stack = [step.step_name]
+        visited: set[str] = set()
+        while stack:
+            current = stack.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+            result.setdefault(current, step.artifact_id)
+            current_step = by_name.get(current)
+            if current_step is None:
+                continue
+            stack.extend(current_step.resolved_depends_on)
+    return result
 
 
 def _mount_static(app: "FastAPI", static_dir: Path) -> None:

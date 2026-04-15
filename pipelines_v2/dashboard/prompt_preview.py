@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Mapping
 
 from pipelines_v2.dashboard.models import (
@@ -435,6 +436,17 @@ def _load_tokenizer(capture_spec: Any) -> tuple[Any, str | None, str | None]:
     if not model_id:
         return None, None, "no model_id on capture engine"
 
+    trust_remote_code = bool(os.environ.get("HF_ALLOW_REMOTE_CODE", "0") == "1")
+    return _load_tokenizer_cached(model_id, trust_remote_code)
+
+
+@lru_cache(maxsize=8)
+def _load_tokenizer_cached(
+    model_id: str,
+    trust_remote_code: bool,
+) -> tuple[Any, str | None, str | None]:
+    """Process-local tokenizer cache keyed by model id + trust flag."""
+
     try:
         from transformers import AutoTokenizer  # type: ignore
     except Exception as exc:
@@ -445,8 +457,13 @@ def _load_tokenizer(capture_spec: Any) -> tuple[Any, str | None, str | None]:
     try:
         tokenizer = AutoTokenizer.from_pretrained(
             model_id,
-            trust_remote_code=bool(os.environ.get("HF_ALLOW_REMOTE_CODE", "0") == "1"),
+            trust_remote_code=trust_remote_code,
         )
     except Exception as exc:
         return None, model_id, f"tokenizer load failed: {exc}"
     return tokenizer, model_id, None
+
+
+def clear_tokenizer_cache() -> None:
+    """Drop memoized tokenizer instances and load failures."""
+    _load_tokenizer_cached.cache_clear()

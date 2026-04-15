@@ -205,16 +205,44 @@ class DashboardPg:
         self, *, run_id: str, workflow_step_key: str
     ) -> ArtifactManifest | None:
         sql = """
-            SELECT manifest
-            FROM pipelines_v2_artifacts
-            WHERE manifest->'workflow_context'->>'run_id' = %s
-              AND manifest->'workflow_context'->>'workflow_step_key' = %s
+            WITH target_step AS (
+                SELECT workflow_step_id
+                FROM pipelines_v2_workflow_steps
+                WHERE run_id = %s
+                  AND workflow_step_key = %s
+                LIMIT 1
+            )
+            SELECT a.manifest
+            FROM pipelines_v2_artifacts a
+            LEFT JOIN target_step step ON TRUE
+            WHERE (
+                step.workflow_step_id IS NOT NULL
+                AND a.produced_by_step_id = step.workflow_step_id
+            )
+            OR (
+                a.produced_by_step_id IS NULL
+                AND (
+                    (
+                        a.produced_by_run_id = %s
+                        AND a.produced_by_workflow_step_key = %s
+                    )
+                    OR (
+                        a.produced_by_run_id IS NULL
+                        AND a.produced_by_workflow_step_key IS NULL
+                        AND a.manifest->'workflow_context'->>'run_id' = %s
+                        AND a.manifest->'workflow_context'->>'workflow_step_key' = %s
+                    )
+                )
+            )
             ORDER BY created_at DESC
             LIMIT 1
         """
         with self._pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, (run_id, workflow_step_key))
+                cur.execute(
+                    sql,
+                    (run_id, workflow_step_key, run_id, workflow_step_key, run_id, workflow_step_key),
+                )
                 row = cur.fetchone()
         if row is None:
             return None
@@ -361,17 +389,32 @@ class DashboardPg:
         """
         sql = """
             SELECT
-                manifest->'workflow_context'->>'workflow_step_key' AS key,
-                manifest,
-                created_at
-            FROM pipelines_v2_artifacts
-            WHERE manifest->'workflow_context'->>'run_id' = %s
+                COALESCE(
+                    s.workflow_step_key,
+                    a.produced_by_workflow_step_key,
+                    a.manifest->'workflow_context'->>'workflow_step_key'
+                ) AS key,
+                a.manifest,
+                a.created_at
+            FROM pipelines_v2_artifacts a
+            LEFT JOIN pipelines_v2_workflow_steps s
+              ON s.workflow_step_id = a.produced_by_step_id
+            WHERE s.run_id = %s
+               OR (
+                    a.produced_by_step_id IS NULL
+                    AND a.produced_by_run_id = %s
+               )
+               OR (
+                    a.produced_by_step_id IS NULL
+                    AND a.produced_by_run_id IS NULL
+                    AND a.manifest->'workflow_context'->>'run_id' = %s
+               )
             ORDER BY created_at DESC
         """
         out: dict[str, ArtifactManifest] = {}
         with self._pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, (run_id,))
+                cur.execute(sql, (run_id, run_id, run_id))
                 for key, manifest, _created in cur.fetchall():
                     if key is None:
                         continue
