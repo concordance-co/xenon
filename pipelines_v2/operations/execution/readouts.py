@@ -64,6 +64,8 @@ def run_probe(spec: ProbeSpec) -> OperationExecutionResult:
                 folds=spec.folds,
                 baselines=tuple(spec.baselines),
                 metrics=requested_metrics,
+                example_keys=example_keys,
+                class_names=classes,
             )
         )
 
@@ -384,6 +386,8 @@ def probe_layer(
     folds: int,
     baselines: Sequence[str],
     metrics: Sequence[str],
+    example_keys: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -402,6 +406,7 @@ def probe_layer(
     baseline_scores: dict[str, list[float]] = {name: [] for name in baselines}
     compute_shuffled_control = "shuffled_label" in baseline_scores or "selectivity" in metrics
     shuffled_control_scores: list[float] = []
+    fixed_split_predictions: list[dict[str, Any]] | None = None
 
     for fold_index, (train_idx, test_idx) in enumerate(splits):
         model = make_pipeline(
@@ -418,11 +423,22 @@ def probe_layer(
         model.fit(X[train_idx], y[train_idx])
         predictions = model.predict(X[test_idx])
         probabilities = model.predict_proba(X[test_idx]) if "auroc" in metrics else None
-        accuracy_scores.append(float(accuracy_score(y[test_idx], predictions)))
-        balanced_scores.append(float(balanced_accuracy_score(y[test_idx], predictions)))
-        auroc_value = maybe_compute_auroc(y[test_idx], probabilities)
+        metric_payload = compute_metric_payload(y[test_idx], predictions, probabilities, metrics=metrics)
+        if "accuracy" in metric_payload:
+            accuracy_scores.append(float(metric_payload["accuracy"]))
+        if "balanced_accuracy" in metric_payload:
+            balanced_scores.append(float(metric_payload["balanced_accuracy"]))
+        auroc_value = metric_payload.get("auroc")
         if auroc_value is not None:
-            auroc_scores.append(auroc_value)
+            auroc_scores.append(float(auroc_value))
+        if split is not None and len(splits) == 1 and example_keys is not None:
+            fixed_split_predictions = _serialize_prediction_rows(
+                example_keys=[example_keys[int(index)] for index in test_idx.tolist()],
+                y_true=y[test_idx],
+                predictions=predictions,
+                probabilities=probabilities,
+                class_names=class_names,
+            )
 
         if "majority" in baseline_scores:
             baseline = DummyClassifier(strategy="most_frequent")
@@ -476,6 +492,8 @@ def probe_layer(
         result["baseline_majority"] = round(float(baseline_majority), 4) if baseline_majority is not None else None
     if "shuffled_label" in baseline_scores:
         result["baseline_shuffled"] = round(float(baseline_shuffled), 4) if baseline_shuffled is not None else None
+    if fixed_split_predictions is not None:
+        result["test_predictions"] = fixed_split_predictions
     return result
 
 
@@ -584,6 +602,8 @@ def fixed_split_activation(
     metrics: Sequence[str],
     C: float,
     seed: int = 42,
+    example_keys: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -596,7 +616,17 @@ def fixed_split_activation(
     if not splits:
         return _empty_metrics(metrics, split_mode=split_mode, example_count=int(X.shape[0]))
     train_idx, test_idx = splits[0]
-    result = _evaluate_activation_split(X, y, train_idx, test_idx, metrics=metrics, C=C, seed=seed)
+    result = _evaluate_activation_split(
+        X,
+        y,
+        train_idx,
+        test_idx,
+        metrics=metrics,
+        C=C,
+        seed=seed,
+        example_keys=example_keys,
+        class_names=class_names,
+    )
     result["split_mode"] = split_mode
     result["example_count"] = int(X.shape[0])
     return result
@@ -638,6 +668,8 @@ def fixed_split_text(
     metrics: Sequence[str],
     C: float,
     seed: int = 42,
+    example_keys: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -650,7 +682,18 @@ def fixed_split_text(
     if not splits:
         return _empty_metrics(metrics, split_mode=split_mode, example_count=len(texts))
     train_idx, test_idx = splits[0]
-    result = _evaluate_text_split(texts, y, train_idx, test_idx, model=model, metrics=metrics, C=C, seed=seed)
+    result = _evaluate_text_split(
+        texts,
+        y,
+        train_idx,
+        test_idx,
+        model=model,
+        metrics=metrics,
+        C=C,
+        seed=seed,
+        example_keys=example_keys,
+        class_names=class_names,
+    )
     result["split_mode"] = split_mode
     result["example_count"] = len(texts)
     return result
@@ -785,12 +828,14 @@ def _transfer_split_layer(
             split_results[split_name] = _fixed_split_payload(
                 X=X,
                 y=y,
+                example_keys=example_keys,
                 groups=groups,
                 split_labels=split_labels_arr,
                 train_values=train_values,
                 test_values=test_values,
                 metrics=metrics,
                 regularization=regularization,
+                class_names=class_names,
             )
             continue
         per_cohort: dict[str, Any] = {}
@@ -801,12 +846,14 @@ def _transfer_split_layer(
             per_cohort[cohort] = _fixed_split_payload(
                 X=X[mask],
                 y=y[mask],
+                example_keys=[example_keys[index] for index in np.nonzero(mask)[0].tolist()],
                 groups=groups[mask] if groups is not None else None,
                 split_labels=split_labels_arr[mask],
                 train_values=train_values,
                 test_values=test_values,
                 metrics=metrics,
                 regularization=regularization,
+                class_names=class_names,
             )
         split_results[split_name] = per_cohort
     return {
@@ -820,23 +867,27 @@ def _fixed_split_payload(
     *,
     X: NDArray[np.float32],
     y: NDArray[np.int64],
+    example_keys: Sequence[str],
     groups: NDArray[np.object_] | None,
     split_labels: NDArray[np.object_],
     train_values: Sequence[Any],
     test_values: Sequence[Any],
     metrics: Sequence[str],
     regularization: Sequence[float],
+    class_names: Sequence[str],
 ) -> Any:
     if len(regularization) == 1:
         return fixed_split_activation(
             X=X,
             y=y,
+            example_keys=example_keys,
             groups=groups,
             split_labels=split_labels,
             train_values=train_values,
             test_values=test_values,
             metrics=metrics,
             C=regularization[0],
+            class_names=class_names,
         )
     return {
         "regularization_sweep": [
@@ -845,12 +896,14 @@ def _fixed_split_payload(
                 **fixed_split_activation(
                     X=X,
                     y=y,
+                    example_keys=example_keys,
                     groups=groups,
                     split_labels=split_labels,
                     train_values=train_values,
                     test_values=test_values,
                     metrics=metrics,
                     C=C,
+                    class_names=class_names,
                 ),
             }
             for C in regularization
@@ -961,7 +1014,6 @@ def _text_split_results(
     regularization: Sequence[float],
     metrics: Sequence[str],
 ) -> dict[str, Any]:
-    del example_keys
     cohort_labels = np.asarray([str(value) for value in cohort_values], dtype=object) if cohort_values else None
     results: dict[str, Any] = {"class_names": list(class_names), "split_results": {}}
     for split_name, split_labels in split_values.items():
@@ -970,6 +1022,7 @@ def _text_split_results(
             results["split_results"][split_name] = _text_fixed_split_payload(
                 texts=texts,
                 y=y,
+                example_keys=example_keys,
                 groups=groups,
                 split_labels=split_arr,
                 train_values=train_values,
@@ -977,6 +1030,7 @@ def _text_split_results(
                 model=model,
                 regularization=regularization,
                 metrics=metrics,
+                class_names=class_names,
             )
             continue
         per_cohort = {}
@@ -988,6 +1042,7 @@ def _text_split_results(
             per_cohort[cohort] = _text_fixed_split_payload(
                 texts=[texts[index] for index in indices],
                 y=y[mask],
+                example_keys=[example_keys[index] for index in indices],
                 groups=groups[mask] if groups is not None else None,
                 split_labels=split_arr[mask],
                 train_values=train_values,
@@ -995,6 +1050,7 @@ def _text_split_results(
                 model=model,
                 regularization=regularization,
                 metrics=metrics,
+                class_names=class_names,
             )
         results["split_results"][split_name] = per_cohort
     return results
@@ -1004,6 +1060,7 @@ def _text_fixed_split_payload(
     *,
     texts: Sequence[str],
     y: NDArray[np.int64],
+    example_keys: Sequence[str],
     groups: NDArray[np.object_] | None,
     split_labels: NDArray[np.object_],
     train_values: Sequence[Any],
@@ -1011,11 +1068,13 @@ def _text_fixed_split_payload(
     model: str,
     regularization: Sequence[float],
     metrics: Sequence[str],
+    class_names: Sequence[str],
 ) -> Any:
     if len(regularization) == 1:
         return fixed_split_text(
             texts=texts,
             y=y,
+            example_keys=example_keys,
             groups=groups,
             split_labels=split_labels,
             train_values=train_values,
@@ -1023,6 +1082,7 @@ def _text_fixed_split_payload(
             model=model,
             metrics=metrics,
             C=regularization[0],
+            class_names=class_names,
         )
     return {
         "regularization_sweep": [
@@ -1031,6 +1091,7 @@ def _text_fixed_split_payload(
                 **fixed_split_text(
                     texts=texts,
                     y=y,
+                    example_keys=example_keys,
                     groups=groups,
                     split_labels=split_labels,
                     train_values=train_values,
@@ -1038,6 +1099,7 @@ def _text_fixed_split_payload(
                     model=model,
                     metrics=metrics,
                     C=C,
+                    class_names=class_names,
                 ),
             }
             for C in regularization
@@ -1095,12 +1157,23 @@ def _evaluate_activation_split(
     metrics: Sequence[str],
     C: float,
     seed: int,
+    example_keys: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     model = _make_activation_logreg(C=C, seed=seed)
     model.fit(X[train_idx], y[train_idx])
     predictions = model.predict(X[test_idx])
     probabilities = model.predict_proba(X[test_idx]) if "auroc" in metrics else None
-    return compute_metric_payload(y[test_idx], predictions, probabilities, metrics=metrics)
+    payload = compute_metric_payload(y[test_idx], predictions, probabilities, metrics=metrics)
+    if example_keys is not None:
+        payload["test_predictions"] = _serialize_prediction_rows(
+            example_keys=[example_keys[int(index)] for index in test_idx.tolist()],
+            y_true=y[test_idx],
+            predictions=predictions,
+            probabilities=probabilities,
+            class_names=class_names,
+        )
+    return payload
 
 
 def _evaluate_text_split(
@@ -1113,6 +1186,8 @@ def _evaluate_text_split(
     metrics: Sequence[str],
     C: float,
     seed: int,
+    example_keys: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     pipeline = _make_text_model(model=model, C=C, seed=seed)
     train_texts = [texts[int(index)] for index in train_idx.tolist()]
@@ -1120,7 +1195,16 @@ def _evaluate_text_split(
     pipeline.fit(train_texts, y[train_idx])
     predictions = pipeline.predict(test_texts)
     probabilities = pipeline.predict_proba(test_texts) if "auroc" in metrics else None
-    return compute_metric_payload(y[test_idx], predictions, probabilities, metrics=metrics)
+    payload = compute_metric_payload(y[test_idx], predictions, probabilities, metrics=metrics)
+    if example_keys is not None:
+        payload["test_predictions"] = _serialize_prediction_rows(
+            example_keys=[example_keys[int(index)] for index in test_idx.tolist()],
+            y_true=y[test_idx],
+            predictions=predictions,
+            probabilities=probabilities,
+            class_names=class_names,
+        )
+    return payload
 
 
 def _evaluate_activation_transfer(
@@ -1185,7 +1269,54 @@ def compute_metric_payload(
     if "auroc" in metrics:
         auroc = maybe_compute_auroc(y_true, probabilities)
         payload["auroc"] = round(auroc, 4) if auroc is not None else None
+    if len(np.unique(y_true)) == 2:
+        negative_label = int(np.min(y_true))
+        positive_label = int(np.max(y_true))
+        negative_mask = y_true == negative_label
+        positive_mask = y_true == positive_label
+        fp = int(np.sum((predictions == positive_label) & negative_mask))
+        fn = int(np.sum((predictions == negative_label) & positive_mask))
+        tp = int(np.sum((predictions == positive_label) & positive_mask))
+        tn = int(np.sum((predictions == negative_label) & negative_mask))
+        neg_count = int(np.sum(negative_mask))
+        pos_count = int(np.sum(positive_mask))
+        payload["true_negative_count"] = tn
+        payload["false_positive_count"] = fp
+        payload["false_negative_count"] = fn
+        payload["true_positive_count"] = tp
+        payload["false_positive_rate"] = round(fp / neg_count, 4) if neg_count else None
+        payload["false_negative_rate"] = round(fn / pos_count, 4) if pos_count else None
+        payload["true_positive_rate"] = round(tp / pos_count, 4) if pos_count else None
+        payload["true_negative_rate"] = round(tn / neg_count, 4) if neg_count else None
     return payload
+
+
+def _serialize_prediction_rows(
+    *,
+    example_keys: Sequence[str],
+    y_true: NDArray[np.int64],
+    predictions: NDArray[np.int64],
+    probabilities: NDArray[np.float64] | NDArray[np.float32] | None,
+    class_names: Sequence[str] | None,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    class_labels = list(class_names) if class_names is not None else None
+    for idx, example_key in enumerate(example_keys):
+        row: dict[str, Any] = {
+            "example_key": str(example_key),
+            "true_label_index": int(y_true[idx]),
+            "predicted_label_index": int(predictions[idx]),
+        }
+        if class_labels is not None:
+            row["true_label"] = str(class_labels[int(y_true[idx])])
+            row["predicted_label"] = str(class_labels[int(predictions[idx])])
+        if probabilities is not None and probabilities.ndim == 2 and idx < probabilities.shape[0]:
+            probs = probabilities[idx]
+            row["class_probabilities"] = [round(float(value), 6) for value in probs.tolist()]
+            if probs.shape[0] == 2:
+                row["positive_class_probability"] = round(float(probs[1]), 6)
+        rows.append(row)
+    return rows
 
 
 def _aggregate_metric_runs(

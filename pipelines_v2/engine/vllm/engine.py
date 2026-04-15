@@ -81,6 +81,7 @@ class VLLMEngine:
     def runtime_spec(self) -> PythonRuntimeSpec:
         return PythonRuntimeSpec(
             pip_packages=(
+                "matplotlib",
                 "vllm",
                 "torch",
                 "transformers",

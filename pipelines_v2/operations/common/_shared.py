@@ -20,6 +20,7 @@ def analysis_runtime_spec() -> Any:
 
     return PythonRuntimeSpec(
         pip_packages=(
+            "matplotlib",
             "numpy",
             "scikit-learn",
             "safetensors",

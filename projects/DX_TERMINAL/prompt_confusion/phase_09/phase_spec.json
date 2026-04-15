@@ -1,0 +1,15 @@
+{
+  "phase": "phase_09",
+  "title": "Prompt Confusion Relational Rebuild (pipelines_v2 scaffold)",
+  "status": "scaffolded",
+  "goal": "Rebuild prompt_confusion around relational conflict, descriptive market prompts, and clearer policy constraints, then analyze with pipelines_v2.",
+  "references": [
+    "projects/DX_TERMINAL/prompt_confusion/notes/prompt_redesign_handoff_20260415.md",
+    "projects/DX_TERMINAL/prompt_confusion/phase_09/specs/design.md",
+    "projects/DX_TERMINAL/prompt_confusion/phase_09/specs/workflow.py"
+  ],
+  "artifacts": {
+    "dataset_table": "conflict_probe_examples_v5",
+    "report_dir": "projects/DX_TERMINAL/prompt_confusion/phase_09/reports/pipelines_v2"
+  }
+}
