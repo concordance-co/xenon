@@ -7,7 +7,21 @@ from typing import Any
 
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
 from pipelines_v2.operations import operation_spec_from_dict
-from pipelines_v2.operations.specs import BasisSpec, CaptureSpec, DirectionSpec, LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, ProbeSpec, ReportSpec, TransformSpec
+from pipelines_v2.operations.specs import (
+    BasisSpec,
+    CaptureSpec,
+    DirectionSpec,
+    GeometrySpec,
+    LabelFieldsSpec,
+    LabelMapSpec,
+    PairDeltaSpec,
+    ProbeSpec,
+    ReportSpec,
+    ResidualizedProbeSpec,
+    TextBaselineSpec,
+    TransferProbeSpec,
+    TransformSpec,
+)
 from pipelines_v2.storage import ArtifactManifest, artifact_store_from_dict
 from pipelines_v2.storage.artifacts import ArtifactLabelRef, CaptureArtifact, FeatureLayerRef, FeatureRef, OperationArtifact
 from pipelines_v2.storage.features import write_capture_features
@@ -164,4 +178,17 @@ def _input_artifact_ids(spec: OperationSpec) -> list[str]:
     return sorted(set(artifact_ids))
 
 
-_ARTIFACT_BOUND_SPECS = (ProbeSpec, DirectionSpec, BasisSpec, PairDeltaSpec, LabelMapSpec, LabelFieldsSpec, TransformSpec, ReportSpec)
+_ARTIFACT_BOUND_SPECS = (
+    ProbeSpec,
+    TransferProbeSpec,
+    TextBaselineSpec,
+    ResidualizedProbeSpec,
+    DirectionSpec,
+    BasisSpec,
+    GeometrySpec,
+    PairDeltaSpec,
+    LabelMapSpec,
+    LabelFieldsSpec,
+    TransformSpec,
+    ReportSpec,
+)

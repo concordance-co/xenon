@@ -104,8 +104,9 @@ def _default_router_engine() -> VLLMEngine:
     return VLLMEngine(
         model_id=MODEL_ID,
         max_model_len=8192,
-        enforce_eager=False,
+        enforce_eager=True,
         max_num_seqs=1,
+        enable_prefix_caching=False,
     )
 
 

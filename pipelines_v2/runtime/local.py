@@ -4,13 +4,28 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
-from pipelines_v2.operations.specs import BasisSpec, CaptureSpec, DirectionSpec, LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, ProbeSpec, ReportSpec, TransformSpec
+from pipelines_v2.operations.specs import (
+    BasisSpec,
+    CaptureSpec,
+    DirectionSpec,
+    GeometrySpec,
+    LabelFieldsSpec,
+    LabelMapSpec,
+    PairDeltaSpec,
+    ProbeSpec,
+    ReportSpec,
+    ResidualizedProbeSpec,
+    TextBaselineSpec,
+    TransferProbeSpec,
+    TransformSpec,
+)
 from pipelines_v2.runtime.base import ExecutionPlan
 from pipelines_v2.storage.artifacts import (
     ArtifactLabelRef,
@@ -173,7 +188,20 @@ class LocalRunner:
         return OperationArtifact(_manifest=manifest, store=self.artifacts)
 
 
-_ARTIFACT_BOUND_SPECS = (ProbeSpec, DirectionSpec, BasisSpec, PairDeltaSpec, LabelMapSpec, LabelFieldsSpec, TransformSpec, ReportSpec)
+_ARTIFACT_BOUND_SPECS = (
+    ProbeSpec,
+    TransferProbeSpec,
+    TextBaselineSpec,
+    ResidualizedProbeSpec,
+    DirectionSpec,
+    BasisSpec,
+    GeometrySpec,
+    PairDeltaSpec,
+    LabelMapSpec,
+    LabelFieldsSpec,
+    TransformSpec,
+    ReportSpec,
+)
 
 
 def _spec_plan_errors(spec: OperationSpec) -> list[str]:
@@ -281,10 +309,18 @@ def _materialize_local_report_outputs(
     report_json_path = output_dir / "report.json"
     summary_json_path = output_dir / "summary.json"
     report_md_path = output_dir / "report.md"
+    materialized_payload = json.loads(json.dumps(payload))
+    downloaded_results = _materialize_report_input_results(
+        spec=spec,
+        payload=materialized_payload,
+        output_dir=output_dir,
+    )
+    if downloaded_results:
+        materialized_payload["local_results"] = list(downloaded_results)
 
-    _write_json(report_json_path, payload)
-    _write_json(summary_json_path, payload.get("summary", payload))
-    _write_text(report_md_path, _render_report_markdown(spec=spec, payload=payload))
+    _write_json(report_json_path, materialized_payload)
+    _write_json(summary_json_path, materialized_payload.get("summary", materialized_payload))
+    _write_text(report_md_path, _render_report_markdown(spec=spec, payload=materialized_payload))
 
     return (
         {
@@ -306,8 +342,64 @@ def _materialize_local_report_outputs(
             "report_path": str(report_md_path),
             "summary_path": str(summary_json_path),
             "report_json_path": str(report_json_path),
+            "results_dir": str(output_dir / "results"),
+            "downloaded_results": list(downloaded_results),
         },
     )
+
+
+def _materialize_report_input_results(
+    *,
+    spec: ReportSpec,
+    payload: dict[str, Any],
+    output_dir: Path,
+) -> list[dict[str, Any]]:
+    payload_inputs = payload.get("inputs")
+    if not isinstance(payload_inputs, list):
+        return []
+    results_dir = output_dir / "results"
+    used_names: dict[str, int] = {}
+    downloaded: list[dict[str, Any]] = []
+    for spec_input, payload_input in zip(spec.inputs, payload_inputs, strict=False):
+        if not isinstance(spec_input, OperationArtifact):
+            continue
+        result_ref = spec_input.manifest().storage_refs.get("result")
+        if not isinstance(result_ref, dict):
+            continue
+        results_dir.mkdir(parents=True, exist_ok=True)
+        step_name = str(
+            spec_input.manifest().workflow_context.get("step_name")
+            or (payload_input.get("name") if isinstance(payload_input, dict) else None)
+            or spec_input.id
+        )
+        stem = _unique_report_result_stem(step_name, used_names)
+        result_path = results_dir / f"{stem}_results.json"
+        _write_json(result_path, spec_input.result())
+        result_entry = {
+            "name": step_name,
+            "artifact_id": spec_input.id,
+            "artifact_kind": spec_input.manifest().artifact_kind,
+            "path": str(result_path),
+            "source": {
+                "store": result_ref.get("store"),
+                "path": result_ref.get("path"),
+                "format": result_ref.get("format"),
+                "bytes": result_ref.get("bytes"),
+            },
+        }
+        if isinstance(payload_input, dict):
+            payload_input["downloaded_result_path"] = str(result_path)
+        downloaded.append(result_entry)
+    return downloaded
+
+
+def _unique_report_result_stem(name: str, used_names: dict[str, int]) -> str:
+    base = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._-") or "artifact"
+    count = used_names.get(base, 0) + 1
+    used_names[base] = count
+    if count == 1:
+        return base
+    return f"{base}_{count}"
 
 
 def _write_json(path: Path, payload: Any) -> None:

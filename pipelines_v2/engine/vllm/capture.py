@@ -36,6 +36,14 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
 
     if wants_routing and batch_size > 1:
         raise ValueError("MoE routing capture requires max_num_seqs == 1 in the current vLLM implementation")
+    if wants_routing and not bool(engine.enforce_eager):
+        raise ValueError(
+            "MoE routing capture currently requires enforce_eager=True in the current vLLM implementation"
+        )
+    if wants_routing and bool(engine.enable_prefix_caching):
+        raise ValueError(
+            "MoE routing capture currently requires enable_prefix_caching=False in the current vLLM implementation"
+        )
 
     llm_kwargs: dict[str, Any] = {
         "model": engine.model_id,
@@ -79,6 +87,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
         llm = LLM(**llm_kwargs)
 
         router_enabled = False
+        discovered_router_layers: list[int] = []
         if wants_routing:
             from functools import partial
 
@@ -86,6 +95,9 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
             router_enabled = bool(_apply_to_model(llm, partial(_setup_router_capture_on_model, max_tokens=buffer_size)))
             if not router_enabled:
                 raise RuntimeError("MoE routing capture was requested, but no compatible MoE blocks were found")
+            discovered_router_layers = sorted(
+                int(layer) for layer in (_apply_to_model(llm, _discover_router_layers_on_model) or [])
+            )
 
         feature_payloads: dict[str, dict[str, Any]] = {site.name: _empty_feature(site) for site in spec.sites}
         generations: list[dict[str, Any]] = []
@@ -171,12 +183,14 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                         Path(hidden_states_path).unlink(missing_ok=True)
 
                 router_data: dict[int, Any] = {}
+                actual_router_layers: list[int] = []
                 if wants_routing:
                     raw_router = _apply_to_model(llm, _collect_router_logits_from_model)
                     router_data = {
                         int(layer): tensor.detach().cpu().to(torch.float32).numpy()
                         for layer, tensor in raw_router.items()
                     }
+                    actual_router_layers = sorted(router_data.keys())
 
                 _fill_residual_features(
                     feature_payloads=feature_payloads,
@@ -194,6 +208,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                     example=example,
                     token_count=len(prompt_token_ids),
                     token_sections=token_sections,
+                    discovered_router_layers=discovered_router_layers,
                 )
 
                 generation_result = None
@@ -215,6 +230,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                         "token_count": len(prompt_token_ids),
                         "generated": generation_result is not None,
                         "capture_mode": "single_request",
+                        "actual_router_layers": actual_router_layers,
                     }
                 )
 
@@ -225,6 +241,8 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
             "backend": "vllm",
             "example_metadata": example_metadata,
             "router_enabled": router_enabled,
+            "requested_router_layers": sorted({int(layer) for site in routing_sites for layer in site.layers}),
+            "discovered_router_layers": discovered_router_layers,
             "residual_layers": residual_layers,
             "batch_size": batch_size,
             "spec_hash": spec.spec_hash(),
@@ -251,6 +269,12 @@ def _collect_router_logits_from_model(model: Any) -> dict[int, Any]:
     from pipelines_v2.engine.vllm.moe_hooks import collect_router_logits
 
     return collect_router_logits(model)
+
+
+def _discover_router_layers_on_model(model: Any) -> list[int]:
+    from pipelines_v2.engine.vllm.moe_hooks import find_moe_blocks
+
+    return sorted(int(layer) for layer in find_moe_blocks(model).keys())
 
 
 def _apply_to_model(llm: Any, fn: Any) -> Any:
@@ -447,9 +471,12 @@ def _fill_router_features(
     example: Example,
     token_count: int,
     token_sections: dict[str, list[int]],
+    discovered_router_layers: list[int] | None = None,
 ) -> None:
     if not routing_sites:
         return
+    available_layers = sorted(int(layer) for layer in router_data.keys())
+    discovered_layers = sorted(int(layer) for layer in (discovered_router_layers or []))
     for site in routing_sites:
         positions = site.tokens.resolve(token_count, token_sections=token_sections)
         feature_token_sections = rebase_token_sections(
@@ -459,10 +486,26 @@ def _fill_router_features(
         for layer in site.layers:
             layer_int = int(layer)
             if layer_int not in router_data:
-                raise RuntimeError(f"Requested MoE routing layer {layer_int}, but vLLM did not capture it")
+                raise RuntimeError(
+                    "Requested MoE routing layer "
+                    f"{layer_int}, but vLLM did not capture it for example {example.key!r}. "
+                    f"Requested router layers={sorted(int(item) for item in site.layers)}; "
+                    f"captured router layers={available_layers}; "
+                    f"discovered MoE layers={discovered_layers}"
+                )
             logits = router_data[layer_int]
             records_by_token: dict[str, Any] = {}
             for pos in positions:
+                if int(pos) >= int(logits.shape[0]):
+                    raise RuntimeError(
+                        "Requested router token position "
+                        f"{pos} for layer {layer_int} on example {example.key!r}, "
+                        f"but captured router logits only have length {int(logits.shape[0])}. "
+                        f"Requested positions={positions}; "
+                        f"token_count={token_count}; "
+                        f"captured router layers={available_layers}; "
+                        f"discovered MoE layers={discovered_layers}"
+                    )
                 token_logits = logits[pos]
                 records_by_token[str(pos)] = _routing_records(site.record, token_logits)
             feature_payloads[site.name]["layers"][str(layer)][example.key] = {

@@ -25,6 +25,9 @@ class Source(Protocol):
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         ...
 
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        ...
+
     def fetch_dataset(self, **kwargs: Any) -> Dataset:
         ...
 
@@ -53,6 +56,9 @@ class InMemorySource:
         }
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
+        return ()
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
         return ()
 
     def fetch_dataset(self, **kwargs: Any) -> Dataset:
@@ -104,6 +110,10 @@ class PostgresSource:
         if self.url_env_var is None:
             return ()
         return (RuntimeSecret(env_var=self.url_env_var),)
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        """Declare Python dependencies needed to fetch this source at runtime."""
+        return ("psycopg[binary]",)
 
     def fetch_dataset(
         self,

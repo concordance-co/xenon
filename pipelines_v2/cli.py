@@ -167,15 +167,17 @@ def _workflow_result_payload(name: str | None, result: WorkflowResult) -> dict[s
             step_payload: dict[str, Any] = {
                 "artifact_id": manifest.artifact_id,
                 "artifact_kind": manifest.artifact_kind,
+                "created_at": manifest.created_at,
+                "runtime_app_id": (
+                    manifest.runner.get("runtime_app_id")
+                    if isinstance(manifest.runner, dict)
+                    else None
+                ),
+                "location": _artifact_location_hint(manifest),
             }
             if hasattr(value, "summary"):
                 try:
                     step_payload["summary"] = value.summary()
-                except Exception:
-                    pass
-            if hasattr(value, "uri"):
-                try:
-                    step_payload["uri"] = value.uri
                 except Exception:
                     pass
             steps[step_name] = step_payload
@@ -189,13 +191,36 @@ def _workflow_result_payload(name: str | None, result: WorkflowResult) -> dict[s
     }
 
 
+def _artifact_location_hint(manifest: Any) -> str | None:
+    metadata = getattr(manifest, "metadata", {})
+    if isinstance(metadata, dict):
+        published = metadata.get("published_report")
+        if isinstance(published, dict):
+            report_path = published.get("report_path")
+            if report_path is not None:
+                return str(report_path)
+    storage_refs = getattr(manifest, "storage_refs", {})
+    if not isinstance(storage_refs, dict):
+        return None
+    for key in ("report", "result", "summary", "manifest"):
+        ref = storage_refs.get(key)
+        if isinstance(ref, dict) and ref.get("path") is not None:
+            return str(ref["path"])
+    return None
+
+
 def _load_python_module(path: str | Path) -> ModuleType:
     resolved = Path(path)
     spec = importlib.util.spec_from_file_location(resolved.stem, resolved)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not load workflow file: {resolved}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(spec.name, None)
+        raise
     return module
 
 
@@ -230,6 +255,8 @@ def _load_runner_specs(module: ModuleType) -> dict[str, RunnerSpec] | None:
 
 def _call_workflow_builder(builder: Any, dataset: Dataset) -> WorkflowSpec:
     signature = inspect.signature(builder)
+    if "dataset" in signature.parameters:
+        return builder(dataset=dataset)
     positional = [
         parameter
         for parameter in signature.parameters.values()

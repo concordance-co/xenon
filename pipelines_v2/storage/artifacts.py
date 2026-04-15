@@ -119,6 +119,10 @@ class ArtifactLabelRef:
             raise TypeError("Artifact label payload must contain a 'values' mapping")
         return {str(key): value for key, value in values.items()}
 
+    def resolve_example_keys(self) -> list[str]:
+        """Return the example keys covered by this artifact label."""
+        return sorted(str(key) for key in self.resolve_values())
+
     def runtime_secrets(self) -> tuple[Any, ...]:
         return ()
 

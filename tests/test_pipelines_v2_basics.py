@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from safetensors.numpy import load_file, save_file
 
+from pipelines_v2.core.types import utc_now_iso
 from pipelines_v2.api import (
     ArtifactManifest,
     ArtifactLabelRef,
@@ -24,6 +25,7 @@ from pipelines_v2.api import (
     EngineCaptureResult,
     Example,
     FileCatalog,
+    GeometrySpec,
     GenerationSpec,
     InMemorySource,
     LabelMapSpec,
@@ -36,11 +38,15 @@ from pipelines_v2.api import (
     ModalSecret,
     ModalVolumeMount,
     ModalVolumeStore,
+    OperationArtifact,
     PairDeltaSpec,
     PromptMetadataBuilder,
     ResidualSite,
+    ResidualizedProbeSpec,
     RoutingRecord,
     StepLabelRef,
+    TextBaselineSpec,
+    TransferProbeSpec,
     TransformBuilder,
     TransformResult,
     TransformSpec,
@@ -56,11 +62,14 @@ from pipelines_v2.api import (
     SpecValidationError,
     StepRef,
     WorkflowOrchestrator,
+    WorkflowResult,
     WorkflowSpec,
     WorkflowStep,
     ReportSpec,
 )
-from pipelines_v2.cli import main as pipelines_v2_cli_main
+from pipelines_v2.cli import _workflow_result_payload, load_python_workflow_file, main as pipelines_v2_cli_main
+from pipelines_v2.engine.vllm.capture import _fill_router_features
+from pipelines_v2.engine.vllm.moe_hooks import _make_patched_forward
 from pipelines_v2.runtime import ExecutionPlan
 from pipelines_v2.runtime.specs import runner_spec_from_dict
 from pipelines_v2.runtime.remote_executor import execute_remote
@@ -74,6 +83,7 @@ from pipelines_v2.testing import (
     make_toy_capture_spec,
     make_toy_dataset,
 )
+from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepContext, WorkflowStepRecord
 
 
 def _test_prompt_section_metadata(rendered_prompt: str) -> dict[str, object]:
@@ -157,10 +167,131 @@ def _test_behavior_transform(
     )
 
 
+def _make_phase5_like_dataset() -> Dataset:
+    return Dataset.from_examples(
+        (
+            Example(
+                key="size_conflict_train",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nBuy ALPHA.\n\nSETTINGS\nUse the largest size.\n",
+                labels={
+                    "user_text": "Buy ALPHA with the largest size",
+                    "strategy_family": "trade_size_force_large",
+                    "family_group": "size",
+                    "conflict_present": True,
+                    "strategy_lexical_split": "train",
+                    "setting_lexical_split": "train",
+                },
+                cases={"matched_pair_id": "pair_size_train"},
+                case_key="pair_size_train",
+            ),
+            Example(
+                key="size_aligned_train",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nBuy ALPHA.\n\nSETTINGS\nUse the standard size.\n",
+                labels={
+                    "user_text": "Buy ALPHA with the standard size",
+                    "strategy_family": "trade_size_force_small",
+                    "family_group": "size",
+                    "conflict_present": False,
+                    "strategy_lexical_split": "train",
+                    "setting_lexical_split": "train",
+                },
+                cases={"matched_pair_id": "pair_size_train"},
+                case_key="pair_size_train",
+            ),
+            Example(
+                key="size_conflict_test",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nAcquire ALPHA.\n\nSETTINGS\nPush size to the maximum.\n",
+                labels={
+                    "user_text": "Acquire ALPHA and push size to the maximum",
+                    "strategy_family": "trade_size_force_large",
+                    "family_group": "size",
+                    "conflict_present": True,
+                    "strategy_lexical_split": "test",
+                    "setting_lexical_split": "test",
+                },
+                cases={"matched_pair_id": "pair_size_test"},
+                case_key="pair_size_test",
+            ),
+            Example(
+                key="size_aligned_test",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nAcquire ALPHA.\n\nSETTINGS\nKeep size modest.\n",
+                labels={
+                    "user_text": "Acquire ALPHA and keep size modest",
+                    "strategy_family": "trade_size_force_small",
+                    "family_group": "size",
+                    "conflict_present": False,
+                    "strategy_lexical_split": "test",
+                    "setting_lexical_split": "test",
+                },
+                cases={"matched_pair_id": "pair_size_test"},
+                case_key="pair_size_test",
+            ),
+            Example(
+                key="activity_conflict_train",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nExecute a trade now.\n\nSETTINGS\nStay in observation mode.\n",
+                labels={
+                    "user_text": "Execute a trade now while staying in observation mode",
+                    "strategy_family": "activity_force_trade",
+                    "family_group": "activity",
+                    "conflict_present": True,
+                    "strategy_lexical_split": "train",
+                    "setting_lexical_split": "train",
+                },
+                cases={"matched_pair_id": "pair_activity_train"},
+                case_key="pair_activity_train",
+            ),
+            Example(
+                key="activity_aligned_train",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nObserve only.\n\nSETTINGS\nStay in observation mode.\n",
+                labels={
+                    "user_text": "Observe only while staying in observation mode",
+                    "strategy_family": "activity_force_observe",
+                    "family_group": "activity",
+                    "conflict_present": False,
+                    "strategy_lexical_split": "train",
+                    "setting_lexical_split": "train",
+                },
+                cases={"matched_pair_id": "pair_activity_train"},
+                case_key="pair_activity_train",
+            ),
+            Example(
+                key="activity_conflict_test",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nPlace a trade immediately.\n\nSETTINGS\nRemain in monitor-only mode.\n",
+                labels={
+                    "user_text": "Place a trade immediately while remaining in monitor-only mode",
+                    "strategy_family": "activity_force_trade",
+                    "family_group": "activity",
+                    "conflict_present": True,
+                    "strategy_lexical_split": "test",
+                    "setting_lexical_split": "test",
+                },
+                cases={"matched_pair_id": "pair_activity_test"},
+                case_key="pair_activity_test",
+            ),
+            Example(
+                key="activity_aligned_test",
+                prompt="SYSTEM\nChoose one.\n\nSTRATEGY\nMonitor only.\n\nSETTINGS\nRemain in monitor-only mode.\n",
+                labels={
+                    "user_text": "Monitor only while remaining in monitor-only mode",
+                    "strategy_family": "activity_force_observe",
+                    "family_group": "activity",
+                    "conflict_present": False,
+                    "strategy_lexical_split": "test",
+                    "setting_lexical_split": "test",
+                },
+                cases={"matched_pair_id": "pair_activity_test"},
+                case_key="pair_activity_test",
+            ),
+        ),
+        name="phase5_like_dataset",
+    )
+
+
 class _FailOnceRunner:
-    def __init__(self, inner: Any, *, fail_step: str | None = None) -> None:
+    def __init__(self, inner: Any, *, fail_step: str | None = None, delay_seconds: float = 0.0) -> None:
         self.inner = inner
         self.fail_step = fail_step
+        self.delay_seconds = delay_seconds
         self.failed = False
         self.calls: list[str] = []
         self.catalog = inner.catalog
@@ -172,6 +303,8 @@ class _FailOnceRunner:
     def run(self, spec: Any, *, workflow_context: Any | None = None) -> Any:
         step_name = workflow_context.step_name if workflow_context is not None else "<unknown>"
         self.calls.append(step_name)
+        if self.delay_seconds > 0:
+            time.sleep(self.delay_seconds)
         if self.fail_step == step_name and not self.failed:
             self.failed = True
             raise RuntimeError(f"intentional failure for {step_name}")
@@ -507,6 +640,99 @@ def test_local_runner_bundles_tensor_features_into_one_safetensors_file(tmp_path
     assert len(bundle) == 6
 
 
+def test_fill_router_features_error_includes_actual_and_discovered_layers() -> None:
+    feature_payloads = {
+        "router_last": {
+            "kind": "moe_routing",
+            "routing_policy": {"source": "vllm_gate_logits", "observed_routing_decisions": False},
+            "layers": {"0": {}, "4": {}},
+        }
+    }
+    site = MoERoutingSite(name="router_last", layers=[0, 4], tokens=TokenSelector.last())
+    example = Example(key="ex_a", prompt="alpha")
+
+    with pytest.raises(RuntimeError, match="captured router layers=\\[4\\].*discovered MoE layers=\\[4, 8\\]"):
+        _fill_router_features(
+            feature_payloads=feature_payloads,
+            routing_sites=[site],
+            router_data={4: np.zeros((1, 8), dtype=np.float32)},
+            example=example,
+            token_count=1,
+            token_sections={},
+            discovered_router_layers=[4, 8],
+        )
+
+
+def test_fill_router_features_error_includes_captured_length_for_token_mismatch() -> None:
+    feature_payloads = {
+        "router_last": {
+            "kind": "moe_routing",
+            "routing_policy": {"source": "vllm_gate_logits", "observed_routing_decisions": False},
+            "layers": {"0": {}},
+        }
+    }
+    site = MoERoutingSite(name="router_last", layers=[0], tokens=TokenSelector.last())
+
+    with pytest.raises(RuntimeError, match="captured router logits only have length 4"):
+        _fill_router_features(
+            feature_payloads=feature_payloads,
+            routing_sites=[site],
+            router_data={0: np.zeros((4, 8), dtype=np.float32)},
+            example=Example(key="ex_a", prompt="alpha"),
+            token_count=10,
+            token_sections={},
+            discovered_router_layers=[0],
+        )
+
+
+def test_vllm_router_hook_appends_logits_across_chunked_forwards() -> None:
+    torch = pytest.importorskip("torch")
+
+    class _FakeGate:
+        def __init__(self) -> None:
+            self.weight = torch.zeros((3, 2), dtype=torch.float32)
+
+        def __call__(self, hidden_states: Any) -> tuple[Any, Any]:
+            sums = hidden_states.sum(dim=1, keepdim=True)
+            router_logits = torch.cat((sums, sums + 1, sums + 2), dim=1)
+            return router_logits, None
+
+    class _FakeExperts:
+        def __call__(self, *, hidden_states: Any, router_logits: Any) -> tuple[Any, Any]:
+            return None, hidden_states
+
+    class _FakeBlock:
+        def __init__(self) -> None:
+            self.gate = _FakeGate()
+            self.experts = _FakeExperts()
+            self.is_sequence_parallel = False
+            self.tp_size = 1
+            self._router_logits_buffer = torch.zeros((8, 3), dtype=torch.float32)
+            self._router_num_captured = 0
+            self._router_capture_enabled = True
+
+    block = _FakeBlock()
+    patched = _make_patched_forward(block)
+
+    patched(torch.tensor([[1.0, 0.0], [2.0, 0.0]], dtype=torch.float32))
+    patched(torch.tensor([[3.0, 0.0], [4.0, 0.0], [5.0, 0.0]], dtype=torch.float32))
+
+    captured = block._router_logits_buffer[: block._router_num_captured].cpu().numpy()
+    expected = np.asarray(
+        [
+            [1.0, 2.0, 3.0],
+            [2.0, 3.0, 4.0],
+            [3.0, 4.0, 5.0],
+            [4.0, 5.0, 6.0],
+            [5.0, 6.0, 7.0],
+        ],
+        dtype=np.float32,
+    )
+
+    assert block._router_num_captured == 5
+    assert np.allclose(captured, expected)
+
+
 def test_runner_plan_reports_missing_capabilities() -> None:
     runner = LocalRunner()
     spec = CaptureSpec(
@@ -541,6 +767,59 @@ def test_vllm_engine_plan_rejects_router_capture_with_batch_gt_1(tmp_path: Path)
 
     assert any("MoE routing capture" in error for error in plan.errors)
     with pytest.raises(SpecValidationError, match="MoE routing capture"):
+        plan.validate()
+
+
+def test_vllm_engine_plan_rejects_router_capture_without_eager(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    spec = CaptureSpec(
+        engine=VLLMEngine(
+            model_id="/models/Qwen/Qwen3-30B-A3B",
+            enforce_eager=False,
+            max_num_seqs=1,
+        ),
+        dataset=make_toy_dataset(),
+        sites=[
+            MoERoutingSite(
+                name="router_last",
+                layers=[0],
+                tokens=TokenSelector.last(),
+                record=[RoutingRecord.gate_logits()],
+            )
+        ],
+    )
+
+    plan = runner.plan(spec)
+
+    assert any("enforce_eager=True" in error for error in plan.errors)
+    with pytest.raises(SpecValidationError, match="enforce_eager=True"):
+        plan.validate()
+
+
+def test_vllm_engine_plan_rejects_router_capture_with_prefix_caching(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    spec = CaptureSpec(
+        engine=VLLMEngine(
+            model_id="/models/Qwen/Qwen3-30B-A3B",
+            enforce_eager=True,
+            max_num_seqs=1,
+            enable_prefix_caching=True,
+        ),
+        dataset=make_toy_dataset(),
+        sites=[
+            MoERoutingSite(
+                name="router_last",
+                layers=[0],
+                tokens=TokenSelector.last(),
+                record=[RoutingRecord.gate_logits()],
+            )
+        ],
+    )
+
+    plan = runner.plan(spec)
+
+    assert any("enable_prefix_caching=False" in error for error in plan.errors)
+    with pytest.raises(SpecValidationError, match="enable_prefix_caching=False"):
         plan.validate()
 
 
@@ -930,6 +1209,102 @@ def test_modal_runner_raises_clear_error_on_cancelled_remote_run(
 
     with pytest.raises(RuntimeError, match="manifest payload"):
         runner.run(make_toy_capture_spec())
+
+
+def test_workflow_orchestrator_records_runtime_app_id_for_completed_remote_step(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    def fake_run_on_modal(
+        *,
+        runner_config: dict[str, object],
+        store_config: dict[str, object],
+        spec_payload: dict[str, object],
+        workflow_context: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "artifact_id": "capture_test",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-14T00:00:00+00:00",
+            "engine": spec_payload["engine"],
+            "runner": {
+                **runner_config,
+                "runtime_app_id": "ap-runtime-test",
+            },
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"features": {}},
+            "metadata": {},
+            "workflow_context": dict(workflow_context or {}),
+        }
+
+    monkeypatch.setattr("pipelines_v2.runtime.modal.run_on_modal", fake_run_on_modal)
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = ModalRunner(
+        resources=ModalResources(gpu="L4"),
+        artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
+        catalog=catalog,
+    )
+    orchestrator = WorkflowOrchestrator(runners={"capture_gpu": runner})
+    workflow = WorkflowSpec(
+        name="modal_runtime_id_success",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture_gpu",
+                spec=make_toy_capture_spec(),
+            ),
+        ),
+    )
+
+    result = orchestrator.run(workflow)
+
+    step_records = {record.step_name: record for record in catalog.list_workflow_steps(result.run_id or "")}
+    assert step_records["capture"].status == "completed"
+    assert step_records["capture"].runtime_app_id == "ap-runtime-test"
+    assert result.step("capture").manifest().runner["runtime_app_id"] == "ap-runtime-test"
+
+
+def test_workflow_orchestrator_records_runtime_app_id_for_failed_remote_step(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    def fake_run_on_modal(**_: object) -> dict[str, object]:
+        exc = RuntimeError("remote failure")
+        setattr(exc, "runtime_app_id", "ap-runtime-fail")
+        raise exc
+
+    monkeypatch.setattr("pipelines_v2.runtime.modal.run_on_modal", fake_run_on_modal)
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = ModalRunner(
+        resources=ModalResources(gpu="L4"),
+        artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
+        catalog=catalog,
+    )
+    orchestrator = WorkflowOrchestrator(runners={"capture_gpu": runner})
+    workflow = WorkflowSpec(
+        name="modal_runtime_id_failure",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture_gpu",
+                spec=make_toy_capture_spec(),
+            ),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="remote failure"):
+        orchestrator.run(workflow)
+
+    run_files = sorted((tmp_path / "catalog" / "workflow_runs").glob("*.json"))
+    assert len(run_files) == 1
+    run_id = run_files[0].stem
+    step_records = {record.step_name: record for record in catalog.list_workflow_steps(run_id)}
+    assert step_records["capture"].status == "failed"
+    assert step_records["capture"].runtime_app_id == "ap-runtime-fail"
 
 
 def test_modal_volume_store_blocks_large_remote_read_without_allow_large_transfer(
@@ -1544,6 +1919,215 @@ def test_workflow_orchestrator_records_workflow_lineage_and_can_resume(tmp_path:
     resumed_run = catalog.load_workflow_run(run_id)
     assert resumed_run is not None
     assert resumed_run.status == "completed"
+
+
+def test_workflow_orchestrator_finishes_inflight_siblings_and_resume_skips_completed_capture(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos", "split": "train"}, case_key="c1"),
+            Example(key="b", prompt="beta", labels={"class": "neg", "split": "train"}, case_key="c2"),
+            Example(key="c", prompt="gamma", labels={"class": "pos", "split": "test"}, case_key="c3"),
+            Example(key="d", prompt="delta", labels={"class": "neg", "split": "test"}, case_key="c4"),
+        ],
+        name="parallel_resume_dataset",
+    )
+    catalog = FileCatalog(tmp_path / "catalog")
+    shared_store = LocalArtifactStore(tmp_path / "artifacts")
+    residual_runner = _FailOnceRunner(
+        LocalRunner(artifacts=shared_store, catalog=catalog),
+        delay_seconds=0.2,
+    )
+    router_runner = _FailOnceRunner(
+        LocalRunner(artifacts=shared_store, catalog=catalog),
+        fail_step="capture_router",
+    )
+    analysis_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    orchestrator = WorkflowOrchestrator(
+        runners={
+            "capture_residual": residual_runner,
+            "capture_router": router_runner,
+            "analysis": analysis_runner,
+        },
+        max_parallelism=2,
+    )
+    workflow = WorkflowSpec(
+        name="parallel_branch_resume",
+        steps=(
+            WorkflowStep(
+                name="capture_residual",
+                runner="capture_residual",
+                spec=CaptureSpec(
+                    engine=ToyEngine(hidden_size=4, num_layers=2),
+                    dataset=dataset,
+                    sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+                ),
+            ),
+                WorkflowStep(
+                    name="capture_router",
+                    runner="capture_router",
+                    spec=CaptureSpec(
+                        engine=ToyEngine(hidden_size=4, num_layers=2),
+                        dataset=dataset,
+                        sites=[MoERoutingSite(name="router_last", layers=[0])],
+                    ),
+                ),
+            WorkflowStep(
+                name="probe",
+                runner="analysis",
+                spec=ProbeSpec(
+                    feature=StepRef("capture_residual").feature("resid_last"),
+                    labels=dataset.labels("class"),
+                    split=dataset.labels("split"),
+                    folds=2,
+                    baselines=["majority"],
+                ),
+            ),
+            WorkflowStep(
+                name="probe_router",
+                runner="analysis",
+                spec=ProbeSpec(
+                    feature=StepRef("capture_router").feature("router_last"),
+                    labels=dataset.labels("class"),
+                    split=dataset.labels("split"),
+                    folds=2,
+                    baselines=["majority"],
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="intentional failure for capture_router"):
+        orchestrator.run(workflow)
+
+    run_files = sorted((tmp_path / "catalog" / "workflow_runs").glob("*.json"))
+    assert len(run_files) == 1
+    run_id = run_files[0].stem
+    step_records = {record.step_name: record for record in catalog.list_workflow_steps(run_id)}
+    assert step_records["capture_residual"].status == "completed"
+    assert step_records["capture_router"].status == "failed"
+    assert "probe" not in step_records
+    assert step_records["probe_router"].status == "blocked"
+    assert residual_runner.calls.count("capture_residual") == 1
+    assert router_runner.calls.count("capture_router") == 1
+    assert analysis_runner.calls.count("probe") == 0
+    assert analysis_runner.calls.count("probe_router") == 0
+
+    resumed = orchestrator.run(workflow, resume_run_id=run_id)
+
+    assert resumed.run_id == run_id
+    assert resumed.step("probe").manifest().artifact_kind == "probe"
+    assert residual_runner.calls.count("capture_residual") == 1
+    assert router_runner.calls.count("capture_router") == 2
+    assert analysis_runner.calls.count("probe") == 1
+    assert analysis_runner.calls.count("probe_router") == 1
+
+    resumed_steps = {record.step_name: record for record in catalog.list_workflow_steps(run_id)}
+    assert resumed_steps["capture_residual"].status == "completed"
+    assert resumed_steps["capture_router"].status == "completed"
+    assert resumed_steps["probe"].status == "completed"
+    assert resumed_steps["probe_router"].status == "completed"
+
+
+def test_workflow_orchestrator_resume_recovers_persisted_artifact_from_running_step_record(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos", "split": "train"}, case_key="c1"),
+            Example(key="b", prompt="beta", labels={"class": "neg", "split": "train"}, case_key="c2"),
+            Example(key="c", prompt="gamma", labels={"class": "pos", "split": "test"}, case_key="c3"),
+            Example(key="d", prompt="delta", labels={"class": "neg", "split": "test"}, case_key="c4"),
+        ],
+        name="recover_running_step_dataset",
+    )
+    catalog = FileCatalog(tmp_path / "catalog")
+    shared_store = LocalArtifactStore(tmp_path / "artifacts")
+    capture_inner = LocalRunner(artifacts=shared_store, catalog=catalog)
+    capture_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    analysis_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=catalog))
+    orchestrator = WorkflowOrchestrator(
+        runners={
+            "capture": capture_runner,
+            "analysis": analysis_runner,
+        }
+    )
+    capture_spec = CaptureSpec(
+        engine=ToyEngine(hidden_size=4, num_layers=2),
+        dataset=dataset,
+        sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+    )
+    workflow = WorkflowSpec(
+        name="recover_running_step",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture",
+                spec=capture_spec,
+            ),
+            WorkflowStep(
+                name="probe",
+                runner="analysis",
+                spec=ProbeSpec(
+                    feature=StepRef("capture").feature("resid_last"),
+                    labels=dataset.labels("class"),
+                    split=dataset.labels("split"),
+                    folds=2,
+                    baselines=["majority"],
+                ),
+            ),
+        ),
+    )
+
+    run_id = f"wr_{workflow.semantic_hash()[:12]}_recover"
+    started_at = utc_now_iso()
+    catalog.record_workflow_run(
+        WorkflowRunRecord(
+            run_id=run_id,
+            workflow_name=workflow.name,
+            workflow_hash=workflow.semantic_hash(),
+            workflow_spec_hash=workflow.spec_hash(),
+            workflow_payload=workflow.to_dict(),
+            status="running",
+            started_at=started_at,
+        )
+    )
+    capture_step = workflow.ordered_steps()[0]
+    capture_context = WorkflowStepContext(
+        run_id=run_id,
+        workflow_name=workflow.name,
+        workflow_hash=workflow.semantic_hash(),
+        workflow_spec_hash=workflow.spec_hash(),
+        step_name=capture_step.name,
+        step_index=0,
+        runner=capture_step.runner,
+        step_semantic_hash=capture_step.semantic_hash(),
+        step_spec_hash=capture_step.spec_hash(),
+    )
+    persisted_capture = capture_inner.run(capture_spec, workflow_context=capture_context)
+    catalog.record_workflow_step(
+        WorkflowStepRecord(
+            run_id=run_id,
+            workflow_hash=workflow.semantic_hash(),
+            workflow_step_key=capture_context.workflow_step_key,
+            step_name="capture",
+            step_index=0,
+            runner="capture",
+            status="running",
+            step_semantic_hash=capture_step.semantic_hash(),
+            step_spec_hash=capture_step.spec_hash(),
+            started_at=started_at,
+        )
+    )
+
+    resumed = orchestrator.run(workflow, resume_run_id=run_id)
+
+    assert resumed.run_id == run_id
+    assert resumed.step("capture").id == persisted_capture.id
+    assert capture_runner.calls.count("capture") == 0
+    assert analysis_runner.calls.count("probe") == 1
+
+    step_records = {record.step_name: record for record in catalog.list_workflow_steps(run_id)}
+    assert step_records["capture"].status == "completed"
+    assert step_records["capture"].artifact_id == persisted_capture.id
+    assert step_records["probe"].status == "completed"
 
 
 def test_workflow_orchestrator_reuses_matching_completed_steps_across_runs(tmp_path: Path) -> None:
@@ -2188,11 +2772,505 @@ def test_local_report_runner_materializes_output_dir(tmp_path: Path) -> None:
     assert report.manifest().storage_refs["report"]["path"].endswith("report.md")
 
 
+def test_local_report_runner_downloads_only_direct_operation_inputs(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos"}, case_key="c1"),
+            Example(key="b", prompt="beta", labels={"class": "neg"}, case_key="c2"),
+            Example(key="c", prompt="gamma", labels={"class": "pos"}, case_key="c3"),
+            Example(key="d", prompt="delta", labels={"class": "neg"}, case_key="c4"),
+        ],
+        name="report_download_dataset",
+    )
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=4, num_layers=2),
+            dataset=dataset,
+            sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+        ),
+        workflow_context=WorkflowStepContext(
+            run_id="wr_test",
+            workflow_name="report_download",
+            workflow_hash="workflow_hash",
+            workflow_spec_hash="workflow_spec_hash",
+            step_name="capture",
+            step_index=0,
+            runner="capture",
+            step_semantic_hash="capture_semantic_hash",
+            step_spec_hash="capture_spec_hash",
+        ),
+    )
+    probe = runner.run(
+        ProbeSpec(
+            feature=capture.feature("resid_last"),
+            labels=dataset.labels("class"),
+            folds=2,
+            baselines=["majority"],
+        ),
+        workflow_context=WorkflowStepContext(
+            run_id="wr_test",
+            workflow_name="report_download",
+            workflow_hash="workflow_hash",
+            workflow_spec_hash="workflow_spec_hash",
+            step_name="probe",
+            step_index=1,
+            runner="analysis",
+            step_semantic_hash="probe_semantic_hash",
+            step_spec_hash="probe_spec_hash",
+        ),
+    )
+    report = runner.run(
+        ReportSpec(
+            template="download_test",
+            output_dir=str(tmp_path / "reports"),
+            inputs=[capture, probe],
+        ),
+        workflow_context=WorkflowStepContext(
+            run_id="wr_test",
+            workflow_name="report_download",
+            workflow_hash="workflow_hash",
+            workflow_spec_hash="workflow_spec_hash",
+            step_name="report",
+            step_index=2,
+            runner="report",
+            step_semantic_hash="report_semantic_hash",
+            step_spec_hash="report_spec_hash",
+        ),
+    )
+
+    published = report.manifest().metadata["published_report"]
+    results_dir = Path(published["results_dir"])
+    report_json_path = Path(published["report_json_path"])
+    probe_results_path = results_dir / "probe_results.json"
+    capture_results_path = results_dir / "capture_results.json"
+
+    assert results_dir.exists()
+    assert probe_results_path.exists()
+    assert not capture_results_path.exists()
+    assert published["downloaded_results"] == [
+        {
+            "name": "probe",
+            "artifact_id": probe.id,
+            "artifact_kind": "probe",
+            "path": str(probe_results_path),
+            "source": {
+                "store": probe.manifest().storage_refs["result"]["store"],
+                "path": probe.manifest().storage_refs["result"]["path"],
+                "format": probe.manifest().storage_refs["result"]["format"],
+                "bytes": probe.manifest().storage_refs["result"]["bytes"],
+            },
+        }
+    ]
+
+    with probe_results_path.open("r", encoding="utf-8") as f:
+        downloaded_probe_payload = json.load(f)
+    assert downloaded_probe_payload == probe.result()
+
+    with report_json_path.open("r", encoding="utf-8") as f:
+        report_payload = json.load(f)
+    capture_input = report_payload["inputs"][0]
+    probe_input = report_payload["inputs"][1]
+    assert "downloaded_result_path" not in capture_input
+    assert probe_input["downloaded_result_path"] == str(probe_results_path)
+
+
+def test_report_spec_includes_richer_artifact_input_details(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos"}, case_key="c1"),
+            Example(key="b", prompt="beta", labels={"class": "neg"}, case_key="c2"),
+            Example(key="c", prompt="gamma", labels={"class": "pos"}, case_key="c3"),
+            Example(key="d", prompt="delta", labels={"class": "neg"}, case_key="c4"),
+        ],
+        name="report_detail_dataset",
+    )
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=4, num_layers=2),
+            dataset=dataset,
+            sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+        )
+    )
+    probe = runner.run(
+        ProbeSpec(
+            feature=capture.feature("resid_last"),
+            labels=dataset.labels("class"),
+            folds=2,
+            baselines=["majority"],
+        )
+    )
+    report = runner.run(
+        ReportSpec(
+            template="detail_test",
+            inputs=[capture, probe],
+        )
+    )
+
+    payload = report.result()
+    capture_input = payload["inputs"][0]
+    probe_input = payload["inputs"][1]
+
+    assert capture_input["name"] == capture.id
+    assert capture_input["artifact_kind"] == "capture"
+    assert capture_input["feature_names"] == ["resid_last"]
+    assert capture_input["primary_output"]["name"] == "manifest"
+    assert capture_input["storage"]["features"]["count"] == 1
+    assert capture_input["example_coverage"]["dataset_name"] == "report_detail_dataset"
+
+    assert probe_input["name"] == probe.id
+    assert probe_input["artifact_kind"] == "probe"
+    assert probe_input["summary"]["example_count"] == 4
+    assert probe_input["primary_output"]["name"] == "result"
+    assert probe_input["storage"]["result"]["path"].endswith("result.json")
+
+
+def test_report_spec_includes_modal_volume_mappings_for_inputs() -> None:
+    from pipelines_v2.operations.execution.common import summarize_report_input
+    from pipelines_v2.storage.modal import ModalVolumeStore
+
+    manifest = ArtifactManifest(
+        artifact_id="probe_test_modal",
+        artifact_kind="probe",
+        schema_version=1,
+        operation_spec_hash="spec_hash",
+        operation_semantic_hash="semantic_hash",
+        created_at="2026-04-15T00:00:00+00:00",
+        engine={},
+        runner={
+            "kind": "modal",
+            "runtime_app_id": "ap-test",
+            "resources": {
+                "volumes": [
+                    {"name": "xenon-models", "mount_path": "/models"},
+                ]
+            },
+        },
+        input_artifact_refs=(),
+        example_coverage={"materialized": True, "example_count": 4, "example_keys": ["a", "b", "c", "d"]},
+        storage_refs={
+            "result": {
+                "store": "modal_volume",
+                "name": "xenon-data",
+                "path": "/data/artifacts/test/probe_test_modal/result.json",
+                "format": "json",
+                "bytes": 42,
+            }
+        },
+        metadata={},
+        workflow_context={"step_name": "family_identity_residual", "run_id": "wr_test"},
+    )
+    artifact = OperationArtifact(
+        _manifest=manifest,
+        store=ModalVolumeStore(name="xenon-data", root="/data/artifacts/test"),
+    )
+
+    payload = summarize_report_input(artifact)
+
+    assert payload["runtime"]["volume_mappings"] == [
+        {"name": "xenon-data", "mount_path": "/data", "role": "artifact_store"},
+        {"name": "xenon-models", "mount_path": "/models", "role": "runner_resource"},
+    ]
+
+
+def test_workflow_result_payload_does_not_localize_non_report_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos"}, case_key="c1"),
+            Example(key="b", prompt="beta", labels={"class": "neg"}, case_key="c2"),
+            Example(key="c", prompt="gamma", labels={"class": "pos"}, case_key="c3"),
+            Example(key="d", prompt="delta", labels={"class": "neg"}, case_key="c4"),
+        ],
+        name="cli_payload_dataset",
+    )
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=4, num_layers=2),
+            dataset=dataset,
+            sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+        )
+    )
+    probe = runner.run(
+        ProbeSpec(
+            feature=capture.feature("resid_last"),
+            labels=dataset.labels("class"),
+            folds=2,
+            baselines=["majority"],
+        )
+    )
+
+    def _fail_localize(self: Any) -> Any:
+        raise AssertionError("cli should not localize non-report artifacts while rendering workflow results")
+
+    monkeypatch.setattr(type(probe), "localize", _fail_localize)
+
+    payload = _workflow_result_payload(
+        "cli_payload_test",
+        WorkflowResult(
+            run_id="wr_test",
+            workflow_hash="wh_test",
+            step_results={"probe": probe},
+        ),
+    )
+
+    assert payload["steps"]["probe"]["artifact_id"] == probe.id
+    assert payload["steps"]["probe"]["location"].endswith("result.json")
+
+
+def test_phase5_style_specs_execute_over_residual_router_and_text(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = _make_phase5_like_dataset()
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=6, num_layers=2, num_experts=8, sequence_length=1),
+            dataset=dataset,
+            sites=[
+                ResidualSite(name="residual_prompt_eos", site="resid_post", layers=[0, 1], tokens=TokenSelector.last()),
+                MoERoutingSite(
+                    name="router_prompt_eos",
+                    layers=[0, 1],
+                    tokens=TokenSelector.last(),
+                    record=[RoutingRecord.gate_logits(dtype="float16")],
+                ),
+            ],
+        )
+    )
+
+    residual_transfer = runner.run(
+        TransferProbeSpec(
+            feature=capture.feature("residual_prompt_eos"),
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_pair_id"),
+            cohort_by=dataset.labels("family_group"),
+            cohort_values=("size", "activity"),
+            metrics=("balanced_accuracy", "auroc"),
+        )
+    )
+    router_transfer = runner.run(
+        TransferProbeSpec(
+            feature=capture.feature("router_prompt_eos"),
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_pair_id"),
+            cohort_by=dataset.labels("family_group"),
+            cohort_values=("size", "activity"),
+            metrics=("balanced_accuracy", "auroc"),
+        )
+    )
+    text_baseline = runner.run(
+        TextBaselineSpec(
+            text=dataset.labels("user_text"),
+            labels=dataset.labels("strategy_family"),
+            group_by=dataset.cases("matched_pair_id"),
+            model="countvectorizer_logreg",
+            metrics=("balanced_accuracy", "auroc"),
+        )
+    )
+    residualized = runner.run(
+        ResidualizedProbeSpec(
+            feature=capture.feature("residual_prompt_eos"),
+            labels=dataset.labels("conflict_present"),
+            residualize_against=dataset.labels("strategy_family"),
+            group_by=dataset.cases("matched_pair_id"),
+            metrics=("balanced_accuracy", "auroc"),
+        )
+    )
+    geometry_pca = runner.run(
+        GeometrySpec(
+            feature=capture.feature("residual_prompt_eos"),
+            method="pca",
+            layers=[0],
+            color_by={"family": dataset.labels("strategy_family")},
+            subset=dataset.labels("conflict_present").equals(True),
+            normalize="rms_per_row",
+            components=2,
+        )
+    )
+    geometry_lda = runner.run(
+        GeometrySpec(
+            feature=capture.feature("residual_prompt_eos"),
+            method="lda",
+            layers=[1],
+            label=dataset.labels("strategy_family"),
+            normalize="rms_per_row",
+            components=2,
+        )
+    )
+
+    residual_transfer_payload = residual_transfer.result()
+    router_transfer_payload = router_transfer.result()
+    text_baseline_payload = text_baseline.result()
+    residualized_payload = residualized.result()
+    geometry_pca_payload = geometry_pca.result()
+    geometry_lda_payload = geometry_lda.result()
+
+    assert residual_transfer_payload["kind"] == "transfer_probe_result"
+    assert residual_transfer_payload["layers"][0]["cross_cohort_transfer"]
+    assert router_transfer_payload["kind"] == "transfer_probe_result"
+    assert "size_to_activity" in router_transfer_payload["layers"][0]["cross_cohort_transfer"]
+    assert text_baseline_payload["kind"] == "text_baseline_result"
+    assert text_baseline_payload["mode"] == "grouped_cv"
+    assert residualized_payload["kind"] == "residualized_probe_result"
+    assert residualized_payload["layers"][0]["family_subspace_rank"] >= 1
+    assert geometry_pca_payload["kind"] == "geometry_result"
+    assert geometry_pca_payload["layers"][0]["example_count"] == 4
+    assert geometry_lda_payload["kind"] == "geometry_result"
+    assert geometry_lda_payload["layers"][0]["label_name"] == "strategy_family"
+
+
+def test_probe_rows_align_subset_dataset_to_feature_rows(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = _make_phase5_like_dataset()
+    subset = dataset.select(
+        keys=[
+            "size_conflict_train",
+            "size_aligned_train",
+            "activity_conflict_test",
+            "activity_aligned_test",
+        ]
+    )
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=6, num_layers=2, sequence_length=1),
+            dataset=dataset,
+            sites=[ResidualSite(name="residual_prompt_eos", site="resid_post", layers=[0, 1], tokens=TokenSelector.last())],
+        )
+    )
+
+    probe = runner.run(
+        ProbeSpec(
+            feature=capture.feature("residual_prompt_eos"),
+            rows=subset,
+            labels=subset.labels("conflict_present"),
+            split=subset.labels("strategy_lexical_split"),
+            train_values=("train",),
+            test_values=("test",),
+            metrics=("balanced_accuracy",),
+        )
+    )
+
+    payload = probe.result()
+    assert payload["kind"] == "probe_result"
+    assert payload["summary"]["example_count"] == 4
+    assert probe.manifest().example_coverage["example_keys"] == sorted(subset.example_keys())
+
+
+def test_probe_rows_must_be_subset_of_feature_rows(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    dataset = _make_phase5_like_dataset()
+    bad_rows = Dataset.from_examples(
+        [
+            Example(
+                key="missing_key",
+                prompt="SYSTEM\nChoose one.\n",
+                labels={"conflict_present": True, "strategy_lexical_split": "test"},
+                case_key="missing_pair",
+            )
+        ],
+        name="bad_rows",
+    )
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(hidden_size=6, num_layers=2, sequence_length=1),
+            dataset=dataset,
+            sites=[ResidualSite(name="residual_prompt_eos", site="resid_post", layers=[0, 1], tokens=TokenSelector.last())],
+        )
+    )
+
+    with pytest.raises(SpecValidationError, match="rows requested 1 example keys not present"):
+        runner.run(
+            ProbeSpec(
+                feature=capture.feature("residual_prompt_eos"),
+                rows=bad_rows,
+                labels=bad_rows.labels("conflict_present"),
+                split=bad_rows.labels("strategy_lexical_split"),
+                train_values=("train",),
+                test_values=("test",),
+                metrics=("balanced_accuracy",),
+            )
+        )
+
+
+def test_workflow_orchestrator_plan_errors_on_mixed_analysis_datasets_without_rows(tmp_path: Path) -> None:
+    dataset = _make_phase5_like_dataset()
+    arbitration_dataset = dataset.select(
+        keys=[
+            "size_conflict_train",
+            "size_aligned_train",
+            "activity_conflict_train",
+            "activity_aligned_train",
+        ]
+    )
+    shared_store = LocalArtifactStore(tmp_path / "artifacts")
+    orchestrator = WorkflowOrchestrator(
+        runners={
+            "capture": LocalRunner(artifacts=shared_store),
+            "analysis": LocalRunner(artifacts=shared_store),
+        }
+    )
+    workflow = WorkflowSpec(
+        name="mixed_rows_without_rows",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture",
+                spec=CaptureSpec(
+                    engine=ToyEngine(hidden_size=4, num_layers=2),
+                    dataset=dataset,
+                    sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0, 1])],
+                ),
+            ),
+            WorkflowStep(
+                name="probe",
+                runner="analysis",
+                spec=ProbeSpec(
+                    feature=StepRef("capture").feature("resid_last"),
+                    labels=arbitration_dataset.labels("conflict_present"),
+                    split=arbitration_dataset.labels("strategy_lexical_split"),
+                    train_values=("train",),
+                    test_values=("test",),
+                    metrics=("balanced_accuracy",),
+                ),
+            ),
+        ),
+    )
+
+    plan = orchestrator.plan(workflow)
+
+    assert len(plan.steps) == 2
+    assert any("Add rows=..." in message for message in plan.steps[1].execution.errors)
+    with pytest.raises(SpecValidationError, match="Add rows=..."):
+        plan.steps[1].execution.validate()
+
+
+def test_phase_05_workflow_json_roundtrips_to_real_library_specs() -> None:
+    module_path = Path("projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow.py")
+    spec = importlib.util.spec_from_file_location("phase_05_workflow", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    loaded = module.load_workflow_json()
+    workflow = WorkflowSpec.from_dict(loaded)
+
+    assert isinstance(workflow.steps[5].spec, TransferProbeSpec)
+    assert isinstance(workflow.steps[9].spec, TextBaselineSpec)
+    assert isinstance(workflow.steps[13].spec, ResidualizedProbeSpec)
+    assert isinstance(workflow.steps[16].spec, GeometrySpec)
+    assert isinstance(workflow.steps[7].spec.rows, Dataset)
+    assert workflow.steps[7].spec.rows.name == "prompt_confusion_phase_05_arbitration"
+    assert isinstance(workflow.steps[8].spec.rows, Dataset)
+    assert workflow.steps[8].spec.rows.name == "prompt_confusion_phase_05_arbitration"
+
+
 def test_phase_04_arch2_target_builders_and_json_loader() -> None:
     module_path = Path("projects/DX_TERMINAL/prompt_confusion/phase_04/specs/arch2_target.py")
     spec = importlib.util.spec_from_file_location("phase_04_arch2_target", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
 
     workflow = module.build_workflow()
@@ -2213,7 +3291,10 @@ def test_phase_04_arch2_target_builders_and_json_loader() -> None:
     assert loaded["dataset"].fetch["case_key_column"] == "matched_pair_id"
     assert loaded["dataset"].fetch.get("metadata_columns", ()) == ()
     prompt_state = loaded["workflows"]["prompt_state"]
+    capture_router = next(step.spec for step in prompt_state.steps if step.name == "capture_prompt_state_router")
     probe_conflict = next(step.spec for step in prompt_state.steps if step.name == "probe_conflict_present")
+    assert capture_router.engine.enforce_eager is True
+    assert capture_router.engine.enable_prefix_caching is False
     assert probe_conflict.tokens.kind == "full_sequence"
     assert probe_conflict.pooling.kind == "last"
 
@@ -2223,6 +3304,7 @@ def test_phase_04_arch2_target_workflows_plan_cleanly() -> None:
     spec = importlib.util.spec_from_file_location("phase_04_arch2_target", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
 
     loaded = module.load_phase_04_target_json()
@@ -2234,11 +3316,87 @@ def test_phase_04_arch2_target_workflows_plan_cleanly() -> None:
         assert all(not step.execution.errors for step in plan.steps)
 
 
+def test_phase_05_pipelines_v2_workflow_builders_and_json_loader() -> None:
+    module_path = Path("projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow.py")
+    spec = importlib.util.spec_from_file_location("phase_05_workflow", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    base_dataset = module.build_dataset()
+    arbitration_dataset = module.build_phase_05_arbitration_dataset()
+    workflow = module.build_workflow(base_dataset, arbitration_dataset=arbitration_dataset)
+    loaded = module.load_workflow_json()
+
+    assert isinstance(workflow, WorkflowSpec)
+    assert [step.name for step in workflow.steps] == [
+        "derive_family_group",
+        "capture_prompt_eos_residual",
+        "capture_prompt_eos_router",
+        "family_identity_residual",
+        "family_identity_router",
+        "detection_transfer_residual",
+        "detection_transfer_router",
+        "arbitration_transfer_residual",
+        "arbitration_transfer_router",
+        "lexical_family_identity",
+        "lexical_cross_family_detection_transfer",
+        "lexical_holdout_detection_residual",
+        "lexical_holdout_detection_text",
+        "family_residualized_conflict_residual",
+        "family_residualized_conflict_router",
+        "detection_transfer_regularization_sweep",
+        "family_geometry_pca_full",
+        "family_geometry_pca_conflict_only",
+        "family_geometry_lda_conflict_only",
+        "report",
+    ]
+    assert "capture_gpu" in module.build_runner_specs()
+    assert base_dataset.fetch["table"] == "workflow_dataset_conflict_probe_v3_v1"
+    assert arbitration_dataset.fetch["table"] == "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1"
+    assert isinstance(loaded, dict)
+    assert loaded["kind"] == "workflow"
+    assert [step["name"] for step in loaded["steps"]] == [step.name for step in workflow.steps]
+    assert loaded["steps"][1]["spec"]["engine"]["kind"] == "vllm"
+    assert loaded["steps"][2]["spec"]["engine"]["kind"] == "vllm"
+    assert loaded["steps"][1]["spec"]["engine"]["enforce_eager"] is False
+    assert loaded["steps"][2]["spec"]["engine"]["enforce_eager"] is True
+    assert loaded["steps"][1]["spec"]["engine"]["enable_prefix_caching"] is True
+    assert loaded["steps"][2]["spec"]["engine"]["enable_prefix_caching"] is False
+    assert loaded["steps"][5]["spec"]["kind"] == "transfer_probe"
+    assert loaded["steps"][7]["spec"]["rows"]["name"] == "prompt_confusion_phase_05_arbitration"
+    assert loaded["steps"][8]["spec"]["rows"]["name"] == "prompt_confusion_phase_05_arbitration"
+    assert loaded["steps"][9]["spec"]["kind"] == "text_baseline"
+    assert loaded["steps"][13]["spec"]["kind"] == "residualized_probe"
+    assert loaded["steps"][16]["spec"]["kind"] == "geometry"
+
+
+def test_phase_05_pipelines_v2_workflow_records_missing_pieces_explicitly() -> None:
+    module_path = Path("projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow.py")
+    spec = importlib.util.spec_from_file_location("phase_05_workflow", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    payload = module.build_phase_05_target_payload()
+    missing = payload["missing_pieces"]
+
+    assert payload["mode"] == "library_backed"
+    assert any("report outputs are still thin" in item.lower() for item in missing)
+    assert not any("transfer probe spec" in item.lower() for item in missing)
+    assert not any("text-baseline" in item.lower() for item in missing)
+    assert not any("residualization" in item.lower() for item in missing)
+    assert not any("geometry" in item.lower() and "still" not in item.lower() for item in missing)
+
+
 def test_pipelines_v2_modal_smoke_file_builders() -> None:
     module_path = Path("scripts/pipelines_v2_orchestrator_smoke.py")
     spec = importlib.util.spec_from_file_location("pipelines_v2_orchestrator_smoke", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
 
     dataset = module.build_dataset()
@@ -2285,6 +3443,45 @@ def test_pipelines_v2_cli_workflow_plan_loads_python_file(capsys: pytest.Capture
     assert payload["workflow"] == "pipelines_v2_modal_capture_probe_smoke"
     assert [step["name"] for step in payload["steps"]] == ["capture", "probe"]
     assert all(step["errors"] == [] for step in payload["steps"])
+
+
+def test_load_python_workflow_file_passes_dataset_into_optional_dataset_builder(tmp_path: Path) -> None:
+    workflow_file = tmp_path / "workflow_optional_dataset.py"
+    workflow_file.write_text(
+        "\n".join(
+            [
+                "from pipelines_v2.api import CaptureSpec, Dataset, Example, ResidualSite, ToyEngine, WorkflowSpec, WorkflowStep",
+                "",
+                "def build_dataset():",
+                "    return Dataset.from_examples([Example(key='limited', prompt='alpha')], name='limited_dataset')",
+                "",
+                "def build_workflow(dataset=None):",
+                "    if dataset is None:",
+                "        dataset = Dataset.from_examples([Example(key='fallback', prompt='beta')], name='fallback_dataset')",
+                "    return WorkflowSpec(",
+                "        name='optional_dataset_builder',",
+                "        steps=(",
+                "            WorkflowStep(",
+                "                name='capture',",
+                "                runner='capture_gpu',",
+                "                spec=CaptureSpec(",
+                "                    engine=ToyEngine(hidden_size=4, num_layers=2),",
+                "                    dataset=dataset,",
+                "                    sites=[ResidualSite(name='resid_last', site='resid_post', layers=[0])],",
+                "                ),",
+                "            ),",
+                "        ),",
+                "    )",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    dataset, workflow, _ = load_python_workflow_file(path=workflow_file)
+
+    assert dataset.name == "limited_dataset"
+    assert workflow.steps[0].spec.dataset.name == "limited_dataset"
 
 
 def test_runner_spec_round_trips_from_dict() -> None:

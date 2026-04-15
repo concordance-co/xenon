@@ -68,6 +68,15 @@ class Catalog(Protocol):
         """Load one recorded artifact manifest by id."""
         ...
 
+    def find_artifact_for_workflow_step(
+        self,
+        *,
+        run_id: str,
+        workflow_step_key: str,
+    ) -> ArtifactManifest | None:
+        """Return a persisted artifact for one workflow step within one workflow run."""
+        ...
+
     def record_workflow_run(self, record: WorkflowRunRecord) -> None:
         """Record or update one workflow run."""
         ...

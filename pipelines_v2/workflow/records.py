@@ -66,6 +66,7 @@ class WorkflowStepRecord:
     artifact_kind: str | None = None
     started_at: str | None = None
     finished_at: str | None = None
+    runtime_app_id: str | None = None
     reused_from_run_id: str | None = None
     reused_from_artifact_id: str | None = None
 
@@ -85,6 +86,7 @@ class WorkflowStepRecord:
             "artifact_kind": self.artifact_kind,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
+            "runtime_app_id": self.runtime_app_id,
             "reused_from_run_id": self.reused_from_run_id,
             "reused_from_artifact_id": self.reused_from_artifact_id,
         }
@@ -106,6 +108,7 @@ class WorkflowStepRecord:
             artifact_kind=str(payload["artifact_kind"]) if payload.get("artifact_kind") is not None else None,
             started_at=str(payload["started_at"]) if payload.get("started_at") is not None else None,
             finished_at=str(payload["finished_at"]) if payload.get("finished_at") is not None else None,
+            runtime_app_id=str(payload["runtime_app_id"]) if payload.get("runtime_app_id") is not None else None,
             reused_from_run_id=(
                 str(payload["reused_from_run_id"]) if payload.get("reused_from_run_id") is not None else None
             ),

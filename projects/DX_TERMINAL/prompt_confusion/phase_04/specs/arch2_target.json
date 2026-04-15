@@ -331,8 +331,8 @@
             "engine": {
               "add_generation_prompt": false,
               "enable_chunked_prefill": false,
-              "enable_prefix_caching": true,
-              "enforce_eager": false,
+              "enable_prefix_caching": false,
+              "enforce_eager": true,
               "extra": {},
               "gpu_memory_utilization": 0.9,
               "kind": "vllm",

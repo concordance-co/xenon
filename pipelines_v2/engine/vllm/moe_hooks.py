@@ -39,8 +39,16 @@ def _make_patched_forward(block: Any) -> Any:
         router_logits, _ = block.gate(hidden_states)
 
         if getattr(block, "_router_capture_enabled", False):
-            block._router_logits_buffer[:num_tokens].copy_(router_logits.float())
-            block._router_num_captured = num_tokens
+            start = int(getattr(block, "_router_num_captured", 0))
+            end = start + num_tokens
+            if end > block._router_logits_buffer.shape[0]:
+                raise RuntimeError(
+                    "Router logits buffer overflow: "
+                    f"needed {end} rows, allocated {block._router_logits_buffer.shape[0]}. "
+                    "Increase the configured max token budget for router capture."
+                )
+            block._router_logits_buffer[start:end].copy_(router_logits.float())
+            block._router_num_captured = end
 
         shared_out, fused_out = block.experts(
             hidden_states=hidden_states,

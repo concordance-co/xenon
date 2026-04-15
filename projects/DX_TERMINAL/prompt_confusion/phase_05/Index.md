@@ -16,6 +16,8 @@ conditions.
 | File | What it covers |
 |---|---|
 | [design.md](specs/design.md) | Full Phase 05 design: framing, three directions, sequencing, expansion gate |
+| [workflow.py](specs/workflow.py) | `pipelines_v2` workflow builder for the current Phase 05 library surface |
+| [workflow.json](specs/workflow.json) | Checked-in `pipelines_v2` workflow snapshot |
 | [notes.md](notes.md) | Running log of known limitations and learnings |
 
 ## Dataset

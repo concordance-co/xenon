@@ -9,17 +9,28 @@ from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from pipelines_v2.core.types import SpecValidationError, utc_now_iso
+from pipelines_v2.core.types import SpecValidationError, stable_hash, utc_now_iso
+from pipelines_v2.data.datasets import CaseSet, Dataset, LabelPredicate, LabelSet
+from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
+from pipelines_v2.operations.representation import GeometrySpec
 from pipelines_v2.operations.specs import CaptureSpec, TokenSelector
 from pipelines_v2.runtime import Runner
 from pipelines_v2.storage.artifacts import artifact_from_manifest
-from pipelines_v2.workflow.specs import StepFeatureRef, StepLabelRef, StepRef, WorkflowPlan, WorkflowSpec, WorkflowStepPlan
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepContext, WorkflowStepRecord
+from pipelines_v2.workflow.specs import (
+    StepFeatureRef,
+    StepLabelRef,
+    StepRef,
+    WorkflowPlan,
+    WorkflowSpec,
+    WorkflowStepPlan,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class WorkflowResult:
     """Collected outputs from a completed workflow run."""
+
     run_id: str | None = None
     workflow_hash: str | None = None
     step_results: dict[str, Any] = field(default_factory=dict)
@@ -32,12 +43,16 @@ class WorkflowResult:
 @dataclass(slots=True)
 class WorkflowOrchestrator:
     """Execute a workflow over named runners with dependency-aware fanout."""
+
     runners: Mapping[str, Runner]
     max_parallelism: int | None = None
 
     def plan(self, workflow: WorkflowSpec) -> WorkflowPlan:
         """Preflight each workflow step against its assigned runner."""
-        workflow_errors = _workflow_section_metadata_errors(workflow)
+        workflow_errors = _merge_workflow_errors(
+            _workflow_section_metadata_errors(workflow),
+            _workflow_row_alignment_errors(workflow),
+        )
         step_plans: list[WorkflowStepPlan] = []
         for step in workflow.ordered_steps():
             try:
@@ -71,9 +86,11 @@ class WorkflowOrchestrator:
         reuse_completed: bool = False,
     ) -> WorkflowResult:
         """Execute a workflow, resolving step refs as dependencies complete."""
+
         plan = self.plan(workflow)
         for step in plan.steps:
             step.execution.validate()
+
         ordered_steps = workflow.ordered_steps()
         step_by_name = {step.name: step for step in ordered_steps}
         step_index_by_name = {step.name: index for index, step in enumerate(ordered_steps)}
@@ -84,6 +101,7 @@ class WorkflowOrchestrator:
         catalog = self._workflow_catalog()
         existing_step_records: dict[str, WorkflowStepRecord] = {}
         step_started_at: dict[str, str] = {}
+        workflow_started_at = utc_now_iso()
 
         if (resume_run_id is not None or reuse_completed) and catalog is None:
             raise SpecValidationError(
@@ -100,7 +118,7 @@ class WorkflowOrchestrator:
                         workflow_spec_hash=workflow_spec_hash,
                         workflow_payload=workflow.to_dict(),
                         status="running",
-                        started_at=utc_now_iso(),
+                        started_at=workflow_started_at,
                     )
                 )
             else:
@@ -112,6 +130,7 @@ class WorkflowOrchestrator:
                         f"Workflow run {resume_run_id!r} has hash {prior.workflow_hash}, "
                         f"but current workflow hash is {workflow_hash}"
                     )
+                workflow_started_at = prior.started_at
                 catalog.record_workflow_run(
                     WorkflowRunRecord(
                         run_id=prior.run_id,
@@ -126,8 +145,7 @@ class WorkflowOrchestrator:
                     )
                 )
                 existing_step_records = {
-                    record.step_name: record
-                    for record in catalog.list_workflow_steps(run_id)
+                    record.step_name: record for record in catalog.list_workflow_steps(run_id)
                 }
 
         results: dict[str, Any] = {}
@@ -137,107 +155,141 @@ class WorkflowOrchestrator:
 
         if catalog is not None and existing_step_records:
             for step_name, record in existing_step_records.items():
-                if record.status not in {"completed", "reused"} or not record.artifact_id:
+                if record.status not in {"completed", "reused", "running"}:
                     continue
-                manifest = catalog.load_artifact(record.artifact_id)
+                manifest = _load_manifest_for_workflow_step(catalog, record)
                 if manifest is None:
                     continue
                 runner = self.runners[step_by_name[step_name].runner]
                 store = getattr(runner, "artifacts", None)
                 if store is None:
                     continue
+                if record.status == "running":
+                    catalog.record_workflow_step(
+                        WorkflowStepRecord(
+                            run_id=run_id,
+                            workflow_hash=workflow_hash,
+                            workflow_step_key=record.workflow_step_key,
+                            step_name=step_name,
+                            step_index=step_index_by_name[step_name],
+                            runner=step_by_name[step_name].runner,
+                            status="completed",
+                            step_semantic_hash=step_by_name[step_name].semantic_hash(),
+                            step_spec_hash=step_by_name[step_name].spec_hash(),
+                            input_artifact_refs=tuple(manifest.input_artifact_refs),
+                            artifact_id=manifest.artifact_id,
+                            artifact_kind=manifest.artifact_kind,
+                            started_at=record.started_at or workflow_started_at,
+                            finished_at=utc_now_iso(),
+                            runtime_app_id=_manifest_runtime_app_id(manifest),
+                        )
+                    )
                 results[step_name] = artifact_from_manifest(manifest, store=store)
                 pending.discard(step_name)
+
+        first_failure: Exception | None = None
+        failed_steps: set[str] = set()
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             while pending or running:
                 progress_made = False
-                ready = [
-                    step_by_name[name]
-                    for name in sorted(pending)
-                    if dependencies[name].issubset(results)
-                ]
-                for step in ready:
-                    runner = self.runners[step.runner]
-                    resolved_spec = _resolve_step_refs(step.spec, results)
-                    step_context = WorkflowStepContext(
-                        run_id=run_id,
-                        workflow_name=workflow.name,
-                        workflow_hash=workflow_hash,
-                        workflow_spec_hash=workflow_spec_hash,
-                        step_name=step.name,
-                        step_index=step_index_by_name[step.name],
-                        runner=step.runner,
-                        step_semantic_hash=step.semantic_hash(),
-                        step_spec_hash=step.spec_hash(),
-                    )
-                    input_artifact_refs = tuple(_input_artifact_ids_from_results(step, results))
-                    if catalog is not None:
-                        resumed = existing_step_records.get(step.name)
-                        if resumed is not None and resumed.status in {"completed", "reused"} and resumed.artifact_id:
-                            pending.remove(step.name)
-                            progress_made = True
-                            continue
-                        if reuse_completed:
-                            reusable = catalog.find_latest_reusable_step(
-                                step_name=step.name,
-                                step_semantic_hash=step_context.step_semantic_hash,
-                                input_artifact_refs=input_artifact_refs,
-                            )
-                            if reusable is not None and reusable.artifact_id:
-                                manifest = catalog.load_artifact(reusable.artifact_id)
-                                store = getattr(runner, "artifacts", None)
-                                if manifest is not None and store is not None:
-                                    results[step.name] = artifact_from_manifest(manifest, store=store)
-                                    catalog.record_workflow_step(
-                                        WorkflowStepRecord(
-                                            run_id=run_id,
-                                            workflow_hash=workflow_hash,
-                                            workflow_step_key=step_context.workflow_step_key,
-                                            step_name=step.name,
-                                            step_index=step_index_by_name[step.name],
-                                            runner=step.runner,
-                                            status="reused",
-                                            step_semantic_hash=step_context.step_semantic_hash,
-                                            step_spec_hash=step_context.step_spec_hash,
-                                            input_artifact_refs=input_artifact_refs,
-                                            artifact_id=reusable.artifact_id,
-                                            artifact_kind=reusable.artifact_kind,
-                                            started_at=utc_now_iso(),
-                                            finished_at=utc_now_iso(),
-                                            reused_from_run_id=reusable.run_id,
-                                            reused_from_artifact_id=reusable.artifact_id,
-                                        )
-                                    )
-                                    pending.remove(step.name)
-                                    progress_made = True
-                                    continue
-                        catalog.record_workflow_step(
-                            WorkflowStepRecord(
-                                run_id=run_id,
-                                workflow_hash=workflow_hash,
-                                workflow_step_key=step_context.workflow_step_key,
-                                step_name=step.name,
-                                step_index=step_index_by_name[step.name],
-                                runner=step.runner,
-                                status="running",
-                                step_semantic_hash=step_context.step_semantic_hash,
-                                step_spec_hash=step_context.step_spec_hash,
-                                input_artifact_refs=input_artifact_refs,
-                                started_at=utc_now_iso(),
-                            )
+
+                if first_failure is None:
+                    ready = [
+                        step_by_name[name]
+                        for name in sorted(pending)
+                        if dependencies[name].issubset(results)
+                    ]
+                    for step in ready:
+                        runner = self.runners[step.runner]
+                        resolved_spec = _resolve_step_refs(step.spec, results)
+                        step_context = WorkflowStepContext(
+                            run_id=run_id,
+                            workflow_name=workflow.name,
+                            workflow_hash=workflow_hash,
+                            workflow_spec_hash=workflow_spec_hash,
+                            step_name=step.name,
+                            step_index=step_index_by_name[step.name],
+                            runner=step.runner,
+                            step_semantic_hash=step.semantic_hash(),
+                            step_spec_hash=step.spec_hash(),
                         )
-                        step_started_at[step.name] = utc_now_iso()
-                    else:
-                        step_started_at[step.name] = utc_now_iso()
-                    future = pool.submit(_run_with_workflow_context, runner, resolved_spec, step_context)
-                    running[future] = step.name
-                    pending.remove(step.name)
-                    progress_made = True
+                        input_artifact_refs = tuple(_input_artifact_ids_from_results(step, results))
+                        if catalog is not None:
+                            resumed = existing_step_records.get(step.name)
+                            if (
+                                resumed is not None
+                                and resumed.status in {"completed", "reused"}
+                                and resumed.artifact_id
+                            ):
+                                pending.remove(step.name)
+                                progress_made = True
+                                continue
+                            if reuse_completed:
+                                reusable = catalog.find_latest_reusable_step(
+                                    step_name=step.name,
+                                    step_semantic_hash=step_context.step_semantic_hash,
+                                    input_artifact_refs=input_artifact_refs,
+                                )
+                                if reusable is not None and reusable.artifact_id:
+                                    manifest = catalog.load_artifact(reusable.artifact_id)
+                                    store = getattr(runner, "artifacts", None)
+                                    if manifest is not None and store is not None:
+                                        results[step.name] = artifact_from_manifest(manifest, store=store)
+                                        catalog.record_workflow_step(
+                                            WorkflowStepRecord(
+                                                run_id=run_id,
+                                                workflow_hash=workflow_hash,
+                                                workflow_step_key=step_context.workflow_step_key,
+                                                step_name=step.name,
+                                                step_index=step_index_by_name[step.name],
+                                                runner=step.runner,
+                                                status="reused",
+                                                step_semantic_hash=step_context.step_semantic_hash,
+                                                step_spec_hash=step_context.step_spec_hash,
+                                                input_artifact_refs=input_artifact_refs,
+                                                artifact_id=reusable.artifact_id,
+                                                artifact_kind=reusable.artifact_kind,
+                                                started_at=utc_now_iso(),
+                                                finished_at=utc_now_iso(),
+                                                runtime_app_id=reusable.runtime_app_id,
+                                                reused_from_run_id=reusable.run_id,
+                                                reused_from_artifact_id=reusable.artifact_id,
+                                            )
+                                        )
+                                        pending.remove(step.name)
+                                        progress_made = True
+                                        continue
+                            started_at = utc_now_iso()
+                            catalog.record_workflow_step(
+                                WorkflowStepRecord(
+                                    run_id=run_id,
+                                    workflow_hash=workflow_hash,
+                                    workflow_step_key=step_context.workflow_step_key,
+                                    step_name=step.name,
+                                    step_index=step_index_by_name[step.name],
+                                    runner=step.runner,
+                                    status="running",
+                                    step_semantic_hash=step_context.step_semantic_hash,
+                                    step_spec_hash=step_context.step_spec_hash,
+                                    input_artifact_refs=input_artifact_refs,
+                                    started_at=started_at,
+                                    runtime_app_id=None,
+                                )
+                            )
+                            step_started_at[step.name] = started_at
+                        else:
+                            step_started_at[step.name] = utc_now_iso()
+                        future = pool.submit(_run_with_workflow_context, runner, resolved_spec, step_context)
+                        running[future] = step.name
+                        pending.remove(step.name)
+                        progress_made = True
 
                 if progress_made and not running:
                     continue
                 if not running:
+                    if first_failure is not None:
+                        break
                     unresolved = sorted(pending)
                     raise SpecValidationError(
                         f"Workflow could not make progress; unresolved steps remain: {unresolved}"
@@ -272,9 +324,11 @@ class WorkflowOrchestrator:
                                         else utc_now_iso(),
                                     ),
                                     finished_at=utc_now_iso(),
+                                    runtime_app_id=_manifest_runtime_app_id(manifest),
                                 )
                             )
                     except Exception as exc:
+                        failed_steps.add(step_name)
                         if catalog is not None:
                             catalog.record_workflow_step(
                                 WorkflowStepRecord(
@@ -287,33 +341,55 @@ class WorkflowOrchestrator:
                                     status="failed",
                                     step_semantic_hash=step_by_name[step_name].semantic_hash(),
                                     step_spec_hash=step_by_name[step_name].spec_hash(),
-                                    input_artifact_refs=tuple(_input_artifact_ids_from_results(step_by_name[step_name], results)),
+                                    input_artifact_refs=tuple(
+                                        _input_artifact_ids_from_results(step_by_name[step_name], results)
+                                    ),
                                     started_at=step_started_at.get(step_name, utc_now_iso()),
                                     finished_at=utc_now_iso(),
+                                    runtime_app_id=getattr(exc, "runtime_app_id", None),
                                 )
                             )
-                            catalog.record_workflow_run(
-                                WorkflowRunRecord(
-                                    run_id=run_id,
-                                    workflow_name=workflow.name,
-                                    workflow_hash=workflow_hash,
-                                    workflow_spec_hash=workflow_spec_hash,
-                                    workflow_payload=workflow.to_dict(),
-                                    status="failed",
-                                    started_at=(
-                                        catalog.load_workflow_run(run_id).started_at
-                                        if catalog.load_workflow_run(run_id) is not None
-                                        else utc_now_iso()
-                                    ),
-                                    finished_at=utc_now_iso(),
-                                    error=str(exc),
-                                )
-                            )
-                        for outstanding in running:
-                            outstanding.cancel()
-                        raise
+                        if first_failure is None:
+                            first_failure = exc
+
+        if first_failure is not None:
+            blocked_steps = _blocked_pending_steps(pending, dependencies, failed_steps)
+            if catalog is not None:
+                finished_at = utc_now_iso()
+                for step_name in sorted(blocked_steps):
+                    step = step_by_name[step_name]
+                    catalog.record_workflow_step(
+                        WorkflowStepRecord(
+                            run_id=run_id,
+                            workflow_hash=workflow_hash,
+                            workflow_step_key=f"{workflow_hash}.{step_name}",
+                            step_name=step_name,
+                            step_index=step_index_by_name[step_name],
+                            runner=step.runner,
+                            status="blocked",
+                            step_semantic_hash=step.semantic_hash(),
+                            step_spec_hash=step.spec_hash(),
+                            input_artifact_refs=tuple(_input_artifact_ids_from_results(step, results, strict=False)),
+                            finished_at=finished_at,
+                            runtime_app_id=None,
+                        )
+                    )
+                catalog.record_workflow_run(
+                    WorkflowRunRecord(
+                        run_id=run_id,
+                        workflow_name=workflow.name,
+                        workflow_hash=workflow_hash,
+                        workflow_spec_hash=workflow_spec_hash,
+                        workflow_payload=workflow.to_dict(),
+                        status="failed",
+                        started_at=workflow_started_at,
+                        finished_at=finished_at,
+                        error=str(first_failure),
+                    )
+                )
+            raise first_failure
+
         if catalog is not None:
-            started = catalog.load_workflow_run(run_id)
             catalog.record_workflow_run(
                 WorkflowRunRecord(
                     run_id=run_id,
@@ -322,7 +398,7 @@ class WorkflowOrchestrator:
                     workflow_spec_hash=workflow_spec_hash,
                     workflow_payload=workflow.to_dict(),
                     status="completed",
-                    started_at=started.started_at if started is not None else utc_now_iso(),
+                    started_at=workflow_started_at,
                     finished_at=utc_now_iso(),
                 )
             )
@@ -399,13 +475,136 @@ def _workflow_section_metadata_errors(workflow: WorkflowSpec) -> dict[str, tuple
     return errors
 
 
-def _input_artifact_ids_from_results(step: Any, results: Mapping[str, Any]) -> list[str]:
+def _workflow_row_alignment_errors(workflow: WorkflowSpec) -> dict[str, tuple[str, ...]]:
+    step_by_name = {step.name: step for step in workflow.steps}
+    errors: dict[str, tuple[str, ...]] = {}
+    for step in workflow.steps:
+        spec = step.spec
+        if not isinstance(
+            spec,
+            (ProbeSpec, TransferProbeSpec, TextBaselineSpec, ResidualizedProbeSpec, GeometrySpec),
+        ):
+            continue
+        if getattr(spec, "rows", None) is not None:
+            continue
+        primary_dataset = _primary_row_dataset(spec, step_by_name=step_by_name)
+        if primary_dataset is None:
+            continue
+        primary_identity = _dataset_identity(primary_dataset)
+        mismatched = []
+        seen: set[str] = set()
+        for dataset in _analysis_reference_datasets(spec, step_by_name=step_by_name):
+            identity = _dataset_identity(dataset)
+            if identity == primary_identity or identity in seen:
+                continue
+            seen.add(identity)
+            mismatched.append(_dataset_display_name(dataset))
+        if not mismatched:
+            continue
+        errors[step.name] = (
+            "Step mixes feature/text rows from "
+            f"{_dataset_display_name(primary_dataset)!r} with refs from {mismatched}. "
+            "Add rows=... to declare the intended analysis row universe explicitly.",
+        )
+    return errors
+
+
+def _merge_workflow_errors(*error_maps: Mapping[str, tuple[str, ...]]) -> dict[str, tuple[str, ...]]:
+    merged: dict[str, tuple[str, ...]] = {}
+    for error_map in error_maps:
+        for step_name, messages in error_map.items():
+            merged[step_name] = tuple(merged.get(step_name, ())) + tuple(messages)
+    return merged
+
+
+def _primary_row_dataset(spec: Any, *, step_by_name: Mapping[str, Any]) -> Dataset | None:
+    if isinstance(spec, TextBaselineSpec):
+        datasets = _datasets_in_value(spec.text, step_by_name=step_by_name)
+        return datasets[0] if datasets else None
+    feature = getattr(spec, "feature", None)
+    datasets = _datasets_in_value(feature, step_by_name=step_by_name)
+    return datasets[0] if datasets else None
+
+
+def _analysis_reference_datasets(spec: Any, *, step_by_name: Mapping[str, Any]) -> list[Dataset]:
+    if isinstance(spec, ProbeSpec):
+        values = (spec.labels, spec.group_by, spec.split)
+    elif isinstance(spec, TransferProbeSpec):
+        values = (spec.labels, spec.group_by, spec.cohort_by, spec.split_by)
+    elif isinstance(spec, TextBaselineSpec):
+        values = (spec.labels, spec.group_by, spec.cohort_by, spec.split_by)
+    elif isinstance(spec, ResidualizedProbeSpec):
+        values = (spec.labels, spec.residualize_against, spec.group_by)
+    elif isinstance(spec, GeometrySpec):
+        values = (spec.label, spec.color_by, spec.subset)
+    else:
+        values = ()
+    datasets: list[Dataset] = []
+    for value in values:
+        datasets.extend(_datasets_in_value(value, step_by_name=step_by_name))
+    return datasets
+
+
+def _datasets_in_value(value: Any, *, step_by_name: Mapping[str, Any]) -> list[Dataset]:
+    if isinstance(value, Dataset):
+        return [value]
+    if isinstance(value, (LabelSet, CaseSet)):
+        return [value.dataset]
+    if isinstance(value, LabelPredicate):
+        return _datasets_in_value(value.label_set, step_by_name=step_by_name)
+    if isinstance(value, StepFeatureRef):
+        source_step = step_by_name.get(value.step)
+        if source_step is not None and isinstance(source_step.spec, CaptureSpec):
+            return [source_step.spec.dataset]
+        return []
+    if isinstance(value, Mapping):
+        datasets: list[Dataset] = []
+        for item in value.values():
+            datasets.extend(_datasets_in_value(item, step_by_name=step_by_name))
+        return datasets
+    if isinstance(value, tuple | list):
+        datasets: list[Dataset] = []
+        for item in value:
+            datasets.extend(_datasets_in_value(item, step_by_name=step_by_name))
+        return datasets
+    return []
+
+
+def _dataset_identity(dataset: Dataset) -> str:
+    return stable_hash(dataset.semantic_dict())
+
+
+def _dataset_display_name(dataset: Dataset) -> str:
+    return str(dataset.name or dataset.id or _dataset_identity(dataset)[:8])
+
+
+def _input_artifact_ids_from_results(step: Any, results: Mapping[str, Any], *, strict: bool = True) -> list[str]:
     from pipelines_v2.storage.artifacts import ArtifactLabelRef, FeatureLayerRef, FeatureRef
 
-    resolved = _resolve_step_refs(step.spec, results)
+    try:
+        resolved = _resolve_step_refs(step.spec, results)
+    except SpecValidationError:
+        if strict:
+            raise
+        resolved = step.spec
     artifact_ids: list[str] = []
 
     def visit(value: Any) -> None:
+        if isinstance(value, StepRef):
+            artifact = results.get(value.step)
+            if artifact is not None:
+                visit(artifact)
+            return
+        elif isinstance(value, StepFeatureRef):
+            artifact = results.get(value.step)
+            if artifact is not None:
+                artifact_ids.append(artifact.id)
+            return
+        elif isinstance(value, StepLabelRef):
+            artifact = results.get(value.step)
+            if artifact is not None:
+                artifact_ids.append(artifact.id)
+            return
         if isinstance(value, FeatureLayerRef):
             artifact_ids.append(value.feature.artifact.id)
         elif isinstance(value, FeatureRef):
@@ -439,3 +638,41 @@ def _run_with_workflow_context(runner: Any, spec: Any, step_context: WorkflowSte
     if "workflow_context" in signature.parameters:
         return runner.run(spec, workflow_context=step_context)
     return runner.run(spec)
+
+
+def _load_manifest_for_workflow_step(catalog: Any, record: WorkflowStepRecord) -> Any | None:
+    if record.artifact_id:
+        manifest = catalog.load_artifact(record.artifact_id)
+        if manifest is not None:
+            return manifest
+    finder = getattr(catalog, "find_artifact_for_workflow_step", None)
+    if callable(finder):
+        return finder(run_id=record.run_id, workflow_step_key=record.workflow_step_key)
+    return None
+
+
+def _manifest_runtime_app_id(manifest: Any) -> str | None:
+    runner = getattr(manifest, "runner", {})
+    if isinstance(runner, Mapping):
+        app_id = runner.get("runtime_app_id")
+        return str(app_id) if app_id is not None else None
+    return None
+
+
+def _blocked_pending_steps(
+    pending: set[str],
+    dependencies: Mapping[str, set[str]],
+    failed_steps: set[str],
+) -> set[str]:
+    blocked: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for step_name in pending:
+            if step_name in blocked:
+                continue
+            deps = dependencies[step_name]
+            if deps & (failed_steps | blocked):
+                blocked.add(step_name)
+                changed = True
+    return blocked

@@ -14,6 +14,9 @@ from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.storage.modal import modal_volume_mount_path
 
 
+_REMOTE_WORKSPACE_ROOT = "/root/pipelines_v2_workspace"
+
+
 @dataclass(frozen=True, slots=True)
 class MountedVolume:
     name: str
@@ -49,10 +52,18 @@ def run_on_modal(
     image = modal.Image.debian_slim(python_version=runtime_spec.python_version)
     if runtime_spec.pip_packages:
         image = image.pip_install(*runtime_spec.pip_packages)
-    if runtime_spec.env:
-        image = image.env(dict(runtime_spec.env))
-    for source in _resolved_local_python_sources(runtime_spec.local_python_sources):
-        image = image.add_local_python_source(str(source))
+    runtime_env = dict(runtime_spec.env)
+    source_mounts, pythonpath_entries = _resolved_local_python_sources(runtime_spec.local_python_sources)
+    if pythonpath_entries:
+        existing_pythonpath = runtime_env.get("PYTHONPATH", "")
+        combined = [entry for entry in pythonpath_entries if entry]
+        if existing_pythonpath:
+            combined.append(existing_pythonpath)
+        runtime_env["PYTHONPATH"] = ":".join(combined)
+    if runtime_env:
+        image = image.env(runtime_env)
+    for local_path, remote_path in source_mounts:
+        image = image.add_local_dir(str(local_path), remote_path=remote_path)
     secrets = [modal.Secret.from_name(str(secret["name"])) for secret in resources.get("secrets", [])]
     function_kwargs: dict[str, Any] = {
         "image": image,
@@ -94,8 +105,22 @@ def run_on_modal(
             result.setdefault("metadata", {})["volume_commit_warnings"] = warnings
         return result
 
-    with app.run():
-        return _remote_execute.remote(runner_config, store_config, spec_payload, workflow_context)
+    with app.run() as running_app:
+        runtime_app_id = getattr(running_app, "app_id", None)
+        try:
+            result = _remote_execute.remote(runner_config, store_config, spec_payload, workflow_context)
+        except Exception as exc:
+            if runtime_app_id is not None:
+                try:
+                    setattr(exc, "runtime_app_id", runtime_app_id)
+                except Exception:
+                    pass
+            raise
+        if isinstance(result, dict) and runtime_app_id is not None:
+            runner_payload = dict(result.get("runner", {}))
+            runner_payload["runtime_app_id"] = runtime_app_id
+            result["runner"] = runner_payload
+        return result
 
 
 def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any]) -> tuple[MountedVolume, ...]:
@@ -189,11 +214,26 @@ def _validate_secret_bindings(*, runtime_spec: PythonRuntimeSpec, resources: dic
         raise RuntimeError(f"Modal runtime is missing secret bindings for env vars: {missing}")
 
 
-def _resolved_local_python_sources(sources: tuple[str, ...]) -> tuple[Path, ...]:
+def _resolved_local_python_sources(sources: tuple[str, ...]) -> tuple[tuple[tuple[Path, str], ...], tuple[str, ...]]:
     workspace_root = find_workspace_root()
-    resolved: list[Path] = []
+    resolved_mounts: list[tuple[Path, str]] = []
+    pythonpath_entries: list[str] = []
     for source in sources:
-        path = resolve_workspace_path(source, workspace_root=workspace_root)
-        if path not in resolved:
-            resolved.append(path)
-    return tuple(resolved)
+        normalized = str(source).strip()
+        if not normalized:
+            continue
+        if normalized == ".":
+            local_path = workspace_root
+            remote_path = _REMOTE_WORKSPACE_ROOT
+            pythonpath_entry = _REMOTE_WORKSPACE_ROOT
+        else:
+            local_path = resolve_workspace_path(normalized, workspace_root=workspace_root)
+            relative = local_path.relative_to(workspace_root)
+            remote_path = f"{_REMOTE_WORKSPACE_ROOT}/{relative.as_posix()}"
+            pythonpath_entry = _REMOTE_WORKSPACE_ROOT
+        mount = (local_path, remote_path)
+        if mount not in resolved_mounts:
+            resolved_mounts.append(mount)
+        if pythonpath_entry not in pythonpath_entries:
+            pythonpath_entries.append(pythonpath_entry)
+    return tuple(resolved_mounts), tuple(pythonpath_entries)

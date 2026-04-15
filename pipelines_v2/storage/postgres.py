@@ -79,6 +79,33 @@ class PostgresCatalog:
             return None
         return ArtifactManifest.from_dict(row[0])
 
+    def find_artifact_for_workflow_step(
+        self,
+        *,
+        run_id: str,
+        workflow_step_key: str,
+    ) -> ArtifactManifest | None:
+        import psycopg
+
+        with psycopg.connect(self.source.connection_url()) as conn:
+            with conn.cursor() as cur:
+                self._ensure_schema(cur)
+                cur.execute(
+                    """
+                    SELECT manifest
+                    FROM pipelines_v2_artifacts
+                    WHERE manifest->'workflow_context'->>'run_id' = %s
+                      AND manifest->'workflow_context'->>'workflow_step_key' = %s
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    (run_id, workflow_step_key),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+        return ArtifactManifest.from_dict(row[0])
+
     def record_workflow_run(self, record: WorkflowRunRecord) -> None:
         import json
 
@@ -189,9 +216,10 @@ class PostgresCatalog:
                         artifact_kind,
                         started_at,
                         finished_at,
+                        runtime_app_id,
                         reused_from_run_id,
                         reused_from_artifact_id
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (run_id, step_name) DO UPDATE SET
                         workflow_hash = EXCLUDED.workflow_hash,
                         workflow_step_key = EXCLUDED.workflow_step_key,
@@ -205,6 +233,7 @@ class PostgresCatalog:
                         artifact_kind = EXCLUDED.artifact_kind,
                         started_at = EXCLUDED.started_at,
                         finished_at = EXCLUDED.finished_at,
+                        runtime_app_id = EXCLUDED.runtime_app_id,
                         reused_from_run_id = EXCLUDED.reused_from_run_id,
                         reused_from_artifact_id = EXCLUDED.reused_from_artifact_id
                     """,
@@ -223,6 +252,7 @@ class PostgresCatalog:
                         record.artifact_kind,
                         record.started_at,
                         record.finished_at,
+                        record.runtime_app_id,
                         record.reused_from_run_id,
                         record.reused_from_artifact_id,
                     ),
@@ -252,6 +282,7 @@ class PostgresCatalog:
                         artifact_kind,
                         started_at,
                         finished_at,
+                        runtime_app_id,
                         reused_from_run_id,
                         reused_from_artifact_id
                     FROM pipelines_v2_workflow_steps
@@ -280,8 +311,9 @@ class PostgresCatalog:
                         "artifact_kind": row[11],
                         "started_at": row[12].isoformat() if row[12] is not None and hasattr(row[12], "isoformat") else row[12],
                         "finished_at": row[13].isoformat() if row[13] is not None and hasattr(row[13], "isoformat") else row[13],
-                        "reused_from_run_id": row[14],
-                        "reused_from_artifact_id": row[15],
+                        "runtime_app_id": row[14],
+                        "reused_from_run_id": row[15],
+                        "reused_from_artifact_id": row[16],
                     }
                 )
             )
@@ -318,6 +350,7 @@ class PostgresCatalog:
                         artifact_kind,
                         started_at,
                         finished_at,
+                        runtime_app_id,
                         reused_from_run_id,
                         reused_from_artifact_id
                     FROM pipelines_v2_workflow_steps
@@ -350,8 +383,9 @@ class PostgresCatalog:
                 "artifact_kind": row[11],
                 "started_at": row[12].isoformat() if row[12] is not None and hasattr(row[12], "isoformat") else row[12],
                 "finished_at": row[13].isoformat() if row[13] is not None and hasattr(row[13], "isoformat") else row[13],
-                "reused_from_run_id": row[14],
-                "reused_from_artifact_id": row[15],
+                "runtime_app_id": row[14],
+                "reused_from_run_id": row[15],
+                "reused_from_artifact_id": row[16],
             }
         )
 
@@ -400,9 +434,16 @@ class PostgresCatalog:
                 artifact_kind TEXT NULL,
                 started_at TIMESTAMPTZ NULL,
                 finished_at TIMESTAMPTZ NULL,
+                runtime_app_id TEXT NULL,
                 reused_from_run_id TEXT NULL,
                 reused_from_artifact_id TEXT NULL,
                 PRIMARY KEY (run_id, step_name)
             )
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE pipelines_v2_workflow_steps
+            ADD COLUMN IF NOT EXISTS runtime_app_id TEXT NULL
             """
         )

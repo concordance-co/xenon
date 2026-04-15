@@ -23,8 +23,12 @@ Current execution support:
 - implemented:
   - `CaptureSpec`
   - `ProbeSpec`
+  - `TransferProbeSpec`
+  - `TextBaselineSpec`
+  - `ResidualizedProbeSpec`
   - `DirectionSpec`
   - `BasisSpec`
+  - `GeometrySpec`
   - `PairDeltaSpec`
   - `LabelMapSpec`
   - `LabelFieldsSpec`
@@ -49,6 +53,29 @@ Current workflow persistence support:
 - workflow runs and workflow step records are persisted when runners share one non-null catalog
 - `WorkflowOrchestrator.run(..., resume_run_id=..., reuse_completed=...)` is implemented
 - artifact manifests carry workflow provenance in `workflow_context`
+- workflow step records capture `runtime_app_id` when a runner reports one back during execution
+
+Current operation-module layout:
+
+- `pipelines_v2.operations.capture`
+  - model-bound capture specs and capture-site definitions
+- `pipelines_v2.operations.derive`
+  - derived labels, paired contrasts, and function-backed transforms
+- `pipelines_v2.operations.readouts`
+  - readout and probe specs
+- `pipelines_v2.operations.representation`
+  - direction and decomposition specs
+- `pipelines_v2.operations.interventions`
+  - intervention specs such as patching
+- `pipelines_v2.operations.reports`
+  - report packaging specs
+- `pipelines_v2.operations.execution`
+  - artifact-bound execution dispatch split by operation family
+
+Compatibility note:
+
+- `pipelines_v2.operations.specs` and `pipelines_v2.operations.execute` still exist as stable import shims
+- new code should prefer the family modules above
 
 ## Core Concepts
 
@@ -284,6 +311,7 @@ Important methods:
 - `runtime_spec()`
 - `planning_errors(spec)`
   - currently rejects MoE routing capture with `max_num_seqs > 1`
+  - currently rejects MoE routing capture with `enforce_eager=False`
 - `capture(spec)`
 
 ## Capture Surface
@@ -448,6 +476,9 @@ What it does:
 Fields:
 - `feature`
   - `FeatureRef`, `FeatureLayerRef`, or `StepFeatureRef`
+- `rows`
+  - optional explicit row universe for analysis
+  - use this when feature rows come from one capture dataset but labels/grouping come from a narrower dataset or subset
 - `labels`
   - `LabelSet`, `ArtifactLabelRef`, or `StepLabelRef`
 - `group_by`
@@ -475,8 +506,87 @@ Current baselines:
 Implementation notes:
 - uses `SGDClassifier(loss="log_loss")`
 - supports grouped or fixed split evaluation
+- supports residual and MoE-router feature payloads
+- if `rows` is provided, probe execution first aligns feature rows to that declared row universe
+- if `rows` is omitted, workflow planning treats the feature/text rows as the default row universe
 - `selectivity` is computed against a shuffled-label control even if
   `shuffled_label` is not requested as an exposed baseline metric
+
+### `TransferProbeSpec`
+
+What it does:
+- evaluates cross-cohort transfer for activation features
+- can also run fixed split holdouts such as lexical holdout within a cohort
+
+Fields:
+- `feature`
+- `rows`
+- `labels`
+- `group_by`
+- `cohort_by`
+- `cohort_values`
+- `split_by`
+- `train_values`
+- `test_values`
+- `regularization`
+- `metrics`
+- `compare_within_baseline`
+- `compare_direction_similarity`
+- `tokens`
+- `pooling`
+
+Current implementation:
+- supports residual and MoE-router feature payloads
+- uses `LogisticRegression` with standardization for activation readouts
+- grouped CV uses stratified-group splits when possible
+- cross-cohort transfer reports test-side delta versus within-cohort baseline
+- regularization sweeps are supported through repeated `C` values
+- when `rows` is provided, transfer analysis runs over that explicit row universe instead of assuming full feature coverage
+
+### `TextBaselineSpec`
+
+What it does:
+- evaluates text-only baselines over raw text labels such as `user_text`
+
+Fields:
+- `text`
+- `rows`
+- `labels`
+- `group_by`
+- `cohort_by`
+- `cohort_values`
+- `split_by`
+- `train_values`
+- `test_values`
+- `model`
+- `regularization`
+- `metrics`
+
+Current implementation:
+- supports `model="countvectorizer_logreg"`
+- supports grouped CV, cross-cohort transfer, and fixed split holdouts
+- uses `CountVectorizer(ngram_range=(1, 2)) + LogisticRegression`
+- `rows` can restrict text-baseline evaluation to a declared subset or secondary dataset row universe
+
+### `ResidualizedProbeSpec`
+
+What it does:
+- removes a nuisance linear subspace, then reruns the target probe
+
+Fields:
+- `feature`
+- `rows`
+- `labels`
+- `residualize_against`
+- `group_by`
+- `metrics`
+- `tokens`
+- `pooling`
+
+Current implementation:
+- fits a logistic family/nuisance classifier on raw activations
+- projects into the orthogonal complement of the learned coefficient row space
+- reports both raw and residualized probe metrics plus deltas
 
 ### `DirectionSpec`
 
@@ -499,6 +609,7 @@ What it does:
 
 Fields:
 - `feature`
+- `rows`
 - `method`
 - `by`
 - `layers`
@@ -508,6 +619,30 @@ Fields:
 
 Current implementation:
 - only `method="pca"`
+
+### `GeometrySpec`
+
+What it does:
+- projects activations into a low-dimensional geometry view for inspection or reporting
+
+Fields:
+- `feature`
+- `method`
+- `layers`
+- `label`
+- `color_by`
+- `subset`
+- `normalize`
+- `components`
+- `tokens`
+- `pooling`
+
+Current implementation:
+- supports `method="pca"` and `method="lda"`
+- supports subset filtering with `LabelPredicate`
+- supports `normalize="rms_per_row"` or `None`
+- emits structured projection payloads, not rendered plots
+- `rows` can declare the base row universe before any `subset` predicate is applied
 
 ### `PairDeltaSpec`
 
@@ -995,6 +1130,7 @@ Methods:
 Behavior:
 - resolves step refs before execution
 - can run independent ready steps in parallel
+- plan-time validation rejects artifact-bound analysis steps that mix feature/text rows from one dataset with label/group refs from another dataset unless `rows=...` is declared explicitly
 - persists workflow runs and workflow step records when runners share one non-null catalog
 - `resume_run_id=...` reloads completed prior step artifacts from the shared catalog
 - `reuse_completed=True` reuses latest completed step artifacts whose semantic lineage matches
@@ -1174,8 +1310,9 @@ probe_artifact = result.step("probe")
 - `ActivationPatchSpec` is not executable yet.
 - `BasisSpec` only supports PCA today.
 - `LabelPredicate` only supports equality today.
-- artifact-bound analysis currently expects residual-style features.
+- artifact-bound analysis supports residual and MoE router features, but broader capture families still need dedicated ops.
 - `VLLMEngine` currently rejects MoE routing capture with `max_num_seqs > 1`.
+- `VLLMEngine` currently requires `enforce_eager=True` for MoE routing capture.
 - large remote reads are blocked by default unless the store transfer policy allows them.
 - workflow resume/reuse require one shared non-null catalog across all runners in the workflow.
 - there is still no first-class "rerun this one step and automatically invalidate downstream steps" API.

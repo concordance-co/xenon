@@ -1,0 +1,2207 @@
+{
+  "kind": "workflow",
+  "schema_version": 1,
+  "name": "prompt_confusion_phase_05_pipelines_v2",
+  "steps": [
+    {
+      "name": "derive_family_group",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "source": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "mapping": {
+          "trade_size_force_large": "size",
+          "trade_size_force_small": "size",
+          "activity_force_trade": "activity",
+          "activity_force_observe": "activity"
+        },
+        "output_name": "family_group",
+        "strict": true,
+        "default_value": null,
+        "kind": "label_map"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "capture_prompt_eos_residual",
+      "runner": "capture_gpu",
+      "spec": {
+        "schema_version": 1,
+        "engine": {
+          "kind": "vllm",
+          "model_id": "/models/Qwen/Qwen3-30B-A3B",
+          "max_model_len": 8192,
+          "tensor_parallel_size": 1,
+          "gpu_memory_utilization": 0.9,
+          "enforce_eager": false,
+          "max_num_seqs": 16,
+          "enable_prefix_caching": true,
+          "enable_chunked_prefill": false,
+          "add_generation_prompt": false,
+          "reasoning_parser": null,
+          "extra": {}
+        },
+        "dataset": {
+          "examples": [],
+          "id": "12e7a6552cc9e4d6ba8abc9d",
+          "name": "prompt_confusion_phase_05_base",
+          "source": {
+            "kind": "postgres",
+            "url_env_var": "XENON_NEON_DATABASE_URL"
+          },
+          "fetch": {
+            "table": "workflow_dataset_conflict_probe_v3_v1",
+            "prompt_column": "prompt_messages_json",
+            "example_key_column": "log_id",
+            "label_columns": [
+              "example_id",
+              "user_text",
+              "strategy_family",
+              "conflict_present",
+              "strategy_lexical_split",
+              "setting_lexical_split"
+            ],
+            "case_columns": [
+              "matched_pair_id"
+            ],
+            "case_key_column": "matched_pair_id",
+            "name": "prompt_confusion_phase_05_base"
+          },
+          "selection": {}
+        },
+        "sites": [
+          {
+            "name": "residual_prompt_eos",
+            "site": "resid_post",
+            "layers": [
+              0,
+              4,
+              8,
+              12,
+              16,
+              20,
+              24,
+              28,
+              32,
+              36,
+              40,
+              44
+            ],
+            "tokens": {
+              "kind": "last",
+              "value": null
+            },
+            "storage": {
+              "dtype": "float16",
+              "format": "safetensors"
+            }
+          }
+        ],
+        "generation": {
+          "enabled": false,
+          "max_tokens": 0,
+          "temperature": 0.0,
+          "capture_reasoning": false,
+          "structured_output": null
+        },
+        "prompt_metadata_builder": null,
+        "kind": "capture"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "capture_prompt_eos_router",
+      "runner": "capture_gpu",
+      "spec": {
+        "schema_version": 1,
+        "engine": {
+          "kind": "vllm",
+          "model_id": "/models/Qwen/Qwen3-30B-A3B",
+          "max_model_len": 8192,
+          "tensor_parallel_size": 1,
+          "gpu_memory_utilization": 0.9,
+          "enforce_eager": true,
+          "max_num_seqs": 1,
+          "enable_prefix_caching": false,
+          "enable_chunked_prefill": false,
+          "add_generation_prompt": false,
+          "reasoning_parser": null,
+          "extra": {}
+        },
+        "dataset": {
+          "examples": [],
+          "id": "12e7a6552cc9e4d6ba8abc9d",
+          "name": "prompt_confusion_phase_05_base",
+          "source": {
+            "kind": "postgres",
+            "url_env_var": "XENON_NEON_DATABASE_URL"
+          },
+          "fetch": {
+            "table": "workflow_dataset_conflict_probe_v3_v1",
+            "prompt_column": "prompt_messages_json",
+            "example_key_column": "log_id",
+            "label_columns": [
+              "example_id",
+              "user_text",
+              "strategy_family",
+              "conflict_present",
+              "strategy_lexical_split",
+              "setting_lexical_split"
+            ],
+            "case_columns": [
+              "matched_pair_id"
+            ],
+            "case_key_column": "matched_pair_id",
+            "name": "prompt_confusion_phase_05_base"
+          },
+          "selection": {}
+        },
+        "sites": [
+          {
+            "name": "router_prompt_eos",
+            "layers": [
+              0,
+              4,
+              8,
+              12,
+              16,
+              20,
+              24,
+              28,
+              32,
+              36,
+              40,
+              44
+            ],
+            "tokens": {
+              "kind": "last",
+              "value": null
+            },
+            "record": [
+              {
+                "kind": "gate_logits",
+                "params": {
+                  "dtype": "float16"
+                }
+              },
+              {
+                "kind": "topk_from_gate",
+                "params": {
+                  "k": 8,
+                  "include_weights": true
+                }
+              },
+              {
+                "kind": "expert_load",
+                "params": {
+                  "source": "topk_from_gate"
+                }
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "enabled": false,
+          "max_tokens": 0,
+          "temperature": 0.0,
+          "capture_reasoning": false,
+          "structured_output": null
+        },
+        "prompt_metadata_builder": null,
+        "kind": "capture"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "family_identity_residual",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "split": null,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "last"
+        },
+        "train_values": [
+          "train"
+        ],
+        "test_values": [
+          "test"
+        ],
+        "folds": 5,
+        "baselines": [
+          "majority"
+        ],
+        "metrics": [
+          "accuracy",
+          "balanced_accuracy"
+        ],
+        "kind": "probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "family_identity_router",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_router",
+          "feature_name": "router_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "split": null,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "last"
+        },
+        "train_values": [
+          "train"
+        ],
+        "test_values": [
+          "test"
+        ],
+        "folds": 5,
+        "baselines": [
+          "majority"
+        ],
+        "metrics": [
+          "accuracy",
+          "balanced_accuracy"
+        ],
+        "kind": "probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "detection_transfer_residual",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {},
+        "train_values": [],
+        "test_values": [],
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "baselines": [],
+        "compare_within_baseline": true,
+        "compare_direction_similarity": true,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "transfer_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "detection_transfer_router",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_router",
+          "feature_name": "router_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {},
+        "train_values": [],
+        "test_values": [],
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "baselines": [],
+        "compare_within_baseline": true,
+        "compare_direction_similarity": true,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "transfer_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "arbitration_transfer_residual",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": {
+          "examples": [],
+          "id": "c03059aa2cf9fdb8a7f962ec",
+          "name": "prompt_confusion_phase_05_arbitration",
+          "source": {
+            "kind": "postgres",
+            "url_env_var": "XENON_NEON_DATABASE_URL"
+          },
+          "fetch": {
+            "table": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+            "prompt_column": "prompt_messages_json",
+            "example_key_column": "log_id",
+            "label_columns": [
+              "example_id",
+              "strategy_family",
+              "workflow_label"
+            ],
+            "case_columns": [
+              "arbitration_group_id",
+              "matched_pair_id"
+            ],
+            "case_key_column": "arbitration_group_id",
+            "name": "prompt_confusion_phase_05_arbitration"
+          },
+          "selection": {}
+        },
+        "labels": {
+          "name": "workflow_label",
+          "dataset": {
+            "examples": [],
+            "id": "c03059aa2cf9fdb8a7f962ec",
+            "name": "prompt_confusion_phase_05_arbitration",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "strategy_family",
+                "workflow_label"
+              ],
+              "case_columns": [
+                "arbitration_group_id",
+                "matched_pair_id"
+              ],
+              "case_key_column": "arbitration_group_id",
+              "name": "prompt_confusion_phase_05_arbitration"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "arbitration_group_id",
+          "dataset": {
+            "examples": [],
+            "id": "c03059aa2cf9fdb8a7f962ec",
+            "name": "prompt_confusion_phase_05_arbitration",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "strategy_family",
+                "workflow_label"
+              ],
+              "case_columns": [
+                "arbitration_group_id",
+                "matched_pair_id"
+              ],
+              "case_key_column": "arbitration_group_id",
+              "name": "prompt_confusion_phase_05_arbitration"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {},
+        "train_values": [],
+        "test_values": [],
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy"
+        ],
+        "baselines": [],
+        "compare_within_baseline": true,
+        "compare_direction_similarity": true,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "transfer_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "arbitration_transfer_router",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_router",
+          "feature_name": "router_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": {
+          "examples": [],
+          "id": "c03059aa2cf9fdb8a7f962ec",
+          "name": "prompt_confusion_phase_05_arbitration",
+          "source": {
+            "kind": "postgres",
+            "url_env_var": "XENON_NEON_DATABASE_URL"
+          },
+          "fetch": {
+            "table": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+            "prompt_column": "prompt_messages_json",
+            "example_key_column": "log_id",
+            "label_columns": [
+              "example_id",
+              "strategy_family",
+              "workflow_label"
+            ],
+            "case_columns": [
+              "arbitration_group_id",
+              "matched_pair_id"
+            ],
+            "case_key_column": "arbitration_group_id",
+            "name": "prompt_confusion_phase_05_arbitration"
+          },
+          "selection": {}
+        },
+        "labels": {
+          "name": "workflow_label",
+          "dataset": {
+            "examples": [],
+            "id": "c03059aa2cf9fdb8a7f962ec",
+            "name": "prompt_confusion_phase_05_arbitration",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "strategy_family",
+                "workflow_label"
+              ],
+              "case_columns": [
+                "arbitration_group_id",
+                "matched_pair_id"
+              ],
+              "case_key_column": "arbitration_group_id",
+              "name": "prompt_confusion_phase_05_arbitration"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "arbitration_group_id",
+          "dataset": {
+            "examples": [],
+            "id": "c03059aa2cf9fdb8a7f962ec",
+            "name": "prompt_confusion_phase_05_arbitration",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_conflict_readout_side_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "strategy_family",
+                "workflow_label"
+              ],
+              "case_columns": [
+                "arbitration_group_id",
+                "matched_pair_id"
+              ],
+              "case_key_column": "arbitration_group_id",
+              "name": "prompt_confusion_phase_05_arbitration"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {},
+        "train_values": [],
+        "test_values": [],
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy"
+        ],
+        "baselines": [],
+        "compare_within_baseline": true,
+        "compare_direction_similarity": true,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "transfer_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "lexical_family_identity",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "text": {
+          "name": "user_text",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "rows": null,
+        "labels": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "cohort_by": null,
+        "cohort_values": [],
+        "split_by": {},
+        "train_values": [],
+        "test_values": [],
+        "model": "countvectorizer_logreg",
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "kind": "text_baseline"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "lexical_cross_family_detection_transfer",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "text": {
+          "name": "user_text",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": null,
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {},
+        "train_values": [],
+        "test_values": [],
+        "model": "countvectorizer_logreg",
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "kind": "text_baseline"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "lexical_holdout_detection_residual",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": null,
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {
+          "strategy_lexical_split": {
+            "name": "strategy_lexical_split",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          },
+          "setting_lexical_split": {
+            "name": "setting_lexical_split",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          }
+        },
+        "train_values": [
+          "train"
+        ],
+        "test_values": [
+          "test"
+        ],
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "baselines": [],
+        "compare_within_baseline": true,
+        "compare_direction_similarity": true,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "transfer_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "lexical_holdout_detection_text",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "text": {
+          "name": "user_text",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": null,
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {
+          "strategy_lexical_split": {
+            "name": "strategy_lexical_split",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          },
+          "setting_lexical_split": {
+            "name": "setting_lexical_split",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          }
+        },
+        "train_values": [
+          "train"
+        ],
+        "test_values": [
+          "test"
+        ],
+        "model": "countvectorizer_logreg",
+        "regularization": [],
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "kind": "text_baseline"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "family_residualized_conflict_residual",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "residualize_against": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "residualized_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "family_residualized_conflict_router",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_router",
+          "feature_name": "router_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "residualize_against": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "residualized_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "detection_transfer_regularization_sweep",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "labels": {
+          "name": "conflict_present",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "group_by": {
+          "name": "matched_pair_id",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "case_set"
+        },
+        "cohort_by": {
+          "step": "derive_family_group",
+          "label_name": "family_group",
+          "kind": "step_label_ref"
+        },
+        "cohort_values": [
+          "size",
+          "activity"
+        ],
+        "split_by": {},
+        "train_values": [],
+        "test_values": [],
+        "regularization": [
+          0.01,
+          0.1,
+          1.0,
+          10.0,
+          100.0
+        ],
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "baselines": [],
+        "compare_within_baseline": false,
+        "compare_direction_similarity": false,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "transfer_probe"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "family_geometry_pca_full",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "method": "pca",
+        "layers": [
+          20,
+          24,
+          28,
+          36
+        ],
+        "label": null,
+        "color_by": {
+          "family": {
+            "name": "strategy_family",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          },
+          "alignment": {
+            "name": "conflict_present",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          }
+        },
+        "subset": null,
+        "normalize": "rms_per_row",
+        "components": 2,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "geometry"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "family_geometry_pca_conflict_only",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "method": "pca",
+        "layers": [
+          20,
+          24,
+          28,
+          36
+        ],
+        "label": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "color_by": {},
+        "subset": {
+          "label_set": {
+            "name": "conflict_present",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          },
+          "op": "equals",
+          "value": true,
+          "kind": "label_predicate"
+        },
+        "normalize": "rms_per_row",
+        "components": 2,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "geometry"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "family_geometry_lda_conflict_only",
+      "runner": "analysis_cpu",
+      "spec": {
+        "schema_version": 1,
+        "feature": {
+          "step": "capture_prompt_eos_residual",
+          "feature_name": "residual_prompt_eos",
+          "layer_index": null,
+          "kind": "step_feature_ref"
+        },
+        "rows": null,
+        "method": "lda",
+        "layers": [
+          20,
+          24,
+          28,
+          36
+        ],
+        "label": {
+          "name": "strategy_family",
+          "dataset": {
+            "examples": [],
+            "id": "12e7a6552cc9e4d6ba8abc9d",
+            "name": "prompt_confusion_phase_05_base",
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            },
+            "fetch": {
+              "table": "workflow_dataset_conflict_probe_v3_v1",
+              "prompt_column": "prompt_messages_json",
+              "example_key_column": "log_id",
+              "label_columns": [
+                "example_id",
+                "user_text",
+                "strategy_family",
+                "conflict_present",
+                "strategy_lexical_split",
+                "setting_lexical_split"
+              ],
+              "case_columns": [
+                "matched_pair_id"
+              ],
+              "case_key_column": "matched_pair_id",
+              "name": "prompt_confusion_phase_05_base"
+            },
+            "selection": {}
+          },
+          "kind": "label_set"
+        },
+        "color_by": {},
+        "subset": {
+          "label_set": {
+            "name": "conflict_present",
+            "dataset": {
+              "examples": [],
+              "id": "12e7a6552cc9e4d6ba8abc9d",
+              "name": "prompt_confusion_phase_05_base",
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              },
+              "fetch": {
+                "table": "workflow_dataset_conflict_probe_v3_v1",
+                "prompt_column": "prompt_messages_json",
+                "example_key_column": "log_id",
+                "label_columns": [
+                  "example_id",
+                  "user_text",
+                  "strategy_family",
+                  "conflict_present",
+                  "strategy_lexical_split",
+                  "setting_lexical_split"
+                ],
+                "case_columns": [
+                  "matched_pair_id"
+                ],
+                "case_key_column": "matched_pair_id",
+                "name": "prompt_confusion_phase_05_base"
+              },
+              "selection": {}
+            },
+            "kind": "label_set"
+          },
+          "op": "equals",
+          "value": true,
+          "kind": "label_predicate"
+        },
+        "normalize": "rms_per_row",
+        "components": 2,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "pooling": {
+          "kind": "mean"
+        },
+        "kind": "geometry"
+      },
+      "depends_on": []
+    },
+    {
+      "name": "report",
+      "runner": "report_local",
+      "spec": {
+        "schema_version": 1,
+        "inputs": [
+          {
+            "step": "capture_prompt_eos_residual",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "capture_prompt_eos_router",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "family_identity_residual",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "family_identity_router",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "detection_transfer_residual",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "detection_transfer_router",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "arbitration_transfer_residual",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "arbitration_transfer_router",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "lexical_family_identity",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "lexical_cross_family_detection_transfer",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "lexical_holdout_detection_residual",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "lexical_holdout_detection_text",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "family_residualized_conflict_residual",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "family_residualized_conflict_router",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "detection_transfer_regularization_sweep",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "family_geometry_pca_full",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "family_geometry_pca_conflict_only",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "step": "family_geometry_lda_conflict_only",
+            "output": "artifact",
+            "kind": "step_ref"
+          },
+          {
+            "missing_pieces": [
+              "Report outputs are still thin. Phase 05 still wants richer rendered summaries and geometry plotting, not just structured artifact payloads."
+            ]
+          }
+        ],
+        "template": "prompt_confusion_phase_05",
+        "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_05/reports/pipelines_v2",
+        "kind": "report"
+      },
+      "depends_on": []
+    }
+  ]
+}

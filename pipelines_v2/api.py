@@ -15,28 +15,15 @@ from .core.types import (
 from .data.datasets import CaseSet, Dataset, Example, LabelPredicate, LabelSet
 from .data.sources import InMemorySource, PostgresSource, Source
 from .engine import Engine, EngineCaptureResult, PythonRuntimeSpec, RuntimeSpec, ToyEngine, VLLMEngine
-from .operations.specs import (
-    ActivationPatchSpec,
-    BasisSpec,
-    CaptureSpec,
-    DirectionSpec,
-    GenerationSpec,
-    LabelFieldsSpec,
-    LabelMapSpec,
-    MoERoutingSite,
-    PairDeltaSpec,
-    PromptMetadataBuilder,
-    ProbeSpec,
-    ReportSpec,
-    ResidualSite,
-    RoutingRecord,
-    TensorStorage,
-    TransformBuilder,
-    TransformResult,
-    TransformSpec,
-    TokenPooling,
-    TokenSelector,
-)
+from .operations.capture import CaptureSpec, GenerationSpec, MoERoutingSite, ResidualSite, RoutingRecord
+from .operations.common.builders import PromptMetadataBuilder, TransformBuilder, TransformResult
+from .operations.common.schemas import TensorStorage
+from .operations.common.tokens import TokenPooling, TokenSelector
+from .operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
+from .operations.interventions import ActivationPatchSpec
+from .operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
+from .operations.reports import ReportSpec
+from .operations.representation import BasisSpec, DirectionSpec, GeometrySpec
 from .runtime import (
     ExecutionPlan,
     LocalResources,
@@ -97,6 +84,7 @@ __all__ = [
     "FeatureRef",
     "FileCatalog",
     "GenerationSpec",
+    "GeometrySpec",
     "InMemorySource",
     "LabelFieldsSpec",
     "LabelPredicate",
@@ -122,6 +110,7 @@ __all__ = [
     "PromptMetadataBuilder",
     "ProbeSpec",
     "PythonRuntimeSpec",
+    "ResidualizedProbeSpec",
     "ReportSpec",
     "ResidualSite",
     "RuntimeSecret",
@@ -135,9 +124,11 @@ __all__ = [
     "StepLabelRef",
     "StepRef",
     "TensorStorage",
+    "TextBaselineSpec",
     "TransformBuilder",
     "TransformResult",
     "TransformSpec",
+    "TransferProbeSpec",
     "TokenPooling",
     "TokenSelector",
     "ToyEngine",

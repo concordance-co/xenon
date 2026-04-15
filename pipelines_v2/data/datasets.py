@@ -170,6 +170,10 @@ class LabelSet:
         dataset = self.dataset.resolve() if self.dataset.is_deferred else self.dataset
         return _label_values_from_dataset(dataset, self.name)
 
+    def resolve_example_keys(self) -> list[str]:
+        """Return the example keys covered by this label ref."""
+        return sorted(str(key) for key in self.resolve_values())
+
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.dataset.runtime_secrets()
 
@@ -213,6 +217,10 @@ class CaseSet:
         """Resolve case ids even when the underlying dataset is deferred."""
         dataset = self.dataset.resolve() if self.dataset.is_deferred else self.dataset
         return _case_values_from_dataset(dataset, self.name)
+
+    def resolve_example_keys(self) -> list[str]:
+        """Return the example keys covered by this case ref."""
+        return sorted(str(key) for key in self.resolve_values())
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.dataset.runtime_secrets()
@@ -499,6 +507,15 @@ class Dataset:
             return [str(key) for key in keys] if isinstance(keys, list) else []
         return [example.key for example in self.examples]
 
+    def resolve_example_keys(self) -> list[str]:
+        """Return the example keys covered by this dataset in the current runtime."""
+        if self.is_deferred:
+            known = self.example_keys()
+            if known:
+                return known
+            return self.resolve().example_keys()
+        return self.example_keys()
+
     def coverage(self) -> dict[str, Any]:
         """Return manifest-friendly coverage information for this dataset."""
         if self.is_deferred:
@@ -569,6 +586,17 @@ class Dataset:
 
         source = source_from_dict(dict(self.source or {}))
         return source.runtime_secrets()
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        """Return Python packages required to resolve a deferred dataset."""
+        if not self.is_deferred:
+            return ()
+        from pipelines_v2.data.sources import source_from_dict
+
+        source = source_from_dict(dict(self.source or {}))
+        if hasattr(source, "runtime_pip_packages"):
+            return tuple(source.runtime_pip_packages())
+        return ()
 
     def resolve(self) -> "Dataset":
         """Materialize a deferred dataset in the current runtime."""

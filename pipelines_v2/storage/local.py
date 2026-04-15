@@ -128,6 +128,25 @@ class FileCatalog:
         with path.open("r", encoding="utf-8") as f:
             return ArtifactManifest.from_dict(json.load(f))
 
+    def find_artifact_for_workflow_step(
+        self,
+        *,
+        run_id: str,
+        workflow_step_key: str,
+    ) -> ArtifactManifest | None:
+        latest: ArtifactManifest | None = None
+        for path in self._artifacts_root().glob("*.json"):
+            with path.open("r", encoding="utf-8") as f:
+                manifest = ArtifactManifest.from_dict(json.load(f))
+            context = manifest.workflow_context
+            if context.get("run_id") != run_id:
+                continue
+            if context.get("workflow_step_key") != workflow_step_key:
+                continue
+            if latest is None or manifest.created_at > latest.created_at:
+                latest = manifest
+        return latest
+
     def record_workflow_run(self, record: WorkflowRunRecord) -> None:
         path = self._workflow_runs_root() / f"{record.run_id}.json"
         tmp = path.with_suffix(".json.tmp")
@@ -217,6 +236,14 @@ class NullCatalog:
         return None
 
     def load_artifact(self, artifact_id: str) -> ArtifactManifest | None:
+        return None
+
+    def find_artifact_for_workflow_step(
+        self,
+        *,
+        run_id: str,
+        workflow_step_key: str,
+    ) -> ArtifactManifest | None:
         return None
 
     def record_workflow_run(self, record: WorkflowRunRecord) -> None:

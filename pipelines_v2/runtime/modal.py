@@ -7,7 +7,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pipelines_v2.core.types import OperationSpec
-from pipelines_v2.operations.specs import BasisSpec, CaptureSpec, DirectionSpec, LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, ProbeSpec, ReportSpec, TransformSpec
+from pipelines_v2.operations.specs import (
+    BasisSpec,
+    CaptureSpec,
+    DirectionSpec,
+    GeometrySpec,
+    LabelFieldsSpec,
+    LabelMapSpec,
+    PairDeltaSpec,
+    ProbeSpec,
+    ReportSpec,
+    ResidualizedProbeSpec,
+    TextBaselineSpec,
+    TransferProbeSpec,
+    TransformSpec,
+)
 from pipelines_v2.runtime.base import ExecutionPlan
 from pipelines_v2.runtime.modal_worker import run_on_modal
 from pipelines_v2.storage.artifacts import ArtifactManifest, CaptureArtifact, OperationArtifact
@@ -189,7 +203,20 @@ class ModalRunner:
         return errors
 
 
-_ARTIFACT_BOUND_SPECS = (ProbeSpec, DirectionSpec, BasisSpec, PairDeltaSpec, LabelMapSpec, LabelFieldsSpec, TransformSpec, ReportSpec)
+_ARTIFACT_BOUND_SPECS = (
+    ProbeSpec,
+    TransferProbeSpec,
+    TextBaselineSpec,
+    ResidualizedProbeSpec,
+    DirectionSpec,
+    BasisSpec,
+    GeometrySpec,
+    PairDeltaSpec,
+    LabelMapSpec,
+    LabelFieldsSpec,
+    TransformSpec,
+    ReportSpec,
+)
 
 
 def _spec_plan_errors(spec: OperationSpec) -> list[str]:
