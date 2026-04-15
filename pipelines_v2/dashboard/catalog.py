@@ -9,10 +9,12 @@ ordering used during workflow execution.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pipelines_v2.core.config import load_workspace_config
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
 from pipelines_v2.storage.composite import CompositeCatalog
 from pipelines_v2.storage.local import FileCatalog
@@ -72,16 +74,28 @@ def build_catalog(
     wrapped in a TTL cache to protect Postgres from repeat queries — tune
     via the `*_ttl` kwargs or the CLI flags.
     """
-    root = Path(local_root).expanduser() if local_root else pipelines_v2_catalog_root()
+    config = load_workspace_config()
+    resolved_local_root = (
+        Path(local_root).expanduser()
+        if local_root is not None
+        else config.dashboard_local_catalog_root() or pipelines_v2_catalog_root()
+    )
+    resolved_catalog_env = catalog_postgres_env
+    if resolved_catalog_env is None:
+        configured = config.dashboard_catalog_postgres_env()
+        if configured and os.environ.get(configured):
+            resolved_catalog_env = configured
+
+    root = resolved_local_root.resolve()
     local = FileCatalog(root=root)
     catalogs: tuple[Any, ...] = (local,)
     postgres_catalog: PostgresCatalog | None = None
-    if catalog_postgres_env:
-        postgres_catalog = PostgresCatalog(source=PostgresSource.from_env(catalog_postgres_env))
+    if resolved_catalog_env:
+        postgres_catalog = PostgresCatalog(source=PostgresSource.from_env(resolved_catalog_env))
         catalogs = (local, postgres_catalog)
     composite = CompositeCatalog(catalogs=catalogs)
     conninfo = resolve_pg_conninfo(
-        postgres_env=catalog_postgres_env,
+        postgres_env=resolved_catalog_env,
         postgres_catalog=postgres_catalog,
     )
     pg = build_pg(conninfo)
@@ -99,6 +113,6 @@ def build_catalog(
         composite=cached,
         raw=composite,
         local_root=root,
-        postgres_env=catalog_postgres_env,
+        postgres_env=resolved_catalog_env,
         pg=pg,
     )

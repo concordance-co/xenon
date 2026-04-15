@@ -30,6 +30,12 @@ uv run python -m pipelines_v2.cli workflow runs --file projects/.../specs/workfl
 uv run python -m pipelines_v2.cli workflow show --run-id wr_...
 ```
 
+Workspace defaults can live in the repo-root [`xenon.toml`](/Users/brockelmore/concordance/xenon/xenon.toml).
+That file is git-committable and is the right place for shared defaults such as
+the external catalog env var and dashboard static dir. CLI flags still win when
+you pass them explicitly, and workflow runner specs still win when they set
+their own catalog directly.
+
 The detailed library and CLI contract is documented in
 [PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md).
 

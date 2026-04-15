@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from pipelines_v2.core.config import load_workspace_config
 from pipelines_v2.core.env import load_dotenv_if_present
 
 
@@ -20,17 +21,17 @@ def _build_parser() -> argparse.ArgumentParser:
     serve.add_argument(
         "--local-catalog-root",
         default=None,
-        help="Optional local catalog root; defaults to ~/.xenon/pipelines_v2/catalog.",
+        help="Optional local catalog root; falls back to xenon.toml or ~/.xenon/pipelines_v2/catalog.",
     )
     serve.add_argument(
         "--catalog-postgres-env",
         default=None,
-        help="Optional env var name for a Postgres-backed catalog (same as `workflow run`).",
+        help="Optional env var name for a Postgres-backed catalog. Falls back to xenon.toml when omitted.",
     )
     serve.add_argument(
         "--static-dir",
         default=None,
-        help="Optional prebuilt frontend directory (e.g. dashboard/dist) to serve at /.",
+        help="Optional prebuilt frontend directory (e.g. dashboard/dist). Falls back to xenon.toml when omitted.",
     )
     serve.add_argument(
         "--reload",
@@ -77,10 +78,11 @@ def _serve(ns: argparse.Namespace) -> int:
 
     from pipelines_v2.dashboard.server import create_app
 
+    config = load_workspace_config()
     app = create_app(
         local_root=Path(ns.local_catalog_root) if ns.local_catalog_root else None,
         catalog_postgres_env=ns.catalog_postgres_env,
-        static_dir=Path(ns.static_dir) if ns.static_dir else None,
+        static_dir=Path(ns.static_dir) if ns.static_dir else config.dashboard_static_dir(),
         cache_list_ttl=ns.cache_list_ttl,
         cache_hot_ttl=ns.cache_hot_ttl,
         cache_cold_ttl=ns.cache_cold_ttl,

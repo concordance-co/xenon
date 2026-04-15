@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pipelines_v2.core.config import load_workspace_config
 from pipelines_v2.dashboard.catalog import DashboardCatalog, build_catalog
 from pipelines_v2.dashboard.models import (
     DatasetPreview,
@@ -405,8 +406,9 @@ def create_app(
             raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
         return build_prompt_preview(run=run, target_step=step_name, max_examples=max_examples)
 
-    if static_dir is not None:
-        _mount_static(app, Path(static_dir))
+    resolved_static_dir = Path(static_dir) if static_dir is not None else load_workspace_config().dashboard_static_dir()
+    if resolved_static_dir is not None:
+        _mount_static(app, Path(resolved_static_dir))
 
     return app
 
