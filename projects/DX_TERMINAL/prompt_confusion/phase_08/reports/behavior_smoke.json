@@ -1,0 +1,602 @@
+{
+  "max_per_cell": 2,
+  "rows": [
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "observe",
+      "asset_label": "NONE",
+      "behavior_side": "strategy",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}",
+      "size_label": "none",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "observe",
+      "asset_label": "NONE",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}",
+      "size_label": "none",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "observe",
+      "asset_label": "NONE",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}",
+      "size_label": "none",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "small",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "small",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "small",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "small",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "small",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "small",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "observe",
+      "asset_label": "NONE",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}",
+      "size_label": "none",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "medium",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "medium",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "large",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "medium",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": true
+    }
+  ],
+  "sample_size": 24,
+  "summary": {
+    "behavior_side_counts": {
+      "both": 4,
+      "neither": 8,
+      "setting": 2,
+      "strategy": 10
+    },
+    "by_cell": {
+      "trade_size::large::aligned": {
+        "behavior_side_counts": {
+          "both": 1,
+          "setting": 1
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trade_size::large::edge": {
+        "behavior_side_counts": {
+          "strategy": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trade_size::large::strong_conflict": {
+        "behavior_side_counts": {
+          "neither": 1,
+          "strategy": 1
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trade_size::small::aligned": {
+        "behavior_side_counts": {
+          "both": 1,
+          "setting": 1
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trade_size::small::edge": {
+        "behavior_side_counts": {
+          "neither": 1,
+          "strategy": 1
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trade_size::small::strong_conflict": {
+        "behavior_side_counts": {
+          "neither": 1,
+          "strategy": 1
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trading_activity::observe::aligned": {
+        "behavior_side_counts": {
+          "both": 1,
+          "neither": 1
+        },
+        "exact_expected_rate": 0.5,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trading_activity::observe::edge": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trading_activity::observe::strong_conflict": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trading_activity::trade::aligned": {
+        "behavior_side_counts": {
+          "both": 1,
+          "strategy": 1
+        },
+        "exact_expected_rate": 0.5,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trading_activity::trade::edge": {
+        "behavior_side_counts": {
+          "strategy": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      },
+      "trading_activity::trade::strong_conflict": {
+        "behavior_side_counts": {
+          "strategy": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 1.0
+      }
+    },
+    "exact_expected_rate": 0.25,
+    "rows": 24,
+    "valid_output_rate": 1.0
+  }
+}

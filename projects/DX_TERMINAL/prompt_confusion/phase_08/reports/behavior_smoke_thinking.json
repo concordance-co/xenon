@@ -1,0 +1,592 @@
+{
+  "max_per_cell": 2,
+  "rows": [
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent needing to decide on an action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY: They want to act once the case is live, and prefer the largest trade size. But this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 2/5, which means they need a very strong live case before entering. Asset Risk is 5/5, so they prefer balanced risk. Trade Size is 4/5, allowing larger sizes. Holding Style is 4/5, so hold for a few ticks. Diversification is 2/5, so not too worried about diversifying.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation. BETA is weaker, DELTA and GAMMA are mixed. \n\nSo, the strategy says to act once the case is live and use the largest size. The active settings require a strong live case. Since ALPHA has a clear live case, that's the one to target. The trade size can be large as per the settings. The risk is balanced because it's the clearest setup. Even though diversification is low, the focus is on the best opportunity. So the action should be to buy ALPHA with a large size.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "invalid",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to wait unless the case becomes clearly stronger than normal. But the size preference is to use the largest working allocation tier. However, this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 2/5, which means they require a very strong live case before entering. Asset Risk Preference is 2/5, so they want to stay balanced around the clearest setup. Trade Size is 4/5, allowing sizes above standard. Holding Style is 2/5, so normal hold unless the thesis breaks. Diversification is 3/5, acceptable balanced spread.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power for any size. MARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed/noisy.\n\nSo, the strategy says to wait unless the case is clearly stronger. But the trade size preference is to go large. However, the active settings have a low trading activity (2/5), requiring a very strong case. ALPHA is clear, but the strategy's activity preference says to wait unless it's clearly stronger. But the market says ALPHA is clear. \n\nWait, the strategy says \"wait unless the case becomes clearly stronger than normal.\" So if the case is clearly stronger, then act. But the active settings' trading activity is 2/5, which requires a very strong case. So maybe ALPHA's clear case meets that. But the strategy's activity preference is to wait unless it's clearly stronger. So if ALPHA is clearly stronger, then maybe proceed. But the trade size is 4/5, which allows larger sizes. \n\nBut the strategy says to apply the preference only if the setup and active settings allow. So, since the active settings require a very strong case, and ALPHA is clear, that might be acceptable. Then, the size preference is to use the largest allocation. But the active settings' trade size is 4/5, which allows moving above standard. So, the action would be to buy ALPHA with large size. \n\nBut wait, the strategy's activity preference is to wait unless the case is clearly stronger. But the active settings' trading activity is 2/5, which is low. So maybe the instruction is to be cautious. However, the market says ALPHA has a clear live case. So maybe the correct action is to buy ALPHA with large size. But the strategy says \"wait unless the case becomes clearly stronger than normal.\" So if the case is clearly stronger, then act. Since ALPHA is clear, that's the setup. So the action would be to buy ALPHA with large size. \n\nBut the active settings' trading activity is 2/5, which requires a very strong case. So maybe that's satisfied by ALPHA's clear case. Therefore, the answer should be buy ALPHA with large size. But I need to check if the strategy and settings align. The strategy's size preference is to use the largest tier, and the settings allow trade size 4/5, which is above standard. So yes. So the action is buy, asset ALPHA, size large.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "invalid",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to act once the case is live, and the size preference is the largest working allocation tier. But this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 2/5, which means they require a very strong live case before entering. Asset Risk Preference is 5/5, so they want balanced risk around the clearest setup. Trade Size is 3/5, so standard size tier. Holding Style is 4/5, meaning hold for a normal multi-tick horizon. Diversification is 2/5, so balanced diversification is acceptable.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power for any size. MARKET data says ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed/noisy.\n\nSo, the strategy says to lean towards acting when the case is live and use the largest size. But the active settings have a low trading activity (2/5), requiring a very strong case. However, ALPHA is stated as having a clear live case. The trade size is 3/5, which is standard, not the largest. But the strategy says to use the largest tier if possible. However, the settings might override this. Wait, the user said if STRATEGY and SETTINGS disagree, SETTINGS still constrain. So even if the strategy prefers large size, the settings say to use standard size. So size should be standard. \n\nBut the strategy's size preference is to use the largest working allocation tier. However, the active settings' trade size is 3/5, which is standard. So maybe the trade size should be standard. But the strategy says to apply the preference if the setup and active settings allow. So, does the active setting allow it? The trade size setting is 3/5, which is standard. So maybe the size should be standard. But the strategy wants the largest. But since the settings are constraints, perhaps the size is standard. \n\nBut the user says \"if STRATEGY and SETTINGS disagree, SETTINGS still constrain.\" So even if the strategy prefers large, the settings say standard. So size is medium? Wait, the size options are small, medium, large, none. The trade size is 3/5, which is standard. So maybe \"medium\" is the standard size. \n\nSo, the asset to trade is ALPHA, since it's the only one with a clear live case. The action is buy, asset ALPHA, size medium (standard). The other assets don't have strong cases. So the answer should be buy ALPHA with medium size.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "invalid",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to wait unless the case becomes clearly stronger than normal. But the size preference is to use the largest working allocation tier. However, this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 2/5, which means they require a very strong live case before entering. Asset Risk Preference is 2/5, suggesting to stay balanced around the clearest setup. Trade Size is 3/5, so standard size tier. Diversification is 3/5, acceptable balanced spread.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed/noisy.\n\nSo, according to the strategy, the user wants to wait unless the case is clearly stronger. But the active settings require a very strong case. However, ALPHA is described as a clear live case. The strategy's size preference is to use the largest tier, but the trade size setting is 3/5, which is standard. Wait, the strategy says \"express the trade with the largest working allocation tier\" but the settings say \"use the standard size tier.\" Since settings constrain the final execution, even if the strategy prefers large, the settings say standard. But the strategy's size preference is only applied if the setup and settings allow. \n\nBut the active settings' trade size is 3/5, which is standard. So the size should be standard, not large. However, the strategy's size preference is to use the largest, but the settings might override that. \n\nBut the strategy says \"apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So, the setup (ALPHA's clear case) is there, but the active settings' trade size is 3/5 (standard). So the size should be standard. However, the strategy's size preference is to use the largest. But since the settings have a trade size of 3/5, which is standard, maybe the size should be medium? Wait, the size options are small, medium, large, none. The trade size setting is 3/5, which is standard. So maybe \"medium\" is the standard size. \n\nBut the strategy says to use the largest working allocation tier. However, the settings might restrict that. The user's instruction says if strategy and settings disagree, settings still constrain. So even if the strategy prefers large, the settings say standard (medium). So the size should be medium. \n\nBut the strategy's activity preference is to wait unless the case is clearly stronger. However, ALPHA is a clear case. So the activity preference would allow entering. But the trading activity setting is 2/5, which requires a very strong case. ALPHA is a clear live case, which might meet that. \n\nSo the action would be to buy ALPHA with medium size. But the strategy's size preference is largest, but settings say standard. So the answer should be buy ALPHA with size medium. \n\nAlternatively, maybe the trade size setting is 3/5, which is standard, so the size is medium. So the correct action is buy ALPHA with size medium.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "invalid",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user wants me to choose an action based on the given STRATEGY and SETTINGS. \n\nFirst, looking at the STRATEGY: The activity preference is to act once the case is live, and the size preference is the largest allocation. But this is conditional on the setup and active settings allowing it. \n\nNow, the ACTIVE SETTINGS say that trading activity is at 2/5, which means they require a very strong live case before entering. The trade size is 1/5, so smallest size tier. Asset risk is 5/5, so balanced risk. Holding style is 4/5, so hold for a normal period. Diversification is 2/5, so balanced but not too much.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation. BETA is weaker, DELTA and GAMMA are mixed or noisy.\n\nSo, according to the STRATEGY, if the setup is good, we should go with the largest size. But the SETTINGS say trade size is 1/5, which is smallest. However, the STRATEGY says to apply the preference if the setup and active settings allow. The active settings here have a low trade size policy, but the STRATEGY's size preference is to use the largest. But since SETTINGS constrain the final execution, even if the STRATEGY wants large, the SETTINGS say small. \n\nBut wait, the STRATEGY says \"Apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So the ACTIVE SETTINGS here have a trade size of 1/5 (smallest). So even if the STRATEGY prefers large, the SETTINGS require small. So the size should be small. \n\nAlso, the activity preference is to act once the case is live. The ALPHA has a clear live case. So the action should be to buy ALPHA. But the size is small because of the SETTINGS. \n\nSo the action is buy ALPHA with size small. But wait, the size preference in STRATEGY is largest, but SETTINGS say smallest. Since SETTINGS constrain, the size is small. \n\nSo the final answer should be {\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "invalid",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:large:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given STRATEGY and SETTINGS. \n\nFirst, looking at the STRATEGY: The activity preference is to wait unless the case becomes clearly stronger than normal. But the size preference is to use the largest working allocation tier. However, this is only if the setup and ACTIVE SETTINGS allow it.\n\nNow, checking the ACTIVE SETTINGS. The Trading Activity is 2/5, which means they require a very strong live case before entering. The Trade Size is 1/5, the smallest size tier. Asset Risk Preference is 2/5, so they want balanced risk. Diversification is 3/5, which is okay with balanced spread.\n\nThe MARKET data says ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed. The portfolio has no current positions and high free cash, so buying power isn't an issue.\n\nBut the SETTINGS say Trade Size should be smallest (1/5), even if the STRATEGY says largest. Since SETTINGS constrain the final execution, even if the STRATEGY prefers large size, the SETTINGS say small. Also, the Trading Activity is 2/5, which requires a very strong case. ALPHA is clear, but maybe not \"very strong\"? Wait, the STRATEGY says \"wait unless the case becomes clearly stronger than normal.\" But the ACTIVE SETTINGS' Trading Activity is 2/5, which requires a very strong case. So maybe ALPHA's \"clear live case\" is sufficient? But the Trade Size is conflicting. The STRATEGY says largest size, but SETTINGS say smallest. Since SETTINGS override, the size has to be small. But the question is, should we even trade? The portfolio has no positions, and the strategy says to wait unless the case is clearly stronger. However, the ACTIVE SETTINGS' Trading Activity is 2/5, which is a moderate level, but the instruction says \"require a very strong live case before entering.\" So maybe even though ALPHA is clear, it's not strong enough? Or is it? The wording is a bit conflicting. \n\nAlternatively, maybe the STRATEGY's activity preference is to wait unless the case is clearly stronger. The ACTIVE SETTINGS' Trading Activity is 2/5, which is a lower activity level, so maybe the agent should not enter unless the case is very strong. But the MARKET says ALPHA has a clear live case. So maybe that's considered a strong enough case. However, the Trade Size is 1/5, so even if we enter, it's small. But the STRATEGY says to use the largest size if possible. But SETTINGS override. So the action would be to buy ALPHA with small size. But the problem is, the STRATEGY says \"wait unless the case becomes clearly stronger than normal.\" The ACTIVE SETTINGS' Trading Activity is 2/5, which is a lower activity, so maybe the agent is supposed to be cautious. However, the MARKET says ALPHA is clear. So maybe the correct action is to buy ALPHA with small size, as per the SETTINGS. Alternatively, maybe the agent should observe because the Trading Activity is low. But the STRATEGY says to act if the case is clear. \n\nHmm. The final decision is to buy ALPHA with small size, because the SETTINGS require small size, and the Trading Activity is 2/5, but the case is clear. But the user's instruction says that if STRATEGY and SETTINGS disagree, SETTINGS still constrain. So even if the STRATEGY wants large size, the SETTINGS say small. So the action is buy ALPHA with small size. But the question is, should the action be to buy or observe? The STRATEGY says to wait unless the case is clearly stronger. The case for ALPHA is clear, so maybe the agent should act. But the Trading Activity setting is 2/5, which requires a very strong case. Is a clear live case considered very strong? Maybe. So the answer would be buy ALPHA with small size. But the user's answer must be in the JSON format. So the final answer is {\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "invalid",
+      "strategy_direction": "large",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to act promptly once the case is live. The size preference is to keep the position in the small size band. But this applies only if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS. Trading Activity is 3/5, which says to stay selective and enter only after stronger confirmation. Asset Risk Preference is 3/5, suggesting balanced risk selection around the clearest setup. Trade Size is 1/5, meaning use the smallest size tier. Holding Style is 3/5, so hold for a normal multi-tick horizon unless the thesis breaks. Diversification is 4/5, so balanced diversification is okay.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power for any size. MARKET data: ALPHA has a clear live case with enough confirmation. BETA is weaker, DELTA and GAMMA are mixed.\n\nSo, the strategy says to act promptly if the setup is there, but the active settings are more cautious. The Trade Size setting is 1/5, which is the smallest size. The Market says ALPHA is a clear case. But the Trading Activity setting is 3/5, which is moderate, so maybe not too aggressive. However, the strategy's activity preference is to act promptly once the case is live. But the active settings say to stay selective. \n\nWait, the STRATEGY says to apply the preference only if the setup and ACTIVE SETTINGS allow it. So even if the strategy wants to act, the settings might restrict it. The Trade Size is 1/5, so smallest size. So even if the strategy wants to act, the size has to be small. \n\nLooking at the assets: ALPHA is clear, so maybe that's the one. But the settings say to be selective. However, since the setup is there (ALPHA is clear), and the size is small (as per trade size setting), maybe the action is to buy ALPHA with small size. \n\nBut the ACTIVE SETTINGS' Trading Activity is 3/5, which is \"stay selective and enter only after stronger confirmation.\" But the STRATEGY says to act promptly once the case is live. So there's a conflict here. But the user said that if STRATEGY and SETTINGS disagree, SETTINGS still constrain the final execution. So even if the strategy wants to act, the settings say to be selective. However, the setup for ALPHA is clear and has enough confirmation. So maybe the settings allow it. \n\nAlternatively, maybe the settings are more restrictive. The Trade Size is 1/5, so small. So the action would be to buy ALPHA with small size. But the settings say to be selective. But since ALPHA is the clear case, maybe it's allowed. \n\nSo the final action would be to buy ALPHA with small size. But need to check if the settings allow it. The Asset Risk Preference is 3/5, balanced risk, so ALPHA is the clearest setup. So yes, it's acceptable. Therefore, the action is buy ALPHA with small size.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "invalid",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "small"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The policy preference says to keep entry activity selective unless the setup is unusually strong. Also, the size preference is to use the smallest working size tier on entries. But this only applies if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS have several factors. Trading Activity is 2/5, which means execution activity is moderate, requiring a very strong live case before entering. Asset Risk Preference is 1/5, so they want to stay near balanced risk, focusing on the clearest setups. Trade Size is 1/5, so smallest size tier. Holding Style is 2/5, normal hold unless the thesis breaks. Diversification is 4/5, so balanced spread is okay.\n\nThe PORTFOLIO shows high free cash, no current positions, and enough buying power for any size. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker with weaker follow-through. DELTA and GAMMA are mixed/noisy.\n\nSo, the strategy says to be selective but use small sizes. The active settings require a very strong case for entry. ALPHA is the only one with a clear live case. But the Trade Size setting is 1/5, which is smallest size. However, the Trading Activity setting is 2/5, which is moderate, but the note says \"require a very strong live case before entering.\" Since ALPHA is the only one with a clear case, maybe that's the one. But the strategy says to be selective unless the setup is unusually strong. The settings might conflict here. The strategy says to use smallest size, but the settings say to use smallest size tier. So maybe the action is to buy ALPHA with small size. But wait, the ACTIVE SETTINGS' Trading Activity is 2/5, which is \"execution activity policy: require a very strong live case before entering.\" So even though ALPHA is clear, does that meet the \"very strong\" requirement? The strategy says \"keep entry activity selective unless the setup becomes unusually strong.\" So if ALPHA is a clear live case, maybe that's considered strong enough. But the settings might require even stronger. However, the strategy says to apply the preference if the setup and settings allow. So if the setup (ALPHA's clear case) is strong enough, and the settings allow (since Trade Size is small, which is allowed), then the action would be to buy ALPHA with small size. But the settings' Trading Activity is 2/5, which is moderate, but the note says \"require a very strong live case.\" So maybe the setup needs to be very strong. Is ALPHA's clear case considered very strong? The wording says \"clear live case with enough confirmation to justify a normal entry.\" So maybe that's sufficient. Therefore, the action would be to buy ALPHA with small size. But the strategy's size preference is smallest, and the settings' Trade Size is 1/5, which is smallest. So that aligns. So the answer should be buy ALPHA with small size. But need to check if any other assets are better. BETA is weaker, DELTA and GAMMA are mixed. So ALPHA is the best option. So the final action is buy ALPHA, small.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "invalid",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent needing to decide on an action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY: they want to act promptly once the case is live, but keep positions small. However, the ACTIVE SETTINGS say to stay selective and enter only after stronger confirmation. The trade size is standard, and the diversification is balanced.\n\nThe MARKET data shows ALPHA has a clear live case with enough confirmation. BETA is weaker, DELTA and GAMMA are mixed. Since the strategy prefers prompt action but the settings say to be selective, there's a conflict. But the settings take precedence. So even though ALPHA is a good candidate, the settings advise waiting for stronger confirmation. Also, the portfolio has no current positions and enough buying power, but the size preference is small. However, the trade size setting is 3/5, which is standard. But since the strategy's size is small, maybe that's conflicting. Wait, the strategy says to keep positions small, but the settings say standard size. But the user said if strategy and settings disagree, settings constrain. So standard size. But the market for ALPHA is clear, but the settings say to be selective. So maybe not entering yet. Alternatively, since ALPHA is clear, maybe it's acceptable. But the activity preference in strategy is to act promptly, but settings say to stay selective. So maybe the settings override. So the decision is to observe. But the portfolio has free cash, so maybe enter. Hmm. But the settings say to enter only after stronger confirmation. So even though ALPHA is clear, maybe it's not enough. So the action would be to observe. But the strategy says to act promptly. This is conflicting. Wait, the user said if strategy and settings disagree, settings still constrain. So the active settings are 3/5 for activity, which is to stay selective. So even if the strategy wants to act, the settings say to be selective. Therefore, maybe not trade. But the market for ALPHA is clear. But the settings say to enter only after stronger confirmation. So maybe the answer is to observe. Alternatively, maybe the clear case is sufficient. But the settings are higher priority. So the action is observe. But the user's portfolio has no positions, so maybe entering a small position. But the size preference in strategy is small, but settings say standard. But the user says to follow settings. So standard size. But the market is ALPHA. So maybe buy ALPHA with standard size. But the settings say to be selective. Wait, the strategy says to be willing to act promptly once the case is live. The active settings say to stay selective. So maybe the answer is to observe. But the market for ALPHA is clear. I'm a bit confused. Let me check again. The strategy's activity preference is to act promptly, but the settings say to stay selective. Since settings are higher, the action is to stay selective. Therefore, even though ALPHA is clear, maybe not enter. So the action is observe. But the user's portfolio has free cash. But maybe the settings prevent entering. So the answer is observe.\n</think>\n\n{\"action\":\"observe\",\"asset\":\"NONE\",\"size\":\"none\"}",
+      "size_label": "invalid",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "length",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The policy preference says to keep entry activity selective unless the setup is unusually strong. Also, the size preference is to use the smallest working size tier on entries. But this should only apply if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS have a Trading Activity of 2/5, which means they require a very strong live case before entering. The Asset Risk Preference is 1/5, so they want to stay near balanced risk, focusing on the clearest setup. Trade Size is 3/5, standard size tier. Holding Style is 2/5, normal hold unless the thesis breaks. Diversification is 4/5, so balanced spread is okay.\n\nThe PORTFOLIO says free cash is high, no current positions, and enough buying power for any size. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed or noisy.\n\nSo, the strategy says to be selective but use small size if the setup is good. However, the active settings require a very strong case for entry. ALPHA is the only one with a clear live case. But the Trade Size setting is 3/5, which is standard, not the smallest. However, the strategy mentions using the smallest size tier on entries. But the settings might override that. Wait, the user said if STRATEGY and SETTINGS disagree, SETTINGS still constrain. So even if the strategy says small size, if the settings say standard, then standard applies?\n\nWait, the STRATEGY says \"size preference: use the smallest working size tier on entries\" but only if the setup and active settings allow. The active settings have Trade Size at 3/5, which is standard. So maybe the size should be standard. But the strategy's size preference is to use small. But since the settings are constraints, maybe the Trade Size setting of 3/5 (standard) takes precedence. But the strategy's size preference is part of the policy. Hmm, the initial instruction says to consider both sources, but if they disagree, the SETTINGS constrain. So the size would be standard, not small. But the strategy says to use the smallest size tier. But the active settings' Trade Size is 3/5, which is standard. So maybe the size is standard. However, the strategy's size preference is to use the smallest, but only if allowed by the setup and settings. Since the settings allow standard, maybe the size is standard. But the strategy's instruction is to use the smallest. This is a bit conflicting.\n\nBut the user's instruction says that if STRATEGY and SETTINGS disagree, SETTINGS still constrain. So the size would be standard. However, the strategy's size preference is to use the smallest. But the active settings' Trade Size is 3/5, which is standard. So maybe the size is standard. But the strategy says to use the smallest. But the settings might not allow it. Wait, the active settings' Trade Size is 3/5, which is the standard size tier. So the size should be standard. But the strategy's size preference is to use the smallest. However, the user says that SETTINGS constrain. So even if the strategy prefers small, the settings say standard. Therefore, the size is standard. But the strategy says \"use the smallest working size tier on entries\" if allowed. So maybe the settings allow it. Wait, the Trade Size in active settings is 3/5, which is standard. So maybe the size is standard. But the strategy's size preference is to use the smallest. But the settings might not allow that. So the answer would be to enter with standard size on ALPHA. But the strategy says to use the smallest. But the settings say standard. So which one takes precedence? The user said SETTINGS constrain. So the size would be standard. But the strategy's size preference is to use the smallest. But the settings might not allow it. So maybe the answer is to buy ALPHA with standard size. But the strategy says to use the smallest. But the user says that if there's a conflict, the settings take precedence. So the size is standard. However, the strategy's instruction is to use the smallest. But the settings' Trade Size is 3/5, which is standard. Therefore, the size is standard. But the strategy's size preference is to use the smallest. But the settings say standard. So the answer would be to buy ALPHA with standard size. But the user's instruction says that the strategy's size preference is to use the smallest, but only if allowed by the setup and settings. The setup for ALPHA is clear, and the settings allow standard size. So maybe the size is standard. But the strategy says",
+      "size_label": "invalid",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent needing to decide on an action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY: they want to act promptly once the case is live, but keep positions small. However, the ACTIVE SETTINGS say to stay selective and enter only after stronger confirmation. The trade size is allowed to go above standard, but the activity is only 3/5, so not too aggressive.\n\nThe MARKET data shows ALPHA has a clear live case with enough confirmation. BETA is weaker, DELTA and GAMMA are mixed. Since the strategy prefers prompt action but the settings say to be selective, there's a conflict. But the settings are supposed to constrain the execution. \n\nThe portfolio has no current positions and enough buying power. Since ALPHA is the only one with a clear setup, but the settings advise waiting for stronger confirmation. However, the strategy says to act promptly once the case is live. But the settings are 3/5 activity, so maybe it's okay to enter but with caution. The size preference is small, but trade size can go above standard. But since the activity is selective, maybe a small size is better. \n\nSo, even though ALPHA is a clear case, the settings suggest being selective. But the strategy says to act promptly. Maybe the answer is to buy ALPHA with small size, but check if the settings allow. The settings say \"stay selective\" but the strategy says \"willing to act\". Since the settings are constraints, maybe the answer is to observe. Wait, but the strategy says to act if the setup is there. The active settings say 3/5 activity, which is moderate. So maybe it's allowed. The size preference is small, but trade size can move above. But the strategy says to keep small. So maybe buy ALPHA with small size. But the settings say to be selective. Hmm. Maybe the answer is to observe because the settings are more restrictive. But the strategy says to act if the case is live. I think the correct action is to buy ALPHA with small size, as the setup is there and the size is small. The settings allow for size above standard but it's not required. So the answer is buy ALPHA, small.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}",
+      "size_label": "invalid",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trade_size:small:ctx_balanced_v0:policy_v0:trade_size_setting_4_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "length",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The policy preference says to keep entry activity selective unless the setup is unusually strong. Also, the size preference is to use the smallest working size tier on entries. But this only applies if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS have several factors. Trading Activity is 2/5, which means execution activity is restricted; they need a very strong live case before entering. Asset Risk Preference is 1/5, so they want to stay near balanced risk, focusing on the clearest setups. Trade Size is 4/5, allowing sizes above standard. Holding Style is 2/5, so normal hold unless the thesis breaks. Diversification is 4/5, accepting a balanced spread.\n\nThe PORTFOLIO shows high free cash, no current positions, and enough buying power for any size. MARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed or noisy.\n\nSo, the strategy says to be selective but use small sizes if the setup allows. However, the active settings have a low trading activity (2/5), requiring a very strong case. But ALPHA is described as a clear live case with enough confirmation. That might meet the \"very strong live case\" needed. \n\nBut the strategy's size preference is small, but trade size setting is 4/5, which allows above standard. However, the strategy says to use the smallest size unless the setup is unusually strong. Since ALPHA is a clear case, maybe it's considered strong enough. But the active settings' trading activity is low, so maybe they are cautious. However, the strategy says to apply the preference if the setup and settings allow. \n\nWait, the strategy says \"apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So, even if the strategy prefers small size, if the settings allow larger, maybe it's okay. But the settings' trade size is 4/5, which is higher, but the strategy's size preference is to use the smallest. But the settings might override? Wait, the user instruction says that if STRATEGY and SETTINGS disagree, SETTINGS still constrain the final execution. So, even if the strategy prefers small, if the settings allow larger, but the strategy's size preference is to use small, but the settings don't restrict size? Wait, the settings' trade size is 4/5, which is \"execution size policy: size can move above standard.\" So that allows larger sizes. But the strategy's size preference is to use the smallest. However, the user instruction says that SETTINGS constrain the final execution. So maybe the size can be larger, but the strategy's preference is to use small. But the strategy says \"use the smallest working size tier on entries\" if allowed. Since the settings allow moving above standard, but the strategy's preference is to use small. So maybe the size should be small. \n\nBut the market says ALPHA has a clear live case. The strategy says to be selective but if the setup is strong, maybe enter. The active settings' trading activity is 2/5, which requires a very strong case. Since ALPHA is a clear live case, that might meet the requirement. So the action would be to enter ALPHA. But what size? The strategy says smallest size, but the settings allow larger. However, the strategy's size preference is to use the smallest. So even though settings allow larger, the strategy's preference is to use small. So the size would be small. \n\nBut the user instruction says that if STRATEGY and SETTINGS disagree, SETTINGS constrain. Wait, the strategy's size preference is to use the smallest, but the settings allow moving above standard. So maybe the size can be larger. But the strategy says to use the smallest unless the setup is unusually strong. The setup here is clear, but is it \"unusually strong\"? The strategy says \"keep entry activity selective unless the setup becomes unusually strong.\" The market says ALPHA is a clear live case, but not necessarily \"unusually strong.\" So maybe the strategy's preference is to use small size. \n\nSo the action would be to buy ALPHA with small size. But the settings' trade size is 4/5, which allows above standard. But the strategy's size preference is to use the smallest. Since the strategy's instruction is to use the smallest unless the setup is unusually strong. Since the setup is clear but not stated as \"unusually strong,\" the size should be small. \n\nTherefore, the correct action is to buy ALPHA with small size. But need to check if the settings allow it. The settings don't restrict size, so it's allowed. So the final answer is {\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"small\"}.\n</think>\n\n{\"",
+      "size_label": "invalid",
+      "strategy_direction": "small",
+      "target_dimension": "trade_size",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "length",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to be selective unless the setup is unusually strong. The size preference is to use large when the trade is on. But these preferences only apply if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 1/5, which means prefer observing unless the case is unusually strong. Asset Risk Preference is 3/5, so balanced risk selection around the clearest setup. Trade Size is 3/5, standard size tier. Holding Style is 5/5, so hold for a normal multi-tick horizon. Diversification is 1/5, balanced is acceptable.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed.\n\nSo, the strategy says to be selective but if the setup is strong, go with large size. The active settings say trading activity is low (1/5), so prefer observing unless it's unusually strong. However, ALPHA is a clear case. But the activity setting says to observe unless it's unusually strong. But the strategy says to keep entry activity selective unless the setup is unusually strong. \n\nWait, the strategy's activity preference is to keep entry activity selective unless the setup is unusually strong. The active settings' trading activity is 1/5, which prefers observing unless the case is unusually strong. So, if ALPHA is a clear case, maybe that's considered \"unusually strong\"? The strategy says to apply the preference if the setup and active settings allow. \n\nBut the trade size is 3/5, which is standard size tier. However, the strategy says to use large when the trade is on. But the active settings' trade size is 3/5, which is standard. So there's a conflict here. But the user said that if strategy and settings disagree, settings still constrain the final execution. So even if the strategy prefers large, the settings say standard size. But the strategy says \"keep position size in the large band when the trade is on.\" But the settings say trade size is 3/5, which is standard. So maybe the size should be standard? Or does the strategy override?\n\nWait, the user instruction says: \"If STRATEGY and SETTINGS disagree, SETTINGS still constrain the final execution.\" So even if the strategy suggests large, if the settings say standard, then we go with standard. But the strategy's size preference is to keep large when the trade is on. But the active settings' trade size is 3/5, which is standard. So maybe the size should be standard. However, the strategy's instruction is to apply the preference only if the setup and active settings allow it. So maybe the active settings allow it? Or not?\n\nAlso, the market says ALPHA is a clear live case with enough confirmation for a normal entry. So the setup is strong enough. The strategy says to be selective unless the setup is unusually strong. Since ALPHA is clear, maybe that's considered \"unusually strong\"? If so, then the strategy would allow entering with large size. But the active settings' trade size is 3/5 (standard). So the settings would constrain the size to standard. But the strategy says to use large when the trade is on. So there's a conflict here. But according to the user's instruction, settings constrain. So even if the strategy says large, the settings say standard. Therefore, the size would be standard. But the strategy's size preference is to use large when the trade is on. However, the active settings' trade size is 3/5, which is standard. So maybe the size is standard.\n\nBut the user's instruction says that if the strategy and settings disagree, the settings still constrain. So the size would be standard. However, the strategy's size preference is to use large when the trade is on. But the active settings' trade size is 3/5, which is standard. So the size would be standard. But the strategy says to use large when the trade is on. So maybe the settings are allowing it? Or not?\n\nAlternatively, maybe the trade size in the active settings is 3/5, which is standard, so the size should be standard. But the strategy says to use large when the trade is on. But since the settings are constraining, the size is standard. However, the strategy's instruction says to apply the preference only if the setup and active settings allow it. So if the setup is strong (ALPHA is clear), and the active settings allow it (since the trade size is 3/5, which is standard, but maybe that's acceptable). \n\nBut the",
+      "size_label": "invalid",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "length",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to wait unless the case becomes clearly stronger than normal. But the size preference is to use the largest working allocation tier. However, this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 1/5, which means prefer observing unless the case is unusually strong. Asset Risk Preference is 3/5, suggesting staying near balanced risk. Trade Size is 3/5, so standard size tier. Holding Style is 1/5, meaning normal hold unless the thesis breaks. Diversification is 5/5, so balanced spread is okay.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed or noisy.\n\nSo, the strategy says to wait unless the case is clearly stronger. But ALPHA is a clear case. However, the active settings' trading activity is low (1/5), so we should prefer observing unless it's unusually strong. But ALPHA is a normal entry, not unusually strong? Wait, the strategy says \"wait unless the case becomes clearly stronger than normal.\" So if ALPHA is a normal entry, maybe it's not strong enough. But the strategy's size preference is to use the largest tier if possible. However, the active settings' trade size is 3/5, which is standard, not largest. Also, the trading activity setting says to prefer observing unless the case is unusually strong. So even if ALPHA is a normal entry, maybe it's not strong enough. \n\nBut the strategy says \"apply the preference only if the setup and active settings allow it.\" So even if the strategy prefers large size, if the active settings don't allow it (like trade size is 3/5, standard), then we have to follow the settings. \n\nSo, the active settings' trade size is standard, not large. Also, the trading activity is low, so we should observe unless the case is unusually strong. Since ALPHA is a normal entry, not unusually strong, maybe we should observe. But the strategy says to express the trade with the largest allocation if possible. However, the active settings might restrict that. \n\nWait, the user says \"If STRATEGY and SETTINGS disagree, SETTINGS still constrain the final execution.\" So even if the strategy prefers large size, if the settings say standard, then we have to go with standard. \n\nBut the question is whether to buy or observe. The strategy says to wait unless the case is clearly stronger. The market says ALPHA is a clear live case with enough confirmation for a normal entry. So maybe that's considered \"clearly stronger than normal\"? If so, then the strategy would say to act. But the active settings' trading activity is 1/5, which prefers observing unless the case is unusually strong. So is a normal entry considered \"unusually strong\"? Probably not. So the active settings would say to observe. \n\nBut the strategy's activity preference is to wait unless the case is clearly stronger. So if the case is normal, wait. Therefore, the action would be to observe. But the strategy's size preference is to use the largest tier, but since the settings say standard, maybe that's not allowed. \n\nAlternatively, maybe the strategy's activity preference is to wait unless the case is clearly stronger. Since ALPHA is a clear case, maybe that's considered \"clearly stronger\". But the active settings' trading activity is 1/5, which says to prefer observing unless the case is unusually strong. So if the case is clear but not unusually strong, then observe. \n\nBut the problem is whether \"clear live case with enough confirmation to justify a normal entry\" is considered \"unusually strong\" or just normal. The strategy says \"wait unless the case becomes clearly stronger than normal.\" So if it's a normal entry, then wait. But if it's clearly stronger, then act. \n\nSo the market says ALPHA is a clear case, but just a normal entry. So maybe it's not \"clearly stronger than normal\". Therefore, the strategy would say to wait. Hence, the action is to observe. \n\nBut the user's strategy says \"apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So even if the strategy prefers to act, if the settings don't allow it, then don't. \n\nIn this case, the active settings' trading activity is 1/5, which prefers observing. So even if the strategy's activity preference is to act if the case is strong, the settings are against it. \n\nTherefore, the correct action is to observe. So the JSON would be {\"action\":\"observe\",\"asset\":\"NONE",
+      "size_label": "invalid",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "length",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to be selective unless the setup is very strong. The size preference is to use large position sizes when the trade is on. But this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 3/5, which means stay selective and enter only after stronger confirmation. Asset Risk Preference is 3/5, so balanced risk selection around the clearest setup. Trade Size is 3/5, standard size tier. Holding Style is 5/5, so hold for a normal multi-tick horizon. Diversification is 1/5, so balanced diversification is acceptable.\n\nThe PORTFOLIO says free cash is high, no current positions, and enough buying power for any size. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed or noisy.\n\nSo, the strategy says to be selective but if the setup is strong, go with large size. The active settings say to stay selective, but the trade size is standard. However, the portfolio has high cash, so maybe entering a position is possible. \n\nBut the strategy mentions \"keep position size in the large band when the trade is on.\" However, the active settings' trade size is 3/5, which is standard. But the strategy says to apply the preference if the setup and settings allow. \n\nALPHA is the only one with a clear setup. So maybe enter ALPHA. But the trade size is standard (3/5), but the strategy says large. However, the active settings might restrict that. Wait, the user says if STRATEGY and SETTINGS disagree, SETTINGS still constrain. So even if the strategy prefers large, if the settings say standard, then standard is the way to go. \n\nBut the strategy says \"apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So, the setup is good for ALPHA. The active settings' trade size is 3/5, which is standard. So the size should be standard. But the strategy's size preference is large. But since the settings are 3/5, which is standard, maybe the size is standard. However, the user says \"if the setup and ACTIVE SETTINGS allow it.\" So maybe the size can be large if the settings allow. Wait, the active settings for trade size is 3/5, which is \"use the standard size tier.\" So the size should be standard. \n\nBut the strategy says \"keep position size in the large band when the trade is on.\" But the settings say standard. So which takes precedence? The user instruction says that SETTINGS constrain the final execution. So even if the strategy prefers large, the settings say standard. Therefore, the size should be standard. \n\nBut the strategy's size preference is \"keep position size in the large band when the trade is on.\" However, the active settings' trade size is 3/5, which is standard. So maybe the size is standard. \n\nBut the portfolio has high cash, so maybe entering a large position is possible. But the settings say standard. So the answer would be to buy ALPHA with standard size. But the options for size are small, medium, large, none. The settings say standard size tier. But the available options don't have \"standard.\" The user's possible sizes are small, medium, large, none. So maybe \"medium\" is the standard? Or perhaps the settings' 3/5 allows for standard, which might map to medium. \n\nAlternatively, maybe the strategy's size preference is to use large when the trade is on, but the settings say standard. Since settings constrain, maybe the size is medium. But the problem is that the user hasn't specified how the 3/5 translates to the size options. \n\nAlternatively, maybe the strategy's size preference is to use large, but the settings' trade size is 3/5, which is standard. So the size would be standard. But since the options are small, medium, large, none, perhaps \"medium\" is considered standard. \n\nSo the action would be to buy ALPHA with size medium. But the strategy says \"keep position size in the large band when the trade is on.\" However, the settings may not allow that. \n\nAlternatively, maybe the settings allow for large if the setup is strong. But the settings' trade size is 3/5, which is standard. So perhaps the size is medium. \n\nBut the user's instruction says that if the strategy and settings disagree, the settings constrain. So even if the strategy prefers large, the settings say standard (medium), so the size is medium. \n\nTherefore, the action is to buy ALPHA with size medium.\n</think>\n\n",
+      "size_label": "invalid",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given STRATEGY and SETTINGS. \n\nFirst, looking at the STRATEGY: The activity preference is to wait unless the case becomes clearly stronger than normal. But the size preference is to use the largest working allocation tier. However, this is only if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS say that trading activity is 3/5, which means stay selective and enter only after stronger confirmation. The trade size is 3/5, so standard size tier. The asset risk preference is 3/5, staying balanced around the clearest setup. Diversification is 5/5, so balanced spread is okay.\n\nThe MARKET data shows that ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed. The portfolio has no current positions and high free cash, so buying power isn't an issue.\n\nSo, according to the strategy, even though the size preference is to use the largest tier, the active settings say to stay selective (3/5) and use standard size (3/5). The STRATEGY mentions applying the preference if the setup and settings allow. Since the settings are at 3/5 for trade size, which is standard, not the largest. Also, the activity preference is to wait unless it's clearly stronger. ALPHA is clear, but the settings say to be selective. However, the setup for ALPHA is clear, so maybe it's allowed. But the trade size should be standard, not largest. So the action would be to buy ALPHA with standard size. But the options are small, medium, large, none. The user says \"standard size tier\" which might correspond to medium. But the strategy says \"largest working allocation tier\" but the settings say \"standard\". Since settings constrain, even if strategy prefers largest, settings say standard. So the size would be medium. But the question is, does the setup allow it? The strategy says \"apply the preference only if the setup and active settings allow it.\" So if the setup is clear (ALPHA is clear), and the settings allow (trade size is 3/5, which is standard), then the action is to buy ALPHA with standard size. So the answer would be buy ALPHA with size medium. But need to check if the settings allow the size. The trade size setting is 3/5, which is standard. So the size should be medium. So the JSON should be {\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "invalid",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to keep entry activity selective unless the setup is unusually strong. But the size preference is to use large position size when the trade is on. However, this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS say that trading activity is at 5/5, which means act whenever the case is live. Asset risk preference is 3/5, so balanced risk selection around the clearest setup. Trade size is 3/5, standard size tier. Holding style is 5/5, so hold for a normal multi-tick horizon. Diversification is 1/5, meaning balanced diversification is acceptable.\n\nThe portfolio has high free cash, no current positions, and enough buying power for any size. Market conditions: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed.\n\nSo, according to the strategy, the activity is selective unless the setup is strong. But the active settings say to act whenever the case is live. Since ALPHA has a clear live case, that might trigger an action. The trade size preference is standard (3/5), but the strategy mentions large size when the trade is on. However, the settings say standard size. But the user says if strategy and settings disagree, settings constrain. So even if strategy prefers large, settings say standard. But wait, the strategy says \"keep position size in the large band when the trade is on\" but the settings say \"use the standard size tier\". So there's a conflict here. But the instructions say SETTINGS constrain the final execution. So even if the strategy prefers large, the settings say standard. But the strategy's size preference is conditional on the setup and settings allowing it. So maybe the standard size is allowed.\n\nBut the strategy's activity preference is to be selective unless the setup is strong. However, the active settings say to act whenever the case is live. Since ALPHA is a clear live case, the settings override the activity preference. So the action would be to enter a trade. Which asset? The clearest setup is ALPHA. So buy ALPHA. Size is standard, which is \"medium\" perhaps? But the options are small, medium, large, none. The trade size setting is 3/5, which is standard. The strategy's size preference is large, but settings say standard. So the size should be medium? Wait, the problem is that the user's instruction says to return exactly the fields: action, asset, size. The size options are small, medium, large, none. The trade size setting is 3/5, which is standard. But what does \"standard size tier\" correspond to? Maybe \"medium\". But the strategy says to use large when the trade is on. However, since settings constrain, maybe the size is medium. But the user's portfolio has enough buying power for any size. So maybe the size is large? But the settings say standard. Hmm. The user's instruction says to apply the preference only if the setup and active settings allow it. So if the settings allow standard, then even if the strategy prefers large, the settings take precedence. So the size would be medium. But the problem is that the exact mapping between the 3/5 trade size and the size options isn't clear. However, the user's settings say \"use the standard size tier\", which might correspond to \"medium\". So the action would be to buy ALPHA with medium size. But wait, the strategy says \"keep position size in the large band when the trade is on.\" But the settings say \"standard size tier\". So the conflict is resolved by the settings. Therefore, the size is medium. But maybe the \"standard size tier\" is considered \"large\"? That's unclear. Alternatively, maybe the \"size\" in the JSON can be \"medium\" as per the settings. Also, the portfolio has high free cash, so maybe they can take a large position, but the settings say standard. So I think the correct answer is to buy ALPHA with medium size. But I need to check the exact instructions again. The user says \"if no trade should be made, return observe\". But since ALPHA is a clear live case, and the settings allow acting, the action is to buy. So the final answer should be {\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "invalid",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:observe:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "medium"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to wait unless the case becomes clearly stronger than normal. But the size preference is to use the largest working allocation tier. However, this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS say that trading activity is at 5/5, which means we should act whenever the case is live. The asset risk preference is 3/5, suggesting a balanced risk selection around the clearest setup. Trade size is 3/5, so standard size tier. Holding style is 1/5, meaning normal hold unless the thesis breaks. Diversification is 5/5, so balanced spread is okay.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power for any size. MARKET data shows ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed.\n\nSo, the strategy says to wait unless the case is clearly stronger, but the active settings say to act when the case is live. Since ALPHA is a clear live case, maybe that's the one. But the strategy's activity preference is to wait unless it's clearly stronger. However, the active settings override that? Wait, the user said if STRATEGY and SETTINGS disagree, SETTINGS still constrain the final execution. So even if the strategy says to wait, if the settings say to act, then act.\n\nBut the strategy's activity preference is \"wait unless the case becomes clearly stronger than normal.\" The active settings say \"act whenever the case is live.\" So, for ALPHA, the case is live and clear. So according to settings, act. But the strategy's activity preference is to wait unless it's clearly stronger. But maybe \"clearly stronger than normal\" is the same as \"live case\"? Or is \"live case\" not necessarily \"clearly stronger\"?\n\nThis is a bit ambiguous. However, the strategy says to apply the preference only if the setup and active settings allow it. So if the active settings are allowing action (since trading activity is 5/5), then maybe proceed. Also, the trade size is 3/5, which is standard, but the strategy says to use the largest working allocation tier. But the settings say to use standard size. So there's a conflict here. But the user said SETTINGS constrain the final execution. So even if the strategy prefers large size, the settings say standard. So size should be standard.\n\nBut the strategy's size preference is to use the largest tier. However, the active settings' trade size is 3/5, which is standard. So according to the instructions, SETTINGS constrain. So size should be standard. But the user says \"express the trade with the largest working allocation tier\" if the setup and settings allow. Wait, the strategy says \"apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So if the active settings allow it, then proceed. But the trade size in settings is 3/5, which is standard. So maybe the size preference in strategy is to use large, but the settings say standard. So which takes precedence? The user said SETTINGS constrain, so even if the strategy prefers large, the settings say standard. So size is standard.\n\nBut the market says ALPHA has a clear live case. So the action would be to buy ALPHA. The size is standard. So the JSON would be {\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}? Wait, the size options are small, medium, large, none. The trade size in settings is 3/5, which is standard. But what does \"standard size tier\" correspond to? The user didn't specify, but the options are small, medium, large. Maybe \"medium\" is standard. So the answer would be buy ALPHA with medium size. But the strategy says to use the largest working allocation tier. However, the settings say to use standard. So the settings override. Therefore, the action is buy ALPHA with size medium.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "invalid",
+      "strategy_direction": "observe",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v0",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user wants me to choose an action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to act once the case is live. The size preference is the largest working allocation tier. But this only applies if the setup and active settings allow it. \n\nNow, the ACTIVE SETTINGS say that trading activity is maxed out (5/5), so I should act whenever the case is live. Asset risk preference is also high, so balanced risk selection around the clearest setup. Trade size is 5/5, meaning use the largest size tier. Holding style is 4/5, so hold for a normal multi-tick horizon unless the thesis breaks. Diversification is 3/5, which is acceptable but not the highest.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power for any size. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker with weaker follow-through. DELTA and GAMMA are mixed or noisy.\n\nSo the clearest setup is ALPHA. According to the strategy, I should go with the largest size tier. Since the trade size is set to maximum, I should go with \"large\". The asset is ALPHA. The action would be \"buy\" because there's a clear case and the settings allow it. The other assets don't have as strong a setup. So the correct JSON should be action: buy, asset: ALPHA, size: large.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "invalid",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_5_settings_v1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to take the live setup instead of waiting for more confirmation. The size preference is to use the middle size tier on entries. But this only applies if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS: Trading Activity is 5/5, which means I should act whenever there's a live case. Asset Risk Preference is 4/5, so I should stay near balanced risk, focusing on the clearest setup. Trade Size is 4/5, allowing sizes above standard. Holding Style is 5/5, so hold normally unless the thesis breaks. Diversification is 1/5, meaning a balanced spread is acceptable.\n\nThe PORTFOLIO says free cash is high, no current positions, and enough buying power for any allowed size. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker with weaker follow-through. DELTA and GAMMA are mixed with no decisive edge.\n\nSo, the best opportunity is ALPHA. The strategy says to prefer the live setup, and the settings allow acting on it. The size preference is middle tier, but the trade size setting allows moving above standard. However, since the portfolio has high cash and no positions, maybe a medium size is appropriate. Wait, the size preference is middle, but the trade size is 4/5, which says size can move above standard. But the user's instruction says to use the middle size tier on entries unless the settings allow otherwise. But the settings here permit moving above standard. However, the strategy says to use the middle size. But maybe the settings override? Wait, the initial instruction says that if STRATEGY and SETTINGS disagree, SETTINGS still constrain the final execution. So even if the strategy prefers middle size, if the settings allow larger, but the strategy's size preference is to use middle, but the settings say trade size can move above standard. Hmm, but the strategy's size preference is to use middle. But the active settings say trade size is 4/5, which allows sizes above standard. So maybe the size can be medium or large? But the strategy says to use middle. So perhaps the middle is acceptable. But the user's instruction says to apply the preference only if the setup and active settings allow it. So since the settings allow moving above standard, but the strategy's size preference is middle. So maybe the middle is allowed. \n\nBut the question is, what's the correct size? The strategy says \"middle size tier on entries.\" The settings say \"size can move above standard.\" So maybe the middle is allowed, but perhaps the settings allow larger. However, the strategy's size preference is to use middle. But since the settings allow moving above standard, maybe the size can be medium or large. But the strategy's instruction is to use middle. So perhaps the correct size is medium. \n\nBut the user's instruction says to choose exactly one action. So the asset is ALPHA, action is buy, size is medium. Because the strategy prefers middle, and the settings allow it. Also, the portfolio has enough buying power. So the answer should be buy ALPHA with medium size.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "invalid",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user wants me to choose an action based on the given STRATEGY and SETTINGS. \n\nFirst, looking at the STRATEGY: The activity preference is to act once the case is live, and the size preference is the largest allocation. But this is conditional on the setup and active settings allowing it.\n\nNow, the ACTIVE SETTINGS say that trading activity is 3/5, which means stay selective and enter only after stronger confirmation. However, the trade size is maxed at 5/5, so largest size tier. The asset risk preference is 5/5, so balanced risk. The holding style is 4/5, so hold for a normal multi-tick horizon. Diversification is 3/5, so balanced but not too much.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power. So no constraints there.\n\nMARKET data: ALPHA has a clear live case with enough confirmation. BETA is weaker, DELTA and GAMMA are mixed. \n\nSo according to the strategy, since ALPHA is a clear live case, and the trade size should be largest. But the active settings say to be selective. However, the strategy says to apply the preference if the setup and active settings allow. Since ALPHA has enough confirmation, maybe it's allowed. The trade size is allowed as per settings. So the action would be to buy ALPHA with large size. But need to check if the settings override. The settings say to stay selective, but the strategy says to act once case is live. Since the setup is live, and the size is allowed, maybe it's okay. So the answer should be buy ALPHA with large size.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "size_label": "invalid",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "edge",
+      "conflict_present": null,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_3_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "stop",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to take the live setup instead of waiting for more confirmation. The size preference is to use the middle size tier on entries. But this only applies if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS. Trading Activity is 3/5, which means stay selective and enter only after stronger confirmation. Asset Risk Preference is 4/5, so balanced risk around the clearest setup. Trade Size is 4/5, allowing size above standard. Holding Style is 5/5, so normal hold unless the thesis breaks. Diversification is 1/5, so balanced spread is acceptable.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power for any size. MARKET data: ALPHA has a clear live case with enough confirmation. BETA is weaker, DELTA and GAMMA are mixed.\n\nSo, the strategy says to prefer live setups, but the active settings say to be selective. However, ALPHA has a clear setup. The trade size preference is middle, but settings allow size above standard. Since the strategy's size preference is middle, but settings allow moving above standard, maybe middle is still okay. But the active settings' trading activity is 3/5, which is moderate, so maybe not too aggressive. However, the strategy says to take the live setup. Since ALPHA is clear, and the portfolio has capacity, maybe enter with middle size. But the settings say to be selective. But the strategy says to apply the preference if allowed. So maybe the answer is to buy ALPHA with medium size. But need to check if settings allow. The trade size is 4/5, which allows above standard, but the strategy says middle. Since the settings don't prohibit middle, it's allowed. So the action would be buy ALPHA with medium size.\n</think>\n\n{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"medium\"}",
+      "size_label": "invalid",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v0",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "length",
+      "generated_text": "<think>\nOkay, let's break this down. The user wants me to choose an action based on the given STRATEGY and SETTINGS. \n\nFirst, looking at the STRATEGY: The activity preference is to act once the case is live. The size preference is the largest working allocation tier. But this is conditional on the setup and ACTIVE SETTINGS allowing it.\n\nNow, the ACTIVE SETTINGS say that Trading Activity is 1/5, which means prefer observing unless the case is unusually strong. But the Asset Risk Preference is 5/5, so we should focus on balanced risk selection around the clearest setup. Trade Size is 5/5, so use the largest size. Holding Style is 4/5, so hold for a normal multi-tick horizon. Diversification is 3/5, which is balanced but not too strict.\n\nThe PORTFOLIO has high free cash and no current positions, with enough buying power for any size. So liquidity isn't an issue.\n\nMARKET data: ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed or noisy.\n\nSo, according to the STRATEGY, since ALPHA is a clear live case, and the size preference is largest tier. But the ACTIVE SETTINGS say to prefer observing unless the case is unusually strong. However, the Asset Risk Preference is high, so maybe the clear setup of ALPHA is considered \"unusually strong\" enough. Also, Trade Size is maxed out, so if we decide to act, we should go with the largest size.\n\nBut the Trading Activity setting is low (1/5), which suggests observing. However, the STRATEGY says to lean toward acting once the case is live. The conflict here is between SETTINGS and STRATEGY. But the user said that SETTINGS constrain the final execution. So even if the STRATEGY wants to act, if SETTINGS prefer observing, we might need to observe. But the note says \"Apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So maybe if the setup is strong enough, even with low activity preference, we can act.\n\nBut the ACTIVE SETTINGS' Trading Activity is 1/5, which is \"prefer observing unless the case is unusually strong.\" The question is whether ALPHA's \"clear live case\" qualifies as \"unusually strong.\" If yes, then we can act. Otherwise, observe.\n\nGiven that the STRATEGY says to \"lean toward acting once the case is live,\" and the setup is there, maybe it's allowed. Also, the Trade Size is 5/5, so if we act, we need to use the largest size. The Asset Risk is 5/5, so balanced risk selection. Since ALPHA is the clearest setup, that's the asset to choose.\n\nSo the action would be to buy ALPHA with the largest size. But need to check if SETTINGS allow it. The Trading Activity setting is 1/5, but the case is live. The note says that SETTINGS constrain, but if the setup allows, maybe it's okay. The instruction says \"If STRATEGY and SETTINGS disagree, SETTINGS still constrain the final execution.\" But here, the STRATEGY says to act if the setup is live, and SETTINGS say to observe unless the case is unusually strong. So if the case is live (which it is), but is it \"unusually strong\"? The description says \"clear live case with enough confirmation to justify a normal entry.\" Maybe \"unusually strong\" is a higher bar. If not, then SETTINGS would say to observe. But the STRATEGY's activity preference is to act once the case is live. This is a bit conflicting.\n\nBut the user says to consider both, but SETTINGS constrain. So if the SETTINGS say to prefer observing unless the case is unusually strong, and the case here is \"clear live case\" but not necessarily \"unusually strong,\" then maybe we should observe. However, the STRATEGY's activity preference is to act once the case is live. But the SETTINGS might override that. But how to interpret \"unusually strong\"?\n\nAlternatively, maybe the \"clear live case\" is considered \"unusually strong\" enough. In that case, the SETTINGS allow acting. Then, the Trade Size is max, so large. So the action would be buy ALPHA with large size.\n\nBut the user's instruction says that if STRATEGY and SETTINGS disagree, SETTINGS constrain. So if the SETTINGS are saying to observe unless the case is unusually strong, and the case is not unusually strong, then observe. But if it is, then act. The problem is whether \"clear live case\" is \"unusually strong.\" The description says \"enough confirmation to justify a normal entry,\" which might not be \"unusually strong.\" So maybe the SETTINGS would prefer observing. But the STRATEGY says to act once the case is live. This is a conflict.\n\nBut the user says to apply the preference only if the setup and ACTIVE SETTINGS allow it. So maybe the setup is there, but the ACTIVE SETTINGS (",
+      "size_label": "invalid",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    },
+    {
+      "action_label": "invalid",
+      "asset_label": "invalid",
+      "behavior_side": "neither",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc8:trading_activity:trade:ctx_balanced_v0:policy_v0:trading_activity_setting_1_settings_v1",
+      "expected_output_json": {
+        "action": "observe",
+        "asset": "NONE",
+        "size": "none"
+      },
+      "finish_reason": "length",
+      "generated_text": "<think>\nOkay, let's break this down. The user is a trading agent, and I need to choose the correct action based on the given strategy and settings. \n\nFirst, looking at the STRATEGY section. The activity preference is to take the live setup instead of waiting for more confirmation. The size preference is middle tier for entries. But this only applies if the setup and active settings allow it.\n\nNow, the ACTIVE SETTINGS. Trading Activity is 1/5, which means prefer observing unless the case is very strong. Asset Risk Preference is 4/5, so stay balanced but focus on the clearest setup. Trade Size is 4/5, allowing sizes above standard. Holding Style is 5/5, so hold normally unless the thesis breaks. Diversification is 1/5, so a balanced spread is okay.\n\nThe PORTFOLIO has high free cash, no current positions, and enough buying power for any size. MARKET data says ALPHA has a clear live case with enough confirmation for a normal entry. BETA is weaker, DELTA and GAMMA are mixed.\n\nSo, the strategy says to take the live setup, but the active settings say to prefer observing unless the case is strong. However, ALPHA is a clear live case. The trade size preference is middle, but settings allow sizes above standard. Since the strategy says to use middle size, but settings allow moving above standard. But the activity setting is low (1/5), which prefers observing. However, the strategy says to take the live setup. There's a conflict here between strategy and settings. But the user said if they disagree, settings still constrain. So even if strategy says to take the setup, the settings prefer observing unless the case is unusually strong. But ALPHA is a clear case. Wait, the strategy says \"apply the preference only if the setup and ACTIVE SETTINGS allow it.\" So need to check if the setup (ALPHA) meets the active settings. \n\nThe active settings' trading activity is 1/5, which is low, so prefer observing. But the strategy says to take the live setup. However, the user instruction says that if there's a disagreement, the settings constrain. So even if the strategy prefers taking the setup, the settings say to observe unless the case is unusually strong. But the setup here is \"clear live case with enough confirmation,\" which might be considered \"unusually strong\"? Or is the settings' trading activity 1/5 meaning that even strong cases are not acted upon? The instruction says \"prefer observing unless the case is unusually strong.\" So if the case is unusually strong, then act. But the strategy says to take the live setup. The question is whether the ALPHA's clear case is considered \"unusually strong\" enough to override the low activity setting. \n\nThe strategy's activity preference is to take the live setup rather than waiting. But the active settings' trading activity is 1/5, which is low. So maybe the settings are saying to observe unless the case is unusually strong. Since ALPHA is a clear case, maybe that's considered unusually strong. But the user's instruction says that if STRATEGY and SETTINGS disagree, SETTINGS still constrain. So even if the strategy says to take the setup, the settings might require observing. But the strategy says to apply the preference if the setup and settings allow. So maybe the settings allow it if the case is strong. \n\nAlternatively, maybe the settings' trading activity is 1/5, which is low, so the default is to observe. But the strategy says to take the live setup. But the user says that the settings constrain. So perhaps the answer is to observe. But the market says ALPHA has a clear live case. However, the settings might not allow it. \n\nBut the user's instruction says that the strategy's preferences are to take the live setup, but only if the setup and active settings allow. So need to check if the active settings allow. The active settings' trading activity is 1/5, which prefers observing unless the case is unusually strong. So if the case is unusually strong, then it's allowed. The strategy says that the setup is clear and has enough confirmation. So maybe that's considered unusually strong. Therefore, the settings allow it. Then, the strategy's size preference is middle. But the trade size setting is 4/5, which allows moving above standard. But the strategy says to use middle. So maybe the size is middle. \n\nSo the action would be to buy ALPHA with middle size. But the settings' trade size is 4/5, which allows sizes above standard. But the strategy says to use middle. However, the user says that if there's a conflict, settings constrain. Wait, the strategy says \"use the middle size tier on entries\" but the settings allow moving above standard. So which takes precedence? The user says that SETTINGS constrain. So if the settings allow larger sizes, but the strategy prefers middle, but the settings allow moving above, maybe the size can",
+      "size_label": "invalid",
+      "strategy_direction": "trade",
+      "target_dimension": "trading_activity",
+      "valid_output": false
+    }
+  ],
+  "sample_size": 24,
+  "summary": {
+    "behavior_side_counts": {
+      "neither": 24
+    },
+    "by_cell": {
+      "trade_size::large::aligned": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trade_size::large::edge": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trade_size::large::strong_conflict": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trade_size::small::aligned": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trade_size::small::edge": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trade_size::small::strong_conflict": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trading_activity::observe::aligned": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trading_activity::observe::edge": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trading_activity::observe::strong_conflict": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trading_activity::trade::aligned": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trading_activity::trade::edge": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      },
+      "trading_activity::trade::strong_conflict": {
+        "behavior_side_counts": {
+          "neither": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "valid_output_rate": 0.0
+      }
+    },
+    "exact_expected_rate": 0.0,
+    "rows": 24,
+    "valid_output_rate": 0.0
+  }
+}

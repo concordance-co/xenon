@@ -1,0 +1,68 @@
+{
+  "id": "conflict_probe_v5_smoke",
+  "name": "Conflict Probe v5 Smoke",
+  "description": "Small smoke relation for Phase 08 relational prompt-confusion validation on the canonical binary subset.",
+  "version": 1,
+  "dataset": {
+    "source": {
+      "mode": "sql",
+      "sql": "WITH ranked AS ( SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.* FROM conflict_probe_examples_v5 src ) SELECT * FROM ranked WHERE conflict_present IS NOT NULL AND strategy_variant_id IN ('policy_v0', 'policy_v2') AND settings_profile_variant_id IN ('settings_v0', 'settings_v2') AND context_variant_id IN ('ctx_strategy_favored_v0', 'ctx_balanced_v0', 'ctx_setting_favored_v0')"
+    },
+    "filters": {},
+    "label": {
+      "mode": "binary_rule",
+      "expression_sql": "conflict_present",
+      "classes": [
+        "aligned",
+        "conflict"
+      ]
+    },
+    "split": {
+      "mode": "random_stratified",
+      "train_pct": 70,
+      "val_pct": 15,
+      "test_pct": 15
+    },
+    "probe_defaults": {
+      "data_source": "residual",
+      "pooling": "prompt_eos",
+      "n_folds": 5
+    },
+    "identity": {
+      "column": "example_id"
+    },
+    "publish_mode": "view"
+  },
+  "capture": {
+    "model": "Qwen/Qwen3-30B-A3B",
+    "max_model_len": 8192,
+    "capture_generation": false,
+    "capture_reasoning": false,
+    "enable_thinking": false,
+    "add_generation_prompt": false,
+    "generation_max_tokens": 256,
+    "generation_temperature": 0.0,
+    "generation_top_p": 1.0,
+    "layers": [
+      0, 24, 36, 44
+    ],
+    "pooling": "prompt_eos",
+    "router": true,
+    "residual": true
+  },
+  "analysis": {
+    "methods": [
+      "probe"
+    ],
+    "targets": [
+      "workflow_label"
+    ],
+    "data_source": "residual",
+    "pooling": "prompt_eos",
+    "n_folds": 5,
+    "group_column": "matched_group_id"
+  },
+  "report": {
+    "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_08/reports"
+  }
+}

@@ -3,6 +3,19 @@
 This effort directory holds the conflict-probe experiment across multiple
 bounded iterations.
 
+## Phase Guide
+
+For the later redesign phases, the most important landmarks are:
+
+- [Phase 05](./phase_05/Index.md)
+  - confound battery and family-level retraction
+- [Phase 07](./phase_07/Index.md)
+  - last serious attempt to repair the old framing
+- [Phase 08](./phase_08/Index.md)
+  - explicit design pivot away from `family` toward relational conflict
+- [Phase 09](./phase_09/Index.md)
+  - implemented benchmark and strongest empirical result so far
+
 ## Operator Stance
 
 Prompt Confusion should follow the canonical workflow model from the repo docs:

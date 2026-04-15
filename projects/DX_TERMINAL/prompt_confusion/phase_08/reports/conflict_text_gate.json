@@ -1,0 +1,29 @@
+{
+  "input": "projects/DX_TERMINAL/prompt_confusion/phase_08/outputs/phase_08_dataset/phase_08_dataset.jsonl",
+  "max_balanced_accuracy": 0.55,
+  "n_canonical_rows": 2016,
+  "n_rows": 2880,
+  "per_dimension_conflict_present": {
+    "trade_size": {
+      "balanced_accuracy": 0.5,
+      "chance_baseline": 0.5,
+      "n_test": 864,
+      "n_train": 288,
+      "passes_gate": true
+    },
+    "trading_activity": {
+      "balanced_accuracy": 0.5833,
+      "chance_baseline": 0.5,
+      "n_test": 648,
+      "n_train": 216,
+      "passes_gate": false
+    }
+  },
+  "pooled_conflict_present": {
+    "balanced_accuracy": 0.5351,
+    "chance_baseline": 0.5,
+    "n_test": 1512,
+    "n_train": 504,
+    "passes_gate": true
+  }
+}
