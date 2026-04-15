@@ -12,6 +12,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Sequence
 
+from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
 from pipelines_v2.api import (
     CompositeCatalog,
@@ -56,6 +57,7 @@ def load_python_workflow_file(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    load_dotenv_if_present()
     parser = _build_parser()
     ns = parser.parse_args(list(argv) if argv is not None else None)
     if ns.command == "workflow":

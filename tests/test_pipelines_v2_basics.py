@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import time
 import types
@@ -3852,6 +3853,52 @@ def test_pipelines_v2_cli_rerun_step_supports_mixed_shared_and_local_catalog_run
     assert rerun_payload["steps"]["capture"]["artifact_id"] == initial_capture_id
     assert rerun_payload["steps"]["probe"]["artifact_id"] == initial_probe_id
     assert rerun_payload["steps"]["report"]["artifact_id"] != initial_report_id
+
+
+def test_pipelines_v2_cli_loads_dotenv_before_loading_workflow_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    workflow_file = tmp_path / "dotenv_workflow.py"
+    workflow_file.write_text(
+        "\n".join(
+            [
+                "import os",
+                "",
+                "from pipelines_v2.api import Dataset, Example, WorkflowSpec",
+                "",
+                "def build_dataset():",
+                "    required = os.environ['TEST_CLI_DOTENV_VALUE']",
+                "    return Dataset.from_examples(",
+                "        [Example(key='a', prompt='alpha', labels={'class': required}, case_key='c1')],",
+                "        name='dotenv_cli_workflow_dataset',",
+                "    )",
+                "",
+                "def build_workflow(dataset=None):",
+                "    return WorkflowSpec(name='dotenv_cli_workflow', steps=())",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / ".env").write_text("TEST_CLI_DOTENV_VALUE=loaded_from_env_file\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("TEST_CLI_DOTENV_VALUE", raising=False)
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "plan",
+            "--file",
+            str(workflow_file),
+        ]
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["workflow"] == "dotenv_cli_workflow"
+    assert os.environ["TEST_CLI_DOTENV_VALUE"] == "loaded_from_env_file"
 
 
 def test_runner_spec_round_trips_from_dict() -> None:
