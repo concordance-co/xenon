@@ -1,10 +1,13 @@
 # Project Overview
 
-This repo is organized around two layers:
+This repo is organized around three top-level areas:
 
+- `./pipelines_v2`
+  Active reusable infrastructure for dataset access, capture, analysis,
+  reporting, workflow orchestration, runtime integration, and artifact storage.
 - `./pipelines`
-  Reusable infrastructure code for ingest, dataset publication, capture,
-  analysis, reporting, patching, and related runtime helpers.
+  Legacy infrastructure for the older Neon/publication-driven runtime.
+  Maintain it only when explicitly working on an unmigrated legacy workflow.
 - `./projects`
   Human-facing project workspaces. Each umbrella project gets its own folder,
   and each project may contain multiple subprojects, each with its own phase
@@ -12,7 +15,8 @@ This repo is organized around two layers:
 
 The main design rule is:
 
-- reusable infrastructure belongs in `pipelines/`
+- reusable infrastructure for new work belongs in `pipelines_v2/`
+- legacy-only infrastructure stays in `pipelines/`
 - project- and phase-specific work belongs in `projects/<project_name>/...`
 
 Archive folders are historical only. Treat them as effectively deleted unless
@@ -22,9 +26,11 @@ you are explicitly digging through old work.
 
 - `./docs`
   Infrastructure-level docs for how to run and use the platform.
+- `./pipelines_v2`
+  Active workflow / artifact-oriented platform code.
 - `./pipelines`
-  Raw infrastructure code for ingest, datasets, capture, analysis, patching,
-  reporting, and workflow registry logic.
+  Older runtime code for Neon/publication-driven workflows. Deprecated for new
+  development.
 - `./projects`
   Each mech interp research project is associated with a specific folder.
 - `./projects/{project_name}/project_spec.json`
@@ -33,7 +39,7 @@ you are explicitly digging through old work.
   Project-level methodology notes, pitfalls, and operating guidance.
 - `./projects/{project_name}/shared/`
   Code needed across multiple phases of the project that does not belong in
-  reusable `pipelines/`.
+  reusable platform code.
 - `./projects/{project_name}/outputs/`
   Local outputs produced at the umbrella-project level.
 - `./projects/{project_name}/reports/report.typ`
@@ -46,8 +52,11 @@ you are explicitly digging through old work.
 - `./projects/{project_name}/{subproject}/{phase_name}/phase_spec.json`
   Optional phase-level spec. This is a lightweight first-pass structure for a
   bounded sub-effort inside a project.
+- `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py`
+  Primary checked-in executable `pipelines_v2` workflow file for the phase.
 - `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
-  Checked-in snapshot of the executable workflow spec for the phase.
+  Optional checked-in JSON snapshot of the workflow for reviewability or
+  interchange. The Python workflow file remains the canonical authoring surface.
 - `./projects/{project_name}/{subproject}/{phase_name}/scripts/`
   Scripts needed to run or analyze that phase.
 - `./projects/{project_name}/{subproject}/{phase_name}/reports/`
@@ -61,12 +70,12 @@ you are explicitly digging through old work.
 
 The canonical workflow is:
 
-`workflow spec -> published Neon dataset relation -> capture run -> analysis run -> report`
+`workflow.py -> workflow plan/run -> capture + analysis artifacts -> local report`
 
 The canonical operator surface is:
 
 ```bash
-uv run -m pipelines.cli ...
+uv run python -m pipelines_v2.cli workflow ...
 ```
 
 For real jobs:
@@ -75,13 +84,20 @@ For real jobs:
 - analysis runs on Modal
 - reports are built locally from analysis outputs
 
+For new development:
+
+- use `pipelines_v2`
+- treat `pipelines.cli` as a legacy surface unless the user explicitly asks to
+  work on an older workflow that has not moved yet
+
 ## Source of Truth
 
-There are two useful forms of a spec:
+There are three useful forms of a spec:
 
-1. Neon-backed canonical workflow spec
-   Stored in `workflow_specs` and used by the runtime.
-2. Checked-in phase workflow snapshot
+1. Checked-in Python workflow file
+   Stored in `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py`
+   and used directly by `pipelines_v2.cli`.
+2. Optional checked-in workflow snapshot
    Stored in `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
    for reviewability, reproducibility, and agent onboarding.
 3. Checked-in project and phase organizational specs
@@ -90,16 +106,18 @@ There are two useful forms of a spec:
 
 These are not competing systems.
 
-- `workflow_specs` in Neon is the runtime source of truth.
-- checked-in `specs/workflow.json` is the repo-local mirror of the executable spec.
+- checked-in `specs/workflow.py` is the primary executable source of truth for
+  `pipelines_v2`.
+- checked-in `specs/workflow.json` is an optional snapshot or interchange form.
 - `project_spec.json` and `phase_spec.json` are organizational scaffolding.
 
 The usual pattern is:
 
 1. explore the data/problem with the agent
-2. write `projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
-3. register it with `uv run -m pipelines.cli spec create --file ...`
-4. run dataset/capture/analysis/report from the CLI
+2. write `projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py`
+3. optionally emit or update `specs/workflow.json` if the phase wants a checked-in snapshot
+4. run `workflow plan` and `workflow run` from `pipelines_v2.cli`
+5. use `workflow runs`, `workflow show`, `workflow resume`, `workflow rerun-step`, and `workflow rerun-from-step` for follow-up operations
 
 # Starting a New Project
 
@@ -107,29 +125,21 @@ The usual pattern is:
 2. Create `./projects/{project_name}/project_spec.json`
 3. Create `./projects/{project_name}/{subproject}/{phase_name}/`
 4. Create `./projects/{project_name}/{subproject}/{phase_name}/phase_spec.json`
-5. Create `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
-6. Register the workflow spec in Neon
-7. Run the project through `pipelines.cli`
+5. Create `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py`
+6. Optionally create `./projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
+7. Run the project through `pipelines_v2.cli`
 8. If custom glue is needed, keep it inside the project or phase folder
-
-Shortcut:
-
-```bash
-uv run -m pipelines.cli project init --project {project_name}
-```
-
-This creates a default first phase at
-`projects/{project_name}/{subproject}/phase_01/`. Pass `--phase {phase_name}` if you
-want a different initial phase name.
 
 Most new work should be:
 
 - a new phase folder
-- a new workflow spec inside that phase
+- a new `pipelines_v2` workflow inside that phase
 - maybe a small local helper script in that phase
 
 Not:
 
+- starting from the legacy `pipelines.cli` path unless the task is explicitly
+  about legacy infrastructure
 - ad hoc edits to reusable platform code
 
 # Adding a New Phase to a Project
@@ -202,7 +212,7 @@ Recommended first-pass shape:
   "inherits": "projects/project_id/project_spec.json",
   "goal": "What this phase is trying to prove or produce",
   "workflow_specs": [
-    "projects/project_id/{subproject}/phase_id/specs/workflow.json"
+    "projects/project_id/{subproject}/phase_id/specs/workflow.py"
   ],
   "overrides": {
     "dataset": {},
@@ -235,56 +245,61 @@ contract. Keep it lightweight.
 
 # Running Specs
 
-The canonical execution path is through `pipelines.cli`.
+The canonical execution path is through `pipelines_v2.cli`.
 
-## Register a project workflow spec
-
-```bash
-uv run -m pipelines.cli spec create --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json
-```
-
-## Inspect registered specs
+## Plan a workflow
 
 ```bash
-uv run -m pipelines.cli spec list
-uv run -m pipelines.cli spec show --id <spec_id>
+uv run python -m pipelines_v2.cli workflow plan --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py
 ```
 
-## Publish the dataset relation
+## Run a workflow
 
 ```bash
-uv run -m pipelines.cli dataset build --spec <spec_id>
-uv run -m pipelines.cli publication list --spec <spec_id>
+uv run python -m pipelines_v2.cli workflow run --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py
 ```
 
-## Run capture on Modal
+## Inspect workflow runs
 
 ```bash
-uv run -m pipelines.cli capture run --spec <spec_id> --output-dir projects/{project_name}/{subproject}/{phase_name}/outputs/<run_name>
+uv run python -m pipelines_v2.cli workflow runs --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py
+uv run python -m pipelines_v2.cli workflow show --run-id <run_id>
 ```
 
-## Run analysis on Modal
+## Resume a failed run
 
 ```bash
-uv run -m pipelines.cli analysis run --capture-run <run_id> --output-dir projects/{project_name}/{subproject}/{phase_name}/outputs/<analysis_name>
+uv run python -m pipelines_v2.cli workflow resume --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py --latest-failed
 ```
 
-## Build a local report
+## Rerun one step
 
 ```bash
-uv run -m pipelines.cli report build --analysis-run <run_id>
+uv run python -m pipelines_v2.cli workflow rerun-step --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py --run-id <run_id> --step report
 ```
+
+## Rerun from a step through downstream dependents
+
+```bash
+uv run python -m pipelines_v2.cli workflow rerun-from-step --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py --run-id <run_id> --step capture_prompt_eos_router
+```
+
+Workspace defaults for `pipelines_v2` can live in repo-root `xenon.toml`. Use
+that for shared defaults such as the external catalog env var. The CLI still
+writes the local run registry under `~/.xenon/pipelines_v2/catalog`.
 
 ## Practical Agent Workflow
 
 When starting fresh on a new project:
 
 1. read `README.md`, `docs/WORKFLOW.md`, and this file
-2. inspect Neon/data sources directly
-3. create or refine `projects/{project_name}/{subproject}/{phase_name}/specs/workflow.json`
-4. register the spec in Neon
-5. run the workflow through `pipelines.cli`
-6. keep project-specific scripts, notes, and deliverables inside the project or phase folder
+2. inspect the relevant data sources directly
+3. create or refine `projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py`
+4. optionally update `specs/workflow.json` if the phase keeps a checked-in snapshot
+5. run the workflow through `pipelines_v2.cli`
+6. use `resume` or `rerun-*` rather than manually reconstructing partial runs
+7. keep project-specific scripts, notes, and deliverables inside the project or phase folder
 
-If something needs reusable infrastructure support, add it to `pipelines/`.
+If something needs reusable infrastructure support for new work, add it to `pipelines_v2/`.
+If the task is explicitly about the legacy runtime, add it to `pipelines/`.
 If it is project-specific, keep it in `projects/`.
