@@ -1,0 +1,945 @@
+{
+  "kind": "workflow",
+  "name": "phase_06",
+  "schema_version": 1,
+  "steps": [
+    {
+      "depends_on": [],
+      "name": "text_baseline_conflict_strategy_holdout",
+      "runner": "analysis_cpu",
+      "spec": {
+        "cohort_by": null,
+        "cohort_values": [],
+        "group_by": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "case_set",
+          "name": "matched_pair_id"
+        },
+        "kind": "text_baseline",
+        "labels": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "conflict_present"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "model": "countvectorizer_logreg",
+        "regularization": [],
+        "rows": null,
+        "schema_version": 1,
+        "split_by": {
+          "strategy": {
+            "dataset": {
+              "examples": [],
+              "fetch": {
+                "case_key_column": "matched_pair_id",
+                "example_key_column": "example_id",
+                "label_columns": [
+                  "user_text",
+                  "conflict_present",
+                  "strategy_family",
+                  "strategy_variant_id",
+                  "strategy_lexical_split",
+                  "setting_lexical_family_id",
+                  "setting_variant_id",
+                  "setting_lexical_split",
+                  "section_order",
+                  "environment_pressure_bucket",
+                  "pair_member"
+                ],
+                "prompt_column": "prompt_messages_json",
+                "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+              },
+              "id": "05d52c1c88ae5d73f9981dd7",
+              "name": null,
+              "selection": {},
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              }
+            },
+            "kind": "label_set",
+            "name": "strategy_lexical_split"
+          }
+        },
+        "test_values": [
+          "test"
+        ],
+        "text": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "user_text"
+        },
+        "train_values": [
+          "train"
+        ]
+      }
+    },
+    {
+      "depends_on": [],
+      "name": "text_baseline_conflict_settings_holdout",
+      "runner": "analysis_cpu",
+      "spec": {
+        "cohort_by": null,
+        "cohort_values": [],
+        "group_by": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "case_set",
+          "name": "matched_pair_id"
+        },
+        "kind": "text_baseline",
+        "labels": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "conflict_present"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "model": "countvectorizer_logreg",
+        "regularization": [],
+        "rows": null,
+        "schema_version": 1,
+        "split_by": {
+          "settings": {
+            "dataset": {
+              "examples": [],
+              "fetch": {
+                "case_key_column": "matched_pair_id",
+                "example_key_column": "example_id",
+                "label_columns": [
+                  "user_text",
+                  "conflict_present",
+                  "strategy_family",
+                  "strategy_variant_id",
+                  "strategy_lexical_split",
+                  "setting_lexical_family_id",
+                  "setting_variant_id",
+                  "setting_lexical_split",
+                  "section_order",
+                  "environment_pressure_bucket",
+                  "pair_member"
+                ],
+                "prompt_column": "prompt_messages_json",
+                "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+              },
+              "id": "05d52c1c88ae5d73f9981dd7",
+              "name": null,
+              "selection": {},
+              "source": {
+                "kind": "postgres",
+                "url_env_var": "XENON_NEON_DATABASE_URL"
+              }
+            },
+            "kind": "label_set",
+            "name": "setting_lexical_split"
+          }
+        },
+        "test_values": [
+          "test"
+        ],
+        "text": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "user_text"
+        },
+        "train_values": [
+          "train"
+        ]
+      }
+    },
+    {
+      "depends_on": [],
+      "name": "text_baseline_conflict_grouped_cv",
+      "runner": "analysis_cpu",
+      "spec": {
+        "cohort_by": null,
+        "cohort_values": [],
+        "group_by": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "case_set",
+          "name": "matched_pair_id"
+        },
+        "kind": "text_baseline",
+        "labels": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "conflict_present"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "model": "countvectorizer_logreg",
+        "regularization": [],
+        "rows": null,
+        "schema_version": 1,
+        "split_by": {},
+        "test_values": [],
+        "text": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "user_text"
+        },
+        "train_values": []
+      }
+    },
+    {
+      "depends_on": [],
+      "name": "capture_resid",
+      "runner": "capture_gpu",
+      "spec": {
+        "dataset": {
+          "examples": [],
+          "fetch": {
+            "case_key_column": "matched_pair_id",
+            "example_key_column": "example_id",
+            "label_columns": [
+              "user_text",
+              "conflict_present",
+              "strategy_family",
+              "strategy_variant_id",
+              "strategy_lexical_split",
+              "setting_lexical_family_id",
+              "setting_variant_id",
+              "setting_lexical_split",
+              "section_order",
+              "environment_pressure_bucket",
+              "pair_member"
+            ],
+            "prompt_column": "prompt_messages_json",
+            "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+          },
+          "id": "05d52c1c88ae5d73f9981dd7",
+          "name": null,
+          "selection": {},
+          "source": {
+            "kind": "postgres",
+            "url_env_var": "XENON_NEON_DATABASE_URL"
+          }
+        },
+        "engine": {
+          "add_generation_prompt": true,
+          "enable_chunked_prefill": false,
+          "enable_prefix_caching": true,
+          "enable_thinking": false,
+          "enforce_eager": false,
+          "extra": {},
+          "gpu_memory_utilization": 0.9,
+          "kind": "vllm",
+          "max_model_len": 8192,
+          "max_num_seqs": 16,
+          "model_id": "/models/Qwen/Qwen3-30B-A3B",
+          "reasoning_parser": null,
+          "tensor_parallel_size": 1
+        },
+        "generation": {
+          "capture_reasoning": false,
+          "enabled": true,
+          "max_tokens": 64,
+          "structured_output": null,
+          "temperature": 0.0
+        },
+        "kind": "capture",
+        "prompt_metadata_builder": null,
+        "schema_version": 1,
+        "sites": [
+          {
+            "layers": [
+              0,
+              4,
+              8,
+              12,
+              16,
+              20,
+              24,
+              28,
+              32,
+              36,
+              40,
+              44
+            ],
+            "name": "resid_post_last",
+            "site": "resid_post",
+            "storage": {
+              "dtype": "float16",
+              "format": "safetensors"
+            },
+            "tokens": {
+              "kind": "last",
+              "value": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "depends_on": [],
+      "name": "probe_conflict_strategy_holdout",
+      "runner": "analysis_cpu",
+      "spec": {
+        "baselines": [],
+        "feature": {
+          "feature_name": "resid_post_last",
+          "kind": "step_feature_ref",
+          "layer_index": null,
+          "step": "capture_resid"
+        },
+        "folds": 5,
+        "group_by": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "case_set",
+          "name": "matched_pair_id"
+        },
+        "kind": "probe",
+        "labels": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "conflict_present"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "split": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "strategy_lexical_split"
+        },
+        "test_values": [
+          "test"
+        ],
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "train_values": [
+          "train"
+        ]
+      }
+    },
+    {
+      "depends_on": [],
+      "name": "probe_conflict_settings_holdout",
+      "runner": "analysis_cpu",
+      "spec": {
+        "baselines": [],
+        "feature": {
+          "feature_name": "resid_post_last",
+          "kind": "step_feature_ref",
+          "layer_index": null,
+          "step": "capture_resid"
+        },
+        "folds": 5,
+        "group_by": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "case_set",
+          "name": "matched_pair_id"
+        },
+        "kind": "probe",
+        "labels": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "conflict_present"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "split": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "setting_lexical_split"
+        },
+        "test_values": [
+          "test"
+        ],
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "train_values": [
+          "train"
+        ]
+      }
+    },
+    {
+      "depends_on": [],
+      "name": "probe_conflict_grouped_cv",
+      "runner": "analysis_cpu",
+      "spec": {
+        "baselines": [],
+        "feature": {
+          "feature_name": "resid_post_last",
+          "kind": "step_feature_ref",
+          "layer_index": null,
+          "step": "capture_resid"
+        },
+        "folds": 5,
+        "group_by": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "case_set",
+          "name": "matched_pair_id"
+        },
+        "kind": "probe",
+        "labels": {
+          "dataset": {
+            "examples": [],
+            "fetch": {
+              "case_key_column": "matched_pair_id",
+              "example_key_column": "example_id",
+              "label_columns": [
+                "user_text",
+                "conflict_present",
+                "strategy_family",
+                "strategy_variant_id",
+                "strategy_lexical_split",
+                "setting_lexical_family_id",
+                "setting_variant_id",
+                "setting_lexical_split",
+                "section_order",
+                "environment_pressure_bucket",
+                "pair_member"
+              ],
+              "prompt_column": "prompt_messages_json",
+              "sql": "\nWITH ranked AS (\n    SELECT row_number() OVER (ORDER BY example_id) AS log_id, src.*\n    FROM conflict_probe_examples_v4 src\n)\nSELECT * FROM ranked\n"
+            },
+            "id": "05d52c1c88ae5d73f9981dd7",
+            "name": null,
+            "selection": {},
+            "source": {
+              "kind": "postgres",
+              "url_env_var": "XENON_NEON_DATABASE_URL"
+            }
+          },
+          "kind": "label_set",
+          "name": "conflict_present"
+        },
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "split": null,
+        "test_values": [
+          "test"
+        ],
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "train_values": [
+          "train"
+        ]
+      }
+    },
+    {
+      "depends_on": [],
+      "name": "report",
+      "runner": "report_local",
+      "spec": {
+        "inputs": [
+          {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "text_baseline_conflict_strategy_holdout"
+          },
+          {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "text_baseline_conflict_settings_holdout"
+          },
+          {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "text_baseline_conflict_grouped_cv"
+          },
+          {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "probe_conflict_strategy_holdout"
+          },
+          {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "probe_conflict_settings_holdout"
+          },
+          {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "probe_conflict_grouped_cv"
+          }
+        ],
+        "kind": "report",
+        "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_06/outputs/report",
+        "schema_version": 1,
+        "template": "phase_06"
+      }
+    }
+  ]
+}
