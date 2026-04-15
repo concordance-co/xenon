@@ -31,6 +31,7 @@ class ProbeSpec(OperationSpec):
     folds: int = 5
     baselines: Sequence[str] = field(default_factory=tuple)
     metrics: Sequence[str] = field(default_factory=tuple)
+    persist_predictions: bool = False
 
     kind: ClassVar[str] = "probe"
 
@@ -56,6 +57,7 @@ class ProbeSpec(OperationSpec):
             folds=int(payload.get("folds", 5)),
             baselines=tuple(str(item) for item in payload.get("baselines", ())),
             metrics=tuple(str(item) for item in payload.get("metrics", ())),
+            persist_predictions=bool(payload.get("persist_predictions", False)),
         )
 
 

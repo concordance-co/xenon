@@ -30,6 +30,7 @@ class TextBaselineSpec(OperationSpec):
     model: str = "countvectorizer_logreg"
     regularization: Sequence[float] = field(default_factory=tuple)
     metrics: Sequence[str] = field(default_factory=lambda: ("balanced_accuracy", "auroc"))
+    persist_predictions: bool = False
 
     kind: ClassVar[str] = "text_baseline"
 
@@ -62,6 +63,7 @@ class TextBaselineSpec(OperationSpec):
             model=str(payload.get("model", "countvectorizer_logreg")),
             regularization=tuple(float(value) for value in payload.get("regularization", ())),
             metrics=tuple(str(item) for item in payload.get("metrics", ("balanced_accuracy", "auroc"))),
+            persist_predictions=bool(payload.get("persist_predictions", False)),
         )
 
 

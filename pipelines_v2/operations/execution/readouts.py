@@ -66,6 +66,7 @@ def run_probe(spec: ProbeSpec) -> OperationExecutionResult:
                 metrics=requested_metrics,
                 example_keys=example_keys,
                 class_names=classes,
+                persist_predictions=spec.persist_predictions,
             )
         )
 
@@ -141,6 +142,7 @@ def run_transfer_probe(spec: TransferProbeSpec) -> OperationExecutionResult:
                     test_values=tuple(spec.test_values) or ("test",),
                     regularization=regularization,
                     metrics=tuple(spec.metrics),
+                    persist_predictions=spec.persist_predictions,
                 )
             )
     else:
@@ -155,6 +157,7 @@ def run_transfer_probe(spec: TransferProbeSpec) -> OperationExecutionResult:
                     X=X,
                     y=y,
                     class_names=class_names,
+                    example_keys=example_keys,
                     groups=groups,
                     cohort_values=cohort_values,
                     selected_cohorts=selected_cohorts,
@@ -162,6 +165,7 @@ def run_transfer_probe(spec: TransferProbeSpec) -> OperationExecutionResult:
                     metrics=tuple(spec.metrics),
                     compare_within_baseline=spec.compare_within_baseline,
                     compare_direction_similarity=spec.compare_direction_similarity,
+                    persist_predictions=spec.persist_predictions,
                 )
             )
 
@@ -223,6 +227,7 @@ def run_text_baseline(spec: TextBaselineSpec) -> OperationExecutionResult:
             model=spec.model,
             regularization=regularization,
             metrics=tuple(spec.metrics),
+            persist_predictions=spec.persist_predictions,
         )
         mode = "split_holdout"
     elif spec.cohort_by is not None:
@@ -230,12 +235,14 @@ def run_text_baseline(spec: TextBaselineSpec) -> OperationExecutionResult:
             texts=text_values,
             y=y,
             class_names=class_names,
+            example_keys=example_keys,
             groups=groups,
             cohort_values=cohort_values,
             selected_cohorts=selected_cohorts,
             model=spec.model,
             regularization=regularization,
             metrics=tuple(spec.metrics),
+            persist_predictions=spec.persist_predictions,
         )
         mode = "cross_cohort_transfer"
     else:
@@ -244,9 +251,11 @@ def run_text_baseline(spec: TextBaselineSpec) -> OperationExecutionResult:
             y=y,
             class_names=class_names,
             groups=groups,
+            example_keys=example_keys,
             model=spec.model,
             regularization=regularization,
             metrics=tuple(spec.metrics),
+            persist_predictions=spec.persist_predictions,
         )
         mode = "grouped_cv"
 
@@ -388,6 +397,7 @@ def probe_layer(
     metrics: Sequence[str],
     example_keys: Sequence[str] | None = None,
     class_names: Sequence[str] | None = None,
+    persist_predictions: bool = False,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -406,7 +416,7 @@ def probe_layer(
     baseline_scores: dict[str, list[float]] = {name: [] for name in baselines}
     compute_shuffled_control = "shuffled_label" in baseline_scores or "selectivity" in metrics
     shuffled_control_scores: list[float] = []
-    fixed_split_predictions: list[dict[str, Any]] | None = None
+    prediction_rows: list[dict[str, Any]] = []
 
     for fold_index, (train_idx, test_idx) in enumerate(splits):
         model = make_pipeline(
@@ -431,13 +441,21 @@ def probe_layer(
         auroc_value = metric_payload.get("auroc")
         if auroc_value is not None:
             auroc_scores.append(float(auroc_value))
-        if split is not None and len(splits) == 1 and example_keys is not None:
-            fixed_split_predictions = _serialize_prediction_rows(
-                example_keys=[example_keys[int(index)] for index in test_idx.tolist()],
-                y_true=y[test_idx],
-                predictions=predictions,
-                probabilities=probabilities,
-                class_names=class_names,
+        if persist_predictions and example_keys is not None:
+            prediction_rows.extend(
+                _serialize_prediction_rows(
+                    example_keys=[example_keys[int(index)] for index in test_idx.tolist()],
+                    y_true=y[test_idx],
+                    predictions=predictions,
+                    probabilities=probabilities,
+                    class_names=class_names,
+                    context={
+                        "layer": int(layer),
+                        "evaluation_kind": "probe",
+                        "split_mode": split_mode,
+                        "fold_index": int(fold_index),
+                    },
+                )
             )
 
         if "majority" in baseline_scores:
@@ -492,8 +510,9 @@ def probe_layer(
         result["baseline_majority"] = round(float(baseline_majority), 4) if baseline_majority is not None else None
     if "shuffled_label" in baseline_scores:
         result["baseline_shuffled"] = round(float(baseline_shuffled), 4) if baseline_shuffled is not None else None
-    if fixed_split_predictions is not None:
-        result["test_predictions"] = fixed_split_predictions
+    if persist_predictions:
+        result["test_predictions"] = prediction_rows
+        result["test_prediction_count"] = len(prediction_rows)
     return result
 
 
@@ -576,6 +595,10 @@ def grouped_cv_activation(
     metrics: Sequence[str],
     C: float,
     seed: int = 42,
+    example_keys: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
+    persist_predictions: bool = False,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -587,7 +610,25 @@ def grouped_cv_activation(
     )
     if not splits:
         return _empty_metrics(metrics, split_mode=split_mode, example_count=int(X.shape[0]))
-    scores = [_evaluate_activation_split(X, y, train_idx, test_idx, metrics=metrics, C=C, seed=seed + fold) for fold, (train_idx, test_idx) in enumerate(splits)]
+    scores = [
+        _evaluate_activation_split(
+            X,
+            y,
+            train_idx,
+            test_idx,
+            metrics=metrics,
+            C=C,
+            seed=seed + fold,
+            example_keys=example_keys if persist_predictions else None,
+            class_names=class_names if persist_predictions else None,
+            prediction_context={
+                **(prediction_context or {}),
+                "split_mode": split_mode,
+                "fold_index": int(fold),
+            } if persist_predictions else None,
+        )
+        for fold, (train_idx, test_idx) in enumerate(splits)
+    ]
     return _aggregate_metric_runs(scores, split_mode=split_mode, example_count=int(X.shape[0]))
 
 
@@ -604,6 +645,8 @@ def fixed_split_activation(
     seed: int = 42,
     example_keys: Sequence[str] | None = None,
     class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
+    persist_predictions: bool = False,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -624,8 +667,13 @@ def fixed_split_activation(
         metrics=metrics,
         C=C,
         seed=seed,
-        example_keys=example_keys,
-        class_names=class_names,
+        example_keys=example_keys if persist_predictions else None,
+        class_names=class_names if persist_predictions else None,
+        prediction_context={
+            **(prediction_context or {}),
+            "split_mode": split_mode,
+            "fold_index": 0,
+        } if persist_predictions else None,
     )
     result["split_mode"] = split_mode
     result["example_count"] = int(X.shape[0])
@@ -641,6 +689,10 @@ def grouped_cv_text(
     metrics: Sequence[str],
     C: float,
     seed: int = 42,
+    example_keys: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
+    persist_predictions: bool = False,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -652,7 +704,26 @@ def grouped_cv_text(
     )
     if not splits:
         return _empty_metrics(metrics, split_mode=split_mode, example_count=len(texts))
-    scores = [_evaluate_text_split(texts, y, train_idx, test_idx, model=model, metrics=metrics, C=C, seed=seed + fold) for fold, (train_idx, test_idx) in enumerate(splits)]
+    scores = [
+        _evaluate_text_split(
+            texts,
+            y,
+            train_idx,
+            test_idx,
+            model=model,
+            metrics=metrics,
+            C=C,
+            seed=seed + fold,
+            example_keys=example_keys if persist_predictions else None,
+            class_names=class_names if persist_predictions else None,
+            prediction_context={
+                **(prediction_context or {}),
+                "split_mode": split_mode,
+                "fold_index": int(fold),
+            } if persist_predictions else None,
+        )
+        for fold, (train_idx, test_idx) in enumerate(splits)
+    ]
     return _aggregate_metric_runs(scores, split_mode=split_mode, example_count=len(texts))
 
 
@@ -670,6 +741,8 @@ def fixed_split_text(
     seed: int = 42,
     example_keys: Sequence[str] | None = None,
     class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
+    persist_predictions: bool = False,
 ) -> dict[str, Any]:
     splits, split_mode = classification_splits(
         y=y,
@@ -691,8 +764,13 @@ def fixed_split_text(
         metrics=metrics,
         C=C,
         seed=seed,
-        example_keys=example_keys,
-        class_names=class_names,
+        example_keys=example_keys if persist_predictions else None,
+        class_names=class_names if persist_predictions else None,
+        prediction_context={
+            **(prediction_context or {}),
+            "split_mode": split_mode,
+            "fold_index": 0,
+        } if persist_predictions else None,
     )
     result["split_mode"] = split_mode
     result["example_count"] = len(texts)
@@ -705,6 +783,7 @@ def _transfer_cross_layer(
     X: NDArray[np.float32],
     y: NDArray[np.int64],
     class_names: Sequence[str],
+    example_keys: Sequence[str],
     groups: NDArray[np.object_] | None,
     cohort_values: Sequence[Any],
     selected_cohorts: Sequence[str],
@@ -712,6 +791,7 @@ def _transfer_cross_layer(
     metrics: Sequence[str],
     compare_within_baseline: bool,
     compare_direction_similarity: bool,
+    persist_predictions: bool,
 ) -> dict[str, Any]:
     cohort_labels = np.asarray([str(value) for value in cohort_values], dtype=object)
     bundles = {}
@@ -723,6 +803,7 @@ def _transfer_cross_layer(
             "X": X[mask],
             "y": y[mask],
             "groups": groups[mask] if groups is not None else None,
+            "example_keys": [example_keys[index] for index in np.nonzero(mask)[0].tolist()],
         }
 
     within: dict[str, Any] = {}
@@ -735,6 +816,15 @@ def _transfer_cross_layer(
                 groups=bundle["groups"],
                 metrics=metrics,
                 C=regularization[0],
+                example_keys=bundle["example_keys"],
+                class_names=class_names,
+                prediction_context={
+                    "layer": int(layer),
+                    "evaluation_kind": "within_cohort_baseline",
+                    "cohort": cohort,
+                    "C": float(regularization[0]),
+                },
+                persist_predictions=persist_predictions,
             )
     if compare_direction_similarity:
         for cohort, bundle in bundles.items():
@@ -764,6 +854,16 @@ def _transfer_cross_layer(
                     test_bundle["y"],
                     metrics=metrics,
                     C=regularization[0],
+                    example_keys_test=test_bundle["example_keys"] if persist_predictions else None,
+                    class_names=class_names if persist_predictions else None,
+                    prediction_context={
+                        "layer": int(layer),
+                        "evaluation_kind": "cross_cohort_transfer",
+                        "split_mode": "cross_transfer",
+                        "train_cohort": train_cohort,
+                        "test_cohort": test_cohort,
+                        "C": float(regularization[0]),
+                    } if persist_predictions else None,
                 )
                 if compare_within_baseline:
                     baseline = within.get(test_cohort, {})
@@ -782,6 +882,16 @@ def _transfer_cross_layer(
                         test_bundle["y"],
                         metrics=metrics,
                         C=C,
+                        example_keys_test=test_bundle["example_keys"] if persist_predictions else None,
+                        class_names=class_names if persist_predictions else None,
+                        prediction_context={
+                            "layer": int(layer),
+                            "evaluation_kind": "cross_cohort_transfer",
+                            "split_mode": "cross_transfer",
+                            "train_cohort": train_cohort,
+                            "test_cohort": test_cohort,
+                            "C": float(C),
+                        } if persist_predictions else None,
                     )
                     result["C"] = float(C)
                     sweep.append(result)
@@ -819,6 +929,7 @@ def _transfer_split_layer(
     test_values: Sequence[Any],
     regularization: Sequence[float],
     metrics: Sequence[str],
+    persist_predictions: bool,
 ) -> dict[str, Any]:
     cohort_labels = np.asarray([str(value) for value in cohort_values], dtype=object) if cohort_values else None
     split_results: dict[str, Any] = {}
@@ -836,6 +947,12 @@ def _transfer_split_layer(
                 metrics=metrics,
                 regularization=regularization,
                 class_names=class_names,
+                prediction_context={
+                    "layer": int(layer),
+                    "evaluation_kind": "split_holdout",
+                    "split_name": split_name,
+                } if persist_predictions else None,
+                persist_predictions=persist_predictions,
             )
             continue
         per_cohort: dict[str, Any] = {}
@@ -854,6 +971,13 @@ def _transfer_split_layer(
                 metrics=metrics,
                 regularization=regularization,
                 class_names=class_names,
+                prediction_context={
+                    "layer": int(layer),
+                    "evaluation_kind": "split_holdout",
+                    "split_name": split_name,
+                    "cohort": cohort,
+                } if persist_predictions else None,
+                persist_predictions=persist_predictions,
             )
         split_results[split_name] = per_cohort
     return {
@@ -875,6 +999,8 @@ def _fixed_split_payload(
     metrics: Sequence[str],
     regularization: Sequence[float],
     class_names: Sequence[str],
+    prediction_context: dict[str, Any] | None = None,
+    persist_predictions: bool = False,
 ) -> Any:
     if len(regularization) == 1:
         return fixed_split_activation(
@@ -888,6 +1014,11 @@ def _fixed_split_payload(
             metrics=metrics,
             C=regularization[0],
             class_names=class_names,
+            prediction_context={
+                **(prediction_context or {}),
+                "C": float(regularization[0]),
+            } if persist_predictions else None,
+            persist_predictions=persist_predictions,
         )
     return {
         "regularization_sweep": [
@@ -904,6 +1035,11 @@ def _fixed_split_payload(
                     metrics=metrics,
                     C=C,
                     class_names=class_names,
+                    prediction_context={
+                        **(prediction_context or {}),
+                        "C": float(C),
+                    } if persist_predictions else None,
+                    persist_predictions=persist_predictions,
                 ),
             }
             for C in regularization
@@ -916,12 +1052,14 @@ def _text_cross_results(
     texts: Sequence[str],
     y: NDArray[np.int64],
     class_names: Sequence[str],
+    example_keys: Sequence[str],
     groups: NDArray[np.object_] | None,
     cohort_values: Sequence[Any],
     selected_cohorts: Sequence[str],
     model: str,
     regularization: Sequence[float],
     metrics: Sequence[str],
+    persist_predictions: bool,
 ) -> dict[str, Any]:
     cohort_labels = np.asarray([str(value) for value in cohort_values], dtype=object)
     bundles = {}
@@ -933,6 +1071,7 @@ def _text_cross_results(
             "texts": [texts[index] for index in np.nonzero(mask)[0].tolist()],
             "y": y[mask],
             "groups": groups[mask] if groups is not None else None,
+            "example_keys": [example_keys[index] for index in np.nonzero(mask)[0].tolist()],
         }
 
     within = {
@@ -943,6 +1082,15 @@ def _text_cross_results(
             model=model,
             metrics=metrics,
             C=regularization[0],
+            example_keys=bundle["example_keys"],
+            class_names=class_names,
+            prediction_context={
+                "evaluation_kind": "within_cohort_baseline",
+                "cohort": cohort,
+                "model": model,
+                "C": float(regularization[0]),
+            },
+            persist_predictions=persist_predictions,
         )
         for cohort, bundle in bundles.items()
     }
@@ -967,6 +1115,16 @@ def _text_cross_results(
                     model=model,
                     metrics=metrics,
                     C=regularization[0],
+                    example_keys_test=test_bundle["example_keys"] if persist_predictions else None,
+                    class_names=class_names if persist_predictions else None,
+                    prediction_context={
+                        "evaluation_kind": "cross_cohort_transfer",
+                        "split_mode": "cross_transfer",
+                        "train_cohort": train_cohort,
+                        "test_cohort": test_cohort,
+                        "model": model,
+                        "C": float(regularization[0]),
+                    } if persist_predictions else None,
                 )
                 result["transfer_delta_vs_test_within"] = _metric_delta(
                     result.get("balanced_accuracy"),
@@ -986,6 +1144,16 @@ def _text_cross_results(
                                 model=model,
                                 metrics=metrics,
                                 C=C,
+                                example_keys_test=test_bundle["example_keys"] if persist_predictions else None,
+                                class_names=class_names if persist_predictions else None,
+                                prediction_context={
+                                    "evaluation_kind": "cross_cohort_transfer",
+                                    "split_mode": "cross_transfer",
+                                    "train_cohort": train_cohort,
+                                    "test_cohort": test_cohort,
+                                    "model": model,
+                                    "C": float(C),
+                                } if persist_predictions else None,
                             ),
                         }
                         for C in regularization
@@ -1013,6 +1181,7 @@ def _text_split_results(
     model: str,
     regularization: Sequence[float],
     metrics: Sequence[str],
+    persist_predictions: bool,
 ) -> dict[str, Any]:
     cohort_labels = np.asarray([str(value) for value in cohort_values], dtype=object) if cohort_values else None
     results: dict[str, Any] = {"class_names": list(class_names), "split_results": {}}
@@ -1031,6 +1200,12 @@ def _text_split_results(
                 regularization=regularization,
                 metrics=metrics,
                 class_names=class_names,
+                prediction_context={
+                    "evaluation_kind": "split_holdout",
+                    "split_name": split_name,
+                    "model": model,
+                } if persist_predictions else None,
+                persist_predictions=persist_predictions,
             )
             continue
         per_cohort = {}
@@ -1051,6 +1226,13 @@ def _text_split_results(
                 regularization=regularization,
                 metrics=metrics,
                 class_names=class_names,
+                prediction_context={
+                    "evaluation_kind": "split_holdout",
+                    "split_name": split_name,
+                    "cohort": cohort,
+                    "model": model,
+                } if persist_predictions else None,
+                persist_predictions=persist_predictions,
             )
         results["split_results"][split_name] = per_cohort
     return results
@@ -1069,6 +1251,8 @@ def _text_fixed_split_payload(
     regularization: Sequence[float],
     metrics: Sequence[str],
     class_names: Sequence[str],
+    prediction_context: dict[str, Any] | None = None,
+    persist_predictions: bool = False,
 ) -> Any:
     if len(regularization) == 1:
         return fixed_split_text(
@@ -1083,6 +1267,11 @@ def _text_fixed_split_payload(
             metrics=metrics,
             C=regularization[0],
             class_names=class_names,
+            prediction_context={
+                **(prediction_context or {}),
+                "C": float(regularization[0]),
+            } if persist_predictions else None,
+            persist_predictions=persist_predictions,
         )
     return {
         "regularization_sweep": [
@@ -1100,6 +1289,11 @@ def _text_fixed_split_payload(
                     metrics=metrics,
                     C=C,
                     class_names=class_names,
+                    prediction_context={
+                        **(prediction_context or {}),
+                        "C": float(C),
+                    } if persist_predictions else None,
+                    persist_predictions=persist_predictions,
                 ),
             }
             for C in regularization
@@ -1113,9 +1307,11 @@ def _text_grouped_cv_results(
     y: NDArray[np.int64],
     class_names: Sequence[str],
     groups: NDArray[np.object_] | None,
+    example_keys: Sequence[str],
     model: str,
     regularization: Sequence[float],
     metrics: Sequence[str],
+    persist_predictions: bool,
 ) -> dict[str, Any]:
     if len(regularization) == 1:
         return {
@@ -1124,9 +1320,17 @@ def _text_grouped_cv_results(
                 texts=texts,
                 y=y,
                 groups=groups,
+                example_keys=example_keys,
+                class_names=class_names,
                 model=model,
                 metrics=metrics,
                 C=regularization[0],
+                prediction_context={
+                    "evaluation_kind": "grouped_cv",
+                    "model": model,
+                    "C": float(regularization[0]),
+                },
+                persist_predictions=persist_predictions,
             ),
         }
     return {
@@ -1138,9 +1342,17 @@ def _text_grouped_cv_results(
                     texts=texts,
                     y=y,
                     groups=groups,
+                    example_keys=example_keys,
+                    class_names=class_names,
                     model=model,
                     metrics=metrics,
                     C=C,
+                    prediction_context={
+                        "evaluation_kind": "grouped_cv",
+                        "model": model,
+                        "C": float(C),
+                    },
+                    persist_predictions=persist_predictions,
                 ),
             }
             for C in regularization
@@ -1159,6 +1371,7 @@ def _evaluate_activation_split(
     seed: int,
     example_keys: Sequence[str] | None = None,
     class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     model = _make_activation_logreg(C=C, seed=seed)
     model.fit(X[train_idx], y[train_idx])
@@ -1172,6 +1385,7 @@ def _evaluate_activation_split(
             predictions=predictions,
             probabilities=probabilities,
             class_names=class_names,
+            context=prediction_context,
         )
     return payload
 
@@ -1188,6 +1402,7 @@ def _evaluate_text_split(
     seed: int,
     example_keys: Sequence[str] | None = None,
     class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     pipeline = _make_text_model(model=model, C=C, seed=seed)
     train_texts = [texts[int(index)] for index in train_idx.tolist()]
@@ -1203,6 +1418,7 @@ def _evaluate_text_split(
             predictions=predictions,
             probabilities=probabilities,
             class_names=class_names,
+            context=prediction_context,
         )
     return payload
 
@@ -1216,6 +1432,9 @@ def _evaluate_activation_transfer(
     metrics: Sequence[str],
     C: float,
     seed: int = 42,
+    example_keys_test: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
         return _empty_metrics(metrics, split_mode="cross_transfer", example_count=int(len(y_train) + len(y_test)))
@@ -1227,6 +1446,16 @@ def _evaluate_activation_transfer(
     payload["split_mode"] = "cross_transfer"
     payload["n_train"] = int(len(y_train))
     payload["n_test"] = int(len(y_test))
+    if example_keys_test is not None:
+        payload["test_predictions"] = _serialize_prediction_rows(
+            example_keys=example_keys_test,
+            y_true=y_test,
+            predictions=predictions,
+            probabilities=probabilities,
+            class_names=class_names,
+            context=prediction_context,
+        )
+        payload["test_prediction_count"] = len(example_keys_test)
     return payload
 
 
@@ -1240,6 +1469,9 @@ def _evaluate_text_transfer(
     metrics: Sequence[str],
     C: float,
     seed: int = 42,
+    example_keys_test: Sequence[str] | None = None,
+    class_names: Sequence[str] | None = None,
+    prediction_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
         return _empty_metrics(metrics, split_mode="cross_transfer", example_count=int(len(y_train) + len(y_test)))
@@ -1251,6 +1483,16 @@ def _evaluate_text_transfer(
     payload["split_mode"] = "cross_transfer"
     payload["n_train"] = int(len(y_train))
     payload["n_test"] = int(len(y_test))
+    if example_keys_test is not None:
+        payload["test_predictions"] = _serialize_prediction_rows(
+            example_keys=example_keys_test,
+            y_true=y_test,
+            predictions=predictions,
+            probabilities=probabilities,
+            class_names=class_names,
+            context=prediction_context,
+        )
+        payload["test_prediction_count"] = len(example_keys_test)
     return payload
 
 
@@ -1298,15 +1540,28 @@ def _serialize_prediction_rows(
     predictions: NDArray[np.int64],
     probabilities: NDArray[np.float64] | NDArray[np.float32] | None,
     class_names: Sequence[str] | None,
+    context: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     class_labels = list(class_names) if class_names is not None else None
+    binary_labels = sorted(int(value) for value in np.unique(y_true).tolist()) if len(np.unique(y_true)) == 2 else None
     for idx, example_key in enumerate(example_keys):
         row: dict[str, Any] = {
             "example_key": str(example_key),
             "true_label_index": int(y_true[idx]),
             "predicted_label_index": int(predictions[idx]),
+            "correct": bool(int(y_true[idx]) == int(predictions[idx])),
         }
+        if context:
+            for key, value in context.items():
+                if isinstance(value, np.integer):
+                    row[str(key)] = int(value)
+                elif isinstance(value, np.floating):
+                    row[str(key)] = float(value)
+                elif isinstance(value, np.bool_):
+                    row[str(key)] = bool(value)
+                else:
+                    row[str(key)] = value
         if class_labels is not None:
             row["true_label"] = str(class_labels[int(y_true[idx])])
             row["predicted_label"] = str(class_labels[int(predictions[idx])])
@@ -1315,6 +1570,18 @@ def _serialize_prediction_rows(
             row["class_probabilities"] = [round(float(value), 6) for value in probs.tolist()]
             if probs.shape[0] == 2:
                 row["positive_class_probability"] = round(float(probs[1]), 6)
+        if binary_labels is not None:
+            negative_label, positive_label = binary_labels
+            truth = int(y_true[idx])
+            pred = int(predictions[idx])
+            if truth == positive_label and pred == positive_label:
+                row["binary_outcome"] = "true_positive"
+            elif truth == negative_label and pred == positive_label:
+                row["binary_outcome"] = "false_positive"
+            elif truth == positive_label and pred == negative_label:
+                row["binary_outcome"] = "false_negative"
+            else:
+                row["binary_outcome"] = "true_negative"
         rows.append(row)
     return rows
 
@@ -1334,6 +1601,15 @@ def _aggregate_metric_runs(
         values = [float(run[key]) for run in runs if run.get(key) is not None]
         payload[key] = round(float(np.mean(values)), 4) if values else None
         payload[f"{key}_std"] = round(float(np.std(values)), 4) if values else None
+    prediction_rows = [
+        row
+        for run in runs
+        for row in (run.get("test_predictions") or [])
+        if isinstance(row, dict)
+    ]
+    if prediction_rows:
+        payload["test_predictions"] = prediction_rows
+        payload["test_prediction_count"] = len(prediction_rows)
     payload["n_folds"] = int(len(runs))
     return payload
 

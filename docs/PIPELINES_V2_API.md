@@ -500,6 +500,10 @@ Fields:
 - `folds`
 - `baselines`
 - `metrics`
+- `persist_predictions`
+  - optional boolean
+  - when `True`, persists one row per evaluated test example under `test_predictions`
+  - rows include example key, true/predicted labels, probabilities, correctness, binary outcome when applicable, and evaluation context such as layer/fold/split mode
 
 Current metrics:
 - `accuracy`
@@ -519,6 +523,7 @@ Implementation notes:
 - if `rows` is omitted, workflow planning treats the feature/text rows as the default row universe
 - `selectivity` is computed against a shuffled-label control even if
   `shuffled_label` is not requested as an exposed baseline metric
+- when `persist_predictions=True`, grouped CV and fixed split outputs include `test_predictions` and `test_prediction_count`
 
 ### `TransferProbeSpec`
 
@@ -542,6 +547,10 @@ Fields:
 - `compare_direction_similarity`
 - `tokens`
 - `pooling`
+- `persist_predictions`
+  - optional boolean
+  - when `True`, persists per-example test predictions for transfer results and within-cohort baselines
+  - prediction rows include cohort/split context where applicable
 
 Current implementation:
 - supports residual and MoE-router feature payloads
@@ -550,6 +559,7 @@ Current implementation:
 - cross-cohort transfer reports test-side delta versus within-cohort baseline
 - regularization sweeps are supported through repeated `C` values
 - when `rows` is provided, transfer analysis runs over that explicit row universe instead of assuming full feature coverage
+- when `persist_predictions=True`, transfer payloads attach `test_predictions` to the evaluated result blocks, including cross-cohort transfers and split holdouts
 
 ### `TextBaselineSpec`
 
@@ -569,12 +579,17 @@ Fields:
 - `model`
 - `regularization`
 - `metrics`
+- `persist_predictions`
+  - optional boolean
+  - when `True`, persists per-example test predictions for grouped CV, cross-cohort transfer, and split holdout evaluation blocks
+  - rows include the text model name and other evaluation context fields
 
 Current implementation:
 - supports `model="countvectorizer_logreg"`
 - supports grouped CV, cross-cohort transfer, and fixed split holdouts
 - uses `CountVectorizer(ngram_range=(1, 2)) + LogisticRegression`
 - `rows` can restrict text-baseline evaluation to a declared subset or secondary dataset row universe
+- when `persist_predictions=True`, result blocks include `test_predictions` and `test_prediction_count`
 
 ### `ResidualizedProbeSpec`
 
