@@ -317,8 +317,9 @@ Important methods:
 - `capabilities()`
 - `runtime_spec()`
 - `planning_errors(spec)`
-  - currently rejects MoE routing capture with `max_num_seqs > 1`
-  - currently rejects MoE routing capture with `enforce_eager=False`
+  - currently rejects MoE routing capture with `enable_prefix_caching=True`
+  - allows compiled mode (`enforce_eager=False`) and batched routing capture
+    when prefix caching is disabled
 - `capture(spec)`
 
 ## Capture Surface
@@ -1375,8 +1376,7 @@ probe_artifact = result.step("probe")
 - `BasisSpec` only supports PCA today.
 - `LabelPredicate` only supports equality today.
 - artifact-bound analysis supports residual and MoE router features, but broader capture families still need dedicated ops.
-- `VLLMEngine` currently rejects MoE routing capture with `max_num_seqs > 1`.
-- `VLLMEngine` currently requires `enforce_eager=True` for MoE routing capture.
+- `VLLMEngine` currently requires `enable_prefix_caching=False` for MoE routing capture, because cache hits can skip prompt execution and leave router rows incomplete.
 - large remote reads are blocked by default unless the store transfer policy allows them.
 - workflow resume/reuse require one shared non-null catalog across all runners in the workflow.
 - step reruns now exist through the CLI, but there is not yet a richer workflow-edit API for mutating a checked-in workflow spec and automatically planning invalidation from the diff.

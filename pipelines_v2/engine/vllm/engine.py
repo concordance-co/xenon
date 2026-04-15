@@ -95,16 +95,6 @@ class VLLMEngine:
     def planning_errors(self, spec: CaptureSpec) -> tuple[str, ...]:
         errors: list[str] = []
         wants_routing = any(isinstance(site, MoERoutingSite) for site in spec.sites)
-        if wants_routing and int(self.max_num_seqs or 1) > 1:
-            errors.append(
-                "VLLMEngine does not currently support MoE routing capture with max_num_seqs > 1; "
-                "split router capture into its own serial step or set max_num_seqs=1."
-            )
-        if wants_routing and not bool(self.enforce_eager):
-            errors.append(
-                "VLLMEngine currently requires enforce_eager=True for MoE routing capture; "
-                "compiled-mode router capture is not reliable yet."
-            )
         if wants_routing and bool(self.enable_prefix_caching):
             errors.append(
                 "VLLMEngine currently requires enable_prefix_caching=False for MoE routing capture; "

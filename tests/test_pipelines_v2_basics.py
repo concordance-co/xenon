@@ -69,8 +69,7 @@ from pipelines_v2.api import (
     ReportSpec,
 )
 from pipelines_v2.cli import _workflow_result_payload, load_python_workflow_file, main as pipelines_v2_cli_main
-from pipelines_v2.engine.vllm.capture import _fill_router_features
-from pipelines_v2.engine.vllm.moe_hooks import _make_patched_forward
+from pipelines_v2.engine.vllm.capture import _capture_prompt_batch, _fill_router_features, _split_router_capture_batch
 from pipelines_v2.runtime import ExecutionPlan
 from pipelines_v2.runtime.specs import runner_spec_from_dict
 from pipelines_v2.runtime.remote_executor import execute_remote
@@ -822,7 +821,7 @@ def test_fill_router_features_error_includes_actual_and_discovered_layers() -> N
     feature_payloads = {
         "router_last": {
             "kind": "moe_routing",
-            "routing_policy": {"source": "vllm_gate_logits", "observed_routing_decisions": False},
+            "routing_policy": {"source": "vllm_gate_logits", "observed_routing_decisions": True},
             "layers": {"0": {}, "4": {}},
         }
     }
@@ -833,7 +832,7 @@ def test_fill_router_features_error_includes_actual_and_discovered_layers() -> N
         _fill_router_features(
             feature_payloads=feature_payloads,
             routing_sites=[site],
-            router_data={4: np.zeros((1, 8), dtype=np.float32)},
+            router_data={4: {"logits": np.zeros((1, 8), dtype=np.float32)}},
             example=example,
             token_count=1,
             token_sections={},
@@ -845,7 +844,7 @@ def test_fill_router_features_error_includes_captured_length_for_token_mismatch(
     feature_payloads = {
         "router_last": {
             "kind": "moe_routing",
-            "routing_policy": {"source": "vllm_gate_logits", "observed_routing_decisions": False},
+            "routing_policy": {"source": "vllm_gate_logits", "observed_routing_decisions": True},
             "layers": {"0": {}},
         }
     }
@@ -855,7 +854,7 @@ def test_fill_router_features_error_includes_captured_length_for_token_mismatch(
         _fill_router_features(
             feature_payloads=feature_payloads,
             routing_sites=[site],
-            router_data={0: np.zeros((4, 8), dtype=np.float32)},
+            router_data={0: {"logits": np.zeros((4, 8), dtype=np.float32)}},
             example=Example(key="ex_a", prompt="alpha"),
             token_count=10,
             token_sections={},
@@ -863,52 +862,185 @@ def test_fill_router_features_error_includes_captured_length_for_token_mismatch(
         )
 
 
-def test_vllm_router_hook_appends_logits_across_chunked_forwards() -> None:
-    torch = pytest.importorskip("torch")
+def test_split_router_capture_batch_preserves_example_order() -> None:
+    examples = [
+        Example(key="ex_a", prompt="alpha"),
+        Example(key="ex_b", prompt="beta"),
+    ]
+    raw_router = {
+        4: {
+            "logits": np.asarray(
+                [
+                    [1.0, 2.0, 3.0],
+                    [4.0, 5.0, 6.0],
+                    [7.0, 8.0, 9.0],
+                    [10.0, 11.0, 12.0],
+                    [13.0, 14.0, 15.0],
+                ],
+                dtype=np.float32,
+            ),
+            "topk_ids": np.asarray(
+                [
+                    [2, 1],
+                    [2, 1],
+                    [1, 0],
+                    [1, 0],
+                    [0, 2],
+                ],
+                dtype=np.int64,
+            ),
+            "topk_weights": np.asarray(
+                [
+                    [0.7, 0.3],
+                    [0.8, 0.2],
+                    [0.6, 0.4],
+                    [0.55, 0.45],
+                    [0.9, 0.1],
+                ],
+                dtype=np.float32,
+            ),
+        }
+    }
 
-    class _FakeGate:
-        def __init__(self) -> None:
-            self.weight = torch.zeros((3, 2), dtype=torch.float32)
-
-        def __call__(self, hidden_states: Any) -> tuple[Any, Any]:
-            sums = hidden_states.sum(dim=1, keepdim=True)
-            router_logits = torch.cat((sums, sums + 1, sums + 2), dim=1)
-            return router_logits, None
-
-    class _FakeExperts:
-        def __call__(self, *, hidden_states: Any, router_logits: Any) -> tuple[Any, Any]:
-            return None, hidden_states
-
-    class _FakeBlock:
-        def __init__(self) -> None:
-            self.gate = _FakeGate()
-            self.experts = _FakeExperts()
-            self.is_sequence_parallel = False
-            self.tp_size = 1
-            self._router_logits_buffer = torch.zeros((8, 3), dtype=torch.float32)
-            self._router_num_captured = 0
-            self._router_capture_enabled = True
-
-    block = _FakeBlock()
-    patched = _make_patched_forward(block)
-
-    patched(torch.tensor([[1.0, 0.0], [2.0, 0.0]], dtype=torch.float32))
-    patched(torch.tensor([[3.0, 0.0], [4.0, 0.0], [5.0, 0.0]], dtype=torch.float32))
-
-    captured = block._router_logits_buffer[: block._router_num_captured].cpu().numpy()
-    expected = np.asarray(
-        [
-            [1.0, 2.0, 3.0],
-            [2.0, 3.0, 4.0],
-            [3.0, 4.0, 5.0],
-            [4.0, 5.0, 6.0],
-            [5.0, 6.0, 7.0],
-        ],
-        dtype=np.float32,
+    split = _split_router_capture_batch(
+        raw_router=raw_router,
+        examples=examples,
+        prompt_lengths=[2, 3],
     )
 
-    assert block._router_num_captured == 5
-    assert np.allclose(captured, expected)
+    assert split["ex_a"][4]["logits"].shape == (2, 3)
+    assert split["ex_b"][4]["logits"].shape == (3, 3)
+    assert np.allclose(split["ex_a"][4]["logits"][0], np.asarray([1.0, 2.0, 3.0], dtype=np.float32))
+    assert np.array_equal(split["ex_b"][4]["topk_ids"][-1], np.asarray([0, 2], dtype=np.int64))
+
+
+def test_split_router_capture_batch_can_ignore_decode_suffix_rows() -> None:
+    examples = [
+        Example(key="ex_a", prompt="alpha"),
+        Example(key="ex_b", prompt="beta"),
+    ]
+    raw_router = {
+        4: {
+            "logits": np.asarray(
+                [
+                    [1.0, 2.0, 3.0],
+                    [4.0, 5.0, 6.0],
+                    [7.0, 8.0, 9.0],
+                    [10.0, 11.0, 12.0],
+                    [13.0, 14.0, 15.0],
+                    [99.0, 99.0, 99.0],
+                    [88.0, 88.0, 88.0],
+                ],
+                dtype=np.float32,
+            ),
+            "topk_ids": np.asarray(
+                [
+                    [2, 1],
+                    [2, 1],
+                    [1, 0],
+                    [1, 0],
+                    [0, 2],
+                    [0, 1],
+                    [1, 2],
+                ],
+                dtype=np.int64,
+            ),
+            "topk_weights": np.asarray(
+                [
+                    [0.7, 0.3],
+                    [0.8, 0.2],
+                    [0.6, 0.4],
+                    [0.55, 0.45],
+                    [0.9, 0.1],
+                    [1.0, 0.0],
+                    [1.0, 0.0],
+                ],
+                dtype=np.float32,
+            ),
+        }
+    }
+
+    split = _split_router_capture_batch(
+        raw_router=raw_router,
+        examples=examples,
+        prompt_lengths=[2, 3],
+        allow_trailing_rows=True,
+    )
+
+    assert split["ex_a"][4]["logits"].shape == (2, 3)
+    assert split["ex_b"][4]["logits"].shape == (3, 3)
+    assert np.allclose(split["ex_b"][4]["logits"][-1], np.asarray([13.0, 14.0, 15.0], dtype=np.float32))
+
+
+def test_capture_prompt_batch_uses_one_generate_call_when_generation_enabled() -> None:
+    vllm_module = types.ModuleType("vllm")
+
+    class _SamplingParams:
+        def __init__(self, **kwargs: Any) -> None:
+            self.max_tokens = kwargs.get("max_tokens")
+            self.temperature = kwargs.get("temperature")
+
+    vllm_module.SamplingParams = _SamplingParams
+    sys.modules["vllm"] = vllm_module
+
+    class _FakeTokenizer:
+        def __call__(self, text: str, *, add_special_tokens: bool, return_offsets_mapping: bool) -> Any:
+            assert add_special_tokens is False
+            assert return_offsets_mapping is True
+            token_ids = [ord(char) % 17 for char in text]
+            offsets = [(idx, idx + 1) for idx in range(len(text))]
+            return types.SimpleNamespace(input_ids=token_ids, offset_mapping=offsets)
+
+    class _FakeCompletion:
+        def __init__(self, text: str, token_ids: list[int]) -> None:
+            self.text = text
+            self.token_ids = token_ids
+            self.finish_reason = "length"
+
+    class _FakeRequestOutput:
+        def __init__(self, request_id: str, text: str, token_ids: list[int]) -> None:
+            self.request_id = request_id
+            self.outputs = [_FakeCompletion(text=text, token_ids=token_ids)]
+
+    class _FakeLLM:
+        def __init__(self) -> None:
+            self.generate_calls: list[dict[str, Any]] = []
+
+        def generate(self, *, prompts: list[dict[str, Any]], sampling_params: Any) -> list[Any]:
+            self.generate_calls.append({"prompts": prompts, "sampling_params": sampling_params})
+            return [
+                _FakeRequestOutput("req-0", "answer-a", [101, 102]),
+                _FakeRequestOutput("req-1", "answer-b", [201]),
+            ]
+
+    llm = _FakeLLM()
+    tokenizer = _FakeTokenizer()
+    examples = [
+        Example(key="ex_a", prompt="ab"),
+        Example(key="ex_b", prompt="cde"),
+    ]
+
+    records = _capture_prompt_batch(
+        llm=llm,
+        tokenizer=tokenizer,
+        examples=examples,
+        add_generation_prompt=False,
+        require_sections=False,
+        prompt_metadata_builder=None,
+        wants_residual=False,
+        wants_routing=False,
+        wants_generation=True,
+        generation_max_tokens=12,
+        generation_temperature=0.3,
+        capture_reasoning=False,
+    )
+
+    assert len(llm.generate_calls) == 1
+    sampling_params = llm.generate_calls[0]["sampling_params"]
+    assert sampling_params.max_tokens == 12
+    assert sampling_params.temperature == 0.3
+    assert [record["generation_result"]["text"] for record in records] == ["answer-a", "answer-b"]
+    assert [record["generation_result"]["request_id"] for record in records] == ["req-0", "req-1"]
 
 
 def test_runner_plan_reports_missing_capabilities() -> None:
@@ -926,35 +1058,13 @@ def test_runner_plan_reports_missing_capabilities() -> None:
         plan.validate()
 
 
-def test_vllm_engine_plan_rejects_router_capture_with_batch_gt_1(tmp_path: Path) -> None:
-    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
-    spec = CaptureSpec(
-        engine=VLLMEngine(model_id="/models/Qwen/Qwen3-30B-A3B", max_num_seqs=2),
-        dataset=make_toy_dataset(),
-        sites=[
-            MoERoutingSite(
-                name="router_last",
-                layers=[0],
-                tokens=TokenSelector.last(),
-                record=[RoutingRecord.gate_logits()],
-            )
-        ],
-    )
-
-    plan = runner.plan(spec)
-
-    assert any("MoE routing capture" in error for error in plan.errors)
-    with pytest.raises(SpecValidationError, match="MoE routing capture"):
-        plan.validate()
-
-
-def test_vllm_engine_plan_rejects_router_capture_without_eager(tmp_path: Path) -> None:
+def test_vllm_engine_plan_allows_router_capture_with_batch_gt_1(tmp_path: Path) -> None:
     runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
     spec = CaptureSpec(
         engine=VLLMEngine(
             model_id="/models/Qwen/Qwen3-30B-A3B",
-            enforce_eager=False,
-            max_num_seqs=1,
+            max_num_seqs=2,
+            enable_prefix_caching=False,
         ),
         dataset=make_toy_dataset(),
         sites=[
@@ -969,9 +1079,34 @@ def test_vllm_engine_plan_rejects_router_capture_without_eager(tmp_path: Path) -
 
     plan = runner.plan(spec)
 
-    assert any("enforce_eager=True" in error for error in plan.errors)
-    with pytest.raises(SpecValidationError, match="enforce_eager=True"):
-        plan.validate()
+    assert not any("MoE routing capture" in error for error in plan.errors)
+    plan.validate()
+
+
+def test_vllm_engine_plan_allows_router_capture_without_eager(tmp_path: Path) -> None:
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    spec = CaptureSpec(
+        engine=VLLMEngine(
+            model_id="/models/Qwen/Qwen3-30B-A3B",
+            enforce_eager=False,
+            max_num_seqs=1,
+            enable_prefix_caching=False,
+        ),
+        dataset=make_toy_dataset(),
+        sites=[
+            MoERoutingSite(
+                name="router_last",
+                layers=[0],
+                tokens=TokenSelector.last(),
+                record=[RoutingRecord.gate_logits()],
+            )
+        ],
+    )
+
+    plan = runner.plan(spec)
+
+    assert not any("enforce_eager=True" in error for error in plan.errors)
+    plan.validate()
 
 
 def test_vllm_engine_plan_rejects_router_capture_with_prefix_caching(tmp_path: Path) -> None:

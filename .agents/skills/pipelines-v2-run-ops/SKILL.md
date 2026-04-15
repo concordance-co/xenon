@@ -109,9 +109,9 @@ Do not rebuild the whole workflow for that.
 - `runtime_app_id` is persisted per step when the runner reports one
 - use `workflow show --run-id ...` to inspect which remote app ran which step
 - for Modal MoE router capture, remember the current constraints:
-  - `enforce_eager=True`
   - `enable_prefix_caching=False`
-  - `max_num_seqs=1`
+  - compiled mode and batched capture are allowed
+  - if generation is enabled, capture and generation should share the same step so vLLM only runs one request pass
 
 ## Failure Triage
 

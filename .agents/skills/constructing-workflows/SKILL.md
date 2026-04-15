@@ -76,16 +76,16 @@ Do not rely on accidental key overlap.
 
 For `MoERoutingSite` with `VLLMEngine`, currently require:
 
-- `enforce_eager=True`
 - `enable_prefix_caching=False`
-- `max_num_seqs=1`
+- compiled mode (`enforce_eager=False`) is allowed
+- batched capture (`max_num_seqs > 1`) is allowed
 
-Do not assume router capture can share the same batching envelope as residual
-capture.
+Router capture can now share the same batching envelope as residual capture if
+the runtime resources fit the combined job.
 
-If a workflow needs both residual activations and MoE router features, prefer
-separate workflow steps. Keep the normal residual capture on its own step, and
-make MoE capture a distinct step with its own runtime envelope.
+If a workflow needs both residual activations and MoE router features, they can
+live in the same capture step. Split MoE into its own step only when you
+intentionally want a different runtime envelope or a narrower capture surface.
 
 ## Statistical Methods Available Today
 

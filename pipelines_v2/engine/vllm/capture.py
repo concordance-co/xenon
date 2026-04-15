@@ -34,12 +34,6 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
     batch_size = max(1, int(engine.max_num_seqs or 1))
     wants_sections = any(getattr(site.tokens, "kind", None) == "section" for site in spec.sites)
 
-    if wants_routing and batch_size > 1:
-        raise ValueError("MoE routing capture requires max_num_seqs == 1 in the current vLLM implementation")
-    if wants_routing and not bool(engine.enforce_eager):
-        raise ValueError(
-            "MoE routing capture currently requires enforce_eager=True in the current vLLM implementation"
-        )
     if wants_routing and bool(engine.enable_prefix_caching):
         raise ValueError(
             "MoE routing capture currently requires enable_prefix_caching=False in the current vLLM implementation"
@@ -103,96 +97,30 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
         generations: list[dict[str, Any]] = []
         example_metadata: list[dict[str, Any]] = []
 
-        if wants_residual and not wants_routing and batch_size > 1 and len(examples) > 1:
-            for batch in _iter_batches(examples, batch_size):
-                batch_records = _capture_residual_batch(
-                    llm=llm,
-                    tokenizer=tokenizer,
-                    examples=batch,
-                    add_generation_prompt=bool(engine.add_generation_prompt),
-                    require_sections=wants_sections,
-                    prompt_metadata_builder=spec.prompt_metadata_builder,
-                    enable_thinking=engine.enable_thinking,
-                )
-                for record in batch_records:
-                    example = record["example"]
-                    prompt_token_ids = record["prompt_token_ids"]
-                    token_sections = record["token_sections"]
-                    residual = record["residual"]
-
-                    _fill_residual_features(
-                        feature_payloads=feature_payloads,
-                        residual_sites=residual_sites,
-                        residual_layers=residual_layers,
-                        residual=residual,
-                        example=example,
-                        token_count=len(prompt_token_ids),
-                        token_sections=token_sections,
-                    )
-
-                    generation_result = None
-                    if wants_generation:
-                        generation_result = _generate_one(
-                            llm=llm,
-                            prompt_token_ids=prompt_token_ids,
-                            max_tokens=int(spec.generation.max_tokens or 1),
-                            temperature=float(spec.generation.temperature or 0.0),
-                        )
-                        if not spec.generation.capture_reasoning:
-                            generation_result["reasoning_text"] = ""
-                        generations.append({"example_key": example.key, **generation_result})
-
-                    example_metadata.append(
-                        {
-                            "example_key": example.key,
-                            "prompt_hash": example.prompt_hash,
-                            "token_count": len(prompt_token_ids),
-                            "generated": generation_result is not None,
-                            "capture_mode": "batched_residual",
-                        }
-                    )
-        else:
-            for example in examples:
-                prompt_token_ids = _prompt_token_ids(
-                    tokenizer=tokenizer,
-                    example=example,
-                    add_generation_prompt=bool(engine.add_generation_prompt),
-                    require_sections=wants_sections,
-                    prompt_metadata_builder=spec.prompt_metadata_builder,
-                    enable_thinking=engine.enable_thinking,
-                )
-                token_sections = prompt_token_ids["token_sections"]
-                prompt_token_ids = prompt_token_ids["token_ids"]
-                if wants_routing:
-                    _apply_to_model(llm, _reset_router_buffers_on_model)
-
-                residual = None
-                if wants_residual or wants_routing:
-                    outputs = llm.generate(
-                        prompts=[{"prompt_token_ids": prompt_token_ids}],
-                        sampling_params=SamplingParams(max_tokens=1, temperature=0.0),
-                    )
-                    request_output = outputs[0]
-                    if wants_residual:
-                        hidden_states_path = _hidden_states_path(request_output)
-                        if not hidden_states_path:
-                            raise RuntimeError("vLLM did not return hidden_states_path in kv_transfer_params")
-                        tensors = load_file(hidden_states_path)
-                        hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
-                        if hs.dim() == 3:
-                            hs = hs.permute(1, 0, 2)
-                        residual = hs[:, : len(prompt_token_ids), :].detach().cpu().to(torch.float32).numpy()
-                        Path(hidden_states_path).unlink(missing_ok=True)
-
-                router_data: dict[int, Any] = {}
-                actual_router_layers: list[int] = []
-                if wants_routing:
-                    raw_router = _apply_to_model(llm, _collect_router_logits_from_model)
-                    router_data = {
-                        int(layer): tensor.detach().cpu().to(torch.float32).numpy()
-                        for layer, tensor in raw_router.items()
-                    }
-                    actual_router_layers = sorted(router_data.keys())
+        for batch in _iter_batches(examples, batch_size):
+            batch_records = _capture_prompt_batch(
+                llm=llm,
+                tokenizer=tokenizer,
+                examples=batch,
+                add_generation_prompt=bool(engine.add_generation_prompt),
+                require_sections=wants_sections,
+                prompt_metadata_builder=spec.prompt_metadata_builder,
+                wants_residual=wants_residual,
+                wants_routing=wants_routing,
+                wants_generation=wants_generation,
+                generation_max_tokens=int(spec.generation.max_tokens or 1),
+                generation_temperature=float(spec.generation.temperature or 0.0),
+                capture_reasoning=bool(spec.generation.capture_reasoning),
+                enable_thinking=engine.enable_thinking,
+            )
+            for record in batch_records:
+                example = record["example"]
+                prompt_token_ids = record["prompt_token_ids"]
+                token_sections = record["token_sections"]
+                residual = record["residual"]
+                router_data = record["router_data"]
+                actual_router_layers = record["actual_router_layers"]
+                generation_result = record["generation_result"]
 
                 _fill_residual_features(
                     feature_payloads=feature_payloads,
@@ -213,16 +141,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                     discovered_router_layers=discovered_router_layers,
                 )
 
-                generation_result = None
-                if wants_generation:
-                    generation_result = _generate_one(
-                        llm=llm,
-                        prompt_token_ids=prompt_token_ids,
-                        max_tokens=int(spec.generation.max_tokens or 1),
-                        temperature=float(spec.generation.temperature or 0.0),
-                    )
-                    if not spec.generation.capture_reasoning:
-                        generation_result["reasoning_text"] = ""
+                if generation_result is not None:
                     generations.append({"example_key": example.key, **generation_result})
 
                 example_metadata.append(
@@ -231,7 +150,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                         "prompt_hash": example.prompt_hash,
                         "token_count": len(prompt_token_ids),
                         "generated": generation_result is not None,
-                        "capture_mode": "single_request",
+                        "capture_mode": "batched_prompt_capture" if len(batch) > 1 else "single_request",
                         "actual_router_layers": actual_router_layers,
                     }
                 )
@@ -267,10 +186,10 @@ def _reset_router_buffers_on_model(model: Any) -> None:
     reset_router_buffers(model)
 
 
-def _collect_router_logits_from_model(model: Any) -> dict[int, Any]:
-    from pipelines_v2.engine.vllm.moe_hooks import collect_router_logits
+def _collect_router_capture_from_model(model: Any) -> dict[int, Any]:
+    from pipelines_v2.engine.vllm.moe_hooks import collect_router_capture
 
-    return collect_router_logits(model)
+    return collect_router_capture(model)
 
 
 def _discover_router_layers_on_model(model: Any) -> list[int]:
@@ -296,7 +215,7 @@ def _empty_feature(site: ResidualSite | MoERoutingSite) -> dict[str, Any]:
         "kind": "moe_routing",
         "routing_policy": {
             "source": "vllm_gate_logits",
-            "observed_routing_decisions": False,
+            "observed_routing_decisions": True,
         },
         "layers": {str(layer): {} for layer in site.layers},
     }
@@ -418,7 +337,7 @@ def _fill_residual_features(
             }
 
 
-def _capture_residual_batch(
+def _capture_prompt_batch(
     *,
     llm: Any,
     tokenizer: Any,
@@ -426,6 +345,12 @@ def _capture_residual_batch(
     add_generation_prompt: bool,
     require_sections: bool,
     prompt_metadata_builder: Any | None,
+    wants_residual: bool,
+    wants_routing: bool,
+    wants_generation: bool,
+    generation_max_tokens: int,
+    generation_temperature: float,
+    capture_reasoning: bool,
     enable_thinking: bool | None = None,
 ) -> list[dict[str, Any]]:
     import torch
@@ -447,45 +372,142 @@ def _capture_residual_batch(
         prompts.append({"prompt_token_ids": prompt_token_ids})
         tokenized_by_key[example.key] = tokenized_prompt
 
+    if wants_routing:
+        _apply_to_model(llm, _reset_router_buffers_on_model)
+
     outputs = llm.generate(
         prompts=prompts,
-        sampling_params=SamplingParams(max_tokens=1, temperature=0.0),
+        sampling_params=SamplingParams(
+            max_tokens=int(generation_max_tokens if wants_generation else 1),
+            temperature=float(generation_temperature if wants_generation else 0.0),
+        ),
     )
+
+    router_by_example: dict[str, dict[int, dict[str, Any]]] = {}
+    actual_router_layers: list[int] = []
+    if wants_routing:
+        raw_router = _apply_to_model(llm, _collect_router_capture_from_model)
+        actual_router_layers = sorted(int(layer) for layer in raw_router.keys())
+        prompt_lengths = [len(tokenized_by_key[example.key]["token_ids"]) for example in examples]
+        router_by_example = _split_router_capture_batch(
+            raw_router=raw_router,
+            examples=examples,
+            prompt_lengths=prompt_lengths,
+            allow_trailing_rows=wants_generation,
+        )
 
     results: list[dict[str, Any]] = []
     for example, request_output in zip(examples, outputs, strict=False):
-        hidden_states_path = _hidden_states_path(request_output)
-        if not hidden_states_path:
-            raise RuntimeError(f"vLLM did not return hidden_states_path for batched example {example.key!r}")
-        connector_file = Path(hidden_states_path)
-        if not connector_file.exists():
-            raise RuntimeError(
-                f"Hidden-state connector file missing for batched example {example.key!r}: {hidden_states_path}"
-            )
-        tensors = load_file(str(connector_file))
-        hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
-        if hs.dim() == 3:
-            hs = hs.permute(1, 0, 2)
         tokenized_prompt = tokenized_by_key[example.key]
         prompt_token_ids = tokenized_prompt["token_ids"]
-        residual = hs[:, : len(prompt_token_ids), :].detach().cpu().to(torch.float32).numpy()
-        connector_file.unlink(missing_ok=True)
+        residual = None
+        if wants_residual:
+            hidden_states_path = _hidden_states_path(request_output)
+            if not hidden_states_path:
+                raise RuntimeError(f"vLLM did not return hidden_states_path for example {example.key!r}")
+            connector_file = Path(hidden_states_path)
+            if not connector_file.exists():
+                raise RuntimeError(
+                    f"Hidden-state connector file missing for example {example.key!r}: {hidden_states_path}"
+                )
+            tensors = load_file(str(connector_file))
+            hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
+            if hs.dim() == 3:
+                hs = hs.permute(1, 0, 2)
+            residual = hs[:, : len(prompt_token_ids), :].detach().cpu().to(torch.float32).numpy()
+            connector_file.unlink(missing_ok=True)
+        generation_result = (
+            _generation_result_from_output(request_output, capture_reasoning=capture_reasoning)
+            if wants_generation
+            else None
+        )
         results.append(
             {
                 "example": example,
                 "prompt_token_ids": prompt_token_ids,
                 "token_sections": tokenized_prompt["token_sections"],
                 "residual": residual,
+                "router_data": router_by_example.get(example.key, {}),
+                "actual_router_layers": actual_router_layers,
+                "generation_result": generation_result,
             }
         )
     return results
+
+
+def _split_router_capture_batch(
+    *,
+    raw_router: dict[int, dict[str, Any]],
+    examples: list[Example],
+    prompt_lengths: list[int],
+    allow_trailing_rows: bool = False,
+) -> dict[str, dict[int, dict[str, Any]]]:
+    import numpy as np
+
+    total_tokens = int(sum(int(length) for length in prompt_lengths))
+    result: dict[str, dict[int, dict[str, Any]]] = {example.key: {} for example in examples}
+    offsets: list[tuple[int, int]] = []
+    start = 0
+    for length in prompt_lengths:
+        end = start + int(length)
+        offsets.append((start, end))
+        start = end
+
+    for layer, payload in raw_router.items():
+        logits = np.asarray(payload["logits"], dtype=np.float32)
+        topk_ids = np.asarray(payload["topk_ids"], dtype=np.int64)
+        topk_weights = np.asarray(payload["topk_weights"], dtype=np.float32)
+        captured_tokens = int(logits.shape[0])
+        if captured_tokens < total_tokens:
+            raise RuntimeError(
+                "Captured MoE router rows are shorter than the prompt token count for the batch. "
+                f"Layer {int(layer)} captured {captured_tokens} rows, expected at least {total_tokens}. "
+                "This usually means prefix caching skipped prompt execution or vLLM changed token packing order."
+            )
+        if captured_tokens > total_tokens and not allow_trailing_rows:
+            raise RuntimeError(
+                "Captured MoE router rows exceed the prompt token count for the batch. "
+                f"Layer {int(layer)} captured {captured_tokens} rows, expected {total_tokens}. "
+                "This usually means decode-token router rows were included when only prompt rows were expected."
+            )
+        logits = logits[:total_tokens]
+        topk_ids = topk_ids[:total_tokens]
+        topk_weights = topk_weights[:total_tokens]
+        for example, (item_start, item_end) in zip(examples, offsets, strict=False):
+            result[example.key][int(layer)] = {
+                "logits": logits[item_start:item_end],
+                "topk_ids": topk_ids[item_start:item_end],
+                "topk_weights": topk_weights[item_start:item_end],
+            }
+    return result
+
+
+def _generation_result_from_output(
+    request_output: Any,
+    *,
+    capture_reasoning: bool,
+) -> dict[str, Any]:
+    completion = request_output.outputs[0] if getattr(request_output, "outputs", None) else None
+    return {
+        "generated_token_ids": [
+            int(token) for token in getattr(completion, "token_ids", [])
+        ] if completion is not None else [],
+        "text": str(getattr(completion, "text", "")) if completion is not None else "",
+        "finish_reason": (
+            str(getattr(completion, "finish_reason"))
+            if completion is not None and getattr(completion, "finish_reason", None) is not None
+            else ""
+        ),
+        "reasoning_text": _reasoning_text(request_output, completion) if capture_reasoning else "",
+        "request_id": str(getattr(request_output, "request_id", "") or ""),
+    }
 
 
 def _fill_router_features(
     *,
     feature_payloads: dict[str, dict[str, Any]],
     routing_sites: list[MoERoutingSite],
-    router_data: dict[int, Any],
+    router_data: dict[int, dict[str, Any]],
     example: Example,
     token_count: int,
     token_sections: dict[str, list[int]],
@@ -511,7 +533,10 @@ def _fill_router_features(
                     f"captured router layers={available_layers}; "
                     f"discovered MoE layers={discovered_layers}"
                 )
-            logits = router_data[layer_int]
+            layer_payload = router_data[layer_int]
+            logits = layer_payload["logits"]
+            topk_ids = layer_payload.get("topk_ids")
+            topk_weights = layer_payload.get("topk_weights")
             records_by_token: dict[str, Any] = {}
             for pos in positions:
                 if int(pos) >= int(logits.shape[0]):
@@ -525,7 +550,14 @@ def _fill_router_features(
                         f"discovered MoE layers={discovered_layers}"
                     )
                 token_logits = logits[pos]
-                records_by_token[str(pos)] = _routing_records(site.record, token_logits)
+                token_topk_ids = topk_ids[pos] if topk_ids is not None else None
+                token_topk_weights = topk_weights[pos] if topk_weights is not None else None
+                records_by_token[str(pos)] = _routing_records(
+                    site.record,
+                    token_logits,
+                    observed_topk_ids=token_topk_ids,
+                    observed_topk_weights=token_topk_weights,
+                )
             feature_payloads[site.name]["layers"][str(layer)][example.key] = {
                 "tokens": positions,
                 "records": records_by_token,
@@ -534,15 +566,36 @@ def _fill_router_features(
             }
 
 
-def _routing_records(requested: list[RoutingRecord] | tuple[RoutingRecord, ...], logits: Any) -> dict[str, Any]:
+def _routing_records(
+    requested: list[RoutingRecord] | tuple[RoutingRecord, ...],
+    logits: Any,
+    *,
+    observed_topk_ids: Any | None = None,
+    observed_topk_weights: Any | None = None,
+) -> dict[str, Any]:
     token_records: dict[str, Any] = {}
     topk_from_gate_k = _requested_topk_from_gate_k(requested, fallback=8)
     for record in requested:
-        token_records.update(_routing_record(record, logits, topk_from_gate_k=topk_from_gate_k))
+        token_records.update(
+            _routing_record(
+                record,
+                logits,
+                topk_from_gate_k=topk_from_gate_k,
+                observed_topk_ids=observed_topk_ids,
+                observed_topk_weights=observed_topk_weights,
+            )
+        )
     return token_records
 
 
-def _routing_record(record: RoutingRecord, logits: Any, *, topk_from_gate_k: int) -> dict[str, Any]:
+def _routing_record(
+    record: RoutingRecord,
+    logits: Any,
+    *,
+    topk_from_gate_k: int,
+    observed_topk_ids: Any | None = None,
+    observed_topk_weights: Any | None = None,
+) -> dict[str, Any]:
     import numpy as np
 
     if record.kind == "gate_logits":
@@ -550,6 +603,20 @@ def _routing_record(record: RoutingRecord, logits: Any, *, topk_from_gate_k: int
     if record.kind == "gate_probs":
         return {"gate_probs": _softmax(logits).astype(_float_dtype(record.params.get("dtype", "float16")))}
     if record.kind == "routing_decisions":
+        if observed_topk_ids is not None:
+            expert_ids = np.asarray(observed_topk_ids, dtype=np.int64)
+            expert_weights = (
+                np.asarray(observed_topk_weights, dtype=np.float32)
+                if observed_topk_weights is not None
+                else np.ones(expert_ids.shape[0], dtype=np.float32)
+            )
+            return {
+                "routing_decisions": {
+                    "source": "observed",
+                    "expert_ids": expert_ids,
+                    "weights": expert_weights,
+                }
+            }
         if record.params.get("required", True):
             raise RuntimeError("Observed routing decisions are not exposed by the current vLLM MoE hook")
         return {"routing_decisions": {"source": "not_observed", "expert_ids": [], "weights": []}}
@@ -566,39 +633,12 @@ def _routing_record(record: RoutingRecord, logits: Any, *, topk_from_gate_k: int
         return {"topk_from_gate": payload}
     if record.kind == "expert_load":
         source = str(record.params.get("source") or "topk_from_gate")
-        topk = np.argsort(logits)[::-1][:topk_from_gate_k if source == "topk_from_gate" else 8]
+        if source == "routing_decisions" and observed_topk_ids is not None:
+            topk = np.asarray(observed_topk_ids, dtype=np.int64)
+        else:
+            topk = np.argsort(logits)[::-1][:topk_from_gate_k if source == "topk_from_gate" else 8]
         return {"expert_load": {"source": source, "counts": {str(int(idx)): 1 for idx in topk}}}
     raise ValueError(f"Unsupported routing record: {record.kind}")
-
-
-def _generate_one(
-    *,
-    llm: Any,
-    prompt_token_ids: list[int],
-    max_tokens: int,
-    temperature: float,
-) -> dict[str, Any]:
-    from vllm import SamplingParams
-
-    outputs = llm.generate(
-        prompts=[{"prompt_token_ids": prompt_token_ids}],
-        sampling_params=SamplingParams(max_tokens=max_tokens, temperature=temperature),
-    )
-    request_output = outputs[0]
-    completion = request_output.outputs[0] if getattr(request_output, "outputs", None) else None
-    return {
-        "generated_token_ids": [
-            int(token) for token in getattr(completion, "token_ids", [])
-        ] if completion is not None else [],
-        "text": str(getattr(completion, "text", "")) if completion is not None else "",
-        "finish_reason": (
-            str(getattr(completion, "finish_reason"))
-            if completion is not None and getattr(completion, "finish_reason", None) is not None
-            else ""
-        ),
-        "reasoning_text": _reasoning_text(request_output, completion),
-        "request_id": str(getattr(request_output, "request_id", "") or ""),
-    }
 
 
 def _reasoning_text(request_output: Any, completion: Any) -> str:
