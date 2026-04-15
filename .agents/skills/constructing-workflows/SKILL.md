@@ -35,13 +35,25 @@ Keep a checked-in JSON snapshot alongside the Python source:
 - `projects/.../specs/workflow.py`
 - `projects/.../specs/workflow.json`
 
+Within a project phase, default to a single checked-in workflow as the
+executable source of truth. If the work no longer fits cleanly in one workflow,
+that is usually a sign the phase boundary should change rather than adding
+multiple competing workflows to the same phase.
+
 ## Runner Construction
 
 - Prefer `build_runner_specs()` over ad hoc CLI flag-only construction.
+- Default every non-report step to a remote runner. Reports should be local by
+  default.
 - Use named runners such as:
   - `capture_gpu`
   - `analysis_cpu`
   - `report_local`
+- In practice, this usually means:
+  - capture / model-bound execution on a remote GPU runner
+  - analysis / derive / readout / geometry / other artifact-bound compute on a
+    remote CPU runner
+  - report packaging on `report_local`
 - Put engines on model-bound specs, not on runners.
 - If a workflow uses a shared external catalog, keep runner catalog identities aligned.
 
@@ -68,7 +80,12 @@ For `MoERoutingSite` with `VLLMEngine`, currently require:
 - `enable_prefix_caching=False`
 - `max_num_seqs=1`
 
-Do not assume router capture can share the same batching envelope as residual capture.
+Do not assume router capture can share the same batching envelope as residual
+capture.
+
+If a workflow needs both residual activations and MoE router features, prefer
+separate workflow steps. Keep the normal residual capture on its own step, and
+make MoE capture a distinct step with its own runtime envelope.
 
 ## Statistical Methods Available Today
 
@@ -218,7 +235,7 @@ payload shape.
 
 When designing a workflow:
 
-- keep router capture separate if the runtime envelope differs
+- keep router capture as its own workflow step when it is needed
 - do not assume batching behavior matches residual capture
 - validate the requested router record type is what the downstream analysis needs
 
@@ -275,5 +292,6 @@ Before calling a workflow “done”, verify:
 2. row alignment is explicit where needed
 3. prompt section metadata is explicit where needed
 4. runner specs match the intended resource split
-5. the checked-in JSON snapshot matches the Python builder
-6. the report step only references what it really needs
+5. the phase has one checked-in workflow source of truth
+6. the checked-in JSON snapshot matches the Python builder
+7. the report step only references what it really needs

@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+ * Industrial utility theme. Warm dark neutrals, sharp status accents.
+ * Written to feel like machine tooling, not an AI app shell.
+ * ========================================================================= */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --grid-line: rgba(255, 255, 255, 0.025);
+    --grid-line-strong: rgba(255, 255, 255, 0.055);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    /* Dual-layer blueprint grid. Fine 24px lattice + a stronger 96px major grid.
+       Reads as machinist graph paper rather than generic texture. */
+    background-image:
+      linear-gradient(var(--grid-line-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line-strong) 1px, transparent 1px),
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:
+      96px 96px,
+      96px 96px,
+      24px 24px,
+      24px 24px;
+    background-position: -1px -1px;
+  }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11"; /* IBM Plex humanist variants on */
+  }
+
+  ::selection {
+    background: rgba(224, 164, 88, 0.3);
+    color: #f6f3ea;
+  }
+
+  /* Tighter scrollbars, warm tone */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #322e27;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #44403a;
+  }
+}
+
+@layer components {
+  .mono {
+    @apply font-mono tracking-tight;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 px-1.5 py-[1px] rounded-[2px] text-2xs font-mono uppercase tracking-wider border leading-tight;
+  }
+
+  .chip-muted {
+    @apply chip bg-ink-800 border-ink-700 text-ink-300;
+  }
+
+  .rule {
+    @apply border-b border-ink-800;
+  }
+
+  /* Hairline accent — used on the left edge of group labels to give schematic
+     tick-marks their signature placement. */
+  .hair {
+    @apply relative before:absolute before:-left-1.5 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-px before:bg-ink-600;
+  }
+
+  .panel {
+    @apply bg-ink-900 border border-ink-800;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 text-2xs uppercase tracking-widest font-mono text-ink-300 hover:text-ink-50 hover:bg-ink-800 border border-transparent hover:border-ink-700 rounded-[2px] transition-colors;
+  }
+
+  .btn-ghost-lg {
+    @apply btn-ghost text-xs normal-case tracking-wide py-1;
+  }
+
+  .field-label {
+    @apply text-[0.625rem] uppercase tracking-[0.15em] text-ink-500 font-mono;
+  }
+
+  .dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full;
+  }
+
+  /* Measurement-bar caps — used for step-counts bar, gives it the look of a
+     precision gauge instead of a progress bar. */
+  .gauge {
+    @apply relative bg-ink-850 border-y border-ink-700;
+  }
+  .gauge::before,
+  .gauge::after {
+    content: "";
+    @apply absolute top-0 bottom-0 w-px bg-ink-600;
+  }
+  .gauge::before { left: 0; }
+  .gauge::after { right: 0; }
+}
+
+/* React Flow — flatten into the industrial theme */
+.react-flow__renderer {
+  background: transparent;
+}
+.react-flow__attribution {
+  display: none;
+}
+.react-flow__edge-path {
+  stroke: #44403a;
+  stroke-width: 1.25;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path,
+.react-flow__edge:focus-visible .react-flow__edge-path,
+.react-flow__edge-highlighted .react-flow__edge-path {
+  stroke: #e0a458 !important;
+  stroke-width: 1.75 !important;
+}
+.react-flow__edge-resolved .react-flow__edge-path {
+  stroke-dasharray: 4 3;
+}
+.react-flow__controls {
+  background: #221f1a;
+  border: 1px solid #322e27;
+  box-shadow: none;
+}
+.react-flow__controls button {
+  background: transparent;
+  border-bottom: 1px solid #322e27;
+  color: #b7b1a5;
+  fill: #b7b1a5;
+}
+.react-flow__controls button:hover {
+  background: #2a2621;
+  color: #f6f3ea;
+}
+.react-flow__minimap {
+  background: #15130f !important;
+  border: 1px solid #322e27;
+}
+.react-flow__handle {
+  background: #615c54;
+  border: 1px solid #1a1814;
+  width: 6px;
+  height: 6px;
+}

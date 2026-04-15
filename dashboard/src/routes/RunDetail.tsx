@@ -1,0 +1,305 @@
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ReactFlowProvider } from "reactflow";
+import { api } from "@/lib/api";
+import type { RunDetail as RunDetailT } from "@/types/api";
+import { RunGraph } from "@/components/RunGraph";
+import { RunTree } from "@/components/RunTree";
+import { RunOverview } from "@/components/RunOverview";
+import { ReportGalleryContent } from "@/routes/ReportGallery";
+import { StatusChip } from "@/components/StatusChip";
+
+type Page = "overview" | "details" | "report";
+import { formatDuration, formatRelative, shortHash } from "@/lib/format";
+
+export function RunDetail() {
+  const params = useParams();
+  const runId = params.runId!;
+  const navigate = useNavigate();
+
+  const [selectedStep, setSelectedStep] = useState<string | null>(null);
+  const [showJson, setShowJson] = useState(false);
+  const [page, setPage] = useState<Page>("overview");
+
+  // Persisted graph height — graph lives below the tree in a vertical split.
+  const [graphHeight, setGraphHeight] = useState<number>(() => {
+    if (typeof window === "undefined") return 360;
+    const saved = Number(window.localStorage.getItem("dash.graphHeight"));
+    return Number.isFinite(saved) && saved >= 160 ? Math.min(saved, 1200) : 360;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("dash.graphHeight", String(graphHeight));
+  }, [graphHeight]);
+
+  const q = useQuery({
+    queryKey: ["run", runId],
+    queryFn: () => api.getRun(runId),
+  });
+
+  useEffect(() => setSelectedStep(null), [runId]);
+
+  const detail = q.data ?? null;
+
+  if (q.isLoading) return <CenteredNote>Loading run…</CenteredNote>;
+  if (q.error)
+    return (
+      <CenteredNote tone="err">
+        Failed to load run {runId}: {(q.error as Error).message}
+      </CenteredNote>
+    );
+  if (!detail) return <CenteredNote>No run data.</CenteredNote>;
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <RunHeader
+        detail={detail}
+        page={page}
+        setPage={setPage}
+        onToggleJson={() => setShowJson((s) => !s)}
+        jsonOpen={showJson}
+        onBack={() => navigate("/runs")}
+      />
+      {showJson ? (
+        <div className="border-b border-ink-800 bg-ink-950 p-3 max-h-[16rem] overflow-auto">
+          <pre className="mono text-2xs text-ink-200 whitespace-pre">
+            {JSON.stringify(detail.workflow_payload, null, 2)}
+          </pre>
+        </div>
+      ) : null}
+      {page === "overview" ? (
+        <RunOverview detail={detail} />
+      ) : page === "report" ? (
+        <ReportGalleryContent
+          runId={detail.run.run_id}
+          artifactId={firstReportArtifactId(detail)}
+          embedded
+        />
+      ) : (
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 min-h-0 flex flex-col border-b border-ink-800">
+            <div className="px-3 py-1 border-b border-ink-800 bg-ink-900/60 flex items-center gap-2">
+              <span className="field-label">steps</span>
+              <span className="text-[0.625rem] font-mono text-ink-500">
+                {detail.steps.length}
+              </span>
+            </div>
+            <RunTree detail={detail} selected={selectedStep} onSelect={setSelectedStep} />
+          </div>
+          <HorizontalHandle height={graphHeight} onChange={setGraphHeight} />
+          <div className="flex flex-col min-h-0" style={{ height: `${graphHeight}px` }}>
+            <div className="px-3 py-1 border-b border-ink-800 bg-ink-900/60 flex items-center gap-2">
+              <span className="field-label">graph</span>
+              <span className="text-[0.625rem] font-mono text-ink-500">
+                {detail.nodes.length} nodes · {detail.edges.length} edges
+              </span>
+            </div>
+            <div className="flex-1 min-h-0 relative">
+              <ReactFlowProvider>
+                <RunGraph
+                  nodes={detail.nodes}
+                  edges={detail.edges}
+                  selected={selectedStep}
+                  onSelect={(id) => setSelectedStep(id === selectedStep ? null : id)}
+                />
+              </ReactFlowProvider>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HorizontalHandle({
+  height,
+  onChange,
+}: {
+  height: number;
+  onChange: (n: number) => void;
+}) {
+  const dragState = useRef<{ startY: number; startHeight: number } | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragState.current = { startY: e.clientY, startHeight: height };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const delta = dragState.current.startY - e.clientY; // drag up = taller graph
+    const next = Math.min(1200, Math.max(160, dragState.current.startHeight + delta));
+    onChange(next);
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    dragState.current = null;
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="horizontal"
+      title="drag to resize"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onDoubleClick={() => onChange(360)}
+      className="group relative h-[4px] cursor-row-resize bg-ink-800 hover:bg-accent/60 transition-colors"
+    >
+      <span className="pointer-events-none absolute inset-x-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-40 group-hover:opacity-100">
+        <span className="h-px w-4 bg-ink-300" />
+        <span className="h-px w-4 bg-ink-300" />
+      </span>
+    </div>
+  );
+}
+
+function firstReportArtifactId(detail: RunDetailT): string | undefined {
+  return detail.steps.find(
+    (s) => s.artifact_kind === "report" && s.artifact_id,
+  )?.artifact_id ?? undefined;
+}
+
+function RunHeader({
+  detail,
+  page,
+  setPage,
+  onToggleJson,
+  jsonOpen,
+  onBack,
+}: {
+  detail: RunDetailT;
+  page: Page;
+  setPage: (p: Page) => void;
+  onToggleJson: () => void;
+  jsonOpen: boolean;
+  onBack: () => void;
+}) {
+  const run = detail.run;
+  const hasReport = useMemo(() => Boolean(firstReportArtifactId(detail)), [detail]);
+  return (
+    <header className="flex items-stretch border-b border-ink-800 bg-ink-900/80">
+      <button
+        type="button"
+        onClick={onBack}
+        className="px-3 flex items-center gap-1 text-[0.65rem] font-mono uppercase tracking-widest text-ink-400 hover:text-accent hover:bg-ink-850 border-r border-ink-800 transition-colors"
+        title="Back to runs"
+      >
+        <span className="text-base leading-none">←</span>
+        <span>runs</span>
+      </button>
+
+      {/* Page switcher — overview / details / report. */}
+      <div className="flex items-stretch border-r border-ink-800">
+        {(["overview", "details", "report"] as Page[]).map((p) => {
+          const disabled = p === "report" && !hasReport;
+          return (
+            <button
+              type="button"
+              key={p}
+              disabled={disabled}
+              onClick={() => !disabled && setPage(p)}
+              title={disabled ? "this run has no report artifact" : undefined}
+              className={[
+                "relative px-3 text-[0.65rem] font-mono uppercase tracking-[0.18em] transition-colors",
+                disabled
+                  ? "text-ink-700 cursor-not-allowed"
+                  : page === p
+                    ? "text-accent bg-ink-850"
+                    : "text-ink-500 hover:text-ink-100 hover:bg-ink-850",
+              ].join(" ")}
+            >
+              {page === p && !disabled ? (
+                <span
+                  className="absolute inset-x-0 top-0 h-[2px] bg-accent"
+                  aria-hidden
+                />
+              ) : null}
+              {p}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Title — single row, dominant */}
+      <div className="flex items-center gap-2 px-3 min-w-0 border-r border-ink-800 py-1.5">
+        <h1 className="mono text-[0.9rem] font-semibold text-ink-50 truncate tracking-tight">
+          {run.workflow_name ?? <span className="text-ink-500">(anonymous)</span>}
+        </h1>
+        <StatusChip status={run.status} />
+        <span
+          className="text-[0.625rem] font-mono text-ink-500 truncate max-w-[22ch]"
+          title={run.run_id}
+        >
+          {run.run_id}
+        </span>
+      </div>
+
+      {/* Meta — compact inline */}
+      <div className="flex items-stretch divide-x divide-ink-800 text-[0.625rem] font-mono text-ink-400">
+        <Stat label="started" value={formatRelative(run.started_at)} />
+        <Stat label="duration" value={formatDuration(run.started_at, run.finished_at)} />
+        <Stat label="steps" value={String(run.step_counts.total)} />
+        <Stat label="wf" value={shortHash(run.workflow_hash)} mono />
+        {run.parent_run_id ? (
+          <div className="flex flex-col justify-center px-3">
+            <span className="field-label">parent</span>
+            <Link
+              to={`/runs/${run.parent_run_id}`}
+              className="text-ink-200 hover:text-accent mt-0.5"
+              title={run.parent_run_id}
+            >
+              {run.parent_run_id.slice(0, 14)}
+            </Link>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="ml-auto flex items-center gap-1.5 px-3 border-l border-ink-800">
+        <button type="button" onClick={onToggleJson} className="btn-ghost">
+          {jsonOpen ? "hide json" : "raw"}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function Stat({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex flex-col justify-center px-3 min-w-0">
+      <span className="field-label">{label}</span>
+      <span
+        className={`mt-0.5 ${mono ? "font-mono" : ""} text-ink-200 truncate`}
+        title={value}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function CenteredNote({
+  children,
+  tone = "muted",
+}: {
+  children: React.ReactNode;
+  tone?: "muted" | "err";
+}) {
+  return (
+    <div
+      className={`flex items-center justify-center h-full text-xs font-mono ${
+        tone === "err" ? "text-status-fail" : "text-ink-400"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}

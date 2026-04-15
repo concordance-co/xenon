@@ -26,3 +26,11 @@ projects/**/reports/pipelines_v2/report_*/
 
 # Local ingestion artifacts
 /data/
+
+# Dashboard frontend
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.vite/
+dashboard/tsconfig.tsbuildinfo
+dashboard/src/**/*.js
