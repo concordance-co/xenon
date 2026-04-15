@@ -6,8 +6,10 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.13.3",
+    "numpy>=1.26.0",
     "psycopg[binary]>=3.2.0",
     "pyarrow>=23.0.1",
+    "safetensors>=0.4.0",
 ]
 
 [project.optional-dependencies]
@@ -24,7 +26,6 @@ analysis = [
     "safetensors>=0.4.0",
     "scikit-learn>=1.4.0",
     "matplotlib>=3.8.0",
-    "numpy>=1.26.0",
 ]
 dev = [
     "pytest>=8.0",

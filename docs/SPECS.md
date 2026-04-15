@@ -3,6 +3,43 @@
 Workflow specs are canonical in Neon via `workflow_specs`, with checked-in
 snapshots stored per phase under `projects/<project>/phases/<phase>/specs/`.
 
+## `pipelines_v2` Workflow Files
+
+For the newer `pipelines_v2` stack, the executable workflow surface is a Python
+file rather than the older Neon `workflow_specs` JSON model.
+
+Typical file contract:
+
+```python
+def build_dataset() -> Dataset: ...
+def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec: ...
+def build_runner_specs() -> dict[str, RunnerSpec]: ...  # optional but recommended
+```
+
+Typical checked-in locations:
+
+```text
+projects/<project>/<subproject>/<phase>/specs/workflow.py
+projects/<project>/<subproject>/<phase>/specs/workflow.json
+```
+
+Where:
+
+- `workflow.py`
+  - the authoring source
+- `workflow.json`
+  - a checked-in snapshot for reviewability and reproducibility
+
+The runtime entrypoint for these files is:
+
+```bash
+uv run python -m pipelines_v2.cli workflow plan --file projects/.../specs/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py
+```
+
+See [PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
+for the current `pipelines_v2` spec surface.
+
 ## Shape
 
 ```json

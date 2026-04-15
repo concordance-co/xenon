@@ -18,8 +18,11 @@ wheels/
 
 # Local repo noise
 .codex/
-.agents/
 tmp/
+/artifacts/
+
+# Generated local pipelines_v2 report materializations
+projects/**/reports/pipelines_v2/report_*/
 
 # Local ingestion artifacts
-data/
+/data/

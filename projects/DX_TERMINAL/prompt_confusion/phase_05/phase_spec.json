@@ -6,8 +6,7 @@
   "inherits": "projects/DX_TERMINAL/project_spec.json",
   "goal": "Determine whether the arbitration signal found in Phase 04 reflects a cross-family source-selection mechanism or family-specific prompt structure, and strengthen the dataset to support that claim.",
   "workflow_specs": [
-    "projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow.json",
-    "projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow_smoke.json"
+    "projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow.json"
   ],
   "outputs": {
     "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_05/reports",
