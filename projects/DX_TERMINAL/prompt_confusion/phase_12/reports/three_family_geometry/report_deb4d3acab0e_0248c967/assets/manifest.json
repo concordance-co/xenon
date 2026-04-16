@@ -1,0 +1,61 @@
+{
+  "figures": {
+    "cross_family_similarity/auroc_cross_cohort": {
+      "caption": "AUROC across layers for cross-cohort transfer in step cross_family_similarity.",
+      "chart_kind": "transfer_cross_cohort_metric",
+      "figure_id": "cross_family_similarity/auroc_cross_cohort",
+      "path": "assets/cross_family_similarity/auroc_cross_cohort.png",
+      "primary": false,
+      "result_kind": "transfer_probe_result",
+      "step_name": "cross_family_similarity",
+      "title": "AUROC cross cohort"
+    },
+    "cross_family_similarity/balanced_accuracy_cross_cohort": {
+      "caption": "Balanced Accuracy across layers for cross-cohort transfer in step cross_family_similarity.",
+      "chart_kind": "transfer_cross_cohort_metric",
+      "figure_id": "cross_family_similarity/balanced_accuracy_cross_cohort",
+      "path": "assets/cross_family_similarity/balanced_accuracy_cross_cohort.png",
+      "primary": true,
+      "result_kind": "transfer_probe_result",
+      "step_name": "cross_family_similarity",
+      "title": "Balanced Accuracy cross cohort"
+    },
+    "cross_family_similarity/direction_similarity": {
+      "caption": "Per-layer direction similarity for transfer comparisons in step cross_family_similarity.",
+      "chart_kind": "transfer_direction_similarity",
+      "figure_id": "cross_family_similarity/direction_similarity",
+      "path": "assets/cross_family_similarity/direction_similarity.png",
+      "primary": false,
+      "result_kind": "transfer_probe_result",
+      "step_name": "cross_family_similarity",
+      "title": "Direction similarity"
+    },
+    "cross_family_similarity/transfer_delta_balanced_accuracy": {
+      "caption": "Balanced-accuracy transfer delta against the test-cohort within baseline for step cross_family_similarity.",
+      "chart_kind": "transfer_delta_by_layer",
+      "figure_id": "cross_family_similarity/transfer_delta_balanced_accuracy",
+      "path": "assets/cross_family_similarity/transfer_delta_balanced_accuracy.png",
+      "primary": false,
+      "result_kind": "transfer_probe_result",
+      "step_name": "cross_family_similarity",
+      "title": "Transfer delta vs within baseline"
+    }
+  },
+  "tables": {
+    "cross_family_similarity": {
+      "path": "tables/cross_family_similarity.json",
+      "result_kind": "transfer_probe_result",
+      "step_name": "cross_family_similarity"
+    }
+  },
+  "unsupported_inputs": [
+    {
+      "artifact_id": "pair_delta_1_f6f8c898",
+      "artifact_kind": "pair_delta",
+      "downloaded_result_path": "projects/DX_TERMINAL/prompt_confusion/phase_12/reports/three_family_geometry/report_deb4d3acab0e_0248c967/results/pair_delta_conflict_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "pair_delta_result",
+      "step_name": "pair_delta_conflict"
+    }
+  ]
+}

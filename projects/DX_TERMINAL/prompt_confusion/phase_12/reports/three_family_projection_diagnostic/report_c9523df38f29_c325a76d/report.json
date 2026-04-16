@@ -1,0 +1,499 @@
+{
+  "inputs": [
+    {
+      "artifact_id": "transform_1_1a600590",
+      "artifact_kind": "transform",
+      "created_at": "2026-04-16T20:30:47.647545+00:00",
+      "downloaded_result_path": "projects/DX_TERMINAL/prompt_confusion/phase_12/reports/three_family_projection_diagnostic/report_c9523df38f29_c325a76d/results/projection_diagnostic_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 1152,
+        "example_key_count": 1152,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "capture_1_0257379d"
+      ],
+      "label_names": [],
+      "name": "projection_diagnostic",
+      "primary_output": {
+        "bytes": 74468,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/prompt_confusion_three_family_geometry/transform_1_1a600590/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-ed3RM50JNUbChZPKUMc3gR",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 105203,
+          "format": "json",
+          "path": "/data/artifacts/prompt_confusion_three_family_geometry/transform_1_1a600590/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 74468,
+          "format": "json",
+          "path": "/data/artifacts/prompt_confusion_three_family_geometry/transform_1_1a600590/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "families": [
+          "trade_size",
+          "risk_preference",
+          "diversification_preference"
+        ],
+        "layers": [
+          28,
+          36,
+          40,
+          44
+        ],
+        "row_count": 1152,
+        "summary_rows": [
+          {
+            "auroc": 0.9648166232638888,
+            "balanced_accuracy": 0.890625,
+            "direction_family": "trade_size",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.109375,
+            "false_positive_rate": 0.109375,
+            "layer": 28,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": 2.981507897377014
+          },
+          {
+            "auroc": 0.8789876302083334,
+            "balanced_accuracy": 0.6796875,
+            "direction_family": "trade_size",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.625,
+            "false_positive_rate": 0.015625,
+            "layer": 28,
+            "shift_vs_training_family_mean": -0.13380956649780273,
+            "threshold": 2.981507897377014
+          },
+          {
+            "auroc": 0.7670355902777778,
+            "balanced_accuracy": 0.6484375,
+            "direction_family": "trade_size",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.5052083333333334,
+            "false_positive_rate": 0.19791666666666666,
+            "layer": 28,
+            "shift_vs_training_family_mean": -0.06586933135986328,
+            "threshold": 2.981507897377014
+          },
+          {
+            "auroc": 0.7446831597222222,
+            "balanced_accuracy": 0.6119791666666667,
+            "direction_family": "risk_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.13541666666666666,
+            "false_positive_rate": 0.640625,
+            "layer": 28,
+            "shift_vs_training_family_mean": 0.13524556159973145,
+            "threshold": 1.6424384117126465
+          },
+          {
+            "auroc": 0.9237467447916666,
+            "balanced_accuracy": 0.8463541666666666,
+            "direction_family": "risk_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.20833333333333334,
+            "false_positive_rate": 0.09895833333333333,
+            "layer": 28,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": 1.6424384117126465
+          },
+          {
+            "auroc": 0.7853732638888888,
+            "balanced_accuracy": 0.5,
+            "direction_family": "risk_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.0,
+            "false_positive_rate": 1.0,
+            "layer": 28,
+            "shift_vs_training_family_mean": 0.5762640237808228,
+            "threshold": 1.6424384117126465
+          },
+          {
+            "auroc": 0.7888454861111112,
+            "balanced_accuracy": 0.5,
+            "direction_family": "diversification_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 1.0,
+            "false_positive_rate": 0.0,
+            "layer": 28,
+            "shift_vs_training_family_mean": -0.47615665197372437,
+            "threshold": -0.862440288066864
+          },
+          {
+            "auroc": 0.8680555555555556,
+            "balanced_accuracy": 0.5,
+            "direction_family": "diversification_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 1.0,
+            "false_positive_rate": 0.0,
+            "layer": 28,
+            "shift_vs_training_family_mean": -0.34148138761520386,
+            "threshold": -0.862440288066864
+          },
+          {
+            "auroc": 0.9595811631944444,
+            "balanced_accuracy": 0.8697916666666667,
+            "direction_family": "diversification_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.11979166666666667,
+            "false_positive_rate": 0.140625,
+            "layer": 28,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": -0.862440288066864
+          },
+          {
+            "auroc": 0.9786241319444444,
+            "balanced_accuracy": 0.9244791666666667,
+            "direction_family": "trade_size",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.078125,
+            "false_positive_rate": 0.07291666666666667,
+            "layer": 36,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": 0.7222983688116074
+          },
+          {
+            "auroc": 0.91259765625,
+            "balanced_accuracy": 0.5911458333333334,
+            "direction_family": "trade_size",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.010416666666666666,
+            "false_positive_rate": 0.8072916666666666,
+            "layer": 36,
+            "shift_vs_training_family_mean": 0.36418503522872925,
+            "threshold": 0.7222983688116074
+          },
+          {
+            "auroc": 0.8301595052083334,
+            "balanced_accuracy": 0.5859375,
+            "direction_family": "trade_size",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.0,
+            "false_positive_rate": 0.828125,
+            "layer": 36,
+            "shift_vs_training_family_mean": 0.3424169421195984,
+            "threshold": 0.7222983688116074
+          },
+          {
+            "auroc": 0.9423828125,
+            "balanced_accuracy": 0.8411458333333333,
+            "direction_family": "risk_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.06770833333333333,
+            "false_positive_rate": 0.25,
+            "layer": 36,
+            "shift_vs_training_family_mean": 0.09825432300567627,
+            "threshold": 0.6017538160085678
+          },
+          {
+            "auroc": 0.9579264322916666,
+            "balanced_accuracy": 0.8880208333333333,
+            "direction_family": "risk_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.14583333333333334,
+            "false_positive_rate": 0.078125,
+            "layer": 36,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": 0.6017538160085678
+          },
+          {
+            "auroc": 0.8184678819444444,
+            "balanced_accuracy": 0.5,
+            "direction_family": "risk_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.0,
+            "false_positive_rate": 1.0,
+            "layer": 36,
+            "shift_vs_training_family_mean": 0.7787461876869202,
+            "threshold": 0.6017538160085678
+          },
+          {
+            "auroc": 0.8470865885416666,
+            "balanced_accuracy": 0.5,
+            "direction_family": "diversification_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 1.0,
+            "false_positive_rate": 0.0,
+            "layer": 36,
+            "shift_vs_training_family_mean": -0.9051507711410522,
+            "threshold": -1.8923242688179016
+          },
+          {
+            "auroc": 0.8164876302083334,
+            "balanced_accuracy": 0.5598958333333334,
+            "direction_family": "diversification_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.8802083333333334,
+            "false_positive_rate": 0.0,
+            "layer": 36,
+            "shift_vs_training_family_mean": -0.48386943340301514,
+            "threshold": -1.8923242688179016
+          },
+          {
+            "auroc": 0.9212782118055556,
+            "balanced_accuracy": 0.8072916666666667,
+            "direction_family": "diversification_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.15104166666666666,
+            "false_positive_rate": 0.234375,
+            "layer": 36,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": -1.8923242688179016
+          },
+          {
+            "auroc": 0.8790961371527778,
+            "balanced_accuracy": 0.7916666666666667,
+            "direction_family": "trade_size",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.203125,
+            "false_positive_rate": 0.21354166666666666,
+            "layer": 40,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": -0.3631783425807953
+          },
+          {
+            "auroc": 0.7348361545138888,
+            "balanced_accuracy": 0.515625,
+            "direction_family": "trade_size",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.0,
+            "false_positive_rate": 0.96875,
+            "layer": 40,
+            "shift_vs_training_family_mean": 1.3617799878120422,
+            "threshold": -0.3631783425807953
+          },
+          {
+            "auroc": 0.7799479166666666,
+            "balanced_accuracy": 0.5,
+            "direction_family": "trade_size",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.0,
+            "false_positive_rate": 1.0,
+            "layer": 40,
+            "shift_vs_training_family_mean": 1.714754581451416,
+            "threshold": -0.3631783425807953
+          },
+          {
+            "auroc": 0.8570692274305556,
+            "balanced_accuracy": 0.5703125,
+            "direction_family": "risk_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.84375,
+            "false_positive_rate": 0.015625,
+            "layer": 40,
+            "shift_vs_training_family_mean": -0.7517907619476318,
+            "threshold": 2.615148186683655
+          },
+          {
+            "auroc": 0.8700358072916666,
+            "balanced_accuracy": 0.7838541666666666,
+            "direction_family": "risk_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.23958333333333334,
+            "false_positive_rate": 0.19270833333333334,
+            "layer": 40,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": 2.615148186683655
+          },
+          {
+            "auroc": 0.7215440538194444,
+            "balanced_accuracy": 0.6484375,
+            "direction_family": "risk_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.18229166666666666,
+            "false_positive_rate": 0.5208333333333334,
+            "layer": 40,
+            "shift_vs_training_family_mean": 0.1750783920288086,
+            "threshold": 2.615148186683655
+          },
+          {
+            "auroc": 0.7919379340277778,
+            "balanced_accuracy": 0.5,
+            "direction_family": "diversification_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 1.0,
+            "false_positive_rate": 0.0,
+            "layer": 40,
+            "shift_vs_training_family_mean": -2.7945607900619507,
+            "threshold": -1.35977703332901
+          },
+          {
+            "auroc": 0.6780598958333334,
+            "balanced_accuracy": 0.5208333333333333,
+            "direction_family": "diversification_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.90625,
+            "false_positive_rate": 0.052083333333333336,
+            "layer": 40,
+            "shift_vs_training_family_mean": -1.0352827310562134,
+            "threshold": -1.35977703332901
+          },
+          {
+            "auroc": 0.8688422309027778,
+            "balanced_accuracy": 0.8072916666666667,
+            "direction_family": "diversification_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.15104166666666666,
+            "false_positive_rate": 0.234375,
+            "layer": 40,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": -1.35977703332901
+          },
+          {
+            "auroc": 0.7732747395833334,
+            "balanced_accuracy": 0.7135416666666666,
+            "direction_family": "trade_size",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.3333333333333333,
+            "false_positive_rate": 0.23958333333333334,
+            "layer": 44,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": -2.821221172809601
+          },
+          {
+            "auroc": 0.649169921875,
+            "balanced_accuracy": 0.5182291666666666,
+            "direction_family": "trade_size",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.005208333333333333,
+            "false_positive_rate": 0.9583333333333334,
+            "layer": 44,
+            "shift_vs_training_family_mean": 4.316835284233093,
+            "threshold": -2.821221172809601
+          },
+          {
+            "auroc": 0.6634928385416666,
+            "balanced_accuracy": 0.5,
+            "direction_family": "trade_size",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.0,
+            "false_positive_rate": 1.0,
+            "layer": 44,
+            "shift_vs_training_family_mean": 6.908497095108032,
+            "threshold": -2.821221172809601
+          },
+          {
+            "auroc": 0.6656087239583334,
+            "balanced_accuracy": 0.5286458333333333,
+            "direction_family": "risk_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 0.9375,
+            "false_positive_rate": 0.005208333333333333,
+            "layer": 44,
+            "shift_vs_training_family_mean": -4.6191277503967285,
+            "threshold": -5.613215208053589
+          },
+          {
+            "auroc": 0.6649034288194444,
+            "balanced_accuracy": 0.6197916666666666,
+            "direction_family": "risk_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.4583333333333333,
+            "false_positive_rate": 0.3020833333333333,
+            "layer": 44,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": -5.613215208053589
+          },
+          {
+            "auroc": 0.6440158420138888,
+            "balanced_accuracy": 0.5208333333333334,
+            "direction_family": "risk_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.0,
+            "false_positive_rate": 0.9583333333333334,
+            "layer": 44,
+            "shift_vs_training_family_mean": 5.272073119878769,
+            "threshold": -5.613215208053589
+          },
+          {
+            "auroc": 0.6598849826388888,
+            "balanced_accuracy": 0.5,
+            "direction_family": "diversification_preference",
+            "eval_family": "trade_size",
+            "false_negative_rate": 1.0,
+            "false_positive_rate": 0.0,
+            "layer": 44,
+            "shift_vs_training_family_mean": -9.833111763000488,
+            "threshold": -14.07848834991455
+          },
+          {
+            "auroc": 0.6103786892361112,
+            "balanced_accuracy": 0.5104166666666666,
+            "direction_family": "diversification_preference",
+            "eval_family": "risk_preference",
+            "false_negative_rate": 0.8645833333333334,
+            "false_positive_rate": 0.11458333333333333,
+            "layer": 44,
+            "shift_vs_training_family_mean": -5.348984718322754,
+            "threshold": -14.07848834991455
+          },
+          {
+            "auroc": 0.6925455729166666,
+            "balanced_accuracy": 0.6328125,
+            "direction_family": "diversification_preference",
+            "eval_family": "diversification_preference",
+            "false_negative_rate": 0.3854166666666667,
+            "false_positive_rate": 0.3489583333333333,
+            "layer": 44,
+            "shift_vs_training_family_mean": 0.0,
+            "threshold": -14.07848834991455
+          }
+        ]
+      },
+      "workflow": {
+        "run_id": "wr_d26774c32aa0_1c8bb1ed",
+        "step_index": 1,
+        "step_name": "projection_diagnostic",
+        "workflow_name": "prompt_confusion_three_family_projection_diagnostic",
+        "workflow_step_key": "d26774c32aa04849f66fb2146d6d683aaf5dad5bdf5602404ec88a575f18f30d.projection_diagnostic"
+      }
+    }
+  ],
+  "kind": "report_result",
+  "local_results": [
+    {
+      "artifact_id": "transform_1_1a600590",
+      "artifact_kind": "transform",
+      "name": "projection_diagnostic",
+      "path": "projects/DX_TERMINAL/prompt_confusion/phase_12/reports/three_family_projection_diagnostic/report_c9523df38f29_c325a76d/results/projection_diagnostic_results.json",
+      "source": {
+        "bytes": 74468,
+        "format": "json",
+        "path": "/data/artifacts/prompt_confusion_three_family_geometry/transform_1_1a600590/result.json",
+        "store": "modal_volume"
+      }
+    }
+  ],
+  "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_12/reports/three_family_projection_diagnostic",
+  "summary": {
+    "example_count": 1152,
+    "figures": {},
+    "input_count": 1,
+    "step_summaries": {},
+    "tables": {},
+    "template": "default"
+  },
+  "template": "default"
+}

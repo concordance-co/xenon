@@ -1,0 +1,166 @@
+# default
+
+- template: `default`
+- input_count: 2
+- example_count: 384
+- manifest: `assets/manifest.json`
+- summary: `summary.json`
+
+## Inputs
+
+### text_baseline_conflict_strict_combined
+
+- artifact_id: `text_baseline_1_6a817fb5`
+- artifact_kind: `text_baseline`
+- provenance: run `wr_77d966fe5630_a82b3c18` / step `text_baseline_conflict_strict_combined` / index `0`
+- runtime: runner `modal` / app `ap-cSqpgwRP4XXTilTBKZztbZ`
+- results: `results/text_baseline_conflict_strict_combined_results.json`
+- table: `tables/text_baseline_conflict_strict_combined.json`
+- headline_metrics:
+```json
+{
+  "best_cross_transfer_balanced_accuracy": null,
+  "best_split_balanced_accuracy": {
+    "cohort": null,
+    "direction": null,
+    "split_name": "combined",
+    "value": 0.5
+  },
+  "example_count": 384,
+  "mode": "split_holdout",
+  "model": "countvectorizer_logreg"
+}
+```
+- figures:
+  - `assets/text_baseline_conflict_strict_combined/combined_balanced_accuracy.png` (primary): Balanced Accuracy Combined
+  - `assets/text_baseline_conflict_strict_combined/combined_auroc.png`: AUROC Combined
+
+### probe_conflict_strict_combined_holdout
+
+- artifact_id: `probe_1_5de835fa`
+- artifact_kind: `probe`
+- provenance: run `wr_77d966fe5630_a82b3c18` / step `probe_conflict_strict_combined_holdout` / index `2`
+- runtime: runner `modal` / app `ap-en9bEOqfZI40Y0Y7b8SNW0`
+- results: `results/probe_conflict_strict_combined_holdout_results.json`
+- table: `tables/probe_conflict_strict_combined_holdout.json`
+- headline_metrics:
+```json
+{
+  "best_layer": 44,
+  "best_metric": "balanced_accuracy",
+  "best_value": 0.8854,
+  "example_count": 384,
+  "group_count": 192,
+  "split_mode": "fixed"
+}
+```
+- figures:
+  - `assets/probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer.png` (primary): Balanced Accuracy by layer
+  - `assets/probe_conflict_strict_combined_holdout/auroc_by_layer.png`: AUROC by layer
+  - `assets/probe_conflict_strict_combined_holdout/probe_metrics_by_layer.png`: Probe metrics by layer
+
+## Summary
+
+```json
+{
+  "example_count": 384,
+  "figures": {
+    "probe_conflict_strict_combined_holdout/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step probe_conflict_strict_combined_holdout.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_conflict_strict_combined_holdout/auroc_by_layer",
+      "path": "assets/probe_conflict_strict_combined_holdout/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout",
+      "title": "AUROC by layer"
+    },
+    "probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step probe_conflict_strict_combined_holdout.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer",
+      "path": "assets/probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout",
+      "title": "Balanced Accuracy by layer"
+    },
+    "probe_conflict_strict_combined_holdout/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step probe_conflict_strict_combined_holdout.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "probe_conflict_strict_combined_holdout/probe_metrics_by_layer",
+      "path": "assets/probe_conflict_strict_combined_holdout/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout",
+      "title": "Probe metrics by layer"
+    },
+    "text_baseline_conflict_strict_combined/combined_auroc": {
+      "caption": "AUROC for text split combined in step text_baseline_conflict_strict_combined.",
+      "chart_kind": "text_split_metric",
+      "figure_id": "text_baseline_conflict_strict_combined/combined_auroc",
+      "path": "assets/text_baseline_conflict_strict_combined/combined_auroc.png",
+      "primary": false,
+      "result_kind": "text_baseline_result",
+      "step_name": "text_baseline_conflict_strict_combined",
+      "title": "AUROC Combined"
+    },
+    "text_baseline_conflict_strict_combined/combined_balanced_accuracy": {
+      "caption": "Balanced Accuracy for text split combined in step text_baseline_conflict_strict_combined.",
+      "chart_kind": "text_split_metric",
+      "figure_id": "text_baseline_conflict_strict_combined/combined_balanced_accuracy",
+      "path": "assets/text_baseline_conflict_strict_combined/combined_balanced_accuracy.png",
+      "primary": true,
+      "result_kind": "text_baseline_result",
+      "step_name": "text_baseline_conflict_strict_combined",
+      "title": "Balanced Accuracy Combined"
+    }
+  },
+  "input_count": 2,
+  "step_summaries": {
+    "probe_conflict_strict_combined_holdout": {
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "balanced_accuracy",
+        "best_value": 0.8854,
+        "example_count": 384,
+        "group_count": 192,
+        "split_mode": "fixed"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer",
+      "table_path": "tables/probe_conflict_strict_combined_holdout.json"
+    },
+    "text_baseline_conflict_strict_combined": {
+      "headline_metrics": {
+        "best_cross_transfer_balanced_accuracy": null,
+        "best_split_balanced_accuracy": {
+          "cohort": null,
+          "direction": null,
+          "split_name": "combined",
+          "value": 0.5
+        },
+        "example_count": 384,
+        "mode": "split_holdout",
+        "model": "countvectorizer_logreg"
+      },
+      "kind": "text_baseline_result",
+      "primary_figure_id": "text_baseline_conflict_strict_combined/combined_balanced_accuracy",
+      "table_path": "tables/text_baseline_conflict_strict_combined.json"
+    }
+  },
+  "tables": {
+    "probe_conflict_strict_combined_holdout": {
+      "path": "tables/probe_conflict_strict_combined_holdout.json",
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout"
+    },
+    "text_baseline_conflict_strict_combined": {
+      "path": "tables/text_baseline_conflict_strict_combined.json",
+      "result_kind": "text_baseline_result",
+      "step_name": "text_baseline_conflict_strict_combined"
+    }
+  },
+  "template": "default"
+}
+```

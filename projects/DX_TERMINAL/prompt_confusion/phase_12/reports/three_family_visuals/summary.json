@@ -1,0 +1,26 @@
+{
+  "capture_artifact_id": "capture_1_0257379d",
+  "direction_similarity": {
+    "28": {
+      "div_vs_risk": 0.4665716886520386,
+      "div_vs_size": 0.42036136984825134,
+      "risk_vs_size": 0.5802322626113892
+    },
+    "36": {
+      "div_vs_risk": 0.4683676064014435,
+      "div_vs_size": 0.4883345067501068,
+      "risk_vs_size": 0.6449072360992432
+    },
+    "40": {
+      "div_vs_risk": 0.38863134384155273,
+      "div_vs_size": 0.4638252556324005,
+      "risk_vs_size": 0.5239062309265137
+    }
+  },
+  "example_count": 1152,
+  "layers": [
+    28,
+    36,
+    40
+  ]
+}

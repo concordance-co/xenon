@@ -1,0 +1,1461 @@
+{
+  "max_per_cell": 2,
+  "rows": [
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v2:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v3:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v0:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v1:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v2:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v3:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v0:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "neither",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": false,
+      "example_id": "pc10:risk_preference:aggressive:ctx_exceptional_v0:policy_v0:settings_v1:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v2:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v3:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v0:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v1:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v2:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v3:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v0:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:aggressive:ctx_solid_v0:policy_v0:settings_v1:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "aggressive",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v2:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v3:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v0:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v1:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v2:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v3:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v0:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "strategy",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": false,
+      "example_id": "pc10:risk_preference:conservative:ctx_exceptional_v0:policy_v0:settings_v1:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside convexity is much larger if momentum continues",
+          "path volatility is still wider but follow-through remains very strong",
+          "the aggressive expression remains well-supported if a wider path is acceptable"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is unusually stable and persistent",
+          "confirmation is broad while downside remains contained",
+          "the safer expression remains consistent and well-bounded"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "exceptional",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v2:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v3:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v0:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "ALPHA",
+      "behavior_side": "both",
+      "conflict_band": "aligned",
+      "conflict_present": false,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v1:setting_1",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "ALPHA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"ALPHA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 1,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v2:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v3:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "test",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v0:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    },
+    {
+      "action_label": "buy",
+      "asset_label": "BETA",
+      "behavior_side": "setting",
+      "conflict_band": "strong_conflict",
+      "conflict_present": true,
+      "exact_expected": true,
+      "example_id": "pc10:risk_preference:conservative:ctx_solid_v0:policy_v0:settings_v1:setting_5",
+      "expected_output_json": {
+        "action": "buy",
+        "asset": "BETA",
+        "size": "large"
+      },
+      "finish_reason": "stop",
+      "generated_text": "{\"action\":\"buy\",\"asset\":\"BETA\",\"size\":\"large\"}",
+      "lexical_split": "train",
+      "market_snapshot_json": {
+        "aggressive_asset": "BETA",
+        "aggressive_lines": [
+          "upside extension is materially larger if momentum continues",
+          "price travel is faster with wider swings",
+          "risk is looser but still manageable for a more aggressive expression"
+        ],
+        "buying_power": "enough_for_any_allowed_size",
+        "conservative_asset": "ALPHA",
+        "conservative_lines": [
+          "trend quality is steady and orderly",
+          "pullbacks have remained shallow and well-bounded",
+          "downside can be sized with relatively tight risk"
+        ],
+        "current_positions": "none",
+        "evidence_tier": "solid",
+        "free_cash_reserve": "high"
+      },
+      "setting_value": 5,
+      "size_label": "large",
+      "strategy_direction": "conservative",
+      "target_dimension": "risk_preference",
+      "valid_output": true
+    }
+  ],
+  "sample_size": 32,
+  "summary": {
+    "behavior_side_counts": {
+      "both": 14,
+      "neither": 2,
+      "setting": 12,
+      "strategy": 4
+    },
+    "by_cell": {
+      "risk_preference::aggressive::exceptional::value_1::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "setting": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::aggressive::exceptional::value_1::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "setting": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::aggressive::exceptional::value_5::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 1,
+          "neither": 1
+        },
+        "exact_expected_rate": 0.5,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::aggressive::exceptional::value_5::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 1,
+          "neither": 1
+        },
+        "exact_expected_rate": 0.5,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::aggressive::solid::value_1::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "setting": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::aggressive::solid::value_1::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "setting": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::aggressive::solid::value_5::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::aggressive::solid::value_5::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::exceptional::value_1::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::exceptional::value_1::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::exceptional::value_5::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "strategy": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::exceptional::value_5::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "strategy": 2
+        },
+        "exact_expected_rate": 0.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::solid::value_1::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::solid::value_1::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "both": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::solid::value_5::test": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "setting": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      },
+      "risk_preference::conservative::solid::value_5::train": {
+        "action_match_rate": 1.0,
+        "behavior_side_counts": {
+          "setting": 2
+        },
+        "exact_expected_rate": 1.0,
+        "rows": 2,
+        "size_match_rate": 1.0,
+        "valid_output_rate": 1.0
+      }
+    },
+    "exact_expected_rate": 0.8125,
+    "rows": 32,
+    "valid_output_rate": 1.0
+  }
+}
