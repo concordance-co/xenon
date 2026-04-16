@@ -8,6 +8,7 @@ from typing import Any
 
 from pipelines_v2.core.types import OperationSpec
 from pipelines_v2.operations.specs import (
+    ActivationPatchSpec,
     BasisSpec,
     CaptureSpec,
     DirectionSpec,
@@ -135,7 +136,12 @@ class ModalRunner:
     def plan(self, spec: OperationSpec) -> ExecutionPlan:
         """Preflight a spec against Modal secret bindings and capabilities."""
         engine = spec.bound_engine()
-        artifact_kinds = ("capture",) if isinstance(spec, CaptureSpec) else ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
+        if isinstance(spec, CaptureSpec):
+            artifact_kinds = ("capture",)
+        elif isinstance(spec, ActivationPatchSpec):
+            artifact_kinds = (spec.kind,)
+        else:
+            artifact_kinds = ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
         errors = list(_spec_plan_errors(spec))
         errors.extend(self._plan_errors(spec))
         return ExecutionPlan(
@@ -150,7 +156,7 @@ class ModalRunner:
     def run(self, spec: OperationSpec, *, workflow_context: WorkflowStepContext | None = None) -> Any:
         """Execute one supported spec remotely and return its artifact."""
         self.plan(spec).validate()
-        if isinstance(spec, (CaptureSpec, *_ARTIFACT_BOUND_SPECS)):
+        if isinstance(spec, (CaptureSpec, ActivationPatchSpec, *_ARTIFACT_BOUND_SPECS)):
             return self._run_remote(spec, workflow_context=workflow_context)
         raise NotImplementedError(f"ModalRunner cannot run {spec.kind!r} specs yet")
 

@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pipelines_v2.core.types import EngineCapability
-from pipelines_v2.engine.base import EngineCaptureResult, PythonRuntimeSpec
+from pipelines_v2.engine.base import EngineCaptureResult, EngineInterventionResult, PythonRuntimeSpec
+from pipelines_v2.operations.interventions import ActivationPatchSpec
 from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite
 
 
@@ -76,6 +77,8 @@ class VLLMEngine:
             EngineCapability.LOGPROBS,
             EngineCapability.RESIDUAL_CAPTURE,
             EngineCapability.MOE_ROUTING_CAPTURE,
+            EngineCapability.ACTIVATION_PATCHING,
+            EngineCapability.REQUEST_SCOPED_INTERVENTIONS,
         }
 
     def runtime_spec(self) -> PythonRuntimeSpec:
@@ -93,17 +96,33 @@ class VLLMEngine:
             local_python_sources=("pipelines_v2",),
         )
 
-    def planning_errors(self, spec: CaptureSpec) -> tuple[str, ...]:
+    def planning_errors(self, spec: Any) -> tuple[str, ...]:
         errors: list[str] = []
-        wants_routing = any(isinstance(site, MoERoutingSite) for site in spec.sites)
+        wants_routing = isinstance(spec, CaptureSpec) and any(isinstance(site, MoERoutingSite) for site in spec.sites)
         if wants_routing and bool(self.enable_prefix_caching):
             errors.append(
                 "VLLMEngine currently requires enable_prefix_caching=False for MoE routing capture; "
                 "prefix caching can skip execution on shared prompt prefixes and make router token positions incomplete."
             )
+        if isinstance(spec, ActivationPatchSpec):
+            if bool(self.enable_prefix_caching):
+                errors.append(
+                    "VLLMEngine currently requires enable_prefix_caching=False for ActivationPatchSpec; "
+                    "prefix caching can skip prompt execution and bypass prompt-side patch writes."
+                )
+            if not bool(self.enforce_eager):
+                errors.append(
+                    "ActivationPatchSpec currently requires VLLMEngine(enforce_eager=True); "
+                    "the first implementation is eager-only."
+                )
         return tuple(errors)
 
     def capture(self, spec: CaptureSpec) -> EngineCaptureResult:
         from .capture import run_vllm_capture
 
         return run_vllm_capture(engine=self, spec=spec)
+
+    def intervene(self, spec: ActivationPatchSpec) -> EngineInterventionResult:
+        from .intervene import run_vllm_intervention
+
+        return run_vllm_intervention(engine=self, spec=spec)

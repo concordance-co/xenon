@@ -15,6 +15,7 @@ from safetensors.numpy import load_file, save_file
 
 from pipelines_v2.core.types import utc_now_iso
 from pipelines_v2.api import (
+    ActivationPatchSpec,
     ArtifactManifest,
     ArtifactLabelRef,
     CapabilityError,
@@ -43,6 +44,7 @@ from pipelines_v2.api import (
     PairDeltaSpec,
     PromptMetadataBuilder,
     ResidualSite,
+    ResidualInterventionSite,
     ResidualizedProbeSpec,
     RoutingRecord,
     StepLabelRef,
@@ -165,6 +167,26 @@ def _test_behavior_transform(
         labels=labels,
         example_keys=sorted(generated),
     )
+
+
+def _activation_patch_row_evaluator(
+    *,
+    example: Any,
+    baseline: Any,
+    patched: Any,
+    controls: Any,
+) -> dict[str, Any]:
+    return {
+        "metrics": {
+            "flipped": str(baseline.get("generated_text") or "") != str(patched.get("generated_text") or ""),
+            "control_count": float(len(dict(controls or {}))),
+        },
+        "evaluation": {
+            "example_key": str(example.get("key") or ""),
+            "baseline_text": str(baseline.get("generated_text") or ""),
+            "patched_text": str(patched.get("generated_text") or ""),
+        },
+    }
 
 
 def _make_phase5_like_dataset() -> Dataset:
@@ -1022,15 +1044,29 @@ def test_capture_prompt_batch_uses_one_generate_call_when_generation_enabled() -
             return types.SimpleNamespace(input_ids=token_ids, offset_mapping=offsets)
 
     class _FakeCompletion:
-        def __init__(self, text: str, token_ids: list[int]) -> None:
+        def __init__(self, text: str, token_ids: list[int], *, reasoning_content: str | None = None) -> None:
             self.text = text
             self.token_ids = token_ids
             self.finish_reason = "length"
+            self.reasoning_content = reasoning_content
 
     class _FakeRequestOutput:
-        def __init__(self, request_id: str, text: str, token_ids: list[int]) -> None:
+        def __init__(
+            self,
+            request_id: str,
+            text: str,
+            token_ids: list[int],
+            *,
+            reasoning_content: str | None = None,
+        ) -> None:
             self.request_id = request_id
-            self.outputs = [_FakeCompletion(text=text, token_ids=token_ids)]
+            self.outputs = [
+                _FakeCompletion(
+                    text=text,
+                    token_ids=token_ids,
+                    reasoning_content=reasoning_content,
+                )
+            ]
 
     class _FakeLLM:
         def __init__(self) -> None:
@@ -1071,6 +1107,78 @@ def test_capture_prompt_batch_uses_one_generate_call_when_generation_enabled() -
     assert sampling_params.temperature == 0.3
     assert [record["generation_result"]["text"] for record in records] == ["answer-a", "answer-b"]
     assert [record["generation_result"]["request_id"] for record in records] == ["req-0", "req-1"]
+
+
+def test_generation_result_from_output_keeps_full_generated_token_stream() -> None:
+    from pipelines_v2.engine.vllm.capture import _generation_result_from_output
+
+    class _FakeReasoningParser:
+        start_token = "<think>"
+        end_token = "</think>"
+        start_token_id = 101
+        end_token_id = 102
+
+        def extract_reasoning(self, model_output: str, request: Any) -> tuple[str | None, str | None]:
+            body = model_output.replace(self.start_token, "", 1)
+            reasoning, _, content = body.partition(self.end_token)
+            return reasoning.strip(), content.strip()
+
+    class _FakeCompletion:
+        def __init__(self) -> None:
+            self.text = "<think>\ncompare both options\n</think>\nSELL"
+            self.token_ids = [101, 201, 202, 102, 301]
+            self.finish_reason = "stop"
+
+    class _FakeRequestOutput:
+        def __init__(self) -> None:
+            self.request_id = "req-0"
+            self.outputs = [_FakeCompletion()]
+
+    result = _generation_result_from_output(
+        _FakeRequestOutput(),
+        capture_reasoning=False,
+        reasoning_parser=_FakeReasoningParser(),
+    )
+
+    assert result["text"] == "SELL"
+    assert result["generated_token_ids"] == [101, 201, 202, 102, 301]
+    assert "reasoning_text" not in result
+
+
+def test_generation_result_from_output_includes_reasoning_fields_when_requested() -> None:
+    from pipelines_v2.engine.vllm.capture import _generation_result_from_output
+
+    class _FakeReasoningParser:
+        start_token = "<think>"
+        end_token = "</think>"
+        start_token_id = 101
+        end_token_id = 102
+
+        def extract_reasoning(self, model_output: str, request: Any) -> tuple[str | None, str | None]:
+            body = model_output.replace(self.start_token, "", 1)
+            reasoning, _, content = body.partition(self.end_token)
+            return reasoning.strip(), content.strip()
+
+    class _FakeCompletion:
+        def __init__(self) -> None:
+            self.text = "<think>\ncompare both options\n</think>\nSELL"
+            self.token_ids = [101, 201, 202, 102, 301]
+            self.finish_reason = "stop"
+
+    class _FakeRequestOutput:
+        def __init__(self) -> None:
+            self.request_id = "req-0"
+            self.outputs = [_FakeCompletion()]
+
+    result = _generation_result_from_output(
+        _FakeRequestOutput(),
+        capture_reasoning=True,
+        reasoning_parser=_FakeReasoningParser(),
+    )
+
+    assert result["text"] == "SELL"
+    assert result["generated_token_ids"] == [101, 201, 202, 102, 301]
+    assert result["reasoning_text"] == "compare both options"
 
 
 def test_runner_plan_reports_missing_capabilities() -> None:
@@ -4035,6 +4143,52 @@ def test_pipelines_v2_modal_smoke_file_builders() -> None:
     assert runner_specs["analysis_cpu"].resources.cpu == 4
 
 
+def test_pipelines_v2_activation_patch_smoke_file_builders() -> None:
+    module_path = Path("scripts/pipelines_v2_activation_patch_smoke.py")
+    spec = importlib.util.spec_from_file_location("pipelines_v2_activation_patch_smoke", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    dataset = module.build_dataset()
+    runner_specs = module.build_runner_specs()
+    workflow = module.build_workflow(dataset)
+
+    assert dataset.name == "pipelines_v2_activation_patch_smoke"
+    assert dataset.example_keys() == [
+        "pair1_target_buy",
+        "pair1_donor_sell",
+        "pair2_target_sell",
+        "pair2_donor_buy",
+    ]
+    assert sorted(runner_specs) == ["capture_gpu"]
+    assert [step.name for step in workflow.steps] == [
+        "capture_prompt_residual",
+        "patch_strategy",
+    ]
+    assert workflow.steps[0].runner == "capture_gpu"
+    assert workflow.steps[1].runner == "capture_gpu"
+    assert workflow.steps[0].spec.engine.identity()["kind"] == "vllm"
+    assert workflow.steps[1].spec.engine.identity()["kind"] == "vllm"
+    assert workflow.steps[0].spec.engine.add_generation_prompt is True
+    assert workflow.steps[1].spec.engine.add_generation_prompt is True
+    assert workflow.steps[0].spec.engine.enable_thinking is True
+    assert workflow.steps[1].spec.engine.enable_thinking is True
+    assert workflow.steps[0].spec.prompt_metadata_builder is not None
+    assert workflow.steps[1].spec.prompt_metadata_builder is not None
+    assert workflow.steps[1].spec.row_evaluator is not None
+    assert "scripts" in workflow.steps[0].spec.runtime_spec().local_python_sources
+    assert "scripts" in workflow.steps[1].spec.runtime_spec().local_python_sources
+    assert workflow.steps[1].spec.target_tokens.kind == "section"
+    assert workflow.steps[1].spec.target_tokens.value == "STRATEGY"
+    assert workflow.steps[1].spec.write_site.site == "resid_post"
+    assert tuple(workflow.steps[1].spec.write_site.layers) == (24,)
+    assert workflow.steps[1].spec.generation.max_tokens == 256
+    assert workflow.steps[1].spec.generation.capture_reasoning is True
+    assert workflow.steps[1].spec.source_feature.step == "capture_prompt_residual"
+
+
 def test_pipelines_v2_cli_workflow_plan_loads_python_file(capsys: pytest.CaptureFixture[str]) -> None:
     exit_code = pipelines_v2_cli_main(
         [
@@ -4340,3 +4494,163 @@ def test_runner_spec_round_trips_from_dict() -> None:
     assert restored["resources"]["secrets"] == [{"name": "xenon-db", "env_vars": ["XENON_DATABASE_URL"]}]
     assert restored["artifacts"]["name"] == "xenon-data"
     assert spec.to_runner().identity()["kind"] == "modal"
+
+
+def test_activation_patch_spec_requires_target_token_sections_for_section_selectors() -> None:
+    dataset = make_toy_dataset()
+
+    with pytest.raises(SpecValidationError, match="target-side token-section metadata source"):
+        ActivationPatchSpec(
+            engine=ToyEngine(),
+            dataset=dataset,
+            source_feature="placeholder_feature",
+            pair_by=dataset.cases("case_key"),
+            target_when=dataset.labels("class").equals("positive"),
+            donor_when=dataset.labels("class").equals("negative"),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.section("BODY"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+            row_evaluator=TransformBuilder.from_function(_activation_patch_row_evaluator),
+        )
+
+
+def test_activation_patch_spec_round_trips() -> None:
+    dataset = make_toy_dataset()
+    spec = ActivationPatchSpec(
+        engine=ToyEngine(),
+        dataset=dataset,
+        source_feature="placeholder_feature",
+        pair_by=dataset.cases("case_key"),
+        target_when=dataset.labels("class").equals("positive"),
+        donor_when=dataset.labels("class").equals("negative"),
+        write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+        target_tokens=TokenSelector.full_sequence(),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+        row_evaluator=TransformBuilder.from_function(_activation_patch_row_evaluator),
+    )
+
+    restored = ActivationPatchSpec.from_dict(spec.to_dict())
+
+    assert restored.write_site.site == "resid_post"
+    assert restored.write_site.layers == (0,)
+    assert restored.generation.enabled is True
+    assert restored.target_tokens.kind == "full_sequence"
+
+
+def test_activation_patch_request_helper_rebases_query_positions_and_drops_absolute_positions() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-1",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "target_layers": [24],
+                            "target_positions": [16, 17],
+                            "donor_example_key": "donor-1",
+                            "donor_positions": [9, 10],
+                            "case_key": "pair-1",
+                            "control_name": "",
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1"],
+            num_computed_tokens_cpu=[12],
+            num_prompt_tokens=[26],
+        ),
+        num_scheduled_tokens=[14],
+    )
+
+    assert len(helper.current_step_specs) == 1
+    payload = helper.current_step_specs[0]["patch_spec"]
+    assert payload["query_positions"] == [4, 5]
+    assert payload["donor_positions"] == [9, 10]
+    assert "target_positions" not in payload
+
+
+def test_collect_patch_stats_matches_short_request_ids() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_core import collect_patch_stats
+
+    model = SimpleNamespace(
+        _v2_activation_patch_stats_by_req={
+            "2-b0ccd374": {
+                24: {
+                    "layer": 24,
+                    "status": "ok",
+                    "token_count": 1,
+                }
+            }
+        }
+    )
+
+    stats = collect_patch_stats(model, req_id="2")
+
+    assert stats == {
+        24: {
+            "layer": 24,
+            "status": "ok",
+            "token_count": 1,
+        }
+    }
+
+
+def test_local_runner_executes_activation_patch_with_toy_engine(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = LocalRunner(artifacts=artifacts, catalog=catalog)
+
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+
+    patch = runner.run(
+        ActivationPatchSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            source_feature=capture.feature("resid_full"),
+            pair_by=dataset.cases("case_key"),
+            target_when=dataset.labels("class").equals("positive"),
+            donor_when=dataset.labels("class").equals("negative"),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+            row_evaluator=TransformBuilder.from_function(_activation_patch_row_evaluator),
+        )
+    )
+
+    payload = patch.result()
+
+    assert payload["kind"] == "activation_patch_result"
+    assert payload["summary"]["patched_count"] == 1
+    assert payload["summary"]["metrics"]["flipped"]["kind"] == "boolean_rate"
+    assert payload["summary"]["metrics"]["flipped"]["value"] == pytest.approx(1.0)
+    assert len(payload["rows"]) == 1
+    assert payload["rows"][0]["status"] == "ok"
+    assert payload["rows"][0]["baseline"]["generated_text"] == "toy_generation:positive"
+    assert payload["rows"][0]["patched"]["generated_text"] == "toy_generation:negative"
+    assert payload["rows"][0]["patch_stats"]["0"]["token_count"] == 8

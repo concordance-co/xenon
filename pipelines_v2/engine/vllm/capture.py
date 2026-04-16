@@ -79,6 +79,11 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
 
         tokenizer = AutoTokenizer.from_pretrained(engine.model_id, trust_remote_code=True)
         llm = LLM(**llm_kwargs)
+        reasoning_parser = _build_reasoning_parser(
+            tokenizer=tokenizer,
+            parser_name=reasoning_parser,
+            enable_thinking=engine.enable_thinking,
+        )
 
         router_enabled = False
         discovered_router_layers: list[int] = []
@@ -101,6 +106,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
             batch_records = _capture_prompt_batch(
                 llm=llm,
                 tokenizer=tokenizer,
+                reasoning_parser=reasoning_parser,
                 examples=batch,
                 add_generation_prompt=bool(engine.add_generation_prompt),
                 require_sections=wants_sections,
@@ -391,6 +397,7 @@ def _capture_prompt_batch(
     generation_max_tokens: int,
     generation_temperature: float,
     capture_reasoning: bool,
+    reasoning_parser: Any | None = None,
     enable_thinking: bool | None = None,
     chat_template_kwargs: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
@@ -459,7 +466,11 @@ def _capture_prompt_batch(
             residual = hs[:, : len(prompt_token_ids), :].detach().cpu().to(torch.float32).numpy()
             connector_file.unlink(missing_ok=True)
         generation_result = (
-            _generation_result_from_output(request_output, capture_reasoning=capture_reasoning)
+            _generation_result_from_output(
+                request_output,
+                capture_reasoning=capture_reasoning,
+                reasoning_parser=reasoning_parser,
+            )
             if wants_generation
             else None
         )
@@ -528,21 +539,33 @@ def _generation_result_from_output(
     request_output: Any,
     *,
     capture_reasoning: bool,
+    reasoning_parser: Any | None = None,
 ) -> dict[str, Any]:
     completion = request_output.outputs[0] if getattr(request_output, "outputs", None) else None
-    return {
-        "generated_token_ids": [
-            int(token) for token in getattr(completion, "token_ids", [])
-        ] if completion is not None else [],
-        "text": str(getattr(completion, "text", "")) if completion is not None else "",
+    raw_text = str(getattr(completion, "text", "")) if completion is not None else ""
+    token_ids = [int(token) for token in getattr(completion, "token_ids", [])] if completion is not None else []
+    reasoning_text = _reasoning_text(request_output, completion)
+    output_text = raw_text
+
+    if reasoning_parser is not None and _text_contains_reasoning_markers(reasoning_parser, raw_text):
+        parsed_reasoning, parsed_output = _extract_reasoning_from_text(reasoning_parser, raw_text)
+        if parsed_reasoning:
+            reasoning_text = parsed_reasoning
+        output_text = parsed_output
+
+    payload = {
+        "generated_token_ids": list(token_ids),
+        "text": output_text,
         "finish_reason": (
             str(getattr(completion, "finish_reason"))
             if completion is not None and getattr(completion, "finish_reason", None) is not None
             else ""
         ),
-        "reasoning_text": _reasoning_text(request_output, completion) if capture_reasoning else "",
         "request_id": str(getattr(request_output, "request_id", "") or ""),
     }
+    if capture_reasoning:
+        payload["reasoning_text"] = reasoning_text
+    return payload
 
 
 def _fill_router_features(
@@ -697,6 +720,47 @@ def _reasoning_text(request_output: Any, completion: Any) -> str:
             if isinstance(text, str) and text.strip():
                 return text
     return ""
+
+
+def _build_reasoning_parser(
+    *,
+    tokenizer: Any,
+    parser_name: str | None,
+    enable_thinking: bool | None,
+) -> Any | None:
+    normalized = str(parser_name or "").strip()
+    if not normalized:
+        return None
+    try:
+        from vllm.reasoning import ReasoningParserManager
+    except Exception:
+        return None
+    parser_cls = ReasoningParserManager.get_reasoning_parser(normalized)
+    parser_kwargs: dict[str, Any] = {}
+    if enable_thinking is not None:
+        parser_kwargs["chat_template_kwargs"] = {"enable_thinking": bool(enable_thinking)}
+    try:
+        return parser_cls(tokenizer, **parser_kwargs)
+    except TypeError:
+        return parser_cls(tokenizer)
+
+
+def _text_contains_reasoning_markers(reasoning_parser: Any, text: str) -> bool:
+    start_token = getattr(reasoning_parser, "start_token", "")
+    end_token = getattr(reasoning_parser, "end_token", "")
+    return bool((start_token and start_token in text) or (end_token and end_token in text))
+
+
+def _extract_reasoning_from_text(reasoning_parser: Any, raw_text: str) -> tuple[str, str]:
+    try:
+        reasoning, content = reasoning_parser.extract_reasoning(raw_text, request=None)
+    except Exception:
+        return "", raw_text
+    reasoning_text = str(reasoning or "")
+    output_text = str(content or "")
+    if not reasoning_text:
+        return "", raw_text
+    return reasoning_text, output_text
 
 
 def _softmax(values: Any) -> Any:

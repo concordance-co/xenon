@@ -14,13 +14,13 @@ from .core.types import (
 )
 from .data.datasets import CaseSet, Dataset, Example, LabelPredicate, LabelSet
 from .data.sources import InMemorySource, PostgresSource, Source
-from .engine import Engine, EngineCaptureResult, PythonRuntimeSpec, RuntimeSpec, ToyEngine, VLLMEngine
+from .engine import Engine, EngineCaptureResult, EngineInterventionResult, PythonRuntimeSpec, RuntimeSpec, ToyEngine, VLLMEngine
 from .operations.capture import CaptureSpec, GenerationSpec, MoERoutingSite, ResidualSite, RoutingRecord
 from .operations.common.builders import PromptMetadataBuilder, TransformBuilder, TransformResult
 from .operations.common.schemas import TensorStorage
 from .operations.common.tokens import TokenPooling, TokenSelector
 from .operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
-from .operations.interventions import ActivationPatchSpec
+from .operations.interventions import ActivationPatchControl, ActivationPatchSpec, ResidualInterventionSite
 from .operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from .operations.reports import ReportSpec
 from .operations.representation import BasisSpec, DirectionSpec, GeometrySpec
@@ -65,6 +65,7 @@ from .workflow import (
 
 __all__ = [
     "ActivationPatchSpec",
+    "ActivationPatchControl",
     "ArtifactManifest",
     "ArtifactLabelRef",
     "ArtifactStore",
@@ -80,6 +81,7 @@ __all__ = [
     "Engine",
     "EngineCapability",
     "EngineCaptureResult",
+    "EngineInterventionResult",
     "Example",
     "ExecutionPlan",
     "FeatureLayerRef",
@@ -114,6 +116,7 @@ __all__ = [
     "PythonRuntimeSpec",
     "ResidualizedProbeSpec",
     "ReportSpec",
+    "ResidualInterventionSite",
     "ResidualSite",
     "RuntimeSecret",
     "RuntimeSpec",

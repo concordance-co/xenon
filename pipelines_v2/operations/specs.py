@@ -19,7 +19,7 @@ from pipelines_v2.operations.common.builders import PromptMetadataBuilder, Trans
 from pipelines_v2.operations.common.schemas import TensorStorage
 from pipelines_v2.operations.common.tokens import TokenPooling, TokenSelector
 from pipelines_v2.operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
-from pipelines_v2.operations.interventions import ActivationPatchSpec
+from pipelines_v2.operations.interventions import ActivationPatchControl, ActivationPatchSpec, ResidualInterventionSite
 from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from pipelines_v2.operations.reports import ReportSpec
 from pipelines_v2.operations.representation import BasisSpec, DirectionSpec, GeometrySpec
@@ -28,6 +28,7 @@ _capture_site_from_dict = capture_site_from_dict
 
 __all__ = [
     "ActivationPatchSpec",
+    "ActivationPatchControl",
     "BasisSpec",
     "CaptureSite",
     "CaptureSpec",
@@ -42,6 +43,7 @@ __all__ = [
     "ProbeSpec",
     "ResidualizedProbeSpec",
     "ReportSpec",
+    "ResidualInterventionSite",
     "ResidualSite",
     "RoutingRecord",
     "TensorStorage",

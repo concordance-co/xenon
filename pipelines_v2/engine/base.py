@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from pipelines_v2.core.types import EngineCapability, RuntimeSecret
-from pipelines_v2.operations.specs import CaptureSpec
+from pipelines_v2.operations.capture import CaptureSpec
+from pipelines_v2.operations.interventions import ActivationPatchSpec
 
 
 class RuntimeSpec(Protocol):
@@ -46,12 +47,16 @@ class Engine(Protocol):
         """Return runtime requirements needed to execute this engine."""
         ...
 
-    def planning_errors(self, spec: CaptureSpec) -> tuple[str, ...]:
-        """Return engine-specific planning errors for this capture spec."""
+    def planning_errors(self, spec: Any) -> tuple[str, ...]:
+        """Return engine-specific planning errors for this spec."""
         ...
 
     def capture(self, spec: CaptureSpec) -> "EngineCaptureResult":
         """Execute one capture spec and return features/generations."""
+        ...
+
+    def intervene(self, spec: ActivationPatchSpec) -> "EngineInterventionResult":
+        """Execute one activation patch spec and return a summary/result payload."""
         ...
 
 
@@ -60,4 +65,13 @@ class EngineCaptureResult:
     """Raw engine output before the runner persists it into an artifact."""
     features: dict[str, dict[str, Any]]
     generations: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class EngineInterventionResult:
+    """Raw engine output for model-bound interventions before artifact persistence."""
+
+    summary: dict[str, Any] = field(default_factory=dict)
+    rows: list[dict[str, Any]] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
