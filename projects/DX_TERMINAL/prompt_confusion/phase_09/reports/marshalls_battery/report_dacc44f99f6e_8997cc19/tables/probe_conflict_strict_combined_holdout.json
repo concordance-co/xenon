@@ -1,0 +1,165 @@
+{
+  "columns": [
+    "auroc",
+    "balanced_accuracy",
+    "baseline_majority",
+    "baseline_shuffled",
+    "class_count",
+    "example_count",
+    "layer",
+    "selectivity",
+    "split_mode"
+  ],
+  "headline_metrics": {
+    "best_layer": 40,
+    "best_metric": "balanced_accuracy",
+    "best_value": 0.8125,
+    "example_count": 768,
+    "group_count": 480,
+    "split_mode": "fixed"
+  },
+  "result_kind": "probe_result",
+  "rows": [
+    {
+      "auroc": 0.5,
+      "balanced_accuracy": 0.5,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.5,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 0,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.5157,
+      "balanced_accuracy": 0.5208,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.5052,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 4,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.5479,
+      "balanced_accuracy": 0.5469,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.5365,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 8,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.4682,
+      "balanced_accuracy": 0.474,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.5156,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 12,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.5373,
+      "balanced_accuracy": 0.526,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.4844,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 16,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.5232,
+      "balanced_accuracy": 0.5312,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.5365,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 20,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.5932,
+      "balanced_accuracy": 0.5469,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.5365,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 24,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.7969,
+      "balanced_accuracy": 0.6771,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.4948,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 28,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.738,
+      "balanced_accuracy": 0.651,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.4792,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 32,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.869,
+      "balanced_accuracy": 0.7656,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.526,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 36,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.8519,
+      "balanced_accuracy": 0.8125,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.526,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 40,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    },
+    {
+      "auroc": 0.7158,
+      "balanced_accuracy": 0.6979,
+      "baseline_majority": 0.5,
+      "baseline_shuffled": 0.5573,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 44,
+      "selectivity": NaN,
+      "split_mode": "fixed"
+    }
+  ],
+  "step_name": "probe_conflict_strict_combined_holdout",
+  "summary": {
+    "best_layer": 40,
+    "best_metric": "balanced_accuracy",
+    "best_value": 0.8125,
+    "example_count": 768,
+    "group_count": 480,
+    "split_mode": "fixed"
+  }
+}

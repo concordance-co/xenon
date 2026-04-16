@@ -1,0 +1,151 @@
+{
+  "class_names": [
+    "1",
+    "5"
+  ],
+  "feature": "residual_prompt_eos",
+  "kind": "probe_result",
+  "label_name": "setting_value",
+  "layers": [
+    {
+      "auroc": 0.5,
+      "balanced_accuracy": 0.5,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.4987,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 0,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9201,
+      "balanced_accuracy": 0.8725,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.4962,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 4,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9178,
+      "balanced_accuracy": 0.8646,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.4999,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 8,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.8995,
+      "balanced_accuracy": 0.8373,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.4922,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 12,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9254,
+      "balanced_accuracy": 0.8658,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.4883,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 16,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9319,
+      "balanced_accuracy": 0.8725,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.4831,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 20,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9361,
+      "balanced_accuracy": 0.8541,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.5053,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 24,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9442,
+      "balanced_accuracy": 0.8868,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.5222,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 28,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9365,
+      "balanced_accuracy": 0.8868,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.465,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 32,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9544,
+      "balanced_accuracy": 0.8869,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.5053,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 36,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9557,
+      "balanced_accuracy": 0.8827,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.4767,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 40,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.9615,
+      "balanced_accuracy": 0.8879,
+      "baseline_majority": 0.4987,
+      "baseline_shuffled": 0.461,
+      "class_count": 2,
+      "example_count": 768,
+      "layer": 44,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    }
+  ],
+  "summary": {
+    "best_layer": 44,
+    "best_metric": "balanced_accuracy",
+    "best_value": 0.8879,
+    "example_count": 768,
+    "group_count": 480,
+    "split_mode": "stratified_group_kfold"
+  }
+}

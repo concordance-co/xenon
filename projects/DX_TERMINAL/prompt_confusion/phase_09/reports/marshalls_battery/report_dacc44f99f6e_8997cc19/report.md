@@ -1,0 +1,423 @@
+# marshalls_battery
+
+- template: `marshalls_battery`
+- input_count: 5
+- example_count: 768
+- manifest: `assets/manifest.json`
+- summary: `summary.json`
+
+## Inputs
+
+### text_baseline_conflict_strict_combined
+
+- artifact_id: `text_baseline_1_56cfbd34`
+- artifact_kind: `text_baseline`
+- provenance: run `wr_d48b695e29c3_333ae063` / step `text_baseline_conflict_strict_combined` / index `0`
+- runtime: runner `modal` / app `ap-PDXk8xGdVdyuofGWBQoVkl`
+- results: `results/text_baseline_conflict_strict_combined_results.json`
+- table: `tables/text_baseline_conflict_strict_combined.json`
+- headline_metrics:
+```json
+{
+  "best_cross_transfer_balanced_accuracy": null,
+  "best_split_balanced_accuracy": {
+    "cohort": null,
+    "direction": null,
+    "split_name": "combined",
+    "value": 0.5365
+  },
+  "example_count": 768,
+  "mode": "split_holdout",
+  "model": "countvectorizer_logreg"
+}
+```
+- figures:
+  - `assets/text_baseline_conflict_strict_combined/combined_balanced_accuracy.png` (primary): Balanced Accuracy Combined
+  - `assets/text_baseline_conflict_strict_combined/combined_auroc.png`: AUROC Combined
+
+### probe_conflict_strict_combined_holdout
+
+- artifact_id: `probe_1_96546b91`
+- artifact_kind: `probe`
+- provenance: run `wr_d48b695e29c3_333ae063` / step `probe_conflict_strict_combined_holdout` / index `4`
+- runtime: runner `modal` / app `ap-JU2oW9fLIBN3toaj8660nL`
+- results: `results/probe_conflict_strict_combined_holdout_results.json`
+- table: `tables/probe_conflict_strict_combined_holdout.json`
+- headline_metrics:
+```json
+{
+  "best_layer": 40,
+  "best_metric": "balanced_accuracy",
+  "best_value": 0.8125,
+  "example_count": 768,
+  "group_count": 480,
+  "split_mode": "fixed"
+}
+```
+- figures:
+  - `assets/probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer.png` (primary): Balanced Accuracy by layer
+  - `assets/probe_conflict_strict_combined_holdout/auroc_by_layer.png`: AUROC by layer
+  - `assets/probe_conflict_strict_combined_holdout/probe_metrics_by_layer.png`: Probe metrics by layer
+
+### probe_setting_value_grouped_cv
+
+- artifact_id: `probe_1_f22b1328`
+- artifact_kind: `probe`
+- provenance: run `wr_d48b695e29c3_333ae063` / step `probe_setting_value_grouped_cv` / index `7`
+- runtime: runner `modal` / app `ap-jz4fGOdtmKTme4aUiDerqf`
+- results: `results/probe_setting_value_grouped_cv_results.json`
+- table: `tables/probe_setting_value_grouped_cv.json`
+- headline_metrics:
+```json
+{
+  "best_layer": 44,
+  "best_metric": "balanced_accuracy",
+  "best_value": 0.8879,
+  "example_count": 768,
+  "group_count": 480,
+  "split_mode": "stratified_group_kfold"
+}
+```
+- figures:
+  - `assets/probe_setting_value_grouped_cv/balanced_accuracy_by_layer.png` (primary): Balanced Accuracy by layer
+  - `assets/probe_setting_value_grouped_cv/auroc_by_layer.png`: AUROC by layer
+  - `assets/probe_setting_value_grouped_cv/probe_metrics_by_layer.png`: Probe metrics by layer
+
+### probe_direction_transfer_trade_size
+
+- artifact_id: `transfer_probe_1_0e7d16b8`
+- artifact_kind: `transfer_probe`
+- provenance: run `wr_d48b695e29c3_333ae063` / step `probe_direction_transfer_trade_size` / index `8`
+- runtime: runner `modal` / app `ap-CyFIMyn3sGW4RB8FRqoIHH`
+- results: `results/probe_direction_transfer_trade_size_results.json`
+- table: `tables/probe_direction_transfer_trade_size.json`
+- headline_metrics:
+```json
+{
+  "best_cross_transfer_balanced_accuracy": {
+    "cohort": "large",
+    "direction": "small_to_large",
+    "layer": 40,
+    "split_name": null,
+    "value": 0.5938
+  },
+  "best_split_balanced_accuracy": null,
+  "cohort_count": 2,
+  "layer_count": 12,
+  "max_direction_similarity": {
+    "cohort": null,
+    "direction": "large_vs_small",
+    "layer": 36,
+    "split_name": null,
+    "value": -0.0063
+  },
+  "mode": "cross_cohort_transfer",
+  "regularization": [
+    1.0
+  ]
+}
+```
+- figures:
+  - `assets/probe_direction_transfer_trade_size/balanced_accuracy_cross_cohort.png` (primary): Balanced Accuracy cross cohort
+  - `assets/probe_direction_transfer_trade_size/auroc_cross_cohort.png`: AUROC cross cohort
+  - `assets/probe_direction_transfer_trade_size/transfer_delta_balanced_accuracy.png`: Transfer delta vs within baseline
+  - `assets/probe_direction_transfer_trade_size/direction_similarity.png`: Direction similarity
+
+### probe_conflict_grouped_cv_selectivity
+
+- artifact_id: `probe_1_52d704ed`
+- artifact_kind: `probe`
+- provenance: run `wr_d48b695e29c3_333ae063` / step `probe_conflict_grouped_cv_selectivity` / index `9`
+- runtime: runner `modal` / app `ap-FyLCQ90oN60IVXw35AzKU4`
+- results: `results/probe_conflict_grouped_cv_selectivity_results.json`
+- table: `tables/probe_conflict_grouped_cv_selectivity.json`
+- headline_metrics:
+```json
+{
+  "best_layer": 36,
+  "best_metric": "balanced_accuracy",
+  "best_value": 0.8736,
+  "example_count": 768,
+  "group_count": 480,
+  "split_mode": "stratified_group_kfold"
+}
+```
+- figures:
+  - `assets/probe_conflict_grouped_cv_selectivity/balanced_accuracy_by_layer.png` (primary): Balanced Accuracy by layer
+  - `assets/probe_conflict_grouped_cv_selectivity/auroc_by_layer.png`: AUROC by layer
+  - `assets/probe_conflict_grouped_cv_selectivity/probe_metrics_by_layer.png`: Probe metrics by layer
+
+## Summary
+
+```json
+{
+  "example_count": 768,
+  "figures": {
+    "probe_conflict_grouped_cv_selectivity/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step probe_conflict_grouped_cv_selectivity.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_conflict_grouped_cv_selectivity/auroc_by_layer",
+      "path": "assets/probe_conflict_grouped_cv_selectivity/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_grouped_cv_selectivity",
+      "title": "AUROC by layer"
+    },
+    "probe_conflict_grouped_cv_selectivity/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step probe_conflict_grouped_cv_selectivity.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_conflict_grouped_cv_selectivity/balanced_accuracy_by_layer",
+      "path": "assets/probe_conflict_grouped_cv_selectivity/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_grouped_cv_selectivity",
+      "title": "Balanced Accuracy by layer"
+    },
+    "probe_conflict_grouped_cv_selectivity/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step probe_conflict_grouped_cv_selectivity.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "probe_conflict_grouped_cv_selectivity/probe_metrics_by_layer",
+      "path": "assets/probe_conflict_grouped_cv_selectivity/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_grouped_cv_selectivity",
+      "title": "Probe metrics by layer"
+    },
+    "probe_conflict_strict_combined_holdout/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step probe_conflict_strict_combined_holdout.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_conflict_strict_combined_holdout/auroc_by_layer",
+      "path": "assets/probe_conflict_strict_combined_holdout/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout",
+      "title": "AUROC by layer"
+    },
+    "probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step probe_conflict_strict_combined_holdout.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer",
+      "path": "assets/probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout",
+      "title": "Balanced Accuracy by layer"
+    },
+    "probe_conflict_strict_combined_holdout/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step probe_conflict_strict_combined_holdout.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "probe_conflict_strict_combined_holdout/probe_metrics_by_layer",
+      "path": "assets/probe_conflict_strict_combined_holdout/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout",
+      "title": "Probe metrics by layer"
+    },
+    "probe_direction_transfer_trade_size/auroc_cross_cohort": {
+      "caption": "AUROC across layers for cross-cohort transfer in step probe_direction_transfer_trade_size.",
+      "chart_kind": "transfer_cross_cohort_metric",
+      "figure_id": "probe_direction_transfer_trade_size/auroc_cross_cohort",
+      "path": "assets/probe_direction_transfer_trade_size/auroc_cross_cohort.png",
+      "primary": false,
+      "result_kind": "transfer_probe_result",
+      "step_name": "probe_direction_transfer_trade_size",
+      "title": "AUROC cross cohort"
+    },
+    "probe_direction_transfer_trade_size/balanced_accuracy_cross_cohort": {
+      "caption": "Balanced Accuracy across layers for cross-cohort transfer in step probe_direction_transfer_trade_size.",
+      "chart_kind": "transfer_cross_cohort_metric",
+      "figure_id": "probe_direction_transfer_trade_size/balanced_accuracy_cross_cohort",
+      "path": "assets/probe_direction_transfer_trade_size/balanced_accuracy_cross_cohort.png",
+      "primary": true,
+      "result_kind": "transfer_probe_result",
+      "step_name": "probe_direction_transfer_trade_size",
+      "title": "Balanced Accuracy cross cohort"
+    },
+    "probe_direction_transfer_trade_size/direction_similarity": {
+      "caption": "Per-layer direction similarity for transfer comparisons in step probe_direction_transfer_trade_size.",
+      "chart_kind": "transfer_direction_similarity",
+      "figure_id": "probe_direction_transfer_trade_size/direction_similarity",
+      "path": "assets/probe_direction_transfer_trade_size/direction_similarity.png",
+      "primary": false,
+      "result_kind": "transfer_probe_result",
+      "step_name": "probe_direction_transfer_trade_size",
+      "title": "Direction similarity"
+    },
+    "probe_direction_transfer_trade_size/transfer_delta_balanced_accuracy": {
+      "caption": "Balanced-accuracy transfer delta against the test-cohort within baseline for step probe_direction_transfer_trade_size.",
+      "chart_kind": "transfer_delta_by_layer",
+      "figure_id": "probe_direction_transfer_trade_size/transfer_delta_balanced_accuracy",
+      "path": "assets/probe_direction_transfer_trade_size/transfer_delta_balanced_accuracy.png",
+      "primary": false,
+      "result_kind": "transfer_probe_result",
+      "step_name": "probe_direction_transfer_trade_size",
+      "title": "Transfer delta vs within baseline"
+    },
+    "probe_setting_value_grouped_cv/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step probe_setting_value_grouped_cv.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_setting_value_grouped_cv/auroc_by_layer",
+      "path": "assets/probe_setting_value_grouped_cv/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_setting_value_grouped_cv",
+      "title": "AUROC by layer"
+    },
+    "probe_setting_value_grouped_cv/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step probe_setting_value_grouped_cv.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_setting_value_grouped_cv/balanced_accuracy_by_layer",
+      "path": "assets/probe_setting_value_grouped_cv/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "probe_setting_value_grouped_cv",
+      "title": "Balanced Accuracy by layer"
+    },
+    "probe_setting_value_grouped_cv/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step probe_setting_value_grouped_cv.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "probe_setting_value_grouped_cv/probe_metrics_by_layer",
+      "path": "assets/probe_setting_value_grouped_cv/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_setting_value_grouped_cv",
+      "title": "Probe metrics by layer"
+    },
+    "text_baseline_conflict_strict_combined/combined_auroc": {
+      "caption": "AUROC for text split combined in step text_baseline_conflict_strict_combined.",
+      "chart_kind": "text_split_metric",
+      "figure_id": "text_baseline_conflict_strict_combined/combined_auroc",
+      "path": "assets/text_baseline_conflict_strict_combined/combined_auroc.png",
+      "primary": false,
+      "result_kind": "text_baseline_result",
+      "step_name": "text_baseline_conflict_strict_combined",
+      "title": "AUROC Combined"
+    },
+    "text_baseline_conflict_strict_combined/combined_balanced_accuracy": {
+      "caption": "Balanced Accuracy for text split combined in step text_baseline_conflict_strict_combined.",
+      "chart_kind": "text_split_metric",
+      "figure_id": "text_baseline_conflict_strict_combined/combined_balanced_accuracy",
+      "path": "assets/text_baseline_conflict_strict_combined/combined_balanced_accuracy.png",
+      "primary": true,
+      "result_kind": "text_baseline_result",
+      "step_name": "text_baseline_conflict_strict_combined",
+      "title": "Balanced Accuracy Combined"
+    }
+  },
+  "input_count": 5,
+  "step_summaries": {
+    "probe_conflict_grouped_cv_selectivity": {
+      "headline_metrics": {
+        "best_layer": 36,
+        "best_metric": "balanced_accuracy",
+        "best_value": 0.8736,
+        "example_count": 768,
+        "group_count": 480,
+        "split_mode": "stratified_group_kfold"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "probe_conflict_grouped_cv_selectivity/balanced_accuracy_by_layer",
+      "table_path": "tables/probe_conflict_grouped_cv_selectivity.json"
+    },
+    "probe_conflict_strict_combined_holdout": {
+      "headline_metrics": {
+        "best_layer": 40,
+        "best_metric": "balanced_accuracy",
+        "best_value": 0.8125,
+        "example_count": 768,
+        "group_count": 480,
+        "split_mode": "fixed"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "probe_conflict_strict_combined_holdout/balanced_accuracy_by_layer",
+      "table_path": "tables/probe_conflict_strict_combined_holdout.json"
+    },
+    "probe_direction_transfer_trade_size": {
+      "headline_metrics": {
+        "best_cross_transfer_balanced_accuracy": {
+          "cohort": "large",
+          "direction": "small_to_large",
+          "layer": 40,
+          "split_name": null,
+          "value": 0.5938
+        },
+        "best_split_balanced_accuracy": null,
+        "cohort_count": 2,
+        "layer_count": 12,
+        "max_direction_similarity": {
+          "cohort": null,
+          "direction": "large_vs_small",
+          "layer": 36,
+          "split_name": null,
+          "value": -0.0063
+        },
+        "mode": "cross_cohort_transfer",
+        "regularization": [
+          1.0
+        ]
+      },
+      "kind": "transfer_probe_result",
+      "primary_figure_id": "probe_direction_transfer_trade_size/balanced_accuracy_cross_cohort",
+      "table_path": "tables/probe_direction_transfer_trade_size.json"
+    },
+    "probe_setting_value_grouped_cv": {
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "balanced_accuracy",
+        "best_value": 0.8879,
+        "example_count": 768,
+        "group_count": 480,
+        "split_mode": "stratified_group_kfold"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "probe_setting_value_grouped_cv/balanced_accuracy_by_layer",
+      "table_path": "tables/probe_setting_value_grouped_cv.json"
+    },
+    "text_baseline_conflict_strict_combined": {
+      "headline_metrics": {
+        "best_cross_transfer_balanced_accuracy": null,
+        "best_split_balanced_accuracy": {
+          "cohort": null,
+          "direction": null,
+          "split_name": "combined",
+          "value": 0.5365
+        },
+        "example_count": 768,
+        "mode": "split_holdout",
+        "model": "countvectorizer_logreg"
+      },
+      "kind": "text_baseline_result",
+      "primary_figure_id": "text_baseline_conflict_strict_combined/combined_balanced_accuracy",
+      "table_path": "tables/text_baseline_conflict_strict_combined.json"
+    }
+  },
+  "tables": {
+    "probe_conflict_grouped_cv_selectivity": {
+      "path": "tables/probe_conflict_grouped_cv_selectivity.json",
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_grouped_cv_selectivity"
+    },
+    "probe_conflict_strict_combined_holdout": {
+      "path": "tables/probe_conflict_strict_combined_holdout.json",
+      "result_kind": "probe_result",
+      "step_name": "probe_conflict_strict_combined_holdout"
+    },
+    "probe_direction_transfer_trade_size": {
+      "path": "tables/probe_direction_transfer_trade_size.json",
+      "result_kind": "transfer_probe_result",
+      "step_name": "probe_direction_transfer_trade_size"
+    },
+    "probe_setting_value_grouped_cv": {
+      "path": "tables/probe_setting_value_grouped_cv.json",
+      "result_kind": "probe_result",
+      "step_name": "probe_setting_value_grouped_cv"
+    },
+    "text_baseline_conflict_strict_combined": {
+      "path": "tables/text_baseline_conflict_strict_combined.json",
+      "result_kind": "text_baseline_result",
+      "step_name": "text_baseline_conflict_strict_combined"
+    }
+  },
+  "template": "marshalls_battery"
+}
+```

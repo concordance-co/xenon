@@ -101,6 +101,14 @@ def _load_dataset_records() -> list[dict[str, object]]:
                 row["strict_combined_split"] = "strict_test"
             else:
                 row["strict_combined_split"] = "mixed"
+            # Derived per-dimension main-benchmark flags. main_benchmark_row
+            # is False for 96 behaviorally-muddy boundary rows (all
+            # trading_activity). Probes should filter those out of scope.
+            main = bool(row.get("main_benchmark_row"))
+            dim = row.get("target_dimension")
+            row["scope_main_only"] = main
+            row["scope_main_trade_size"] = main and dim == "trade_size"
+            row["scope_main_trading_activity"] = main and dim == "trading_activity"
             rows.append(row)
     if not rows:
         raise ValueError(f"Phase 09 dataset is empty: {DEFAULT_DATASET_PATH}")
@@ -121,10 +129,14 @@ def build_dataset() -> Dataset:
             "conflict_present",
             "edge_conflict",
             "conflict_band",
+            "main_benchmark_row",
             "lexical_split",
             "strategy_lexical_split",
             "settings_lexical_split",
             "strict_combined_split",
+            "scope_main_only",
+            "scope_main_trade_size",
+            "scope_main_trading_activity",
         ],
         case_columns=["matched_group_id", "matched_pair_id"],
         case_key_column="matched_group_id",
@@ -170,8 +182,14 @@ def build_runner_specs() -> dict[str, object]:
 
 def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
     dataset = dataset or build_dataset()
-    canonical = dataset.labels("edge_conflict").equals(False)
-    trade_size_rows = dataset.labels("target_dimension").equals("trade_size")
+    # Scope filters. main_benchmark_row=False marks 96 behaviorally-muddy
+    # boundary rows (all trading_activity) that should be out of scope for
+    # the probe. Trade_size has no muddy rows; its main-scope is the same
+    # as its full 384-row set. Trading_activity main-scope is 384 rows
+    # (from a full 480), dropping the boundary cells.
+    main_only = dataset.labels("scope_main_only").equals(True)
+    main_trade_size = dataset.labels("scope_main_trade_size").equals(True)
+    main_trading_activity = dataset.labels("scope_main_trading_activity").equals(True)
 
     # ---- Text baselines (cheap controls) -----------------------------------
 
@@ -180,7 +198,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
         runner="analysis_cpu",
         spec=TextBaselineSpec(
             text=dataset.labels("user_text"),
-            rows=canonical,
+            rows=main_only,
             labels=dataset.labels("conflict_present"),
             group_by=dataset.cases("matched_group_id"),
             split_by={"combined": dataset.labels("strict_combined_split")},
@@ -224,7 +242,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
         runner="analysis_cpu",
         spec=ProbeSpec(
             feature=StepRef("capture_residual_with_generation").feature("residual_prompt_eos"),
-            rows=canonical,
+            rows=main_only,
             labels=dataset.labels("conflict_present"),
             group_by=dataset.cases("matched_group_id"),
             split=dataset.labels("strict_combined_split"),
@@ -237,12 +255,80 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
         ),
     )
 
+    probe_conflict_strict_combined_trade_size = WorkflowStep(
+        name="probe_conflict_strict_combined_trade_size",
+        runner="analysis_cpu",
+        spec=ProbeSpec(
+            feature=StepRef("capture_residual_with_generation").feature("residual_prompt_eos"),
+            rows=main_trade_size,
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_group_id"),
+            split=dataset.labels("strict_combined_split"),
+            train_values=("strict_train",),
+            test_values=("strict_test",),
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.last(),
+            metrics=("balanced_accuracy", "auroc", "selectivity"),
+            baselines=("majority", "shuffled_label"),
+        ),
+    )
+
+    probe_conflict_strict_combined_trading_activity = WorkflowStep(
+        name="probe_conflict_strict_combined_trading_activity",
+        runner="analysis_cpu",
+        spec=ProbeSpec(
+            feature=StepRef("capture_residual_with_generation").feature("residual_prompt_eos"),
+            rows=main_trading_activity,
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_group_id"),
+            split=dataset.labels("strict_combined_split"),
+            train_values=("strict_train",),
+            test_values=("strict_test",),
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.last(),
+            metrics=("balanced_accuracy", "auroc", "selectivity"),
+            baselines=("majority", "shuffled_label"),
+        ),
+    )
+
+    text_baseline_strict_combined_trade_size = WorkflowStep(
+        name="text_baseline_conflict_strict_combined_trade_size",
+        runner="analysis_cpu",
+        spec=TextBaselineSpec(
+            text=dataset.labels("user_text"),
+            rows=main_trade_size,
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_group_id"),
+            split_by={"combined": dataset.labels("strict_combined_split")},
+            train_values=("strict_train",),
+            test_values=("strict_test",),
+            model="countvectorizer_logreg",
+            metrics=("balanced_accuracy", "auroc"),
+        ),
+    )
+
+    text_baseline_strict_combined_trading_activity = WorkflowStep(
+        name="text_baseline_conflict_strict_combined_trading_activity",
+        runner="analysis_cpu",
+        spec=TextBaselineSpec(
+            text=dataset.labels("user_text"),
+            rows=main_trading_activity,
+            labels=dataset.labels("conflict_present"),
+            group_by=dataset.cases("matched_group_id"),
+            split_by={"combined": dataset.labels("strict_combined_split")},
+            train_values=("strict_train",),
+            test_values=("strict_test",),
+            model="countvectorizer_logreg",
+            metrics=("balanced_accuracy", "auroc"),
+        ),
+    )
+
     probe_setting_value_grouped_cv = WorkflowStep(
         name="probe_setting_value_grouped_cv",
         runner="analysis_cpu",
         spec=ProbeSpec(
             feature=StepRef("capture_residual_with_generation").feature("residual_prompt_eos"),
-            rows=canonical,
+            rows=main_only,
             labels=dataset.labels("setting_value"),
             group_by=dataset.cases("matched_group_id"),
             folds=5,
@@ -262,7 +348,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
         runner="analysis_cpu",
         spec=TransferProbeSpec(
             feature=StepRef("capture_residual_with_generation").feature("residual_prompt_eos"),
-            rows=trade_size_rows,
+            rows=main_trade_size,
             labels=dataset.labels("conflict_present"),
             group_by=dataset.cases("matched_group_id"),
             cohort_by=dataset.labels("strategy_direction"),
@@ -282,7 +368,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
         runner="analysis_cpu",
         spec=ProbeSpec(
             feature=StepRef("capture_residual_with_generation").feature("residual_prompt_eos"),
-            rows=canonical,
+            rows=main_only,
             labels=dataset.labels("conflict_present"),
             group_by=dataset.cases("matched_group_id"),
             folds=5,
@@ -315,8 +401,12 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
         name="phase_09_marshalls_battery",
         steps=(
             text_baseline_strict_combined,
+            text_baseline_strict_combined_trade_size,
+            text_baseline_strict_combined_trading_activity,
             capture,
             probe_conflict_strict_combined,
+            probe_conflict_strict_combined_trade_size,
+            probe_conflict_strict_combined_trading_activity,
             probe_setting_value_grouped_cv,
             probe_direction_transfer_trade_size,
             probe_conflict_grouped_cv,

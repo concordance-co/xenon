@@ -1,0 +1,60 @@
+{
+  "columns": [
+    "C",
+    "auroc",
+    "balanced_accuracy",
+    "cohort",
+    "cross_transfer_auroc",
+    "cross_transfer_balanced_accuracy",
+    "direction",
+    "model",
+    "row_kind",
+    "split_name",
+    "transfer_delta_balanced_accuracy",
+    "within_baseline_auroc",
+    "within_baseline_balanced_accuracy"
+  ],
+  "headline_metrics": {
+    "best_cross_transfer_balanced_accuracy": null,
+    "best_split_balanced_accuracy": {
+      "cohort": null,
+      "direction": null,
+      "split_name": "combined",
+      "value": 0.5365
+    },
+    "example_count": 768,
+    "mode": "split_holdout",
+    "model": "countvectorizer_logreg"
+  },
+  "result_kind": "text_baseline_result",
+  "rows": [
+    {
+      "C": null,
+      "auroc": 0.5536,
+      "balanced_accuracy": 0.5365,
+      "cohort": null,
+      "cross_transfer_auroc": null,
+      "cross_transfer_balanced_accuracy": null,
+      "direction": null,
+      "model": "countvectorizer_logreg",
+      "row_kind": "split_holdout",
+      "split_name": "combined",
+      "transfer_delta_balanced_accuracy": null,
+      "within_baseline_auroc": null,
+      "within_baseline_balanced_accuracy": null
+    }
+  ],
+  "step_name": "text_baseline_conflict_strict_combined",
+  "summary": {
+    "class_count": 2,
+    "cohort_count": 0,
+    "example_count": 768,
+    "mode": "split_holdout",
+    "regularization": [
+      1.0
+    ],
+    "split_names": [
+      "combined"
+    ]
+  }
+}
