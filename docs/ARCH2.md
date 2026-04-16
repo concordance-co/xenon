@@ -824,7 +824,7 @@ There should be a developer-facing test helper package for backend authors and
 future integrations:
 
 ```python
-from pipelines.testing import (
+from pipelines_v2.testing import (
     ArtifactStoreContractSuite,
     CatalogContractSuite,
     EngineContractSuite,
@@ -1004,7 +1004,7 @@ Recommended CI split:
 Preferred top-level import style:
 
 ```python
-from pipelines.api import (
+from pipelines_v2.api import (
     ActivationPatchSpec,
     BasisSpec,
     CaptureSpec,
@@ -1070,10 +1070,8 @@ necessary once capture and analysis no longer share the same runtime profile.
 The CLI should be an adapter over serialized operation specs and workflow specs:
 
 ```bash
-uv run -m pipelines.cli capture run --file capture.json
-uv run -m pipelines.cli run --file probe.json
-uv run -m pipelines.cli run --file patch.json
-uv run -m pipelines.cli workflow run --file workflow.json
+uv run python -m pipelines_v2.cli workflow plan --file workflow.py
+uv run python -m pipelines_v2.cli workflow run --file workflow.py
 ```
 
 Equivalent Python:
@@ -1161,8 +1159,8 @@ part of the API, not left implicit:
 These need to be decided before implementation:
 
 1. Public package name:
-   - A. `pipelines.api`
-   - B. `pipelines.interp`
+   - A. `pipelines_v2.api`
+   - B. `pipelines_v2`
    - C. `xenon`
 
 2. Primary runner API:
@@ -1208,7 +1206,7 @@ These need to be decided before implementation:
 
 10. Test helper surface:
    - A. keep all test helpers private to the repo
-   - B. expose a stable `pipelines.testing` conformance package
+   - B. expose a stable `pipelines_v2.testing` conformance package
    - C. expose conformance suites, keep project-specific fixtures private
 
 11. Runner preflight API:
@@ -1257,7 +1255,7 @@ These need to be decided before implementation:
 - Put engine selection on model-bound operations or workflow steps, not on
   every runner in a heterogeneous workflow.
 - Add a first-class `WorkflowOrchestrator` for multi-step heterogeneous runs.
-- Add a developer-facing `pipelines.testing` conformance suite for engines,
+- Add a developer-facing `pipelines_v2.testing` conformance suite for engines,
   runners, orchestrators, sources, artifact stores, catalogs, artifact
   manifests, and toy operation fixtures.
 - Prefer `runner.plan(spec)` for single-op preflight and `orchestrator.plan(...)`
