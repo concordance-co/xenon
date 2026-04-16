@@ -51,7 +51,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
     if engine.max_model_len:
         llm_kwargs["max_model_len"] = int(engine.max_model_len)
     reasoning_parser = (engine.reasoning_parser or "").strip()
-    if not reasoning_parser and "qwen3" in str(engine.model_id).lower():
+    if spec.generation.capture_reasoning and not reasoning_parser and "qwen3" in str(engine.model_id).lower():
         reasoning_parser = "qwen3"
     if reasoning_parser:
         llm_kwargs["structured_outputs_config"] = {"reasoning_parser": reasoning_parser}
@@ -112,6 +112,7 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                 generation_temperature=float(spec.generation.temperature or 0.0),
                 capture_reasoning=bool(spec.generation.capture_reasoning),
                 enable_thinking=engine.enable_thinking,
+                chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
             )
             for record in batch_records:
                 example = record["example"]
@@ -229,31 +230,67 @@ def _prompt_token_ids(
     require_sections: bool,
     prompt_metadata_builder: Any | None,
     enable_thinking: bool | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    rendered = _render_prompt(
+    token_ids = _tokenize_prompt(
         tokenizer=tokenizer,
         prompt=example.prompt,
         add_generation_prompt=add_generation_prompt,
         enable_thinking=enable_thinking,
+        chat_template_kwargs=chat_template_kwargs,
     )
-    metadata = resolve_prompt_metadata(
-        metadata=example.metadata,
-        rendered_prompt=rendered,
-        builder=prompt_metadata_builder,
-    )
-    encoding = tokenizer(rendered, add_special_tokens=False, return_offsets_mapping=True)
-    token_ids = _normalize_token_ids(encoding)
-    offsets = _normalize_offsets(encoding)
-    token_sections = token_sections_from_metadata(
-        metadata=metadata,
-        offsets=offsets,
-        require_sections=require_sections,
-        allow_char_spans=True,
-    )
+    token_sections: dict[str, list[int]] = {}
+    needs_rendered_metadata = require_sections or prompt_metadata_builder is not None or bool(example.metadata)
+    if needs_rendered_metadata:
+        rendered = _render_prompt(
+            tokenizer=tokenizer,
+            prompt=example.prompt,
+            add_generation_prompt=add_generation_prompt,
+            enable_thinking=enable_thinking,
+            chat_template_kwargs=chat_template_kwargs,
+        )
+        metadata = resolve_prompt_metadata(
+            metadata=example.metadata,
+            rendered_prompt=rendered,
+            builder=prompt_metadata_builder,
+        )
+        encoding = tokenizer(rendered, add_special_tokens=False, return_offsets_mapping=True)
+        offsets = _normalize_offsets(encoding)
+        token_sections = token_sections_from_metadata(
+            metadata=metadata,
+            offsets=offsets,
+            require_sections=require_sections,
+            allow_char_spans=True,
+        )
     return {
         "token_ids": token_ids,
         "token_sections": token_sections,
     }
+
+
+def _tokenize_prompt(
+    *,
+    tokenizer: Any,
+    prompt: Any,
+    add_generation_prompt: bool,
+    enable_thinking: bool | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
+) -> list[int]:
+    if isinstance(prompt, list):
+        kwargs: dict[str, Any] = {
+            "tokenize": True,
+            "add_generation_prompt": add_generation_prompt,
+        }
+        if enable_thinking is not None:
+            kwargs["enable_thinking"] = enable_thinking
+        if chat_template_kwargs:
+            kwargs.update(chat_template_kwargs)
+        token_ids = tokenizer.apply_chat_template(prompt, **kwargs)
+        return _normalize_token_ids(token_ids)
+    if isinstance(prompt, str):
+        encoding = tokenizer(prompt, add_special_tokens=False)
+        return _normalize_token_ids(encoding)
+    raise TypeError(f"Unsupported prompt type: {type(prompt).__name__}")
 
 
 def _render_prompt(
@@ -262,6 +299,7 @@ def _render_prompt(
     prompt: Any,
     add_generation_prompt: bool,
     enable_thinking: bool | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
 ) -> str:
     if isinstance(prompt, list):
         template_kwargs: dict[str, Any] = {
@@ -270,6 +308,8 @@ def _render_prompt(
         }
         if enable_thinking is not None:
             template_kwargs["enable_thinking"] = enable_thinking
+        if chat_template_kwargs:
+            template_kwargs.update(chat_template_kwargs)
         rendered = tokenizer.apply_chat_template(prompt, **template_kwargs)
         return str(rendered)
     if isinstance(prompt, str):
@@ -352,6 +392,7 @@ def _capture_prompt_batch(
     generation_temperature: float,
     capture_reasoning: bool,
     enable_thinking: bool | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     import torch
     from safetensors.torch import load_file
@@ -367,6 +408,7 @@ def _capture_prompt_batch(
             require_sections=require_sections,
             prompt_metadata_builder=prompt_metadata_builder,
             enable_thinking=enable_thinking,
+            chat_template_kwargs=chat_template_kwargs,
         )
         prompt_token_ids = tokenized_prompt["token_ids"]
         prompts.append({"prompt_token_ids": prompt_token_ids})

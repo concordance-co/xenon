@@ -132,6 +132,18 @@ def _default_residual_engine() -> VLLMEngine:
     )
 
 
+def _boundary_generation_engine() -> VLLMEngine:
+    return VLLMEngine(
+        model_id=MODEL_ID,
+        max_model_len=8192,
+        enforce_eager=False,
+        max_num_seqs=16,
+        add_generation_prompt=True,
+        reasoning_parser="",
+        extra={"chat_template_kwargs": {"enable_thinking": False}},
+    )
+
+
 def build_runner_specs() -> dict[str, object]:
     artifact_store = ModalVolumeStore(
         name="xenon-data",
@@ -170,6 +182,7 @@ def build_workflow(
     dataset = dataset or build_dataset()
     boundary_dataset = build_boundary_dataset()
     residual_engine = residual_engine or _default_residual_engine()
+    boundary_engine = _boundary_generation_engine()
 
     canonical_rows = dataset.labels("edge_conflict").equals(False)
     paired_rows = dataset.labels("matched_pair_id").equals("")
@@ -235,12 +248,12 @@ def build_workflow(
                 name="boundary_generation",
                 runner="capture_gpu",
                 spec=CaptureSpec(
-                    engine=residual_engine,
+                    engine=boundary_engine,
                     dataset=boundary_dataset,
                     sites=[],
                     generation=GenerationSpec(
                         enabled=True,
-                        max_tokens=96,
+                        max_tokens=256,
                         temperature=0.0,
                         capture_reasoning=False,
                     ),

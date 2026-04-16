@@ -299,3 +299,128 @@ Update this file when:
 
 The goal is that a future reader can understand not only what Phase 09
 is, but how it became that way.
+
+## Settled Main-Benchmark Configuration
+
+The current primary benchmark keeps the original Phase 09 prompt wording
+and excludes only the unstable activity boundary slice from headline
+analysis.
+
+Current main-benchmark policy:
+
+- keep the original Phase 09 prompt wording
+- keep the `main_benchmark_row` exclusion for:
+  - `target_dimension = trading_activity`
+  - `setting_value = 1`
+  - `evidence_tier = exceptional`
+- preserve those excluded rows as:
+  - `stress_test_slice = activity_v1_exceptional_boundary`
+
+Rationale:
+
+- behavior does not need to be perfect
+- but main benchmark rows should not be dominated by semantically unstable
+  prompt/label boundary cases
+- the excluded slice remains valuable as a model-vs-label stress test,
+  but it should not anchor the headline binary conflict benchmark
+
+## Boundary Generation Cleanup
+
+Formatting contamination from visible `<think>` traces in the boundary
+behavior checks was fixed by:
+
+- gating Qwen reasoning-parser auto-enable on `capture_reasoning=True`
+- threading `chat_template_kwargs` correctly through vLLM prompt
+  rendering and tokenization
+- directly tokenizing chat prompts through
+  `tokenizer.apply_chat_template(..., tokenize=True)` in the vLLM capture
+  path
+- validating boundary behavior through the stable Modal smoke path
+
+Reference:
+
+- [boundary_generation_cleanup_20260415.md](/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_09/notes/boundary_generation_cleanup_20260415.md)
+
+## Main-Benchmark Refresh History
+
+### Softened-Prompt Masked Run
+
+Run:
+
+- `wr_fc084627be8c_21912209`
+
+Artifacts:
+
+- [report.md](/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_09/reports/pipelines_v2/report_d9b5ae9ef51b_b6c872ce/report.md)
+
+Headline results:
+
+- text gate best split balanced accuracy: `0.5286`
+- pooled probe best layer: `32`
+- pooled probe balanced accuracy: `0.8516`
+- pooled probe AUROC: `0.9154`
+
+Pooled probe confusion at `L32`:
+
+- `TP=170`
+- `TN=157`
+- `FP=35`
+- `FN=22`
+- `FPR=0.1823`
+- `FNR=0.1146`
+
+Interpretive note:
+
+- removing the `trading_activity + setting_value=1 + exceptional` rows
+  made the benchmark contract cleaner
+- but the softened prompt wording slightly reduced the pooled result
+
+### Current Settled Run
+
+Run:
+
+- `wr_38bffa82add5_f136959a`
+
+Artifacts:
+
+- [report.md](/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_09/reports/pipelines_v2/report_dc4120a07d2e_6197853f/report.md)
+
+Main benchmark population:
+
+- total rows in materialized dataset: `864`
+- primary benchmark rows: `768`
+- preserved stress-test rows: `96`
+
+Headline results:
+
+- text gate best split balanced accuracy: `0.5365`
+- pooled probe best layer: `32`
+- pooled probe balanced accuracy: `0.8620`
+- pooled probe AUROC: `0.9313`
+
+Pooled probe confusion at `L32`:
+
+- `TP=160`
+- `TN=171`
+- `FP=21`
+- `FN=32`
+- `FPR=0.1094`
+- `FNR=0.1667`
+
+Per-dimension transfer readout at `L36`:
+
+- `trade_size`
+  - settings split: balanced accuracy `0.9948`, AUROC `1.0000`
+  - strategy split: balanced accuracy `1.0000`, AUROC `1.0000`
+- `trading_activity`
+  - settings split: balanced accuracy `0.8958`, AUROC `0.9694`
+  - strategy split: balanced accuracy `0.9115`, AUROC `0.9706`
+
+Interpretive note:
+
+- the settled configuration is:
+  - original prompt wording
+  - masked main benchmark
+  - preserved stress-test slice
+- the masking improves benchmark cleanliness without paying the metric
+  penalty introduced by the softened prompt revision

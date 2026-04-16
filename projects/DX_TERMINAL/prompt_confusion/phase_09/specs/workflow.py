@@ -69,9 +69,13 @@ def _load_dataset_records(path: Path) -> list[dict[str, object]]:
     return rows
 
 
+def _main_benchmark_records(path: Path) -> list[dict[str, object]]:
+    return [row for row in _load_dataset_records(path) if bool(row.get("main_benchmark_row", True))]
+
+
 def build_dataset(*, limit: int | None = None) -> Dataset:
     dataset = Dataset.from_records(
-        _load_dataset_records(DEFAULT_DATASET_PATH),
+        _main_benchmark_records(DEFAULT_DATASET_PATH),
         prompt_column="prompt_messages_json",
         example_key_column="example_id",
         label_columns=[
@@ -83,13 +87,15 @@ def build_dataset(*, limit: int | None = None) -> Dataset:
             "conflict_present",
             "edge_conflict",
             "conflict_band",
+            "main_benchmark_row",
+            "stress_test_slice",
             "lexical_split",
             "strategy_lexical_split",
             "settings_lexical_split",
         ],
         case_columns=["matched_group_id", "matched_pair_id"],
         case_key_column="matched_group_id",
-        name="prompt_confusion_phase_09",
+        name="prompt_confusion_phase_09_main",
     )
     final_limit = limit if limit is not None else _dataset_limit_from_env()
     return dataset.select(limit=final_limit) if final_limit is not None else dataset
@@ -112,7 +118,7 @@ def build_runner_specs() -> dict[str, object]:
     return {
         "capture_gpu": ModalRunnerSpec(
             resources=ModalResources(
-                gpu="A100-80GB",
+                gpu="H100",
                 volumes=(ModalVolumeMount(name=MODEL_VOLUME_NAME, mount_path=MODEL_VOLUME_PATH),),
             ),
             artifacts=artifact_store,

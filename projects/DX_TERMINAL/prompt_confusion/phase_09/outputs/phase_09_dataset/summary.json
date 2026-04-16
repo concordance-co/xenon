@@ -7,6 +7,10 @@
     "trade_size": 384,
     "trading_activity": 480
   },
+  "by_main_benchmark_row": {
+    "false": 96,
+    "true": 768
+  },
   "by_settings_split": {
     "test": 432,
     "train": 432
@@ -19,5 +23,7 @@
     "test": 432,
     "train": 432
   },
-  "rows": 864
+  "main_benchmark_rows": 768,
+  "rows": 864,
+  "stress_test_rows": 96
 }

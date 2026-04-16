@@ -97,6 +97,25 @@ principles:
 - balanced lexical split over strategy-shell and settings-shell combinations
 - explicit phrase-family metadata for activity and size phrasing
 
+### Primary benchmark vs stress-test rows
+
+Phase 09 now distinguishes between:
+
+- `main_benchmark_row = true`
+  - rows used for the primary text gate / probe / transfer results
+- `stress_test_slice != ""`
+  - rows kept for targeted behavioral or interpretive follow-up
+
+The main excluded slice is:
+
+- `trading_activity`
+- `setting_value = 1`
+- `evidence_tier = exceptional`
+
+These rows are preserved because they are scientifically interesting, but they
+are no longer part of the primary binary benchmark. In practice they behave
+more like a threshold-boundary stress test than a clean label regime.
+
 ## Evaluation intent
 
 Once the rebuilt dataset is published, the `pipelines_v2` workflow should
@@ -133,6 +152,12 @@ Capture should only proceed if the behavior smoke shows that:
 - trade-size settings reliably gate size once entry is allowed
 - edge rows are not dominating errors in a way that makes the binary target
   incoherent
+
+Later cleanup work sharpened this further:
+
+- `trade_size` is clean enough for primary benchmarking
+- `trading_activity` is mostly clean, but the `value=1 + exceptional` cell is
+  boundary-sensitive enough that it is now treated as stress-test-only
 
 ## Why `pipelines_v2`
 

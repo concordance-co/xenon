@@ -523,6 +523,18 @@ def build_rows() -> list[dict[str, Any]]:
                                 "conflict_present": conflict_present,
                                 "edge_conflict": edge_conflict,
                                 "conflict_band": conflict_band,
+                                "main_benchmark_row": not (
+                                    target_dimension == "trading_activity"
+                                    and setting_value == 1
+                                    and context.evidence_tier == "exceptional"
+                                ),
+                                "stress_test_slice": (
+                                    "activity_v1_exceptional_boundary"
+                                    if target_dimension == "trading_activity"
+                                    and setting_value == 1
+                                    and context.evidence_tier == "exceptional"
+                                    else ""
+                                ),
                                 "conflict_strength": 0 if conflict_band == "aligned" else (1 if conflict_band == "edge" else 2),
                                 "strategy_variant_id": strategy_template.variant_id,
                                 "activity_phrase_id": activity_phrase_id,
@@ -574,6 +586,9 @@ def write_outputs(rows: list[dict[str, Any]], output_dir: Path) -> None:
         "rows": len(rows),
         "by_dimension": dict(Counter(row["target_dimension"] for row in rows)),
         "by_band": dict(Counter(row["conflict_band"] for row in rows)),
+        "by_main_benchmark_row": dict(Counter(row["main_benchmark_row"] for row in rows)),
+        "main_benchmark_rows": sum(1 for row in rows if bool(row["main_benchmark_row"])),
+        "stress_test_rows": sum(1 for row in rows if str(row["stress_test_slice"])),
         "by_split": dict(Counter(row["lexical_split"] for row in rows)),
         "by_strategy_split": dict(Counter(row["strategy_lexical_split"] for row in rows)),
         "by_settings_split": dict(Counter(row["settings_lexical_split"] for row in rows)),
