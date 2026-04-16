@@ -132,7 +132,7 @@ def _workflow_resume(ns: argparse.Namespace) -> int:
         dataset_fn_name=ns.dataset_fn,
         workflow_fn_name=ns.workflow_fn,
     )
-    local_catalog = _registry_catalog(ns)
+    local_catalog = _registry_catalog(ns, runner_specs=runner_specs)
     run_id = ns.run_id or _select_latest_run_id(
         local_catalog,
         workflow=workflow,
@@ -147,15 +147,16 @@ def _workflow_resume(ns: argparse.Namespace) -> int:
 
 
 def _workflow_runs(ns: argparse.Namespace) -> int:
-    local_catalog = _registry_catalog(ns)
+    runner_specs: dict[str, RunnerSpec] | None = None
     workflow_name = None
     if ns.file:
-        _, workflow, _ = load_python_workflow_file(
+        _, workflow, runner_specs = load_python_workflow_file(
             path=ns.file,
             dataset_fn_name=ns.dataset_fn,
             workflow_fn_name=ns.workflow_fn,
         )
         workflow_name = workflow.name
+    local_catalog = _registry_catalog(ns, runner_specs=runner_specs)
     records = local_catalog.list_workflow_runs(
         workflow_name=workflow_name,
         status=ns.status,
@@ -188,7 +189,7 @@ def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) ->
         dataset_fn_name=ns.dataset_fn,
         workflow_fn_name=ns.workflow_fn,
     )
-    local_catalog = _registry_catalog(ns)
+    local_catalog = _registry_catalog(ns, runner_specs=runner_specs)
     source_run_id = ns.run_id or _select_latest_run_id(local_catalog, workflow=workflow, status="completed")
     if source_run_id is None:
         raise RuntimeError("Could not resolve a completed workflow run id for rerun")
@@ -213,10 +214,13 @@ def _build_runners(
     runner_specs: dict[str, RunnerSpec] | None,
 ) -> dict[str, object]:
     if runner_specs is not None:
+        # Checked-in runner specs are the explicit workflow-level contract.
+        # Workspace defaults should only fill CLI-built runners, not override
+        # workflow-authored local/shared catalog choices.
         runners = {name: spec.to_runner() for name, spec in runner_specs.items()}
-        _apply_workspace_catalog_defaults(runners, ns)
     else:
         runners = _build_runners_from_args(ns)
+        _apply_workspace_catalog_defaults(runners, ns)
     return _attach_local_registry(runners, _local_registry_catalog(ns))
 
 
@@ -270,7 +274,25 @@ def _local_registry_catalog(ns: argparse.Namespace) -> FileCatalog:
     return FileCatalog(root=root)
 
 
-def _registry_catalog(ns: argparse.Namespace) -> Any:
+def _registry_catalog(
+    ns: argparse.Namespace,
+    *,
+    runner_specs: dict[str, RunnerSpec] | None = None,
+) -> Any:
+    if runner_specs is not None:
+        runners = _build_runners(ns, runner_specs)
+        catalogs = [
+            runner.catalog
+            for runner in runners.values()
+            if getattr(getattr(runner, "catalog", None), "kind", "none") != "none"
+        ]
+        if not catalogs:
+            return _local_registry_catalog(ns)
+        baseline = catalogs[0].identity()
+        mismatched = [catalog.identity() for catalog in catalogs[1:] if catalog.identity() != baseline]
+        if mismatched:
+            raise RuntimeError("Workflow runners do not share one catalog identity")
+        return catalogs[0]
     local = _local_registry_catalog(ns)
     env_var = _configured_catalog_postgres_env(ns)
     if not env_var:

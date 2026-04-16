@@ -12,6 +12,7 @@ from typing import Any
 
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
 from pipelines_v2.operations.specs import (
+    ActivationPatchSpec,
     BasisSpec,
     CaptureSpec,
     DirectionSpec,
@@ -74,7 +75,12 @@ class LocalRunner:
         """Preflight a spec against local env vars, stores, and capabilities."""
         engine = spec.bound_engine()
         engine_capabilities = frozenset(engine.capabilities()) if engine is not None else frozenset()
-        artifact_kinds = ("capture",) if isinstance(spec, CaptureSpec) else ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
+        if isinstance(spec, CaptureSpec):
+            artifact_kinds = ("capture",)
+        elif isinstance(spec, ActivationPatchSpec):
+            artifact_kinds = (spec.kind,)
+        else:
+            artifact_kinds = ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
         errors = list(_spec_plan_errors(spec))
         errors.extend(_local_plan_errors(spec))
         return ExecutionPlan(
@@ -91,6 +97,8 @@ class LocalRunner:
         self.plan(spec).validate()
         if isinstance(spec, CaptureSpec):
             return self._run_capture(spec, workflow_context=workflow_context)
+        if isinstance(spec, ActivationPatchSpec):
+            return self._run_intervention(spec, workflow_context=workflow_context)
         if isinstance(spec, _ARTIFACT_BOUND_SPECS):
             return self._run_artifact_operation(spec, workflow_context=workflow_context)
         raise NotImplementedError(f"LocalRunner cannot run {spec.kind!r} specs yet")
@@ -181,6 +189,47 @@ class LocalRunner:
             example_coverage=result.example_coverage,
             storage_refs=storage_refs,
             metadata=metadata,
+            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
+        )
+        storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
+        self.catalog.record_artifact(manifest)
+        return OperationArtifact(_manifest=manifest, store=self.artifacts)
+
+    def _run_intervention(
+        self,
+        spec: ActivationPatchSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+    ) -> OperationArtifact:
+        engine = spec.bound_engine()
+        if engine is None:
+            raise RuntimeError("ActivationPatchSpec is missing a bound engine")
+        resolved_spec = spec.resolve_dataset()
+        result = engine.intervene(resolved_spec)
+        artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
+        self.artifacts.make_artifact_dir(artifact_id)
+
+        payload = {
+            "kind": "activation_patch_result",
+            "summary": dict(result.summary),
+            "rows": list(result.rows),
+        }
+        storage_refs: dict[str, Any] = {
+            "result": self.artifacts.write_json(artifact_id, "result.json", payload),
+        }
+        manifest = ArtifactManifest(
+            artifact_id=artifact_id,
+            artifact_kind=spec.kind,
+            schema_version=1,
+            operation_spec_hash=spec.spec_hash(),
+            operation_semantic_hash=spec.semantic_hash(),
+            created_at=utc_now_iso(),
+            engine=engine.identity(),
+            runner=self.identity(),
+            input_artifact_refs=tuple(_input_artifact_ids(spec)),
+            example_coverage=resolved_spec.dataset.coverage(),
+            storage_refs=storage_refs,
+            metadata=dict(result.metadata),
             workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
         )
         storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())

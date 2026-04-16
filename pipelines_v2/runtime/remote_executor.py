@@ -8,6 +8,7 @@ from typing import Any
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
 from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.operations.specs import (
+    ActivationPatchSpec,
     BasisSpec,
     CaptureSpec,
     DirectionSpec,
@@ -40,6 +41,13 @@ def execute_remote(
 
     if isinstance(spec, CaptureSpec):
         return _execute_capture(
+            runner_config=runner_config,
+            store=store,
+            spec=spec,
+            workflow_context=workflow_context,
+        )
+    if isinstance(spec, ActivationPatchSpec):
+        return _execute_intervention(
             runner_config=runner_config,
             store=store,
             spec=spec,
@@ -142,6 +150,52 @@ def _execute_artifact_operation(
         example_coverage=result.example_coverage,
         storage_refs=storage_refs,
         metadata=result.metadata,
+        workflow_context=dict(workflow_context or {}),
+    )
+    storage_refs["manifest"] = store.write_json(
+        artifact_id,
+        "manifest.json",
+        manifest.to_dict(),
+    )
+    return manifest.to_dict()
+
+
+def _execute_intervention(
+    *,
+    runner_config: dict[str, Any],
+    store: Any,
+    spec: ActivationPatchSpec,
+    workflow_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    engine = spec.bound_engine()
+    if engine is None:
+        raise RuntimeError("ActivationPatchSpec is missing a bound engine")
+    resolved_spec = spec.resolve_dataset()
+    artifact_id = f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
+    store.make_artifact_dir(artifact_id)
+    result = engine.intervene(resolved_spec)
+
+    payload = {
+        "kind": "activation_patch_result",
+        "summary": dict(result.summary),
+        "rows": list(result.rows),
+    }
+    storage_refs: dict[str, Any] = {
+        "result": store.write_json(artifact_id, "result.json", payload),
+    }
+    manifest = ArtifactManifest(
+        artifact_id=artifact_id,
+        artifact_kind=spec.kind,
+        schema_version=1,
+        operation_spec_hash=spec.spec_hash(),
+        operation_semantic_hash=spec.semantic_hash(),
+        created_at=utc_now_iso(),
+        engine=engine.identity(),
+        runner=runner_config,
+        input_artifact_refs=tuple(_input_artifact_ids(spec)),
+        example_coverage=resolved_spec.dataset.coverage(),
+        storage_refs=storage_refs,
+        metadata=dict(result.metadata),
         workflow_context=dict(workflow_context or {}),
     )
     storage_refs["manifest"] = store.write_json(
