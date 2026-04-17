@@ -7,19 +7,24 @@ from pathlib import Path
 from typing import Any
 
 from pipelines_v2.api import (
-    ActivationPatchSpec,
     CaptureSpec,
     Dataset,
     Example,
+    GenerationRunSpec,
     GenerationSpec,
     ModalResources,
     ModalRunnerSpec,
     ModalVolumeMount,
     ModalVolumeStore,
+    PatchComparisonSpec,
+    PatchedGenerationSpec,
     PromptMetadataBuilder,
+    ProjectOutPatch,
     ResidualInterventionSite,
     ResidualSite,
     StepRef,
+    SubspaceSpec,
+    TokenPooling,
     TokenSelector,
     TransformBuilder,
     VLLMEngine,
@@ -52,28 +57,21 @@ def evaluate_patch_row(
     *,
     example: dict[str, Any],
     baseline: dict[str, Any],
-    patched: dict[str, Any],
-    controls: dict[str, dict[str, Any]],
+    variants: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    labels = dict(example.get("labels") or {})
-    expected_baseline = str(labels.get("expected_baseline_word") or "").upper()
-    expected_donor = str(labels.get("expected_donor_word") or "").upper()
+    patched = dict(variants or {}).get("main", {})
     baseline_word = _extract_choice_word(str(baseline.get("generated_text") or ""))
     patched_word = _extract_choice_word(str(patched.get("generated_text") or ""))
     return {
         "metrics": {
-            "baseline_matches_expected": baseline_word == expected_baseline,
-            "patched_matches_donor": patched_word == expected_donor,
+            "baseline_nonempty": bool(baseline_word),
             "changed": baseline_word != patched_word,
             "patched_nonempty": bool(patched_word),
-            "control_count": float(len(dict(controls or {}))),
         },
         "evaluation": {
             "example_key": str(example.get("key") or ""),
             "baseline_word": baseline_word,
             "patched_word": patched_word,
-            "expected_baseline_word": expected_baseline,
-            "expected_donor_word": expected_donor,
             "baseline_text": str(baseline.get("generated_text") or ""),
             "patched_text": str(patched.get("generated_text") or ""),
         },
@@ -88,8 +86,7 @@ def build_dataset() -> Dataset:
                 prompt=_decision_prompt("BUY"),
                 labels={
                     "patch_role": "target",
-                    "expected_baseline_word": "BUY",
-                    "expected_donor_word": "SELL",
+                    "strategy_word": "BUY",
                 },
                 case_key="pair_1",
             ),
@@ -98,8 +95,7 @@ def build_dataset() -> Dataset:
                 prompt=_decision_prompt("SELL"),
                 labels={
                     "patch_role": "donor",
-                    "expected_baseline_word": "SELL",
-                    "expected_donor_word": "BUY",
+                    "strategy_word": "SELL",
                 },
                 case_key="pair_1",
             ),
@@ -108,8 +104,7 @@ def build_dataset() -> Dataset:
                 prompt=_decision_prompt("SELL"),
                 labels={
                     "patch_role": "target",
-                    "expected_baseline_word": "SELL",
-                    "expected_donor_word": "BUY",
+                    "strategy_word": "SELL",
                 },
                 case_key="pair_2",
             ),
@@ -118,8 +113,7 @@ def build_dataset() -> Dataset:
                 prompt=_decision_prompt("BUY"),
                 labels={
                     "patch_role": "donor",
-                    "expected_baseline_word": "BUY",
-                    "expected_donor_word": "SELL",
+                    "strategy_word": "BUY",
                 },
                 case_key="pair_2",
             ),
@@ -141,7 +135,34 @@ def build_runner_specs() -> dict[str, object]:
                 root=str(ARTIFACT_ROOT),
             ),
         ),
+        "analysis_cpu": ModalRunnerSpec(
+            resources=ModalResources(
+                cpu=8,
+                memory_mb=24 * 1024,
+                timeout_seconds=3600,
+                volumes=(ModalVolumeMount(name="xenon-data", mount_path="/data"),),
+            ),
+            artifacts=ModalVolumeStore(
+                name="xenon-data",
+                root=str(ARTIFACT_ROOT),
+            ),
+        ),
     }
+
+
+def build_engine() -> VLLMEngine:
+    return VLLMEngine(
+        model_id=MODEL_ID,
+        max_model_len=4096,
+        enforce_eager=False,
+        max_num_seqs=32,
+        max_num_batched_tokens=32768,
+        enable_prefix_caching=False,
+        enable_chunked_prefill=True,
+        async_scheduling=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
 
 
 def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
@@ -161,15 +182,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
                 name="capture_prompt_residual",
                 runner="capture_gpu",
                 spec=CaptureSpec(
-                    engine=VLLMEngine(
-                        model_id=MODEL_ID,
-                        max_model_len=4096,
-                        enforce_eager=True,
-                        max_num_seqs=4,
-                        enable_prefix_caching=False,
-                        add_generation_prompt=True,
-                        enable_thinking=True,
-                    ),
+                    engine=build_engine(),
                     dataset=dataset,
                     sites=(
                         ResidualSite(
@@ -183,33 +196,64 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
                 ),
             ),
             WorkflowStep(
-                name="patch_strategy",
+                name="learn_strategy_subspace",
+                runner="analysis_cpu",
+                depends_on=("capture_prompt_residual",),
+                spec=SubspaceSpec(
+                    feature=StepRef("capture_prompt_residual").feature("prompt_residual"),
+                    layers=(24,),
+                    components=2,
+                    tokens=TokenSelector.section("STRATEGY"),
+                    pooling=TokenPooling.mean(),
+                ),
+            ),
+            WorkflowStep(
+                name="baseline_targets",
                 runner="capture_gpu",
-                spec=ActivationPatchSpec(
-                    engine=VLLMEngine(
-                        model_id=MODEL_ID,
-                        max_model_len=4096,
-                        enforce_eager=True,
-                        max_num_seqs=4,
-                        enable_prefix_caching=False,
-                        add_generation_prompt=True,
-                        enable_thinking=True,
-                    ),
+                depends_on=("learn_strategy_subspace",),
+                spec=GenerationRunSpec(
+                    engine=build_engine(),
                     dataset=dataset,
-                    source_feature=StepRef("capture_prompt_residual").feature("prompt_residual"),
-                    pair_by=dataset.cases("case_key"),
-                    target_when=dataset.labels("patch_role").equals("target"),
-                    donor_when=dataset.labels("patch_role").equals("donor"),
-                    write_site=ResidualInterventionSite(site="resid_post", layers=(24,)),
-                    target_tokens=TokenSelector.section("STRATEGY"),
-                    donor_tokens=TokenSelector.section("STRATEGY"),
+                    select_when=dataset.labels("patch_role").equals("target"),
                     generation=GenerationSpec(
                         enabled=True,
                         max_tokens=256,
                         temperature=0.0,
-                        capture_reasoning=True,
+                        capture_reasoning=False,
+                    ),
+                ),
+            ),
+            WorkflowStep(
+                name="lesion_strategy",
+                runner="capture_gpu",
+                depends_on=("baseline_targets",),
+                spec=PatchedGenerationSpec(
+                    engine=build_engine(),
+                    dataset=dataset,
+                    patch=ProjectOutPatch(
+                        subspace=StepRef("learn_strategy_subspace"),
+                        write_site=ResidualInterventionSite(site="resid_post", layers=(24,)),
+                        target_tokens=TokenSelector.section("STRATEGY"),
+                        component_indices_by_layer={24: (0, 1)},
+                        strength=1.0,
+                    ),
+                    select_when=dataset.labels("patch_role").equals("target"),
+                    generation=GenerationSpec(
+                        enabled=True,
+                        max_tokens=256,
+                        temperature=0.0,
+                        capture_reasoning=False,
                     ),
                     prompt_metadata_builder=prompt_metadata,
+                ),
+            ),
+            WorkflowStep(
+                name="compare_patch_runs",
+                runner="analysis_cpu",
+                depends_on=("lesion_strategy",),
+                spec=PatchComparisonSpec(
+                    baseline=StepRef("baseline_targets"),
+                    variants={"main": StepRef("lesion_strategy")},
                     row_evaluator=row_evaluator,
                 ),
             ),

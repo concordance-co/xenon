@@ -58,18 +58,20 @@ def callable_import_ref(
         sources = tuple(str(source) for source in local_python_sources if str(source).strip())
         if not sources:
             raise SpecValidationError(f"{label} local_python_sources cannot be empty when provided")
-        relative_path = None
+        matched_source = None
         for source in sources:
             source_root = resolve_workspace_path(source, workspace_root=workspace_root)
             try:
-                relative_path = source_path.relative_to(source_root)
+                source_path.relative_to(source_root)
+                matched_source = source
                 break
             except ValueError:
                 continue
-        if relative_path is None:
+        if matched_source is None:
             raise SpecValidationError(
                 f"{label} source file {source_path} is not under any declared local_python_sources: {list(sources)}"
             )
+        relative_path = source_path.relative_to(workspace_root)
 
     if relative_path.suffix != ".py":
         raise SpecValidationError(f"{label} source file must be a Python module")
@@ -84,24 +86,40 @@ def load_importable_function(
     local_python_sources: Sequence[str] = (),
 ) -> Any:
     module_name, _, function_name = import_path.partition(":")
+    module_candidates = [module_name]
+    for source in local_python_sources:
+        normalized = str(source).strip().strip("/")
+        if not normalized or normalized == ".":
+            continue
+        prefix = ".".join(Path(normalized).parts)
+        if prefix and module_name != prefix and not module_name.startswith(f"{prefix}."):
+            module_candidates.append(f"{prefix}.{module_name}")
     try:
         module = importlib.import_module(module_name)
+        imported_module_name = module_name
     except ModuleNotFoundError as exc:
         missing_name = str(getattr(exc, "name", "") or "")
         if missing_name and missing_name != module_name and not module_name.startswith(f"{missing_name}."):
             raise
         workspace_root = find_workspace_root()
-        source_paths = [
-            str(resolve_workspace_path(source, workspace_root=workspace_root))
-            for source in local_python_sources
-        ]
+        source_paths = [str(workspace_root)]
         added_paths: list[str] = []
         for source_path in source_paths:
             if source_path not in sys.path:
                 sys.path.insert(0, source_path)
                 added_paths.append(source_path)
         try:
-            module = importlib.import_module(module_name)
+            module = None
+            imported_module_name = module_name
+            for candidate in module_candidates:
+                try:
+                    module = importlib.import_module(candidate)
+                    imported_module_name = candidate
+                    break
+                except ModuleNotFoundError:
+                    continue
+            if module is None:
+                raise ModuleNotFoundError(module_name)
         except ModuleNotFoundError as retry_exc:
             raise SpecValidationError(
                 f"{label} module {module_name!r} could not be imported. "
@@ -117,7 +135,7 @@ def load_importable_function(
         return getattr(module, function_name)
     except AttributeError as exc:
         raise SpecValidationError(
-            f"{label} function {function_name!r} is not defined in module {module_name!r}"
+            f"{label} function {function_name!r} is not defined in module {imported_module_name!r}"
         ) from exc
 
 
@@ -204,6 +222,8 @@ def spec_value_from_dict(value: Any) -> Any:
         CaptureArtifact,
         FeatureLayerRef,
         FeatureRef,
+        InlineArtifactLabelRef,
+        InlineOperationArtifact,
         OperationArtifact,
     )
     from pipelines_v2.workflow import StepFeatureRef, StepLabelRef, StepRef
@@ -218,6 +238,10 @@ def spec_value_from_dict(value: Any) -> Any:
         return CaptureArtifact.from_dict(value)
     if kind == OperationArtifact.kind:
         return OperationArtifact.from_dict(value)
+    if kind == InlineOperationArtifact.kind:
+        return InlineOperationArtifact.from_dict(value)
+    if kind == InlineArtifactLabelRef.kind:
+        return InlineArtifactLabelRef.from_dict(value)
     if kind == StepRef.kind:
         return StepRef.from_dict(value)
     if kind == StepFeatureRef.kind:

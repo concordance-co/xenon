@@ -15,6 +15,7 @@ There are currently two operator surfaces in the repo:
   - the newer Python workflow / artifact-oriented runtime
   - documented in [docs/PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
   - supports local run tracking under `~/.xenon/pipelines_v2/catalog`, workflow resume, `rerun-step`, and `rerun-from-step`
+  - supports live workflow progress logging with `--logging INFO` and persists progress snapshots under the local catalog
 
 The canonical operator surface is the CLI:
 
@@ -141,3 +142,12 @@ For new `pipelines_v2` workflow authoring and operation, start with:
 
 - [docs/PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
 - [docs/ARCH2.md](/Users/brockelmore/concordance/xenon/docs/ARCH2.md)
+
+For long-running `pipelines_v2` jobs, prefer:
+
+```bash
+uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py --logging INFO
+```
+
+That prints structured step progress and Modal app ids to stderr while the JSON
+result remains on stdout.

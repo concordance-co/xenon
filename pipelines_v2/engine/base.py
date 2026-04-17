@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 from pipelines_v2.core.types import EngineCapability, RuntimeSecret
 from pipelines_v2.operations.capture import CaptureSpec
-from pipelines_v2.operations.interventions import ActivationPatchSpec
+from pipelines_v2.operations.interventions import GenerationRunSpec, PatchedGenerationSpec
 
 
 class RuntimeSpec(Protocol):
@@ -55,8 +55,12 @@ class Engine(Protocol):
         """Execute one capture spec and return features/generations."""
         ...
 
-    def intervene(self, spec: ActivationPatchSpec) -> "EngineInterventionResult":
-        """Execute one activation patch spec and return a summary/result payload."""
+    def generate(self, spec: GenerationRunSpec) -> "EngineGenerationResult":
+        """Execute one generation spec and return row outputs."""
+        ...
+
+    def intervene(self, spec: PatchedGenerationSpec) -> "EngineInterventionResult":
+        """Execute one patched-generation spec and return row outputs."""
         ...
 
 
@@ -69,8 +73,16 @@ class EngineCaptureResult:
 
 
 @dataclass(frozen=True, slots=True)
+class EngineGenerationResult:
+    """Raw engine output for model-bound generation before artifact persistence."""
+
+    rows: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
 class EngineInterventionResult:
-    """Raw engine output for model-bound interventions before artifact persistence."""
+    """Raw engine output for patched generations before artifact persistence."""
 
     summary: dict[str, Any] = field(default_factory=dict)
     rows: list[dict[str, Any]] = field(default_factory=list)

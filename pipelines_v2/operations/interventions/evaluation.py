@@ -1,3 +1,5 @@
-"""Planned intervention evaluation specs."""
+"""Intervention comparison specs."""
 
-__all__: list[str] = []
+from .comparison import PatchComparisonSpec
+
+__all__ = ["PatchComparisonSpec"]

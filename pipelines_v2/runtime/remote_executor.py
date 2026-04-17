@@ -2,23 +2,31 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import uuid
 from typing import Any
 
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
 from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.operations.specs import (
-    ActivationPatchSpec,
+    ActivationBankSpec,
     BasisSpec,
     CaptureSpec,
+    CentroidSpec,
     DirectionSpec,
+    ExplicitPathMaskSpec,
+    GenerationRunSpec,
     GeometrySpec,
     LabelFieldsSpec,
     LabelMapSpec,
+    PatchComparisonSpec,
     PairDeltaSpec,
+    PatchedGenerationSpec,
     ProbeSpec,
     ReportSpec,
     ResidualizedProbeSpec,
+    SubspaceSpec,
     TextBaselineSpec,
     TransferProbeSpec,
     TransformSpec,
@@ -26,6 +34,9 @@ from pipelines_v2.operations.specs import (
 from pipelines_v2.storage import ArtifactManifest, artifact_store_from_dict
 from pipelines_v2.storage.artifacts import ArtifactLabelRef, CaptureArtifact, FeatureLayerRef, FeatureRef, OperationArtifact
 from pipelines_v2.storage.features import write_capture_features
+from pipelines_v2.operations.interventions.runtime import rows_example_coverage
+
+_PROGRESS_LOG = logging.getLogger("pipelines_v2.remote_progress")
 
 
 def execute_remote(
@@ -37,6 +48,13 @@ def execute_remote(
 ) -> dict[str, Any]:
     """Execute a serialized operation in a remote worker."""
     spec = operation_spec_from_dict(spec_payload)
+    _emit_remote_progress(
+        workflow_context=workflow_context,
+        status="running",
+        stage="remote_started",
+        spec_kind=spec.kind,
+        message=f"remote execution started for {spec.kind}",
+    )
     store = artifact_store_from_dict(store_config)
 
     if isinstance(spec, CaptureSpec):
@@ -46,7 +64,14 @@ def execute_remote(
             spec=spec,
             workflow_context=workflow_context,
         )
-    if isinstance(spec, ActivationPatchSpec):
+    if isinstance(spec, GenerationRunSpec):
+        return _execute_generation(
+            runner_config=runner_config,
+            store=store,
+            spec=spec,
+            workflow_context=workflow_context,
+        )
+    if isinstance(spec, PatchedGenerationSpec):
         return _execute_intervention(
             runner_config=runner_config,
             store=store,
@@ -61,6 +86,30 @@ def execute_remote(
             workflow_context=workflow_context,
         )
     raise NotImplementedError(f"Remote executor cannot run {spec.kind!r} specs yet")
+
+
+def _emit_remote_progress(
+    *,
+    workflow_context: dict[str, Any] | None,
+    status: str,
+    stage: str,
+    spec_kind: str,
+    message: str,
+    metrics: dict[str, Any] | None = None,
+) -> None:
+    payload = {
+        "run_id": workflow_context.get("run_id") if workflow_context else None,
+        "workflow_name": workflow_context.get("workflow_name") if workflow_context else None,
+        "step_name": workflow_context.get("step_name") if workflow_context else None,
+        "step_index": workflow_context.get("step_index") if workflow_context else None,
+        "runner": workflow_context.get("runner") if workflow_context else None,
+        "status": status,
+        "stage": stage,
+        "spec_kind": spec_kind,
+        "message": message,
+        "metrics": dict(metrics or {}),
+    }
+    _PROGRESS_LOG.info("XENON_PROGRESS %s", json.dumps(payload, sort_keys=True))
 
 
 def _execute_capture(
@@ -164,19 +213,19 @@ def _execute_intervention(
     *,
     runner_config: dict[str, Any],
     store: Any,
-    spec: ActivationPatchSpec,
+    spec: PatchedGenerationSpec,
     workflow_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
-        raise RuntimeError("ActivationPatchSpec is missing a bound engine")
+        raise RuntimeError("PatchedGenerationSpec is missing a bound engine")
     resolved_spec = spec.resolve_dataset()
     artifact_id = f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
     store.make_artifact_dir(artifact_id)
     result = engine.intervene(resolved_spec)
 
     payload = {
-        "kind": "activation_patch_result",
+        "kind": "patched_generation_result",
         "summary": dict(result.summary),
         "rows": list(result.rows),
     }
@@ -193,7 +242,53 @@ def _execute_intervention(
         engine=engine.identity(),
         runner=runner_config,
         input_artifact_refs=tuple(_input_artifact_ids(spec)),
-        example_coverage=resolved_spec.dataset.coverage(),
+        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
+        storage_refs=storage_refs,
+        metadata=dict(result.metadata),
+        workflow_context=dict(workflow_context or {}),
+    )
+    storage_refs["manifest"] = store.write_json(
+        artifact_id,
+        "manifest.json",
+        manifest.to_dict(),
+    )
+    return manifest.to_dict()
+
+
+def _execute_generation(
+    *,
+    runner_config: dict[str, Any],
+    store: Any,
+    spec: GenerationRunSpec,
+    workflow_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    engine = spec.bound_engine()
+    if engine is None:
+        raise RuntimeError("GenerationRunSpec is missing a bound engine")
+    resolved_spec = spec.resolve_dataset()
+    artifact_id = f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
+    store.make_artifact_dir(artifact_id)
+    result = engine.generate(resolved_spec)
+
+    payload = {
+        "kind": "generation_run_result",
+        "summary": {"example_count": len(result.rows)},
+        "rows": list(result.rows),
+    }
+    storage_refs: dict[str, Any] = {
+        "result": store.write_json(artifact_id, "result.json", payload),
+    }
+    manifest = ArtifactManifest(
+        artifact_id=artifact_id,
+        artifact_kind=spec.kind,
+        schema_version=1,
+        operation_spec_hash=spec.spec_hash(),
+        operation_semantic_hash=spec.semantic_hash(),
+        created_at=utc_now_iso(),
+        engine=engine.identity(),
+        runner=runner_config,
+        input_artifact_refs=tuple(_input_artifact_ids(spec)),
+        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
         storage_refs=storage_refs,
         metadata=dict(result.metadata),
         workflow_context=dict(workflow_context or {}),
@@ -239,10 +334,15 @@ _ARTIFACT_BOUND_SPECS = (
     ResidualizedProbeSpec,
     DirectionSpec,
     BasisSpec,
+    CentroidSpec,
     GeometrySpec,
+    SubspaceSpec,
+    ActivationBankSpec,
+    ExplicitPathMaskSpec,
     PairDeltaSpec,
     LabelMapSpec,
     LabelFieldsSpec,
     TransformSpec,
+    PatchComparisonSpec,
     ReportSpec,
 )

@@ -116,6 +116,11 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                 wants_generation=wants_generation,
                 generation_max_tokens=int(spec.generation.max_tokens or 1),
                 generation_temperature=float(spec.generation.temperature or 0.0),
+                generation_top_p=float(spec.generation.top_p),
+                generation_top_k=int(spec.generation.top_k),
+                generation_chat_tools=spec.generation.chat_tools,
+                generation_tool_choice=spec.generation.tool_choice,
+                generation_structured_output=spec.generation.structured_output,
                 capture_reasoning=bool(spec.generation.capture_reasoning),
                 enable_thinking=engine.enable_thinking,
                 chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
@@ -235,6 +240,8 @@ def _prompt_token_ids(
     add_generation_prompt: bool,
     require_sections: bool,
     prompt_metadata_builder: Any | None,
+    tools: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
     enable_thinking: bool | None = None,
     chat_template_kwargs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -242,6 +249,8 @@ def _prompt_token_ids(
         tokenizer=tokenizer,
         prompt=example.prompt,
         add_generation_prompt=add_generation_prompt,
+        tools=tools,
+        tool_choice=tool_choice,
         enable_thinking=enable_thinking,
         chat_template_kwargs=chat_template_kwargs,
     )
@@ -252,6 +261,8 @@ def _prompt_token_ids(
             tokenizer=tokenizer,
             prompt=example.prompt,
             add_generation_prompt=add_generation_prompt,
+            tools=tools,
+            tool_choice=tool_choice,
             enable_thinking=enable_thinking,
             chat_template_kwargs=chat_template_kwargs,
         )
@@ -261,6 +272,7 @@ def _prompt_token_ids(
             builder=prompt_metadata_builder,
         )
         encoding = tokenizer(rendered, add_special_tokens=False, return_offsets_mapping=True)
+        rendered_token_ids = _normalize_token_ids(encoding)
         offsets = _normalize_offsets(encoding)
         token_sections = token_sections_from_metadata(
             metadata=metadata,
@@ -268,6 +280,12 @@ def _prompt_token_ids(
             require_sections=require_sections,
             allow_char_spans=True,
         )
+        if token_sections and token_ids != rendered_token_ids:
+            token_sections = _remap_token_sections(
+                token_sections=token_sections,
+                source_token_ids=rendered_token_ids,
+                target_token_ids=token_ids,
+            )
     return {
         "token_ids": token_ids,
         "token_sections": token_sections,
@@ -279,6 +297,8 @@ def _tokenize_prompt(
     tokenizer: Any,
     prompt: Any,
     add_generation_prompt: bool,
+    tools: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
     enable_thinking: bool | None = None,
     chat_template_kwargs: dict[str, Any] | None = None,
 ) -> list[int]:
@@ -287,6 +307,10 @@ def _tokenize_prompt(
             "tokenize": True,
             "add_generation_prompt": add_generation_prompt,
         }
+        if tools:
+            kwargs["tools"] = [dict(tool) for tool in tools]
+        if tool_choice is not None:
+            kwargs["tool_choice"] = tool_choice
         if enable_thinking is not None:
             kwargs["enable_thinking"] = enable_thinking
         if chat_template_kwargs:
@@ -297,6 +321,42 @@ def _tokenize_prompt(
         encoding = tokenizer(prompt, add_special_tokens=False)
         return _normalize_token_ids(encoding)
     raise TypeError(f"Unsupported prompt type: {type(prompt).__name__}")
+def _remap_token_sections(
+    *,
+    token_sections: dict[str, list[int]],
+    source_token_ids: list[int],
+    target_token_ids: list[int],
+) -> dict[str, list[int]]:
+    index_map = _align_source_positions_to_target(
+        source_token_ids=source_token_ids,
+        target_token_ids=target_token_ids,
+    )
+    remapped: dict[str, list[int]] = {}
+    for name, positions in token_sections.items():
+        mapped = [index_map[int(position)] for position in positions if int(position) in index_map]
+        if mapped:
+            remapped[str(name)] = mapped
+    return remapped
+
+
+def _align_source_positions_to_target(
+    *,
+    source_token_ids: list[int],
+    target_token_ids: list[int],
+) -> dict[int, int]:
+    mapping: dict[int, int] = {}
+    target_index = 0
+    for source_index, token_id in enumerate(source_token_ids):
+        while target_index < len(target_token_ids) and int(target_token_ids[target_index]) != int(token_id):
+            target_index += 1
+        if target_index >= len(target_token_ids):
+            raise RuntimeError(
+                "Rendered prompt tokenization could not be aligned to chat-template tokenization. "
+                "This usually means the chat template emitted non-textual control tokens that need explicit handling."
+            )
+        mapping[int(source_index)] = int(target_index)
+        target_index += 1
+    return mapping
 
 
 def _render_prompt(
@@ -304,6 +364,8 @@ def _render_prompt(
     tokenizer: Any,
     prompt: Any,
     add_generation_prompt: bool,
+    tools: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
     enable_thinking: bool | None = None,
     chat_template_kwargs: dict[str, Any] | None = None,
 ) -> str:
@@ -312,6 +374,10 @@ def _render_prompt(
             "tokenize": False,
             "add_generation_prompt": add_generation_prompt,
         }
+        if tools:
+            template_kwargs["tools"] = [dict(tool) for tool in tools]
+        if tool_choice is not None:
+            template_kwargs["tool_choice"] = tool_choice
         if enable_thinking is not None:
             template_kwargs["enable_thinking"] = enable_thinking
         if chat_template_kwargs:
@@ -396,7 +462,12 @@ def _capture_prompt_batch(
     wants_generation: bool,
     generation_max_tokens: int,
     generation_temperature: float,
-    capture_reasoning: bool,
+    capture_reasoning: bool = False,
+    generation_top_p: float = 1.0,
+    generation_top_k: int = -1,
+    generation_chat_tools: tuple[dict[str, Any], ...] = (),
+    generation_tool_choice: str | dict[str, Any] | None = None,
+    generation_structured_output: dict[str, Any] | None = None,
     reasoning_parser: Any | None = None,
     enable_thinking: bool | None = None,
     chat_template_kwargs: dict[str, Any] | None = None,
@@ -414,6 +485,8 @@ def _capture_prompt_batch(
             add_generation_prompt=add_generation_prompt,
             require_sections=require_sections,
             prompt_metadata_builder=prompt_metadata_builder,
+            tools=generation_chat_tools,
+            tool_choice=generation_tool_choice,
             enable_thinking=enable_thinking,
             chat_template_kwargs=chat_template_kwargs,
         )
@@ -424,12 +497,16 @@ def _capture_prompt_batch(
     if wants_routing:
         _apply_to_model(llm, _reset_router_buffers_on_model)
 
+    sampling_params = SamplingParams(
+        max_tokens=int(generation_max_tokens if wants_generation else 1),
+        temperature=float(generation_temperature if wants_generation else 0.0),
+        top_p=float(generation_top_p if wants_generation else 1.0),
+        top_k=int(generation_top_k if wants_generation else -1),
+    )
+    _apply_structured_output_constraint(sampling_params, generation_structured_output if wants_generation else None)
     outputs = llm.generate(
         prompts=prompts,
-        sampling_params=SamplingParams(
-            max_tokens=int(generation_max_tokens if wants_generation else 1),
-            temperature=float(generation_temperature if wants_generation else 0.0),
-        ),
+        sampling_params=sampling_params,
     )
 
     router_by_example: dict[str, dict[int, dict[str, Any]]] = {}
@@ -566,6 +643,17 @@ def _generation_result_from_output(
     if capture_reasoning:
         payload["reasoning_text"] = reasoning_text
     return payload
+
+
+def _apply_structured_output_constraint(
+    sampling_params: Any,
+    schema: dict[str, Any] | None,
+) -> None:
+    if schema is None:
+        return
+    from vllm.sampling_params import StructuredOutputsParams
+
+    sampling_params.structured_outputs = StructuredOutputsParams(json=dict(schema))
 
 
 def _fill_router_features(

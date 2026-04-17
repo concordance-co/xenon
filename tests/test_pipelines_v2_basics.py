@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import builtins
+import importlib
 import importlib.util
+import sys
+import types
+from dataclasses import replace
 import json
 import os
 import sys
@@ -16,8 +21,17 @@ from safetensors.numpy import load_file, save_file
 from pipelines_v2.core.types import utc_now_iso
 from pipelines_v2.api import (
     ActivationPatchSpec,
+    ActivationBankSpec,
+    AddDirectionPatch,
     ArtifactManifest,
     ArtifactLabelRef,
+    CentroidSpec,
+    ExplicitPathEdge,
+    ExplicitPathMaskSpec,
+    InterchangePatch,
+    ProjectOutPatch,
+    RandomControlPatch,
+    ResidualPathPatch,
     CapabilityError,
     CaptureArtifact,
     CaptureSpec,
@@ -25,6 +39,7 @@ from pipelines_v2.api import (
     DirectionSpec,
     EngineCapability,
     EngineCaptureResult,
+    GenerationRunSpec,
     Example,
     FileCatalog,
     GeometrySpec,
@@ -40,8 +55,11 @@ from pipelines_v2.api import (
     ModalSecret,
     ModalVolumeMount,
     ModalVolumeStore,
+    CompositeCatalog,
     OperationArtifact,
+    PatchComparisonSpec,
     PairDeltaSpec,
+    PatchedGenerationSpec,
     PromptMetadataBuilder,
     ResidualSite,
     ResidualInterventionSite,
@@ -53,6 +71,8 @@ from pipelines_v2.api import (
     TransformBuilder,
     TransformResult,
     TransformSpec,
+    SwapComponentsPatch,
+    SwapMeanPatch,
     TokenPooling,
     TokenSelector,
     ToyEngine,
@@ -69,13 +89,19 @@ from pipelines_v2.api import (
     WorkflowSpec,
     WorkflowStep,
     ReportSpec,
+    SubspaceSpec,
 )
-from pipelines_v2.cli import _workflow_result_payload, load_python_workflow_file, main as pipelines_v2_cli_main
+from pipelines_v2.cli import _registry_catalog, _workflow_result_payload, load_python_workflow_file, main as pipelines_v2_cli_main
 from pipelines_v2.engine.vllm.capture import _capture_prompt_batch, _fill_router_features, _split_router_capture_batch
+from pipelines_v2.engine.vllm.intervention_build import paired_request_payload
+from pipelines_v2.operations.execution.interventions import run_patch_comparison
 from pipelines_v2.runtime import ExecutionPlan
 from pipelines_v2.runtime.specs import runner_spec_from_dict
 from pipelines_v2.runtime.remote_executor import execute_remote
-from pipelines_v2.runtime.modal_worker import _mounted_volumes, _resolved_runtime_spec
+from pipelines_v2.runtime.modal_worker import _mounted_volumes, _resolved_runtime_spec, run_on_modal
+from pipelines_v2.storage.artifacts import InlineOperationArtifact
+from pipelines_v2.storage.composite import preferred_workflow_metadata_catalog
+from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
 from pipelines_v2.testing import (
     ArtifactStoreContractSuite,
     CatalogContractSuite,
@@ -86,8 +112,6 @@ from pipelines_v2.testing import (
     make_toy_dataset,
 )
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepContext, WorkflowStepRecord
-
-
 def _test_prompt_section_metadata(rendered_prompt: str) -> dict[str, object]:
     strategy_marker = "STRATEGY\n"
     settings_marker = "\n\nSETTINGS\n"
@@ -100,6 +124,15 @@ def _test_prompt_section_metadata(rendered_prompt: str) -> dict[str, object]:
             "SETTINGS": {"char_start": settings_start, "char_end": len(rendered_prompt)},
         }
     }
+
+
+def _inline_transform_seed(*, value: int) -> dict[str, Any]:
+    return {"payload": {"kind": "transform_result", "value": int(value)}}
+
+
+def _inline_transform_consume(*, seed: Any) -> dict[str, Any]:
+    payload = seed.result() if hasattr(seed, "result") else dict(seed)
+    return {"payload": {"kind": "transform_result", "value": int(payload["value"]) + 1}}
 
 
 def _test_behavior_transform(
@@ -169,17 +202,16 @@ def _test_behavior_transform(
     )
 
 
-def _activation_patch_row_evaluator(
+def _patch_comparison_row_evaluator(
     *,
     example: Any,
     baseline: Any,
-    patched: Any,
-    controls: Any,
+    variants: Any,
 ) -> dict[str, Any]:
+    patched = dict(variants or {}).get("main", {})
     return {
         "metrics": {
             "flipped": str(baseline.get("generated_text") or "") != str(patched.get("generated_text") or ""),
-            "control_count": float(len(dict(controls or {}))),
         },
         "evaluation": {
             "example_key": str(example.get("key") or ""),
@@ -1181,6 +1213,44 @@ def test_generation_result_from_output_includes_reasoning_fields_when_requested(
     assert result["reasoning_text"] == "compare both options"
 
 
+def test_prompt_token_ids_use_chat_template_tokenization_and_rebase_sections() -> None:
+    from pipelines_v2.engine.vllm.capture import _prompt_token_ids
+
+    class _FakeTokenizer:
+        def apply_chat_template(self, prompt: Any, **kwargs: Any) -> Any:
+            assert isinstance(prompt, list)
+            if kwargs.get("tokenize") is True:
+                return [99, 1, 2, 88]
+            return "AB"
+
+        def __call__(self, text: str, *, add_special_tokens: bool, return_offsets_mapping: bool) -> Any:
+            assert text == "AB"
+            assert add_special_tokens is False
+            assert return_offsets_mapping is True
+            return types.SimpleNamespace(
+                input_ids=[1, 2],
+                offset_mapping=[(0, 1), (1, 2)],
+            )
+
+    example = Example(
+        key="ex-a",
+        prompt=[{"role": "user", "content": "irrelevant"}],
+        metadata={"token_sections": {"MARKET": {"char_start": 0, "char_end": 2}}},
+    )
+
+    result = _prompt_token_ids(
+        tokenizer=_FakeTokenizer(),
+        example=example,
+        add_generation_prompt=True,
+        require_sections=True,
+        prompt_metadata_builder=None,
+        tool_choice="required",
+    )
+
+    assert result["token_ids"] == [99, 1, 2, 88]
+    assert result["token_sections"] == {"MARKET": [1, 2]}
+
+
 def test_runner_plan_reports_missing_capabilities() -> None:
     runner = LocalRunner()
     spec = CaptureSpec(
@@ -1615,8 +1685,24 @@ def test_mounted_volumes_include_artifact_store_and_extra_volumes() -> None:
     ]
 
 
-def test_mounted_volumes_reject_duplicate_mount_paths() -> None:
-    with pytest.raises(ValueError, match="Duplicate Modal volume mount paths"):
+def test_mounted_volumes_merge_duplicate_mount_for_same_volume() -> None:
+    mounted = _mounted_volumes(
+        store_config={"kind": "modal_volume", "name": "xenon-data", "root": "/data/artifacts"},
+        resources={
+            "gpu": "L4",
+            "volumes": [
+                {"name": "xenon-data", "mount_path": "/data", "commit_on_success": False},
+            ],
+        },
+    )
+
+    assert [(volume.name, volume.mount_path, volume.create_if_missing, volume.commit_on_success) for volume in mounted] == [
+        ("xenon-data", "/data", True, True),
+    ]
+
+
+def test_mounted_volumes_reject_duplicate_mount_paths_for_different_volumes() -> None:
+    with pytest.raises(ValueError, match="different volumes"):
         _mounted_volumes(
             store_config={"kind": "modal_volume", "name": "xenon-data", "root": "/data/artifacts"},
             resources={
@@ -1646,6 +1732,136 @@ def test_modal_worker_merges_spec_runtime_secrets_into_runtime_spec() -> None:
     )
 
     assert [secret.env_var for secret in runtime_spec.secrets] == ["XENON_DATABASE_URL"]
+
+
+def test_modal_worker_threads_runtime_env_to_function_kwargs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, object] = {}
+    progress_events: list[dict[str, object]] = []
+
+    class FakeImage:
+        def pip_install(self, *packages: str) -> "FakeImage":
+            captured["pip_packages"] = packages
+            return self
+
+        def env(self, env_payload: dict[str, str]) -> "FakeImage":
+            captured["image_env"] = dict(env_payload)
+            return self
+
+        def add_local_dir(self, local_path: str, *, remote_path: str) -> "FakeImage":
+            mounts = list(captured.get("image_mounts", []))
+            mounts.append((local_path, remote_path))
+            captured["image_mounts"] = mounts
+            return self
+
+    class FakeImageFactory:
+        @staticmethod
+        def debian_slim(*, python_version: str) -> FakeImage:
+            captured["python_version"] = python_version
+            return FakeImage()
+
+    class FakeVolume:
+        @staticmethod
+        def from_name(name: str, create_if_missing: bool = False) -> object:
+            return {"name": name, "create_if_missing": create_if_missing}
+
+    class FakeSecret:
+        @staticmethod
+        def from_name(name: str) -> object:
+            return {"name": name}
+
+    class FakeFunction:
+        def __init__(self, fn: object) -> None:
+            self._fn = fn
+
+        def remote(self, *args: object) -> object:
+            return self._fn(*args)
+
+    class FakeAppRun:
+        app_id = "ap-test-env"
+
+        def __enter__(self) -> "FakeAppRun":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class FakeApp:
+        def __init__(self, name: str) -> None:
+            captured["app_name"] = name
+
+        def function(self, **kwargs: object):
+            captured["function_kwargs"] = dict(kwargs)
+
+            def decorator(fn):
+                return FakeFunction(fn)
+
+            return decorator
+
+        def run(self) -> FakeAppRun:
+            return FakeAppRun()
+
+    fake_modal = types.SimpleNamespace(
+        App=FakeApp,
+        Image=FakeImageFactory,
+        Volume=FakeVolume,
+        Secret=FakeSecret,
+    )
+    monkeypatch.setitem(sys.modules, "modal", fake_modal)
+    monkeypatch.setattr(
+        "pipelines_v2.runtime.remote_executor.execute_remote",
+        lambda **kwargs: {
+            "artifact_id": "capture_test",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-17T00:00:00+00:00",
+            "engine": kwargs["spec_payload"]["engine"],
+            "runner": {},
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"features": {}},
+            "metadata": {},
+        },
+    )
+    monkeypatch.setenv("XENON_ACTIVATION_PATCH_DEBUG", "project_out_gate")
+
+    spec = replace(
+        make_toy_capture_spec(),
+        engine=VLLMEngine(
+            model_id="fake/model",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+    )
+    result = run_on_modal(
+        runner_config={
+            "kind": "modal",
+            "resources": {},
+        },
+        store_config={
+            "kind": "modal_volume",
+            "name": "xenon-data",
+            "root": str(tmp_path / "artifacts"),
+        },
+        spec_payload=spec.to_dict(),
+        workflow_context=None,
+        progress_callback=lambda payload: progress_events.append(dict(payload)),
+    )
+
+    function_kwargs = dict(captured["function_kwargs"])
+    assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
+    assert captured["image_env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
+    assert result["runner"]["runtime_app_id"] == "ap-test-env"
+    assert [event["stage"] for event in progress_events] == [
+        "modal_launching",
+        "modal_app_started",
+        "remote_execution_finished",
+    ]
+    assert progress_events[0]["metrics"]["source_mount_count"] >= 0
 
 
 def test_modal_runner_raises_clear_error_on_cancelled_remote_run(
@@ -1717,6 +1933,78 @@ def test_workflow_orchestrator_records_runtime_app_id_for_completed_remote_step(
     assert step_records["capture"].status == "completed"
     assert step_records["capture"].runtime_app_id == "ap-runtime-test"
     assert result.step("capture").manifest().runner["runtime_app_id"] == "ap-runtime-test"
+
+
+def test_workflow_orchestrator_persists_progress_snapshot_for_remote_step_submission(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    progress_store = FileWorkflowProgressStore(tmp_path / "catalog")
+
+    def fake_run_on_modal(
+        *,
+        runner_config: dict[str, object],
+        store_config: dict[str, object],
+        spec_payload: dict[str, object],
+        workflow_context: dict[str, object] | None = None,
+        progress_callback: Any | None = None,
+    ) -> dict[str, object]:
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "status": "running",
+                    "stage": "modal_app_started",
+                    "runtime_kind": "modal",
+                    "runtime_app_id": "ap-progress-test",
+                    "message": "Modal app started",
+                }
+            )
+        return {
+            "artifact_id": "capture_test_progress",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-17T00:00:00+00:00",
+            "engine": spec_payload["engine"],
+            "runner": {
+                **runner_config,
+                "runtime_app_id": "ap-progress-test",
+            },
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"features": {}},
+            "metadata": {},
+            "workflow_context": dict(workflow_context or {}),
+        }
+
+    monkeypatch.setattr("pipelines_v2.runtime.modal.run_on_modal", fake_run_on_modal)
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = ModalRunner(
+        resources=ModalResources(gpu="L4"),
+        artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
+        catalog=catalog,
+    )
+    orchestrator = WorkflowOrchestrator(
+        runners={"capture_gpu": runner},
+        progress_sink=WorkflowProgressSink(store=progress_store),
+    )
+    workflow = WorkflowSpec(
+        name="modal_runtime_progress",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture_gpu",
+                spec=make_toy_capture_spec(),
+            ),
+        ),
+    )
+
+    result = orchestrator.run(workflow)
+
+    snapshot = progress_store.load_step_snapshots(result.run_id or "")["capture"]
+    assert snapshot["status"] == "completed"
+    assert snapshot["runtime_app_id"] == "ap-progress-test"
 
 
 def test_workflow_orchestrator_records_runtime_app_id_for_failed_remote_step(
@@ -2656,10 +2944,143 @@ def test_workflow_orchestrator_reuses_matching_completed_steps_across_runs(tmp_p
     assert second_steps["report"].status == "completed"
 
 
+class _CatalogProbe:
+    def __init__(self, *, kind: str, name: str) -> None:
+        self.kind = kind
+        self.name = name
+
+    def identity(self) -> dict[str, Any]:
+        return {"kind": self.kind, "name": self.name}
+
+
+def test_preferred_workflow_metadata_catalog_prefers_file_catalog(tmp_path: Path) -> None:
+    local = FileCatalog(tmp_path / "catalog")
+    remote = _CatalogProbe(kind="postgres", name="remote")
+    nested = CompositeCatalog((remote,))
+    composite = CompositeCatalog((nested, local))
+
+    preferred = preferred_workflow_metadata_catalog(composite)
+
+    assert preferred.kind == "file"
+    assert preferred.identity() == local.identity()
+
+
+def test_workflow_orchestrator_prefers_local_file_catalog_for_metadata(tmp_path: Path) -> None:
+    local = FileCatalog(tmp_path / "catalog")
+    remote = _CatalogProbe(kind="postgres", name="remote")
+    orchestrator = WorkflowOrchestrator(
+        runners={
+            "capture": LocalRunner(
+                artifacts=LocalArtifactStore(tmp_path / "artifacts"),
+                catalog=CompositeCatalog((local, remote)),
+            ),
+            "analysis": LocalRunner(
+                artifacts=LocalArtifactStore(tmp_path / "artifacts"),
+                catalog=CompositeCatalog((local, remote)),
+            ),
+        }
+    )
+
+    catalog = orchestrator._workflow_catalog()
+
+    assert catalog is not None
+    assert catalog.kind == "composite"
+    assert catalog.identity() == CompositeCatalog((local, remote)).identity()
+
+
+def test_registry_catalog_prefers_local_file_catalog_from_runner_specs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    local = FileCatalog(tmp_path / "catalog")
+    remote = _CatalogProbe(kind="postgres", name="remote")
+
+    class _Runner:
+        def __init__(self, catalog: Any) -> None:
+            self.catalog = catalog
+
+    monkeypatch.setattr(
+        "pipelines_v2.cli._build_runners",
+        lambda ns, runner_specs: {
+            "capture_gpu": _Runner(CompositeCatalog((local, remote))),
+            "analysis_cpu": _Runner(CompositeCatalog((local, remote))),
+        },
+    )
+
+    catalog = _registry_catalog(types.SimpleNamespace(), runner_specs={})
+
+    assert catalog.kind == "file"
+    assert catalog.identity() == local.identity()
+
+
+def test_composite_catalog_prefers_local_workflow_step_reads_without_touching_remote(tmp_path: Path) -> None:
+    local = FileCatalog(tmp_path / "catalog")
+    run_id = "wr_test_local_preferred"
+    local.record_workflow_run(
+        WorkflowRunRecord(
+            run_id=run_id,
+            workflow_name="workflow",
+            workflow_hash="hash",
+            workflow_spec_hash="spec",
+            workflow_payload={"kind": "workflow"},
+            status="completed",
+            started_at=utc_now_iso(),
+            finished_at=utc_now_iso(),
+        )
+    )
+    local.record_workflow_step(
+        WorkflowStepRecord(
+            run_id=run_id,
+            workflow_hash="hash",
+            workflow_step_key="hash.step",
+            step_name="step",
+            step_index=0,
+            runner="capture",
+            status="completed",
+            step_semantic_hash="sem",
+            step_spec_hash="spec",
+            artifact_id="artifact_1",
+            artifact_kind="patched_generation",
+            input_artifact_refs=(),
+            started_at=utc_now_iso(),
+            finished_at=utc_now_iso(),
+        )
+    )
+
+    class _FailingCatalog(_CatalogProbe):
+        def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
+            raise AssertionError("remote list_workflow_steps should not be called when local has records")
+
+        def find_latest_reusable_step(
+            self,
+            *,
+            step_name: str,
+            step_semantic_hash: str,
+            input_artifact_refs: tuple[str, ...],
+        ) -> WorkflowStepRecord | None:
+            raise AssertionError("remote find_latest_reusable_step should not be called when local has records")
+
+    composite = CompositeCatalog((local, _FailingCatalog(kind="postgres", name="remote")))
+
+    records = composite.list_workflow_steps(run_id)
+
+    assert len(records) == 1
+    assert records[0].step_name == "step"
+
+    reusable = composite.find_latest_reusable_step(
+        step_name="step",
+        step_semantic_hash="sem",
+        input_artifact_refs=(),
+    )
+
+    assert reusable is not None
+    assert reusable.artifact_id == "artifact_1"
+
+
 def test_postgres_catalog_records_manifest(monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.storage.postgres as postgres_storage
+
     executed: list[tuple[str, tuple[object, ...] | None]] = []
     committed = {"value": False}
     monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon")
+    postgres_storage._SCHEMA_ENSURED_URLS.clear()
 
     class FakeCursor:
         def __enter__(self) -> "FakeCursor":
@@ -2684,7 +3105,7 @@ def test_postgres_catalog_records_manifest(monkeypatch: pytest.MonkeyPatch) -> N
         def commit(self) -> None:
             committed["value"] = True
 
-    fake_psycopg = types.SimpleNamespace(connect=lambda url: FakeConnection())
+    fake_psycopg = types.SimpleNamespace(connect=lambda url, **kwargs: FakeConnection())
     monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
 
     manifest = ArtifactManifest(
@@ -2723,9 +3144,12 @@ def test_postgres_catalog_records_manifest(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_postgres_catalog_records_step_input_edges(monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.storage.postgres as postgres_storage
+
     executed: list[tuple[str, tuple[object, ...] | None]] = []
     committed = {"value": False}
-    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon")
+    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon_step_inputs")
+    postgres_storage._SCHEMA_ENSURED_URLS.clear()
 
     class FakeCursor:
         def __enter__(self) -> "FakeCursor":
@@ -2750,7 +3174,7 @@ def test_postgres_catalog_records_step_input_edges(monkeypatch: pytest.MonkeyPat
         def commit(self) -> None:
             committed["value"] = True
 
-    fake_psycopg = types.SimpleNamespace(connect=lambda url: FakeConnection())
+    fake_psycopg = types.SimpleNamespace(connect=lambda url, **kwargs: FakeConnection())
     monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
 
     record = WorkflowStepRecord(
@@ -2789,8 +3213,11 @@ def test_postgres_catalog_records_step_input_edges(monkeypatch: pytest.MonkeyPat
 def test_postgres_catalog_finds_artifact_for_workflow_step_via_relational_columns(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import pipelines_v2.storage.postgres as postgres_storage
+
     executed: list[tuple[str, tuple[object, ...] | None]] = []
-    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon")
+    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon_find_artifact")
+    postgres_storage._SCHEMA_ENSURED_URLS.clear()
 
     class FakeCursor:
         def __enter__(self) -> "FakeCursor":
@@ -2815,7 +3242,7 @@ def test_postgres_catalog_finds_artifact_for_workflow_step_via_relational_column
         def cursor(self) -> FakeCursor:
             return FakeCursor()
 
-    fake_psycopg = types.SimpleNamespace(connect=lambda url: FakeConnection())
+    fake_psycopg = types.SimpleNamespace(connect=lambda url, **kwargs: FakeConnection())
     monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
 
     result = PostgresCatalog(source=PostgresSource.from_env("XENON_DATABASE_URL")).find_artifact_for_workflow_step(
@@ -2839,6 +3266,67 @@ def test_postgres_catalog_finds_artifact_for_workflow_step_via_relational_column
         "run_123",
         "workflow_hash.probe",
     )
+
+
+def test_postgres_catalog_ensures_schema_once_outside_query_transactions(monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.storage.postgres as postgres_storage
+
+    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon_schema_once")
+    postgres_storage._SCHEMA_ENSURED_URLS.clear()
+
+    ensure_calls: list[bool] = []
+    connect_calls: list[bool] = []
+    query_executes: list[str] = []
+
+    class FakeCursor:
+        def __init__(self, *, autocommit: bool) -> None:
+            self.autocommit = autocommit
+
+        def __enter__(self) -> "FakeCursor":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def execute(self, sql: str, params: tuple[object, ...] | None = None) -> None:
+            query_executes.append(" ".join(sql.split()))
+
+        def fetchall(self) -> list[tuple[object, ...]]:
+            return []
+
+    class FakeConnection:
+        def __init__(self, *, autocommit: bool) -> None:
+            self.autocommit = autocommit
+
+        def __enter__(self) -> "FakeConnection":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return FakeCursor(autocommit=self.autocommit)
+
+    def fake_connect(url: str, **kwargs: object) -> FakeConnection:
+        autocommit = bool(kwargs.get("autocommit", False))
+        connect_calls.append(autocommit)
+        return FakeConnection(autocommit=autocommit)
+
+    def fake_ensure_schema(self: PostgresCatalog, cur: object) -> None:
+        ensure_calls.append(getattr(cur, "autocommit"))
+
+    monkeypatch.setitem(sys.modules, "psycopg", types.SimpleNamespace(connect=fake_connect))
+    monkeypatch.setattr(PostgresCatalog, "_ensure_schema", fake_ensure_schema)
+
+    catalog = PostgresCatalog(source=PostgresSource.from_env("XENON_DATABASE_URL"))
+    first = catalog.list_workflow_runs()
+    second = catalog.list_workflow_runs()
+
+    assert first == []
+    assert second == []
+    assert ensure_calls == [True]
+    assert connect_calls == [True, False, False]
+    assert len([sql for sql in query_executes if "FROM pipelines_v2_workflow_runs" in sql]) == 2
 
 
 def test_local_runner_pair_delta_produces_feature_and_label_artifact(tmp_path: Path) -> None:
@@ -3329,7 +3817,7 @@ def test_function_builder_from_function_is_not_tied_to_cwd(monkeypatch: pytest.M
 
     metadata = builder.build(rendered)
 
-    assert builder.import_path == "test_pipelines_v2_basics:_test_prompt_section_metadata"
+    assert builder.import_path == "tests.test_pipelines_v2_basics:_test_prompt_section_metadata"
     assert builder.local_python_sources == ("tests",)
     assert "token_sections" in metadata
 
@@ -4162,31 +4650,408 @@ def test_pipelines_v2_activation_patch_smoke_file_builders() -> None:
         "pair2_target_sell",
         "pair2_donor_buy",
     ]
-    assert sorted(runner_specs) == ["capture_gpu"]
+    assert sorted(runner_specs) == ["analysis_cpu", "capture_gpu"]
     assert [step.name for step in workflow.steps] == [
         "capture_prompt_residual",
-        "patch_strategy",
+        "learn_strategy_subspace",
+        "baseline_targets",
+        "lesion_strategy",
+        "compare_patch_runs",
     ]
     assert workflow.steps[0].runner == "capture_gpu"
-    assert workflow.steps[1].runner == "capture_gpu"
+    assert workflow.steps[1].runner == "analysis_cpu"
+    assert workflow.steps[2].runner == "capture_gpu"
+    assert workflow.steps[3].runner == "capture_gpu"
+    assert workflow.steps[4].runner == "analysis_cpu"
     assert workflow.steps[0].spec.engine.identity()["kind"] == "vllm"
-    assert workflow.steps[1].spec.engine.identity()["kind"] == "vllm"
     assert workflow.steps[0].spec.engine.add_generation_prompt is True
-    assert workflow.steps[1].spec.engine.add_generation_prompt is True
-    assert workflow.steps[0].spec.engine.enable_thinking is True
-    assert workflow.steps[1].spec.engine.enable_thinking is True
+    assert workflow.steps[0].spec.engine.enable_thinking is False
+    assert workflow.steps[2].spec.engine.add_generation_prompt is True
+    assert workflow.steps[3].spec.engine.add_generation_prompt is True
+    assert workflow.steps[2].spec.engine.enable_thinking is False
+    assert workflow.steps[3].spec.engine.enable_thinking is False
+    assert workflow.steps[2].spec.engine.enforce_eager is False
+    assert workflow.steps[3].spec.engine.enforce_eager is False
     assert workflow.steps[0].spec.prompt_metadata_builder is not None
-    assert workflow.steps[1].spec.prompt_metadata_builder is not None
-    assert workflow.steps[1].spec.row_evaluator is not None
+    assert workflow.steps[1].spec.tokens.kind == "section"
+    assert workflow.steps[1].spec.tokens.value == "STRATEGY"
+    assert workflow.steps[3].spec.prompt_metadata_builder is not None
+    assert workflow.steps[4].spec.row_evaluator is not None
     assert "scripts" in workflow.steps[0].spec.runtime_spec().local_python_sources
-    assert "scripts" in workflow.steps[1].spec.runtime_spec().local_python_sources
-    assert workflow.steps[1].spec.target_tokens.kind == "section"
-    assert workflow.steps[1].spec.target_tokens.value == "STRATEGY"
-    assert workflow.steps[1].spec.write_site.site == "resid_post"
-    assert tuple(workflow.steps[1].spec.write_site.layers) == (24,)
-    assert workflow.steps[1].spec.generation.max_tokens == 256
-    assert workflow.steps[1].spec.generation.capture_reasoning is True
-    assert workflow.steps[1].spec.source_feature.step == "capture_prompt_residual"
+    assert "scripts" in workflow.steps[3].spec.runtime_spec().local_python_sources
+    assert "scripts" in workflow.steps[4].spec.runtime_spec().local_python_sources
+    assert workflow.steps[3].spec.patch.operator == "project_out"
+    assert workflow.steps[3].spec.patch.target_tokens.kind == "section"
+    assert workflow.steps[3].spec.patch.target_tokens.value == "STRATEGY"
+    assert workflow.steps[3].spec.patch.write_site.site == "resid_post"
+    assert tuple(workflow.steps[3].spec.patch.write_site.layers) == (24,)
+    assert workflow.steps[3].spec.patch.component_indices_by_layer == {24: (0, 1)}
+    assert workflow.steps[2].spec.generation.max_tokens == 256
+    assert workflow.steps[2].spec.generation.capture_reasoning is False
+    assert workflow.steps[3].spec.patch.subspace.step == "learn_strategy_subspace"
+
+
+def test_synthetic_market_v2_smoke_workflow_builders() -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    dataset = module.build_dataset(limit=8)
+    runner_specs = module.build_runner_specs()
+    workflow = module.build_workflow(dataset)
+
+    assert dataset.is_deferred is True
+    assert dataset.selection["limit"] == 8
+    assert sorted(runner_specs) == ["analysis_cpu", "capture_gpu"]
+    assert [step.name for step in workflow.steps] == [
+        "import_market_subspace",
+        "import_market_direction",
+        "baseline_generation",
+        "patch_market",
+        "compare_patch",
+    ]
+    assert workflow.steps[0].spec.kind == "transform"
+    assert workflow.steps[0].spec.builder.import_path == (
+        "projects.DX_TERMINAL.synthetic_market.path_validation.specs.workflow_v2_smoke:import_market_subspace"
+    )
+    assert workflow.steps[1].spec.kind == "transform"
+    assert workflow.steps[1].spec.builder.import_path == (
+        "projects.DX_TERMINAL.synthetic_market.path_validation.specs.workflow_v2_smoke:import_market_direction"
+    )
+    assert workflow.steps[1].depends_on == ("import_market_subspace",)
+    assert workflow.steps[0].spec.inline is True
+    assert workflow.steps[1].spec.inline is True
+    assert workflow.steps[2].spec.engine.enforce_eager is False
+    assert (
+        workflow.steps[3].spec.prompt_metadata_builder.import_path
+        == "projects.DX_TERMINAL.synthetic_market.path_validation.specs.workflow_v2_smoke:build_prompt_metadata"
+    )
+    assert workflow.steps[3].spec.patch.operator == "project_out"
+    assert workflow.steps[3].spec.patch.target_tokens.kind == "section"
+    assert workflow.steps[3].spec.patch.target_tokens.value == "market"
+    assert workflow.steps[3].spec.patch.subspace.step == "import_market_subspace"
+    assert workflow.steps[3].spec.patch.component_indices_by_layer == {4: (0, 1, 2, 3)}
+    assert workflow.steps[4].spec.row_evaluator is not None
+    assert (
+        workflow.steps[4].spec.row_evaluator.import_path
+        == "projects.DX_TERMINAL.synthetic_market.path_validation.specs.workflow_v2_smoke:evaluate_patch_row"
+    )
+    assert workflow.steps[2].spec.generation.tool_choice == "required"
+    assert workflow.steps[3].spec.generation.tool_choice == "required"
+    assert len(workflow.steps[2].spec.generation.chat_tools) == 3
+    assert len(workflow.steps[3].spec.generation.chat_tools) == 3
+    expected_schema = module._trading_decision_structured_output()
+    assert workflow.steps[2].spec.generation.structured_output == expected_schema
+    assert workflow.steps[3].spec.generation.structured_output == expected_schema
+    assert runner_specs["capture_gpu"].resources.gpu == "A100-80GB"
+
+
+def test_synthetic_market_v2_smoke_supports_add_direction_variant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_add_direction", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    monkeypatch.setenv("SYNTHETIC_MARKET_V2_SMOKE_PATCH_OPERATOR", "add_direction")
+    workflow = module.build_workflow(module.build_dataset(limit=4))
+
+    assert [step.name for step in workflow.steps] == [
+        "import_market_subspace",
+        "import_market_direction",
+        "baseline_generation",
+        "patch_market",
+        "compare_patch",
+    ]
+    assert workflow.steps[3].spec.patch.operator == "add_direction"
+    assert workflow.steps[3].spec.patch.direction.step == "import_market_direction"
+    assert workflow.steps[3].spec.patch.subspace.step == "import_market_subspace"
+    assert workflow.steps[3].spec.patch.write_site.layers == (4,)
+
+
+@pytest.mark.parametrize(
+    ("operator", "expected_step_names"),
+    [
+        (
+            "add_direction",
+            [
+                "capture_market_residual",
+                "learn_market_subspace",
+                "learn_market_direction",
+                "baseline_generation",
+                "patch_market",
+                "compare_patch",
+            ],
+        ),
+        (
+            "random_control",
+            [
+                "capture_market_residual",
+                "learn_market_subspace",
+                "baseline_generation",
+                "patch_market",
+                "compare_patch",
+            ],
+        ),
+        (
+            "swap_mean",
+            [
+                "capture_market_residual",
+                "learn_market_centroids",
+                "baseline_generation",
+                "patch_market",
+                "compare_patch",
+            ],
+        ),
+        (
+            "swap_components",
+            [
+                "capture_market_residual",
+                "learn_market_subspace",
+                "learn_market_centroids",
+                "baseline_generation",
+                "patch_market",
+                "compare_patch",
+            ],
+        ),
+    ],
+)
+def test_synthetic_market_v2_source_operator_smoke_builders(
+    monkeypatch: pytest.MonkeyPatch,
+    operator: str,
+    expected_step_names: list[str],
+) -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_source_operator_smoke.py")
+    spec = importlib.util.spec_from_file_location(f"synthetic_market_v2_source_operator_{operator}", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    monkeypatch.setenv("SYNTHETIC_MARKET_V2_SOURCE_OPERATOR", operator)
+    dataset = module.build_dataset(limit=4)
+    runner_specs = module.build_runner_specs()
+    workflow = module.build_workflow(dataset)
+
+    assert dataset.is_deferred is True
+    assert dataset.selection["limit"] == 8
+    assert sorted(runner_specs) == ["analysis_cpu", "capture_gpu"]
+    assert [step.name for step in workflow.steps] == expected_step_names
+    assert workflow.steps[-2].name == "patch_market"
+    assert workflow.steps[-1].name == "compare_patch"
+    assert workflow.steps[-2].spec.patch.operator == operator
+    assert workflow.steps[-2].spec.select_when.label_set.name == "family_variant"
+    assert workflow.steps[-2].spec.select_when.value == "pct_5m__net_flow_5m"
+    if operator == "add_direction":
+        assert workflow.steps[-2].spec.patch.direction.step == "learn_market_direction"
+        assert workflow.steps[-2].spec.patch.subspace.step == "learn_market_subspace"
+    elif operator == "random_control":
+        assert workflow.steps[-2].spec.patch.subspace.step == "learn_market_subspace"
+        assert workflow.steps[-2].spec.patch.component_indices_by_layer == {4: (0, 1, 2, 3)}
+    elif operator == "swap_mean":
+        assert workflow.steps[-2].spec.patch.centroids.step == "learn_market_centroids"
+        assert workflow.steps[-2].spec.patch.centroid_name == "unique_traders_5m__top20_holder_pct"
+    elif operator == "swap_components":
+        assert workflow.steps[-2].spec.patch.subspace.step == "learn_market_subspace"
+        assert workflow.steps[-2].spec.patch.centroids.step == "learn_market_centroids"
+        assert workflow.steps[-2].spec.patch.component_indices_by_layer == {4: (0, 1, 2, 3)}
+
+
+def test_synthetic_market_v2_residual_path_smoke_builders() -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_residual_path_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_v2_residual_path_smoke", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    dataset = module.build_dataset(limit=4)
+    runner_specs = module.build_runner_specs()
+    workflow = module.build_workflow(dataset)
+
+    assert dataset.is_deferred is True
+    assert dataset.selection["limit"] == 8
+    assert sorted(runner_specs) == ["analysis_cpu", "capture_gpu"]
+    assert [step.name for step in workflow.steps] == [
+        "capture_market_residual",
+        "build_activation_bank",
+        "build_path_mask",
+        "baseline_generation",
+        "patch_market",
+        "compare_patch",
+    ]
+    assert workflow.steps[1].spec.kind == "activation_bank"
+    assert workflow.steps[2].spec.kind == "explicit_path_mask"
+    assert workflow.steps[4].spec.patch.operator == "residual_path"
+    assert workflow.steps[4].spec.patch.activation_bank.step == "build_activation_bank"
+    assert workflow.steps[4].spec.patch.path_mask.step == "build_path_mask"
+    assert workflow.steps[4].spec.pair_by.name == "pair_key"
+    assert workflow.steps[4].spec.target_when.value == "pct_5m__net_flow_5m"
+    assert workflow.steps[4].spec.donor_when.value == "unique_traders_5m__top20_holder_pct"
+
+
+def test_workflow_orchestrator_inlines_transform_steps_into_downstream_inputs(tmp_path: Path) -> None:
+    store = LocalArtifactStore(root=tmp_path / "artifacts")
+    runner = LocalRunner(resources=LocalResources(), artifacts=store)
+    orchestrator = WorkflowOrchestrator({"local": runner})
+
+    workflow = WorkflowSpec(
+        name="inline_transform_smoke",
+        steps=(
+            WorkflowStep(
+                name="seed",
+                runner="local",
+                spec=TransformSpec(
+                    builder=TransformBuilder.from_function(_inline_transform_seed),
+                    inputs={"value": 41},
+                    inline=True,
+                ),
+            ),
+            WorkflowStep(
+                name="consumer",
+                runner="local",
+                spec=TransformSpec(
+                    builder=TransformBuilder.from_function(_inline_transform_consume),
+                    inputs={"seed": StepRef("seed")},
+                ),
+            ),
+        ),
+    )
+
+    result = orchestrator.run(workflow)
+
+    assert result.step("seed").result()["value"] == 41
+    assert result.step("consumer").result()["value"] == 42
+
+
+def test_synthetic_market_v2_smoke_runner_gpu_can_be_overridden(monkeypatch: pytest.MonkeyPatch) -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_gpu_override", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    monkeypatch.setenv("SYNTHETIC_MARKET_V2_SMOKE_GPU", "H200")
+    runner_specs = module.build_runner_specs()
+
+    assert runner_specs["capture_gpu"].resources.gpu == "H200"
+
+
+def test_project_local_builder_import_fallback_works_with_legacy_source_relative_path() -> None:
+    builder = PromptMetadataBuilder(
+        import_path="DX_TERMINAL.synthetic_market.path_validation.specs.workflow_v2_smoke:build_prompt_metadata",
+        local_python_sources=("projects",),
+    )
+
+    payload = builder.build("## MARKET SNAPSHOT\nfoo\nRespond with the single best action for this tick:")
+
+    assert isinstance(payload, dict)
+    assert "token_sections" in payload
+
+
+def test_synthetic_market_import_market_subspace_builder_returns_subspace_result() -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_import", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    result = module.import_market_subspace(
+        state_key="market_mean",
+        layers=[4],
+        components_per_layer=4,
+    )
+
+    payload = result["payload"]
+    assert payload["kind"] == "subspace_result"
+    assert "4" in payload["layers"]
+    assert payload["layers"]["4"]["component_count"] == 4
+
+
+def test_synthetic_market_import_market_direction_builder_returns_direction_result() -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_direction", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    result = module.import_market_direction(
+        target_name="leader_axis",
+        subspace_payload=module.import_market_subspace(
+            state_key="market_mean",
+            layers=[4],
+            components_per_layer=4,
+        )["payload"],
+    )
+
+    payload = result["payload"]
+    assert payload["kind"] == "direction_result"
+    assert "4" in payload["layers"]
+    assert payload["summary"]["target_name"] == "leader_axis"
+    assert payload["layers"]["4"]["subspace_component_count"] == 4
+
+
+def test_synthetic_market_import_market_direction_accepts_operation_artifact_like_input() -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_direction_artifact", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    class _ArtifactLike:
+        def __init__(self, payload: dict[str, Any]) -> None:
+            self._payload = payload
+
+        def result(self) -> dict[str, Any]:
+            return self._payload
+
+    artifact_like = _ArtifactLike(
+        module.import_market_subspace(
+            state_key="market_mean",
+            layers=[4],
+            components_per_layer=4,
+        )["payload"]
+    )
+    result = module.import_market_direction(
+        target_name="leader_axis",
+        subspace_payload=artifact_like,
+    )
+
+    assert result["payload"]["kind"] == "direction_result"
+    assert result["payload"]["summary"]["target_name"] == "leader_axis"
+
+
+def test_synthetic_market_build_prompt_metadata_trims_section_trailing_whitespace() -> None:
+    module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
+    spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_metadata", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    rendered = (
+        "SYSTEM\n"
+        "## MARKET SNAPSHOT\n"
+        "asset line\n"
+        "\n\n"
+        "## ACTIVE STRATEGIES\n"
+        "strategy line\n"
+    )
+
+    metadata = module.build_prompt_metadata(rendered)
+    market = metadata["token_sections"]["market"]
+
+    assert rendered[market["char_start"] : market["char_end"]] == "## MARKET SNAPSHOT\nasset line"
 
 
 def test_pipelines_v2_cli_workflow_plan_loads_python_file(capsys: pytest.CaptureFixture[str]) -> None:
@@ -4292,6 +5157,83 @@ def test_pipelines_v2_cli_tracks_runs_in_local_registry(tmp_path: Path, monkeypa
     assert exit_code == 0
     assert show_payload["run"]["run_id"] == run_id
     assert [step["step_name"] for step in show_payload["steps"]] == ["capture", "probe", "report"]
+    assert show_payload["progress"]["run"]["status"] == "completed"
+    assert show_payload["progress"]["steps"]["report"]["status"] == "completed"
+
+
+def test_pipelines_v2_cli_workflow_run_logging_emits_progress_to_stderr(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    workflow_file = _write_cli_local_workflow_file(tmp_path)
+    monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
+
+    exit_code = pipelines_v2_cli_main(
+        [
+            "workflow",
+            "run",
+            "--file",
+            str(workflow_file),
+            "--logging",
+            "INFO",
+        ]
+    )
+    captured = capsys.readouterr()
+    run_payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert run_payload["workflow"] == "cli_local_workflow"
+    assert "workflow started name=cli_local_workflow" in captured.err
+    assert "workflow progress run=" in captured.err
+    assert "step completed name=report" in captured.err
+    assert "workflow completed name=cli_local_workflow" in captured.err
+
+
+def test_workflow_result_payload_serializes_inline_transform_results() -> None:
+    payload = _workflow_result_payload(
+        "inline_workflow",
+        WorkflowResult(
+            run_id="wr_inline",
+            workflow_hash="hash_inline",
+            step_results={
+                "seed": InlineOperationArtifact(payload={"kind": "transform_result", "summary": {"value": 3}})
+            },
+        ),
+    )
+
+    assert payload["steps"]["seed"]["artifact_id"] is None
+    assert payload["steps"]["seed"]["artifact_kind"] == "inline_transform"
+    assert payload["steps"]["seed"]["summary"] == {"value": 3}
+
+
+def test_execute_artifact_operation_transform_does_not_import_readout_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pipelines_v2.operations.execution as execution_module
+
+    original_import = builtins.__import__
+
+    def guarded_import(
+        name: str,
+        globals: dict[str, Any] | None = None,
+        locals: dict[str, Any] | None = None,
+        fromlist: tuple[str, ...] = (),
+        level: int = 0,
+    ) -> Any:
+        if name == "sklearn" or name.startswith("sklearn."):
+            raise AssertionError(f"unexpected readout dependency import: {name}")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    execution_module = importlib.reload(execution_module)
+
+    result = execution_module.execute_artifact_operation(
+        TransformSpec(builder=TransformBuilder.from_function(_inline_transform_seed), inputs={"value": 7})
+    )
+
+    assert result.payload["kind"] == "transform_result"
+    assert result.payload["value"] == 7
 
 
 def test_pipelines_v2_cli_rerun_step_and_from_step_use_prior_run_artifacts(
@@ -4496,45 +5438,66 @@ def test_runner_spec_round_trips_from_dict() -> None:
     assert spec.to_runner().identity()["kind"] == "modal"
 
 
-def test_activation_patch_spec_requires_target_token_sections_for_section_selectors() -> None:
+def test_patched_generation_spec_requires_target_token_sections_for_section_selectors() -> None:
     dataset = make_toy_dataset()
 
     with pytest.raises(SpecValidationError, match="target-side token-section metadata source"):
-        ActivationPatchSpec(
+        PatchedGenerationSpec(
             engine=ToyEngine(),
             dataset=dataset,
-            source_feature="placeholder_feature",
+            patch=InterchangePatch(
+                activation_bank="placeholder_bank",
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.section("BODY"),
+            ),
             pair_by=dataset.cases("case_key"),
             target_when=dataset.labels("class").equals("positive"),
             donor_when=dataset.labels("class").equals("negative"),
-            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
-            target_tokens=TokenSelector.section("BODY"),
             generation=GenerationSpec(enabled=True, max_tokens=2),
-            row_evaluator=TransformBuilder.from_function(_activation_patch_row_evaluator),
         )
 
 
-def test_activation_patch_spec_round_trips() -> None:
+def test_patch_and_generation_specs_round_trip() -> None:
     dataset = make_toy_dataset()
-    spec = ActivationPatchSpec(
+    patch = InterchangePatch(
+        activation_bank="placeholder_bank",
+        write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+        target_tokens=TokenSelector.full_sequence(),
+    )
+    generation = GenerationRunSpec(
         engine=ToyEngine(),
         dataset=dataset,
-        source_feature="placeholder_feature",
+        select_when=dataset.labels("class").equals("positive"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+    patched = PatchedGenerationSpec(
+        engine=ToyEngine(),
+        dataset=dataset,
+        patch=patch,
         pair_by=dataset.cases("case_key"),
         target_when=dataset.labels("class").equals("positive"),
         donor_when=dataset.labels("class").equals("negative"),
-        write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
-        target_tokens=TokenSelector.full_sequence(),
         generation=GenerationSpec(enabled=True, max_tokens=2),
-        row_evaluator=TransformBuilder.from_function(_activation_patch_row_evaluator),
+    )
+    comparison = PatchComparisonSpec(
+        baseline="baseline_ref",
+        variants={"main": "patched_ref"},
+        row_evaluator=TransformBuilder.from_function(_patch_comparison_row_evaluator),
     )
 
-    restored = ActivationPatchSpec.from_dict(spec.to_dict())
+    restored_patch = ActivationPatchSpec.from_dict(patch.to_dict())
+    restored_generation = GenerationRunSpec.from_dict(generation.to_dict())
+    restored_patched = PatchedGenerationSpec.from_dict(patched.to_dict())
+    restored_comparison = PatchComparisonSpec.from_dict(comparison.to_dict())
 
-    assert restored.write_site.site == "resid_post"
-    assert restored.write_site.layers == (0,)
-    assert restored.generation.enabled is True
-    assert restored.target_tokens.kind == "full_sequence"
+    assert restored_patch.write_site.site == "resid_post"
+    assert restored_patch.write_site.layers == (0,)
+    assert restored_patch.target_tokens.kind == "full_sequence"
+    assert restored_generation.generation.enabled is True
+    assert restored_generation.select_when.op == "equals"
+    assert restored_patched.patch.write_site.layers == (0,)
+    assert restored_patched.generation.max_tokens == 2
+    assert sorted(restored_comparison.variants) == ["main"]
 
 
 def test_activation_patch_request_helper_rebases_query_positions_and_drops_absolute_positions() -> None:
@@ -4579,6 +5542,133 @@ def test_activation_patch_request_helper_rebases_query_positions_and_drops_absol
     assert "target_positions" not in payload
 
 
+def test_activation_patch_request_helper_matches_suffixed_request_ids() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-1",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "target_layers": [24],
+                            "target_positions": [16],
+                            "donor_example_key": "donor-1",
+                            "donor_positions": [9],
+                            "case_key": "pair-1",
+                            "control_name": "",
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1-abc"],
+            num_computed_tokens_cpu=[12],
+            num_prompt_tokens=[26],
+        ),
+        num_scheduled_tokens=[14],
+    )
+
+    assert len(helper.current_step_specs) == 1
+    payload = helper.current_step_specs[0]["patch_spec"]
+    assert payload["query_positions"] == [4]
+    assert payload["donor_positions"] == [9]
+
+
+def test_activation_patch_request_helper_rebases_subspace_query_positions_without_donor_positions() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-1",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "operator": "project_out",
+                            "target_layers": [24],
+                            "target_positions": [16, 17],
+                            "source_layer_map": {"24": 24},
+                            "component_indices_by_layer": {"24": [0, 1]},
+                            "strength": 1.0,
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1"],
+            num_computed_tokens_cpu=[12],
+            num_prompt_tokens=[26],
+        ),
+        num_scheduled_tokens=[14],
+    )
+
+    assert len(helper.current_step_specs) == 1
+    payload = helper.current_step_specs[0]["patch_spec"]
+    assert payload["query_positions"] == [4, 5]
+
+
+def test_activation_patch_request_helper_rebases_residual_path_target_read_positions_per_chunk() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-1",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "operator": "residual_path",
+                            "target_layers": [24],
+                            "target_positions": [11, 13, 15],
+                            "donor_example_key": "donor-1",
+                            "donor_positions": [21, 23, 25],
+                            "target_read_positions": [31, 33, 35],
+                            "transport": "delta",
+                            "path_edges": [{"source_layer": 4, "write_layer": 24, "weight": 1.0}],
+                            "case_key": "pair-1",
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1"],
+            num_computed_tokens_cpu=[12],
+            num_prompt_tokens=[20],
+        ),
+        num_scheduled_tokens=[2],
+    )
+
+    assert len(helper.current_step_specs) == 1
+    payload = helper.current_step_specs[0]["patch_spec"]
+    assert payload["query_positions"] == [1]
+    assert payload["donor_positions"] == [23]
+    assert payload["target_read_positions"] == [33]
+    assert payload["covered_abs_positions"] == [13]
+
+
 def test_collect_patch_stats_matches_short_request_ids() -> None:
     from types import SimpleNamespace
 
@@ -4607,7 +5697,648 @@ def test_collect_patch_stats_matches_short_request_ids() -> None:
     }
 
 
-def test_local_runner_executes_activation_patch_with_toy_engine(tmp_path: Path) -> None:
+def test_record_patch_stats_merges_coverage_spans() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.patching.state import _record_patch_stats
+
+    model = SimpleNamespace(_v2_activation_patch_stats_by_req={})
+
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "covered_abs_spans": [[10, 14]],
+            "covered_abs_tokens": 4,
+            "target_abs_tokens": 8,
+            "coverage_fraction": 0.5,
+        },
+    )
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "covered_abs_spans": [[14, 18]],
+            "covered_abs_tokens": 4,
+            "target_abs_tokens": 8,
+            "coverage_fraction": 0.5,
+        },
+    )
+
+    assert model._v2_activation_patch_stats_by_req["req-1"][4]["covered_abs_spans"] == [[10, 18]]
+    assert model._v2_activation_patch_stats_by_req["req-1"][4]["covered_abs_tokens"] == 8
+    assert model._v2_activation_patch_stats_by_req["req-1"][4]["coverage_fraction"] == 1.0
+
+
+def test_record_patch_stats_merges_residual_path_chunk_scalars_without_last_chunk_overwrite() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.patching.state import _record_patch_stats
+
+    model = SimpleNamespace(_v2_activation_patch_stats_by_req={})
+
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "residual_path",
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "donor_positions": [10, 11],
+            "target_read_positions": [20, 21],
+            "covered_abs_spans": [[10, 12]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 3.0,
+            "replace_alpha": 0.0,
+        },
+    )
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "residual_path",
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "donor_positions": [12, 13],
+            "target_read_positions": [22, 23],
+            "covered_abs_spans": [[20, 22]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 4.0,
+            "replace_alpha": 0.0,
+        },
+    )
+
+    merged = model._v2_activation_patch_stats_by_req["req-1"][4]
+    assert merged["chunk_count"] == 2
+    assert len(merged["chunk_stats"]) == 2
+    assert merged["token_count"] == 4
+    assert merged["delta_norm_raw"] == pytest.approx(5.0)
+    assert merged["covered_abs_spans"] == [[10, 12], [20, 22]]
+    assert merged["covered_abs_tokens"] == 4
+    assert merged["coverage_fraction"] == 1.0
+    assert "query_positions" not in merged
+    assert "donor_positions" not in merged
+    assert "target_read_positions" not in merged
+
+
+def test_record_patch_stats_keeps_chunk_stats_for_multichunk_subspace_rows() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.patching.state import _record_patch_stats
+
+    model = SimpleNamespace(_v2_activation_patch_stats_by_req={})
+
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "project_out",
+            "strength": 1.0,
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "covered_abs_spans": [[10, 12]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 1.0,
+            "selected_coeff_before": [0.5],
+            "selected_coeff_after": [0.0],
+            "selected_component_count": 1,
+        },
+    )
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "project_out",
+            "strength": 1.0,
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "covered_abs_spans": [[12, 14]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 2.0,
+            "selected_coeff_before": [0.25],
+            "selected_coeff_after": [0.0],
+            "selected_component_count": 1,
+        },
+    )
+
+    merged = model._v2_activation_patch_stats_by_req["req-1"][4]
+    assert merged["chunk_count"] == 2
+    assert len(merged["chunk_stats"]) == 2
+    assert merged["token_count"] == 4
+    assert merged["covered_abs_spans"] == [[10, 14]]
+    assert merged["covered_abs_tokens"] == 4
+    assert merged["coverage_fraction"] == 1.0
+    assert "delta_norm_raw" not in merged
+    assert "selected_coeff_before" not in merged
+    assert "selected_coeff_after" not in merged
+
+
+def test_harvest_batch_patch_stats_residual_path_includes_runtime_coverage() -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    from pipelines_v2.engine.vllm.activation_patch_core import harvest_batch_patch_stats
+
+    model = SimpleNamespace(
+        _v2_activation_patch_stats_by_req={},
+        _v2_activation_patch_batch_tensor_stats={
+            4: {
+                "valid": torch.tensor([1], dtype=torch.int32),
+                "scalars": torch.tensor([[1.25, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]], dtype=torch.float32),
+                "coeff_before": torch.zeros((1, 1), dtype=torch.float32),
+                "coeff_after": torch.zeros((1, 1), dtype=torch.float32),
+            }
+        },
+    )
+    batch_specs = [
+        {
+            "req_id": "req-1",
+            "patch_spec": {
+                "operator": "residual_path",
+                "target_layers": [4],
+                "query_positions": [0, 1],
+                "target_abs_positions": [10, 11],
+                "covered_abs_positions": [10, 11],
+                "example_key": "target-1",
+                "donor_example_key": "donor-1",
+                "case_key": "case-1",
+                "transport": "delta",
+                "path_edges": [{"source_layer": 4, "write_layer": 4, "weight": 1.0}],
+                "source_layer_map": {"4": 4},
+            },
+        }
+    ]
+
+    harvest_batch_patch_stats(model, batch_specs)
+
+    stats = model._v2_activation_patch_stats_by_req["req-1"][4]
+    assert stats["status"] == "ok"
+    assert stats["operator"] == "residual_path"
+    assert stats["delta_norm_raw"] == pytest.approx(1.25)
+    assert stats["covered_abs_spans"] == [[10, 12]]
+    assert stats["covered_abs_tokens"] == 2
+    assert stats["target_abs_tokens"] == 2
+    assert stats["coverage_fraction"] == pytest.approx(1.0)
+    assert stats["path_edges"] == [{"source_layer": 4, "write_layer": 4, "weight": 1.0}]
+
+
+def test_residual_path_batch_custom_op_records_stats() -> None:
+    import torch
+
+    from pipelines_v2.engine.vllm.patching.custom_ops import register_torch_library_residual_path_batch_op
+
+    register_torch_library_residual_path_batch_op()
+
+    hidden = torch.zeros((6, 4), dtype=torch.float32)
+    batch_query_positions = torch.tensor([[1, 2]], dtype=torch.int32)
+    batch_payload_rows = torch.full((1, 2, 4), 0.5, dtype=torch.float32)
+    batch_token_counts = torch.tensor([2], dtype=torch.int32)
+    batch_transport_modes = torch.tensor([0], dtype=torch.int32)
+    batch_replace_alphas = torch.tensor([0.0], dtype=torch.float32)
+    batch_active = torch.tensor([1], dtype=torch.int32)
+    stats_valid = torch.zeros((1,), dtype=torch.int32)
+    stats_scalars = torch.zeros((1, 8), dtype=torch.float32)
+
+    patched = torch.ops.xenon_activation_patch_v2.residual_path_batch(
+        hidden,
+        batch_query_positions,
+        batch_payload_rows,
+        batch_token_counts,
+        batch_transport_modes,
+        batch_replace_alphas,
+        batch_active,
+        stats_valid,
+        stats_scalars,
+    )
+
+    assert torch.allclose(patched[1:3], torch.full((2, 4), 0.5, dtype=torch.float32))
+    assert int(stats_valid[0].item()) == 1
+    assert float(stats_scalars[0, 0].item()) > 0.0
+    assert float(stats_scalars[0, 1].item()) == pytest.approx(2.0)
+
+
+def test_set_batch_patch_specs_uses_dedicated_residual_path_runtime_fields() -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    from pipelines_v2.engine.vllm.patching.state import set_batch_patch_specs
+
+    model = SimpleNamespace(
+        _v2_activation_patch_bank={
+            4: {
+                "donor-1": {"values": torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)},
+                "target-1": {"values": torch.tensor([[0.5, 0.0], [0.0, 0.5]], dtype=torch.float32)},
+            }
+        },
+        _v2_activation_patch_subspace={},
+        _v2_activation_patch_batch_runtime_state={},
+        _v2_activation_patch_batch_tensor_stats={},
+    )
+
+    set_batch_patch_specs(
+        model,
+        [
+            {
+                "req_id": "req-1",
+                "patch_spec": {
+                    "operator": "residual_path",
+                    "target_layers": [4],
+                    "query_positions": [0, 1],
+                    "donor_example_key": "donor-1",
+                    "donor_positions": [0, 1],
+                    "target_read_positions": [0, 1],
+                    "example_key": "target-1",
+                    "transport": "replace",
+                    "path_edges": [{"source_layer": 4, "write_layer": 4, "weight": 0.5}],
+                    "strength": 2.0,
+                },
+            }
+        ],
+    )
+
+    layer_state = model._v2_activation_patch_batch_runtime_state[4]
+    assert int(layer_state["residual_path_transport_modes"][0].item()) == 1
+    assert float(layer_state["residual_path_replace_alphas"][0].item()) == pytest.approx(1.0)
+    assert int(layer_state["row_counts"][0].item()) == 0
+    assert float(layer_state["strengths"][0].item()) == pytest.approx(0.0)
+
+
+def test_run_custom_op_passes_residual_path_state_as_named_kwargs() -> None:
+    import torch
+
+    from pipelines_v2.engine.vllm.activation_patch_math import RESIDUAL_PATH_MODE_ID
+    from pipelines_v2.engine.vllm.patching.custom_ops import run_custom_op
+
+    seen: dict[str, object] = {}
+
+    def fake_custom_op(*args: object, **kwargs: object) -> torch.Tensor:
+        seen["args"] = args
+        seen["kwargs"] = kwargs
+        return args[0]  # type: ignore[index]
+
+    hidden = torch.zeros((2, 3), dtype=torch.float32)
+    run_custom_op(
+        hidden=hidden,
+        custom_op=fake_custom_op,
+        operator_id=RESIDUAL_PATH_MODE_ID,
+        mean=torch.zeros((3,), dtype=torch.float32),
+        scale=torch.ones((3,), dtype=torch.float32),
+        safe_scale=torch.ones((3,), dtype=torch.float32),
+        query_positions=torch.zeros((1, 1), dtype=torch.int32),
+        token_counts=torch.zeros((1,), dtype=torch.int32),
+        donor_rows=torch.zeros((1, 1, 3), dtype=torch.float32),
+        selected_rows=torch.zeros((1, 1, 3), dtype=torch.float32),
+        row_counts=torch.zeros((1,), dtype=torch.int32),
+        strengths=torch.zeros((1,), dtype=torch.float32),
+        active=torch.zeros((1,), dtype=torch.int32),
+        stats_valid=torch.zeros((1,), dtype=torch.int32),
+        stats_scalars=torch.zeros((1, 8), dtype=torch.float32),
+        stats_coeff_before=torch.zeros((1, 1), dtype=torch.float32),
+        stats_coeff_after=torch.zeros((1, 1), dtype=torch.float32),
+        residual_path_transport_modes=torch.tensor([1], dtype=torch.int32),
+        residual_path_replace_alphas=torch.tensor([0.25], dtype=torch.float32),
+    )
+
+    kwargs = seen["kwargs"]
+    assert isinstance(kwargs, dict)
+    assert "batch_residual_path_transport_modes" in kwargs
+    assert "batch_residual_path_replace_alphas" in kwargs
+
+
+def test_activation_patch_model_init_hook_restores_without_mutating_layer_class() -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    from pipelines_v2.engine.vllm.patching.hooks import (
+        install_activation_patch_model_init_hook,
+        restore_activation_patch_model_init_hook,
+    )
+
+    class DummyLayer(torch.nn.Module):
+        def forward(self, value: torch.Tensor) -> torch.Tensor:
+            return value + 1
+
+    class DummyModel:
+        def __init__(self) -> None:
+            self.model = SimpleNamespace(layers=[DummyLayer()])
+
+    original_model_init = DummyModel.__init__
+    original_layer_forward = DummyLayer.forward
+
+    assert install_activation_patch_model_init_hook(DummyModel) is True
+    patched_model = DummyModel()
+    patched_layer = patched_model.model.layers[0]
+
+    assert getattr(patched_layer, "_v2_activation_patch_instance_hooked", False) is True
+    assert callable(getattr(patched_layer, "_v2_activation_patch_original_forward", None))
+    assert DummyLayer.forward is original_layer_forward
+
+    assert restore_activation_patch_model_init_hook(DummyModel) is True
+    assert DummyModel.__init__ is original_model_init
+
+    restored_model = DummyModel()
+    restored_layer = restored_model.model.layers[0]
+    assert not getattr(restored_layer, "_v2_activation_patch_instance_hooked", False)
+
+
+def test_project_out_batch_custom_op_preserves_valid_stats_across_invalid_followup() -> None:
+    import torch
+
+    from pipelines_v2.engine.vllm.activation_patch_core import (
+        _register_torch_library_project_out_batch_op,
+    )
+
+    _register_torch_library_project_out_batch_op()
+
+    hidden = torch.randn((12, 4), dtype=torch.float32)
+    mean = torch.zeros((4,), dtype=torch.float32)
+    scale = torch.ones((4,), dtype=torch.float32)
+    safe_scale = torch.ones((4,), dtype=torch.float32)
+    batch_selected_rows = torch.eye(4, dtype=torch.float32)[:2].unsqueeze(0)
+    batch_row_counts = torch.tensor([2], dtype=torch.int32)
+    batch_strengths = torch.tensor([1.0], dtype=torch.float32)
+    batch_active = torch.tensor([1], dtype=torch.int32)
+    stats_valid = torch.zeros((1,), dtype=torch.int32)
+    stats_scalars = torch.zeros((1, 8), dtype=torch.float32)
+    stats_coeff_before = torch.zeros((1, 2), dtype=torch.float32)
+    stats_coeff_after = torch.zeros((1, 2), dtype=torch.float32)
+
+    torch.ops.xenon_activation_patch_v2.project_out_batch(
+        hidden,
+        mean,
+        scale,
+        safe_scale,
+        batch_selected_rows,
+        batch_row_counts,
+        torch.tensor([[2, 6]], dtype=torch.int32),
+        batch_strengths,
+        batch_active,
+        stats_valid,
+        stats_scalars,
+        stats_coeff_before,
+        stats_coeff_after,
+    )
+
+    valid_after_prefill = stats_valid.clone()
+    scalars_after_prefill = stats_scalars.clone()
+    coeff_before_after_prefill = stats_coeff_before.clone()
+    coeff_after_after_prefill = stats_coeff_after.clone()
+
+    torch.ops.xenon_activation_patch_v2.project_out_batch(
+        hidden,
+        mean,
+        scale,
+        safe_scale,
+        batch_selected_rows,
+        batch_row_counts,
+        torch.tensor([[40, 44]], dtype=torch.int32),
+        batch_strengths,
+        batch_active,
+        stats_valid,
+        stats_scalars,
+        stats_coeff_before,
+        stats_coeff_after,
+    )
+
+    assert valid_after_prefill.tolist() == [1]
+    assert stats_valid.tolist() == [1]
+    assert torch.allclose(stats_scalars, scalars_after_prefill)
+    assert torch.allclose(stats_coeff_before, coeff_before_after_prefill)
+    assert torch.allclose(stats_coeff_after, coeff_after_after_prefill)
+
+
+def test_token_selector_section_deduplicates_positions() -> None:
+    positions = TokenSelector.section("BODY").resolve(
+        6,
+        token_sections={"BODY": [1, 1, 3, 3, 5]},
+    )
+
+    assert positions == [1, 3, 5]
+
+
+def test_patched_generation_plan_rejects_missing_donor_rows_from_source_feature(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"), catalog=FileCatalog(tmp_path / "catalog"))
+
+    class FakeFeature:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "activation_bank_result",
+                "site": "resid_post",
+                "layers": {
+                    "0": {
+                        "ex_a": {"values": [[0.0, 0.0, 0.0, 0.0]], "token_sections": {"BODY": [0]}},
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=ToyEngine(sequence_length=8),
+        dataset=dataset,
+        patch=InterchangePatch(
+            activation_bank=FakeFeature(),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+        ),
+        pair_by=dataset.cases("case_key"),
+        target_when=dataset.labels("class").equals("positive"),
+        donor_when=dataset.labels("class").equals("negative"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    plan = runner.plan(spec)
+
+    assert any("missing donor activation rows" in error for error in plan.errors)
+
+
+def test_patched_generation_plan_rejects_missing_donor_section_metadata(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"), catalog=FileCatalog(tmp_path / "catalog"))
+
+    class FakeFeature:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "activation_bank_result",
+                "site": "resid_post",
+                "layers": {
+                    "0": {
+                        "ex_a": {"values": [[0.0, 0.0, 0.0, 0.0]], "token_sections": {"BODY": [0]}},
+                        "ex_b": {"values": [[1.0, 1.0, 1.0, 1.0]]},
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=ToyEngine(sequence_length=8),
+        dataset=dataset,
+        patch=InterchangePatch(
+            activation_bank=FakeFeature(),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+            donor_tokens=TokenSelector.section("BODY"),
+        ),
+        pair_by=dataset.cases("case_key"),
+        target_when=dataset.labels("class").equals("positive"),
+        donor_when=dataset.labels("class").equals("negative"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    plan = runner.plan(spec)
+
+    assert any("patch.donor_tokens" in error for error in plan.errors)
+
+
+def test_patched_generation_plan_skips_local_download_for_remote_activation_bank(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"), catalog=FileCatalog(tmp_path / "catalog"))
+
+    activation_bank = OperationArtifact(
+        _manifest=ArtifactManifest(
+            artifact_id="activation_bank_remote",
+            artifact_kind="activation_bank",
+            schema_version=1,
+            operation_spec_hash="spec",
+            operation_semantic_hash="semantic",
+            created_at="2026-04-17T00:00:00+00:00",
+            engine={},
+            runner={"kind": "modal"},
+            input_artifact_refs=(),
+            example_coverage={"example_count": 2},
+            storage_refs={
+                "result": {
+                    "store": "modal_volume",
+                    "name": "xenon-data",
+                    "path": "/data/artifacts/activation_bank_remote/result.json",
+                    "format": "json",
+                    "bytes": 3_000_000_000,
+                }
+            },
+            metadata={},
+            workflow_context={},
+        ),
+        store=ModalVolumeStore(name="xenon-data", root="/data/artifacts"),
+    )
+
+    class FakePathMask:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "explicit_path_mask_result",
+                "edges": [{"source_layer": 0, "write_layer": 0, "weight": 1.0}],
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=ToyEngine(sequence_length=8),
+        dataset=dataset,
+        patch=ResidualPathPatch(
+            activation_bank=activation_bank,
+            path_mask=FakePathMask(),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+            read_tokens=TokenSelector.full_sequence(),
+            transport="delta",
+        ),
+        pair_by=dataset.cases("case_key"),
+        target_when=dataset.labels("class").equals("positive"),
+        donor_when=dataset.labels("class").equals("negative"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    plan = runner.plan(spec)
+
+    assert plan.errors == ()
+
+
+def test_toy_engine_intervention_skips_missing_donor_rows_without_crashing() -> None:
+    dataset = make_toy_dataset()
+
+    class FakeFeature:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "activation_bank_result",
+                "site": "resid_post",
+                "layers": {
+                    "0": {
+                        "ex_a": {"values": [[0.0, 0.0, 0.0, 0.0]], "token_sections": {"BODY": [0]}},
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=ToyEngine(sequence_length=8),
+        dataset=dataset,
+        patch=InterchangePatch(
+            activation_bank=FakeFeature(),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+        ),
+        pair_by=dataset.cases("case_key"),
+        target_when=dataset.labels("class").equals("positive"),
+        donor_when=dataset.labels("class").equals("negative"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    result = ToyEngine(sequence_length=8).intervene(spec)
+
+    assert result.summary["patched_count"] == 0
+    assert result.summary["skipped_count"] == 1
+    assert result.rows[0]["status"] == "skipped"
+    assert "missing donor activation rows" in result.rows[0]["skip_reason"]
+
+
+def test_patch_comparison_rejects_variant_row_set_mismatch() -> None:
+    class FakeArtifact:
+        def __init__(self, rows: list[dict[str, Any]]) -> None:
+            self._rows = rows
+
+        def result(self) -> dict[str, Any]:
+            return {"rows": list(self._rows)}
+
+    class FakeBuilder:
+        local_python_sources: tuple[str, ...] = ()
+
+        def build(self, payload: dict[str, Any]) -> dict[str, Any]:
+            return {"metrics": {"seen": True}}
+
+    with pytest.raises(SpecValidationError, match="row sets must match exactly"):
+        run_patch_comparison(
+            PatchComparisonSpec(
+                baseline=FakeArtifact([{"example_key": "a", "example": {"key": "a"}}]),
+                variants={"main": FakeArtifact([{"example_key": "a"}, {"example_key": "b"}])},
+                row_evaluator=FakeBuilder(),
+            )
+        )
+
+
+def test_local_runner_executes_split_activation_patch_flow_with_toy_engine(tmp_path: Path) -> None:
     dataset = make_toy_dataset()
     artifacts = LocalArtifactStore(tmp_path / "artifacts")
     catalog = FileCatalog(tmp_path / "catalog")
@@ -4628,29 +6359,730 @@ def test_local_runner_executes_activation_patch_with_toy_engine(tmp_path: Path) 
         )
     )
 
-    patch = runner.run(
-        ActivationPatchSpec(
+    baseline = runner.run(
+        GenerationRunSpec(
             engine=ToyEngine(sequence_length=8),
             dataset=dataset,
-            source_feature=capture.feature("resid_full"),
-            pair_by=dataset.cases("case_key"),
-            target_when=dataset.labels("class").equals("positive"),
-            donor_when=dataset.labels("class").equals("negative"),
-            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
-            target_tokens=TokenSelector.full_sequence(),
+            select_when=dataset.labels("class").equals("positive"),
             generation=GenerationSpec(enabled=True, max_tokens=2),
-            row_evaluator=TransformBuilder.from_function(_activation_patch_row_evaluator),
+        )
+    )
+    activation_bank = runner.run(
+        ActivationBankSpec(
+            feature=capture.feature("resid_full"),
+            layers=[0],
         )
     )
 
-    payload = patch.result()
+    patch = runner.run(
+        PatchedGenerationSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            patch=InterchangePatch(
+                activation_bank=activation_bank,
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.full_sequence(),
+            ),
+            pair_by=dataset.cases("case_key"),
+            target_when=dataset.labels("class").equals("positive"),
+            donor_when=dataset.labels("class").equals("negative"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+        )
+    )
 
-    assert payload["kind"] == "activation_patch_result"
-    assert payload["summary"]["patched_count"] == 1
-    assert payload["summary"]["metrics"]["flipped"]["kind"] == "boolean_rate"
-    assert payload["summary"]["metrics"]["flipped"]["value"] == pytest.approx(1.0)
-    assert len(payload["rows"]) == 1
-    assert payload["rows"][0]["status"] == "ok"
-    assert payload["rows"][0]["baseline"]["generated_text"] == "toy_generation:positive"
-    assert payload["rows"][0]["patched"]["generated_text"] == "toy_generation:negative"
-    assert payload["rows"][0]["patch_stats"]["0"]["token_count"] == 8
+    comparison = runner.run(
+        PatchComparisonSpec(
+            baseline=baseline,
+            variants={"main": patch},
+            row_evaluator=TransformBuilder.from_function(_patch_comparison_row_evaluator),
+        )
+    )
+
+    baseline_payload = baseline.result()
+    patch_payload = patch.result()
+    comparison_payload = comparison.result()
+
+    assert baseline_payload["kind"] == "generation_run_result"
+    assert baseline_payload["summary"]["example_count"] == 1
+    assert baseline_payload["rows"][0]["generated_text"] == "toy_generation:ex_a"
+
+    assert patch_payload["kind"] == "patched_generation_result"
+    assert patch_payload["summary"]["patched_count"] == 1
+    assert len(patch_payload["rows"]) == 1
+    assert patch_payload["rows"][0]["status"] == "ok"
+    assert patch_payload["rows"][0]["generated_text"] == "toy_generation:negative"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["token_count"] == 8
+    assert patch.manifest().example_coverage["example_keys"] == ["ex_a"]
+    assert patch.manifest().example_coverage["example_count"] == 1
+    assert comparison_payload["kind"] == "patch_comparison_result"
+    assert comparison_payload["summary"]["compared_count"] == 1
+    assert comparison_payload["summary"]["metrics"]["flipped"]["kind"] == "boolean_rate"
+    assert comparison_payload["summary"]["metrics"]["flipped"]["value"] == pytest.approx(1.0)
+
+
+def test_local_runner_executes_subspace_spec_and_project_out_patch_with_toy_engine(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = LocalRunner(artifacts=artifacts, catalog=catalog)
+
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+    subspace = runner.run(
+        SubspaceSpec(
+            feature=capture.feature("resid_full"),
+            layers=[0],
+            components=2,
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+        )
+    )
+    patched = runner.run(
+        PatchedGenerationSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            patch=ProjectOutPatch(
+                subspace=subspace,
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.full_sequence(),
+                component_indices_by_layer={0: (0, 1)},
+            ),
+            select_when=dataset.labels("class").equals("positive"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+        )
+    )
+
+    subspace_payload = subspace.result()
+    patch_payload = patched.result()
+
+    assert subspace_payload["kind"] == "subspace_result"
+    assert subspace_payload["summary"]["layer_count"] == 1
+    assert subspace_payload["layers"]["0"]["component_count"] == 2
+    assert patch_payload["kind"] == "patched_generation_result"
+    assert patch_payload["summary"]["patched_count"] == 1
+    assert patch_payload["rows"][0]["generated_text"] == "toy_generation:project_out:ex_a"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["operator"] == "project_out"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["source_layer"] == 0
+    assert patched.manifest().example_coverage["example_keys"] == ["ex_a"]
+    assert patched.manifest().example_coverage["example_count"] == 1
+
+
+def test_local_runner_executes_random_control_patch_with_toy_engine(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = LocalRunner(artifacts=artifacts, catalog=catalog)
+
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+    subspace = runner.run(
+        SubspaceSpec(
+            feature=capture.feature("resid_full"),
+            layers=[0],
+            components=2,
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+        )
+    )
+    patched = runner.run(
+        PatchedGenerationSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            patch=RandomControlPatch(
+                subspace=subspace,
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.full_sequence(),
+                component_indices_by_layer={0: (0, 1)},
+                random_seed=7,
+            ),
+            select_when=dataset.labels("class").equals("positive"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+        )
+    )
+
+    patch_payload = patched.result()
+
+    assert patch_payload["summary"]["patched_count"] == 1
+    assert patch_payload["rows"][0]["generated_text"] == "toy_generation:random_control:ex_a"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["operator"] == "random_control"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["selected_component_count"] == 2
+
+
+def test_local_runner_executes_add_direction_patch_with_toy_engine(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = LocalRunner(artifacts=artifacts, catalog=catalog)
+
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+    subspace = runner.run(
+        SubspaceSpec(
+            feature=capture.feature("resid_full"),
+            layers=[0],
+            components=2,
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+        )
+    )
+    direction = runner.run(
+        DirectionSpec(
+            feature=capture.feature("resid_full"),
+            layers=[0],
+            positive=dataset.labels("class").equals("positive"),
+            negative=dataset.labels("class").equals("negative"),
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+            subspace=subspace,
+        )
+    )
+    patched = runner.run(
+        PatchedGenerationSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            patch=AddDirectionPatch(
+                direction=direction,
+                subspace=subspace,
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.full_sequence(),
+                component_indices_by_layer={0: (0, 1)},
+            ),
+            select_when=dataset.labels("class").equals("positive"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+        )
+    )
+
+    patch_payload = patched.result()
+
+    assert patch_payload["summary"]["patched_count"] == 1
+    assert patch_payload["rows"][0]["generated_text"] == "toy_generation:add_direction:ex_a"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["operator"] == "add_direction"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["source_layer"] == 0
+
+
+def test_local_runner_executes_swap_mean_patch_with_toy_engine(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = LocalRunner(artifacts=artifacts, catalog=catalog)
+
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+    centroids = runner.run(
+        CentroidSpec(
+            feature=capture.feature("resid_full"),
+            by=dataset.labels("class"),
+            layers=[0],
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+        )
+    )
+    patched = runner.run(
+        PatchedGenerationSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            patch=SwapMeanPatch(
+                centroids=centroids,
+                centroid_name="negative",
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.full_sequence(),
+            ),
+            select_when=dataset.labels("class").equals("positive"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+        )
+    )
+
+    patch_payload = patched.result()
+
+    assert patch_payload["summary"]["patched_count"] == 1
+    assert patch_payload["rows"][0]["generated_text"] == "toy_generation:swap_mean:ex_a"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["operator"] == "swap_mean"
+
+
+def test_local_runner_executes_swap_components_patch_with_toy_engine(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = LocalRunner(artifacts=artifacts, catalog=catalog)
+
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+    subspace = runner.run(
+        SubspaceSpec(
+            feature=capture.feature("resid_full"),
+            layers=[0],
+            components=2,
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+        )
+    )
+    centroids = runner.run(
+        CentroidSpec(
+            feature=capture.feature("resid_full"),
+            by=dataset.labels("class"),
+            layers=[0],
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+            subspace=subspace,
+        )
+    )
+    patched = runner.run(
+        PatchedGenerationSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            patch=SwapComponentsPatch(
+                subspace=subspace,
+                centroids=centroids,
+                centroid_name="negative",
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.full_sequence(),
+                component_indices_by_layer={0: (0, 1)},
+            ),
+            select_when=dataset.labels("class").equals("positive"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+        )
+    )
+
+    patch_payload = patched.result()
+
+    assert patch_payload["summary"]["patched_count"] == 1
+    assert patch_payload["rows"][0]["generated_text"] == "toy_generation:swap_components:ex_a"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["operator"] == "swap_components"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["selected_component_count"] == 2
+
+
+def test_local_runner_executes_residual_path_patch_with_toy_engine(tmp_path: Path) -> None:
+    dataset = make_toy_dataset()
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = LocalRunner(artifacts=artifacts, catalog=catalog)
+
+    capture = runner.run(
+        CaptureSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+    activation_bank = runner.run(
+        ActivationBankSpec(
+            feature=capture.feature("resid_full"),
+            layers=[0],
+        )
+    )
+    path_mask = runner.run(
+        ExplicitPathMaskSpec(
+            edges=(ExplicitPathEdge(source_layer=0, write_layer=0, weight=1.0),),
+        )
+    )
+    patched = runner.run(
+        PatchedGenerationSpec(
+            engine=ToyEngine(sequence_length=8),
+            dataset=dataset,
+            patch=ResidualPathPatch(
+                activation_bank=activation_bank,
+                path_mask=path_mask,
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.full_sequence(),
+                read_tokens=TokenSelector.full_sequence(),
+                transport="delta",
+            ),
+            pair_by=dataset.cases("case_key"),
+            target_when=dataset.labels("class").equals("positive"),
+            donor_when=dataset.labels("class").equals("negative"),
+            generation=GenerationSpec(enabled=True, max_tokens=2),
+        )
+    )
+
+    patch_payload = patched.result()
+
+    assert patch_payload["summary"]["patched_count"] == 1
+    assert patch_payload["rows"][0]["generated_text"] == "toy_generation:negative"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["operator"] == "residual_path"
+    assert patch_payload["rows"][0]["patch_stats"]["0"]["transport"] == "delta"
+
+
+def test_paired_request_payload_residual_path_reads_target_positions_from_activation_bank() -> None:
+    dataset = make_toy_dataset()
+    target = dataset.examples[0]
+    donor = dataset.examples[1]
+    spec = PatchedGenerationSpec(
+        engine=ToyEngine(sequence_length=8),
+        dataset=dataset,
+        patch=ResidualPathPatch(
+            activation_bank=StepRef("build_activation_bank"),
+            path_mask=StepRef("build_path_mask"),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+            read_tokens=TokenSelector.section("BODY"),
+            transport="delta",
+        ),
+        pair_by=dataset.cases("case_key"),
+        target_when=dataset.labels("class").equals("positive"),
+        donor_when=dataset.labels("class").equals("negative"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+    activation_bank = {
+        "layers": {
+            "0": {
+                "ex_a": {
+                    "values": [[0.0, 0.0], [0.0, 0.0]],
+                    "token_sections": {"BODY": [1]},
+                },
+                "ex_b": {
+                    "values": [[0.0, 0.0], [0.0, 0.0]],
+                    "token_sections": {"BODY": [1]},
+                },
+            }
+        }
+    }
+    path_mask = {"edges": [{"source_layer": 0, "write_layer": 0, "weight": 1.0}]}
+    tokenized = {
+        "token_ids": [101, 102, 103, 104],
+        "token_sections": {"BODY": [0, 1, 2, 3]},
+    }
+
+    payload = paired_request_payload(
+        spec=spec,
+        activation_bank=activation_bank,
+        path_mask_payload=path_mask,
+        target=target,
+        donor=donor,
+        case_key="case_1",
+        tokenized=tokenized,
+        target_positions=[0],
+    )
+
+    assert isinstance(payload, dict)
+    assert payload["donor_positions"] == [1]
+    assert payload["target_read_positions"] == [1]
+
+
+def test_vllm_engine_allows_noneager_project_out_subspace_patch() -> None:
+    dataset = make_toy_dataset()
+
+    class FakeSubspaceArtifact:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "subspace_result",
+                "layers": {
+                    "0": {
+                        "mean": [0.0, 0.0, 0.0, 0.0],
+                        "scale": [1.0, 1.0, 1.0, 1.0],
+                        "components": [[1.0, 0.0, 0.0, 0.0]],
+                        "named_components": {},
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(
+            model_id="Qwen/Qwen3-0.6B",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+        dataset=dataset,
+        patch=ProjectOutPatch(
+            subspace=FakeSubspaceArtifact(),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+        ),
+        select_when=dataset.labels("class").equals("positive"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    errors = spec.engine.planning_errors(spec)  # type: ignore[union-attr]
+
+    assert not any("enforce_eager=True" in error for error in errors)
+
+
+def test_register_activation_patch_subspace_preserves_placeholder_layers() -> None:
+    import torch
+
+    from pipelines_v2.engine.vllm.activation_patch_core import (
+        init_activation_patching,
+        register_activation_patch_subspace,
+    )
+
+    class DummyNorm(torch.nn.Module):
+        def __init__(self, dim: int) -> None:
+            super().__init__()
+            self.weight = torch.nn.Parameter(torch.ones((dim,), dtype=torch.float32))
+
+    class DummyLayer(torch.nn.Module):
+        def __init__(self, dim: int) -> None:
+            super().__init__()
+            self.input_layernorm = DummyNorm(dim)
+
+        def forward(self, *args: Any, **kwargs: Any) -> Any:
+            return args[1] if len(args) > 1 else args[0]
+
+    class DummyInner(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.layers = torch.nn.ModuleList([DummyLayer(4), DummyLayer(4)])
+
+    class DummyModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.model = DummyInner()
+
+    model = DummyModel()
+    init_activation_patching(model)
+
+    subspace_state = model._v2_activation_patch_subspace
+    subspace_state_id = id(subspace_state)
+    assert sorted(int(layer) for layer in subspace_state) == [0, 1]
+
+    register_activation_patch_subspace(
+        model,
+        {
+            1: {
+                "mean": [0.0, 0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, 1.0, 1.0],
+                "components": [[1.0, 0.0, 0.0, 0.0]],
+                "named_components": {"c0": 0},
+            }
+        },
+    )
+
+    updated = model._v2_activation_patch_subspace
+    assert id(updated) == subspace_state_id
+    assert sorted(int(layer) for layer in updated) == [0, 1]
+    assert int(updated[0]["components"].shape[0]) == 0
+    assert int(updated[1]["components"].shape[0]) == 1
+    assert updated[1]["named_components"] == {"c0": 0}
+
+
+def test_vllm_engine_allows_noneager_random_control_subspace_patch() -> None:
+    dataset = make_toy_dataset()
+
+    class FakeSubspaceArtifact:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "subspace_result",
+                "layers": {
+                    "0": {
+                        "mean": [0.0, 0.0, 0.0, 0.0],
+                        "scale": [1.0, 1.0, 1.0, 1.0],
+                        "components": [[1.0, 0.0, 0.0, 0.0]],
+                        "named_components": {},
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(
+            model_id="Qwen/Qwen3-0.6B",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+        dataset=dataset,
+        patch=RandomControlPatch(
+            subspace=FakeSubspaceArtifact(),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+        ),
+        select_when=dataset.labels("class").equals("positive"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    errors = spec.engine.planning_errors(spec)  # type: ignore[union-attr]
+
+    assert not any("enforce_eager=True" in error for error in errors)
+
+
+def test_vllm_engine_allows_noneager_add_direction_subspace_patch() -> None:
+    dataset = make_toy_dataset()
+
+    class FakeDirectionArtifact:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "direction_result",
+                "layers": {
+                    "0": {
+                        "raw_vector": [1.0, 0.0, 0.0, 0.0],
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(
+            model_id="Qwen/Qwen3-0.6B",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+        dataset=dataset,
+        patch=AddDirectionPatch(
+            direction=FakeDirectionArtifact(),
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+        ),
+        select_when=dataset.labels("class").equals("positive"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    errors = spec.engine.planning_errors(spec)  # type: ignore[union-attr]
+
+    assert not any("enforce_eager=True" in error for error in errors)
+    assert spec.runtime_spec().env["XENON_ACTIVATION_PATCH_COMPILED_OPERATOR"] == "subspace"  # type: ignore[union-attr]
+
+
+def test_vllm_engine_allows_noneager_swap_mean_subspace_patch() -> None:
+    dataset = make_toy_dataset()
+
+    class FakeCentroidArtifact:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "centroid_result",
+                "layers": {
+                    "0": {
+                        "centroids": {
+                            "positive": [1.0, 0.0, 0.0, 0.0],
+                        }
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(
+            model_id="Qwen/Qwen3-0.6B",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+        dataset=dataset,
+        patch=SwapMeanPatch(
+            centroids=FakeCentroidArtifact(),
+            centroid_name="positive",
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+        ),
+        select_when=dataset.labels("class").equals("positive"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    errors = spec.engine.planning_errors(spec)  # type: ignore[union-attr]
+
+    assert not any("enforce_eager=True" in error for error in errors)
+    assert spec.runtime_spec().env["XENON_ACTIVATION_PATCH_COMPILED_OPERATOR"] == "subspace"  # type: ignore[union-attr]
+
+
+def test_vllm_engine_allows_noneager_swap_components_subspace_patch() -> None:
+    dataset = make_toy_dataset()
+
+    class FakeSubspaceArtifact:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "subspace_result",
+                "layers": {
+                    "0": {
+                        "mean": [0.0, 0.0, 0.0, 0.0],
+                        "scale": [1.0, 1.0, 1.0, 1.0],
+                        "components": [[1.0, 0.0, 0.0, 0.0]],
+                        "named_components": {},
+                    }
+                },
+            }
+
+    class FakeCentroidArtifact:
+        def result(self) -> dict[str, Any]:
+            return {
+                "kind": "centroid_result",
+                "layers": {
+                    "0": {
+                        "centroids": {
+                            "positive": [1.0, 0.0, 0.0, 0.0],
+                        }
+                    }
+                },
+            }
+
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(
+            model_id="Qwen/Qwen3-0.6B",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+        dataset=dataset,
+        patch=SwapComponentsPatch(
+            subspace=FakeSubspaceArtifact(),
+            centroids=FakeCentroidArtifact(),
+            centroid_name="positive",
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            target_tokens=TokenSelector.full_sequence(),
+        ),
+        select_when=dataset.labels("class").equals("positive"),
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    errors = spec.engine.planning_errors(spec)  # type: ignore[union-attr]
+
+    assert not any("enforce_eager=True" in error for error in errors)
+    assert spec.runtime_spec().env["XENON_ACTIVATION_PATCH_COMPILED_OPERATOR"] == "subspace"  # type: ignore[union-attr]

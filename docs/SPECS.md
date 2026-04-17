@@ -34,11 +34,22 @@ The runtime entrypoint for these files is:
 
 ```bash
 uv run python -m pipelines_v2.cli workflow plan --file projects/.../specs/workflow.py
-uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py --logging INFO
 ```
 
 See [PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
 for the current `pipelines_v2` spec surface.
+
+Authoring notes for Python workflow files:
+
+- Prefer checked-in `build_dataset()`, `build_workflow(...)`, and
+  `build_runner_specs()` functions over ad hoc CLI-only construction.
+- When a workflow uses `PromptMetadataBuilder.from_function(...)` or other
+  runtime-imported local helpers, pass explicit narrow `local_python_sources`
+  such as `("pipelines_v2", "scripts")` or one project-local package root.
+- Do not rely on the default `"."` source root for Modal-backed workflows
+  unless you intentionally want the whole workspace mounted into the remote
+  image.
 
 ## Shape
 

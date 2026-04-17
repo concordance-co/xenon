@@ -119,6 +119,9 @@ The usual pattern is:
 4. run `workflow plan` and `workflow run` from `pipelines_v2.cli`
 5. use `workflow runs`, `workflow show`, `workflow resume`, `workflow rerun-step`, and `workflow rerun-from-step` for follow-up operations
 
+For long-running jobs, prefer `workflow run --logging INFO` so the CLI prints
+structured progress and remote app ids while the run is active.
+
 # Starting a New Project
 
 1. Create `./projects/{project_name}/`
@@ -256,7 +259,7 @@ uv run python -m pipelines_v2.cli workflow plan --file projects/{project_name}/{
 ## Run a workflow
 
 ```bash
-uv run python -m pipelines_v2.cli workflow run --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py --logging INFO
 ```
 
 ## Inspect workflow runs
@@ -265,6 +268,10 @@ uv run python -m pipelines_v2.cli workflow run --file projects/{project_name}/{s
 uv run python -m pipelines_v2.cli workflow runs --file projects/{project_name}/{subproject}/{phase_name}/specs/workflow.py
 uv run python -m pipelines_v2.cli workflow show --run-id <run_id>
 ```
+
+`workflow show` now includes the latest locally persisted progress snapshot for
+the run and its steps. The progress store lives under the local registry root in
+`~/.xenon/pipelines_v2/catalog/workflow_progress/` by default.
 
 ## Resume a failed run
 
@@ -299,6 +306,10 @@ When starting fresh on a new project:
 5. run the workflow through `pipelines_v2.cli`
 6. use `resume` or `rerun-*` rather than manually reconstructing partial runs
 7. keep project-specific scripts, notes, and deliverables inside the project or phase folder
+
+When a workflow needs local helper code at remote runtime, keep
+`local_python_sources` narrow and explicit. Do not mount `"."` into Modal
+unless the whole workspace is intentionally required.
 
 If something needs reusable infrastructure support for new work, add it to `pipelines_v2/`.
 If the task is explicitly about the legacy runtime, add it to `pipelines/`.

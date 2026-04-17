@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Mapping
 
 from pipelines_v2.core.paths import find_workspace_root, resolve_workspace_path
 from pipelines_v2.core.types import RuntimeSecret
@@ -15,6 +16,7 @@ from pipelines_v2.storage.modal import modal_volume_mount_path
 
 
 _REMOTE_WORKSPACE_ROOT = "/root/pipelines_v2_workspace"
+_LOG = logging.getLogger("pipelines_v2.modal")
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +33,7 @@ def run_on_modal(
     store_config: dict[str, Any],
     spec_payload: dict[str, Any],
     workflow_context: dict[str, Any] | None = None,
+    progress_callback: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Submit serialized work to Modal and return the remote result."""
 
@@ -78,6 +81,8 @@ def run_on_modal(
         "timeout": int(resources.get("timeout_seconds") or 7200),
         "serialized": True,
     }
+    if runtime_env:
+        function_kwargs["env"] = runtime_env
     if resources.get("gpu") is not None:
         function_kwargs["gpu"] = resources.get("gpu")
     if resources.get("cpu") is not None:
@@ -105,8 +110,44 @@ def run_on_modal(
             result.setdefault("metadata", {})["volume_commit_warnings"] = warnings
         return result
 
+    _LOG.info(
+        "modal spin-up starting kind=%s store=%s gpu=%s cpu=%s memory_mb=%s source_mounts=%d",
+        runner_config.get("kind"),
+        store_config.get("name"),
+        resources.get("gpu"),
+        resources.get("cpu"),
+        resources.get("memory_mb"),
+        len(source_mounts),
+    )
+    if progress_callback is not None:
+        progress_callback(
+            {
+                "status": "running",
+                "stage": "modal_launching",
+                "runtime_kind": "modal",
+                "message": "Starting Modal app launch",
+                "metrics": {
+                    "source_mount_count": len(source_mounts),
+                },
+            }
+        )
     with app.run() as running_app:
         runtime_app_id = getattr(running_app, "app_id", None)
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "status": "running",
+                    "stage": "modal_app_started",
+                    "runtime_kind": "modal",
+                    "runtime_app_id": runtime_app_id,
+                    "message": "Modal app started",
+                }
+            )
+        _LOG.info(
+            "modal run submitted kind=%s runtime_app_id=%s",
+            runner_config.get("kind"),
+            runtime_app_id,
+        )
         try:
             result = _remote_execute.remote(runner_config, store_config, spec_payload, workflow_context)
         except Exception as exc:
@@ -120,11 +161,21 @@ def run_on_modal(
             runner_payload = dict(result.get("runner", {}))
             runner_payload["runtime_app_id"] = runtime_app_id
             result["runner"] = runner_payload
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "status": "running",
+                    "stage": "remote_execution_finished",
+                    "runtime_kind": "modal",
+                    "runtime_app_id": runtime_app_id,
+                    "message": "Modal app finished remote execution",
+                }
+            )
         return result
 
 
 def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any]) -> tuple[MountedVolume, ...]:
-    volumes = [
+    requested_volumes = [
         MountedVolume(
             name=str(store_config["name"]),
             mount_path=modal_volume_mount_path(str(store_config["root"])),
@@ -133,7 +184,7 @@ def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any])
         )
     ]
     for payload in resources.get("volumes", []):
-        volumes.append(
+        requested_volumes.append(
             MountedVolume(
                 name=str(payload["name"]),
                 mount_path=str(payload["mount_path"]),
@@ -141,11 +192,24 @@ def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any])
                 commit_on_success=bool(payload.get("commit_on_success", False)),
             )
         )
-    mounts = [volume.mount_path for volume in volumes]
-    duplicates = {mount for mount in mounts if mounts.count(mount) > 1}
-    if duplicates:
-        raise ValueError(f"Duplicate Modal volume mount paths: {sorted(duplicates)}")
-    return tuple(volumes)
+    by_mount_path: dict[str, MountedVolume] = {}
+    for volume in requested_volumes:
+        existing = by_mount_path.get(volume.mount_path)
+        if existing is None:
+            by_mount_path[volume.mount_path] = volume
+            continue
+        if existing.name != volume.name:
+            raise ValueError(
+                "Duplicate Modal volume mount paths with different volumes: "
+                f"{volume.mount_path!r} maps to both {existing.name!r} and {volume.name!r}"
+            )
+        by_mount_path[volume.mount_path] = MountedVolume(
+            name=existing.name,
+            mount_path=existing.mount_path,
+            create_if_missing=existing.create_if_missing or volume.create_if_missing,
+            commit_on_success=existing.commit_on_success or volume.commit_on_success,
+        )
+    return tuple(by_mount_path[mount_path] for mount_path in sorted(by_mount_path))
 
 
 def _commit_mounted_volumes(volumes: tuple[MountedVolume, ...]) -> list[str]:

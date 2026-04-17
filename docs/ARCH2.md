@@ -335,12 +335,14 @@ A serializable description of a unit of work.
 Examples:
 
 - `CaptureSpec`
+- `GenerationRunSpec`
+- `PatchedGenerationSpec`
+- `PatchComparisonSpec`
 - `ProbeSpec`
 - `DirectionSpec`
 - `BasisSpec`
 - `SAEEncodeSpec`
 - `ActivationPatchSpec`
-- `EvaluationSpec`
 - `ReportSpec`
 
 ## Layer Model
@@ -635,37 +637,64 @@ BootstrapSpec(...)
 
 ### 9. Intervention And Evaluation Layer
 
-Runs model modifications and measures effects.
+Separates patch application from behavioral comparison.
 
 Example:
 
 ```python
-patch = capture_runner.run(
-    ActivationPatchSpec(
+baseline = capture_runner.run(
+    GenerationRunSpec(
         engine=VLLMEngine(
             model_id="Qwen/Qwen3-30B-A3B",
             max_model_len=8192,
         ),
         dataset=dataset,
-        basis=basis,
-        site=InterventionSite.residual("resid_post"),
-        layers=[16, 20, 24],
-        tokens=TokenSelector.section("MARKET"),
-        mode="project_out",
-        components=["conflict_pc1"],
-        strengths=[0.0, 0.5, 1.0, 2.0],
-        metrics=[
-            Metric.choice_flip_rate(),
-            Metric.logprob_margin(labels=["aligned", "conflict"]),
-            Metric.kl_divergence(),
-        ],
+        select_when=dataset.labels("conflict_label").equals("target"),
+        generation=GenerationSpec(enabled=True, max_tokens=64),
+    )
+)
+
+activation_bank = analysis_runner.run(
+    ActivationBankSpec(
+        feature=cap.feature("resid_post_full"),
+        layers=[16],
+    )
+)
+
+patched = capture_runner.run(
+    PatchedGenerationSpec(
+        engine=VLLMEngine(
+            model_id="Qwen/Qwen3-30B-A3B",
+            max_model_len=8192,
+        ),
+        dataset=dataset,
+        patch=InterchangePatch(
+            activation_bank=activation_bank,
+            write_site=ResidualInterventionSite(site="resid_post", layers=(16,)),
+            target_tokens=TokenSelector.section("MARKET"),
+            donor_tokens=TokenSelector.section("MARKET"),
+        ),
+        pair_by=dataset.cases("matched_pair_id"),
+        target_when=dataset.labels("conflict_label").equals("target"),
+        donor_when=dataset.labels("conflict_label").equals("donor"),
+        generation=GenerationSpec(enabled=True, max_tokens=64),
+        prompt_metadata_builder=PromptMetadataBuilder.from_function(build_prompt_metadata),
+    )
+)
+
+comparison = analysis_runner.run(
+    PatchComparisonSpec(
+        baseline=baseline,
+        variants={"main": patched},
+        row_evaluator=TransformBuilder.from_function(score_patch_row),
     )
 )
 ```
 
 `TokenSelector.section(...)` assumes the upstream capture stored explicit
 `token_sections` metadata, typically via `prompt_metadata_builder=...` on the
-capture step.
+capture step and an intermediate `ActivationBankSpec(...)` built from the
+captured residual feature.
 
 Intervention families:
 
@@ -787,8 +816,10 @@ runs.
      matrix.
    - `SAEEncodeSpec` maps activations through a toy SAE with known sparse
      features.
-   - `ActivationPatchSpec` changes a toy model outcome only when the target
+   - `PatchedGenerationSpec` changes a toy model outcome only when the target
      site and token selector match.
+   - `PatchComparisonSpec` joins baseline and variant rows by `example_key`
+     and aggregates evaluator metrics deterministically.
 
 4. Artifact invariant tests.
    Artifacts should always include manifest schema version, operation spec
@@ -1004,23 +1035,34 @@ Recommended CI split:
 Preferred top-level import style:
 
 ```python
-from pipelines.api import (
-    ActivationPatchSpec,
-    BasisSpec,
+from pipelines_v2.api import (
+    ActivationBankSpec,
+    AddDirectionPatch,
     CaptureSpec,
+    CentroidSpec,
     Dataset,
     DirectionSpec,
+    ExplicitPathMaskSpec,
+    GenerationRunSpec,
     GenerationSpec,
+    InterchangePatch,
     MoERoutingSite,
     ModalSecret,
     ModalRunner,
     ModalResources,
     ModalVolumeStore,
+    PatchComparisonSpec,
+    PatchedGenerationSpec,
+    ProjectOutPatch,
     PostgresCatalog,
     PostgresSource,
     ProbeSpec,
     ReportSpec,
+    ResidualPathPatch,
     RoutingRecord,
+    SubspaceSpec,
+    SwapComponentsPatch,
+    SwapMeanPatch,
     VLLMEngine,
     WorkflowOrchestrator,
     WorkflowSpec,
@@ -1035,9 +1077,9 @@ The API should support three levels:
 For custom experiments and backend work:
 
 ```python
-engine.generate(dataset, generation_spec)
-engine.capture(dataset, capture_sites)
-engine.intervene(dataset, intervention_spec)
+engine.generate(generation_run_spec)
+engine.capture(capture_spec)
+engine.intervene(patched_generation_spec)
 ```
 
 ### Mid-Level Operation API
@@ -1047,7 +1089,9 @@ For most research code:
 ```python
 cap = capture_runner.run(CaptureSpec(engine=VLLMEngine(...), ...))
 probe = analysis_runner.run(ProbeSpec(feature=cap.feature("resid_post_last"), labels=labels))
-patch = capture_runner.run(ActivationPatchSpec(engine=VLLMEngine(...), ...))
+baseline = capture_runner.run(GenerationRunSpec(engine=VLLMEngine(...), ...))
+patched = capture_runner.run(PatchedGenerationSpec(engine=VLLMEngine(...), ...))
+comparison = analysis_runner.run(PatchComparisonSpec(baseline=baseline, variants={"main": patched}, ...))
 ```
 
 The same underlying platform may back both runners, but they should be treated

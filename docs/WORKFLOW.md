@@ -22,13 +22,24 @@ Typical commands:
 
 ```bash
 uv run python -m pipelines_v2.cli workflow plan --file projects/.../specs/workflow.py
-uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py --logging INFO
 uv run python -m pipelines_v2.cli workflow resume --file projects/.../specs/workflow.py --latest-failed
 uv run python -m pipelines_v2.cli workflow rerun-step --file projects/.../specs/workflow.py --run-id wr_... --step report
 uv run python -m pipelines_v2.cli workflow rerun-from-step --file projects/.../specs/workflow.py --run-id wr_... --step capture_prompt_eos_router
 uv run python -m pipelines_v2.cli workflow runs --file projects/.../specs/workflow.py
 uv run python -m pipelines_v2.cli workflow show --run-id wr_...
 ```
+
+Operational notes:
+
+- `--logging INFO` streams structured progress to stderr, including remote
+  stages such as Modal launch, app start, and step heartbeats.
+- `workflow show --run-id ...` includes the latest persisted run- and
+  step-level progress snapshots from the local registry in addition to workflow
+  step metadata.
+- For builder-backed remote workflows, keep `local_python_sources` minimal and
+  explicit. Mounting `"."` into Modal will package the whole repo and can slow
+  startup or fail if local generated files change during upload.
 
 Workspace defaults can live in the repo-root [`xenon.toml`](/Users/brockelmore/concordance/xenon/xenon.toml).
 That file is git-committable and is the right place for shared defaults such as

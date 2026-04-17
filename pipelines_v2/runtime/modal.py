@@ -8,17 +8,23 @@ from typing import Any
 
 from pipelines_v2.core.types import OperationSpec
 from pipelines_v2.operations.specs import (
-    ActivationPatchSpec,
+    ActivationBankSpec,
     BasisSpec,
     CaptureSpec,
+    CentroidSpec,
     DirectionSpec,
+    ExplicitPathMaskSpec,
+    GenerationRunSpec,
     GeometrySpec,
     LabelFieldsSpec,
     LabelMapSpec,
+    PatchComparisonSpec,
     PairDeltaSpec,
+    PatchedGenerationSpec,
     ProbeSpec,
     ReportSpec,
     ResidualizedProbeSpec,
+    SubspaceSpec,
     TextBaselineSpec,
     TransferProbeSpec,
     TransformSpec,
@@ -30,6 +36,7 @@ from pipelines_v2.storage.base import Catalog
 from pipelines_v2.storage.local import NullCatalog
 from pipelines_v2.storage.modal import ModalVolumeStore
 from pipelines_v2.workflow.records import WorkflowStepContext
+from pipelines_v2.operations.interventions.runtime import patched_generation_plan_errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,7 +145,7 @@ class ModalRunner:
         engine = spec.bound_engine()
         if isinstance(spec, CaptureSpec):
             artifact_kinds = ("capture",)
-        elif isinstance(spec, ActivationPatchSpec):
+        elif isinstance(spec, (GenerationRunSpec, PatchedGenerationSpec)):
             artifact_kinds = (spec.kind,)
         else:
             artifact_kinds = ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
@@ -153,11 +160,17 @@ class ModalRunner:
             errors=tuple(errors),
         )
 
-    def run(self, spec: OperationSpec, *, workflow_context: WorkflowStepContext | None = None) -> Any:
+    def run(
+        self,
+        spec: OperationSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+        progress_callback: Any | None = None,
+    ) -> Any:
         """Execute one supported spec remotely and return its artifact."""
         self.plan(spec).validate()
-        if isinstance(spec, (CaptureSpec, ActivationPatchSpec, *_ARTIFACT_BOUND_SPECS)):
-            return self._run_remote(spec, workflow_context=workflow_context)
+        if isinstance(spec, (CaptureSpec, GenerationRunSpec, PatchedGenerationSpec, *_ARTIFACT_BOUND_SPECS)):
+            return self._run_remote(spec, workflow_context=workflow_context, progress_callback=progress_callback)
         raise NotImplementedError(f"ModalRunner cannot run {spec.kind!r} specs yet")
 
     def _run_remote(
@@ -165,6 +178,7 @@ class ModalRunner:
         spec: OperationSpec,
         *,
         workflow_context: WorkflowStepContext | None = None,
+        progress_callback: Any | None = None,
     ) -> CaptureArtifact | OperationArtifact:
         run_kwargs = {
             "runner_config": self.identity(),
@@ -179,6 +193,8 @@ class ModalRunner:
             run_kwargs["workflow_context"] = (
                 workflow_context.to_manifest_dict() if workflow_context is not None else None
             )
+        if signature is None or "progress_callback" in signature.parameters:
+            run_kwargs["progress_callback"] = progress_callback
         manifest_payload = run_on_modal(**run_kwargs)
         if manifest_payload is None:
             raise RuntimeError("Modal runner did not receive a manifest payload; the remote run was likely cancelled")
@@ -216,11 +232,16 @@ _ARTIFACT_BOUND_SPECS = (
     ResidualizedProbeSpec,
     DirectionSpec,
     BasisSpec,
+    CentroidSpec,
     GeometrySpec,
+    SubspaceSpec,
+    ActivationBankSpec,
+    ExplicitPathMaskSpec,
     PairDeltaSpec,
     LabelMapSpec,
     LabelFieldsSpec,
     TransformSpec,
+    PatchComparisonSpec,
     ReportSpec,
 )
 
@@ -232,4 +253,6 @@ def _spec_plan_errors(spec: OperationSpec) -> list[str]:
         planning_errors = getattr(engine, "planning_errors", None)
         if callable(planning_errors):
             errors.extend(str(error) for error in planning_errors(spec))
+    if isinstance(spec, PatchedGenerationSpec):
+        errors.extend(patched_generation_plan_errors(spec))
     return errors

@@ -122,7 +122,10 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
                         max_num_seqs=4,
                     ),
                     dataset=dataset,
-                    prompt_metadata_builder=PromptMetadataBuilder.from_function(build_prompt_metadata),
+                    prompt_metadata_builder=PromptMetadataBuilder.from_function(
+                        build_prompt_metadata,
+                        local_python_sources=("scripts",),
+                    ),
                     sites=[
                         ResidualSite(
                             name="resid_prompt_tokens",

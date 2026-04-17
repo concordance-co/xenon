@@ -12,17 +12,23 @@ from typing import Any
 
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
 from pipelines_v2.operations.specs import (
-    ActivationPatchSpec,
+    ActivationBankSpec,
     BasisSpec,
     CaptureSpec,
+    CentroidSpec,
     DirectionSpec,
+    ExplicitPathMaskSpec,
+    GenerationRunSpec,
     GeometrySpec,
     LabelFieldsSpec,
     LabelMapSpec,
+    PatchComparisonSpec,
     PairDeltaSpec,
+    PatchedGenerationSpec,
     ProbeSpec,
     ReportSpec,
     ResidualizedProbeSpec,
+    SubspaceSpec,
     TextBaselineSpec,
     TransferProbeSpec,
     TransformSpec,
@@ -40,6 +46,7 @@ from pipelines_v2.storage.base import Catalog
 from pipelines_v2.storage.features import write_capture_features
 from pipelines_v2.storage.local import LocalArtifactStore, NullCatalog
 from pipelines_v2.workflow.records import WorkflowStepContext
+from pipelines_v2.operations.interventions.runtime import patched_generation_plan_errors, rows_example_coverage
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +84,7 @@ class LocalRunner:
         engine_capabilities = frozenset(engine.capabilities()) if engine is not None else frozenset()
         if isinstance(spec, CaptureSpec):
             artifact_kinds = ("capture",)
-        elif isinstance(spec, ActivationPatchSpec):
+        elif isinstance(spec, (GenerationRunSpec, PatchedGenerationSpec)):
             artifact_kinds = (spec.kind,)
         else:
             artifact_kinds = ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
@@ -92,12 +99,21 @@ class LocalRunner:
             errors=tuple(errors),
         )
 
-    def run(self, spec: OperationSpec, *, workflow_context: WorkflowStepContext | None = None) -> Any:
+    def run(
+        self,
+        spec: OperationSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+        progress_callback: Any | None = None,
+    ) -> Any:
         """Execute one supported spec locally and return its artifact."""
+        del progress_callback
         self.plan(spec).validate()
         if isinstance(spec, CaptureSpec):
             return self._run_capture(spec, workflow_context=workflow_context)
-        if isinstance(spec, ActivationPatchSpec):
+        if isinstance(spec, GenerationRunSpec):
+            return self._run_generation(spec, workflow_context=workflow_context)
+        if isinstance(spec, PatchedGenerationSpec):
             return self._run_intervention(spec, workflow_context=workflow_context)
         if isinstance(spec, _ARTIFACT_BOUND_SPECS):
             return self._run_artifact_operation(spec, workflow_context=workflow_context)
@@ -195,22 +211,63 @@ class LocalRunner:
         self.catalog.record_artifact(manifest)
         return OperationArtifact(_manifest=manifest, store=self.artifacts)
 
-    def _run_intervention(
+    def _run_generation(
         self,
-        spec: ActivationPatchSpec,
+        spec: GenerationRunSpec,
         *,
         workflow_context: WorkflowStepContext | None = None,
     ) -> OperationArtifact:
         engine = spec.bound_engine()
         if engine is None:
-            raise RuntimeError("ActivationPatchSpec is missing a bound engine")
+            raise RuntimeError("GenerationRunSpec is missing a bound engine")
+        resolved_spec = spec.resolve_dataset()
+        result = engine.generate(resolved_spec)
+        artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
+        self.artifacts.make_artifact_dir(artifact_id)
+
+        payload = {
+            "kind": "generation_run_result",
+            "summary": {"example_count": len(result.rows)},
+            "rows": list(result.rows),
+        }
+        storage_refs: dict[str, Any] = {
+            "result": self.artifacts.write_json(artifact_id, "result.json", payload),
+        }
+        manifest = ArtifactManifest(
+            artifact_id=artifact_id,
+            artifact_kind=spec.kind,
+            schema_version=1,
+            operation_spec_hash=spec.spec_hash(),
+            operation_semantic_hash=spec.semantic_hash(),
+            created_at=utc_now_iso(),
+            engine=engine.identity(),
+            runner=self.identity(),
+            input_artifact_refs=tuple(_input_artifact_ids(spec)),
+            example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
+            storage_refs=storage_refs,
+            metadata=dict(result.metadata),
+            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
+        )
+        storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
+        self.catalog.record_artifact(manifest)
+        return OperationArtifact(_manifest=manifest, store=self.artifacts)
+
+    def _run_intervention(
+        self,
+        spec: PatchedGenerationSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+    ) -> OperationArtifact:
+        engine = spec.bound_engine()
+        if engine is None:
+            raise RuntimeError("PatchedGenerationSpec is missing a bound engine")
         resolved_spec = spec.resolve_dataset()
         result = engine.intervene(resolved_spec)
         artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
         self.artifacts.make_artifact_dir(artifact_id)
 
         payload = {
-            "kind": "activation_patch_result",
+            "kind": "patched_generation_result",
             "summary": dict(result.summary),
             "rows": list(result.rows),
         }
@@ -227,7 +284,7 @@ class LocalRunner:
             engine=engine.identity(),
             runner=self.identity(),
             input_artifact_refs=tuple(_input_artifact_ids(spec)),
-            example_coverage=resolved_spec.dataset.coverage(),
+            example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
             storage_refs=storage_refs,
             metadata=dict(result.metadata),
             workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
@@ -244,11 +301,16 @@ _ARTIFACT_BOUND_SPECS = (
     ResidualizedProbeSpec,
     DirectionSpec,
     BasisSpec,
+    CentroidSpec,
     GeometrySpec,
+    SubspaceSpec,
+    ActivationBankSpec,
+    ExplicitPathMaskSpec,
     PairDeltaSpec,
     LabelMapSpec,
     LabelFieldsSpec,
     TransformSpec,
+    PatchComparisonSpec,
     ReportSpec,
 )
 
@@ -260,6 +322,8 @@ def _spec_plan_errors(spec: OperationSpec) -> list[str]:
         planning_errors = getattr(engine, "planning_errors", None)
         if callable(planning_errors):
             errors.extend(str(error) for error in planning_errors(spec))
+    if isinstance(spec, PatchedGenerationSpec):
+        errors.extend(patched_generation_plan_errors(spec))
     return errors
 
 
