@@ -1,2 +1,0 @@
-"""Patching helpers and implementations."""
-

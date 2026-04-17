@@ -1,16 +1,14 @@
 # Docs
 
-This folder is split into a small live operator surface plus archived projects/planning material.
+This folder is the live operator and API surface for `pipelines_v2`.
 
-- Keep these top-level docs live:
-  - `WORKFLOW.md`
-  - `PIPELINES_V2_API.md`
-  - `SPECS.md`
-  - `NEXT_STEPS.md`
-  - `patching_best_practices.md`
-- `PIPELINES_V2_API.md` is the current reference for the new `pipelines_v2` library and CLI surface.
-- `WORKFLOW.md` and `SPECS.md` still document the older `pipelines.cli` runtime path, but should also call out where `pipelines_v2` now fits.
-- `archive/plans/` holds older research plans and experiment specs.
-- `archive/interp/` holds older interp-specific planning/spec notes.
-- `archive/phase_notes/` holds historical phase notes.
-- `archive/reports/` holds generated and source report artifacts.
+- `PIPELINES_V2_API.md`
+  The main library and CLI reference.
+- `WORKFLOW.md`
+  Short operator guide for planning, running, resuming, and rerunning workflows.
+- `SPECS.md`
+  Checked-in workflow authoring conventions.
+- `ARCH2.md`
+  Architecture notes and examples for the v2 model.
+- `patching_best_practices.md`
+  Guidance for intervention and patching work.
