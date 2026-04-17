@@ -369,6 +369,10 @@ Important note:
 - `from_function(...)` records the module path and local source roots needed by Modal
 - if you do not pass `local_python_sources=...`, `from_function(...)` treats the
   workspace root as the source root and records `"."`
+- for Modal-backed workflows, prefer explicit narrow roots such as
+  `("pipelines_v2", "scripts")` or one project-local package root
+- avoid relying on `"."` unless you intentionally want Modal to package the
+  entire workspace
 
 ### `TokenPooling`
 
@@ -1379,7 +1383,7 @@ Current entrypoint:
 
 ```bash
 uv run python -m pipelines_v2.cli workflow plan --file path/to/workflow.py
-uv run python -m pipelines_v2.cli workflow run --file path/to/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file path/to/workflow.py --logging INFO
 uv run python -m pipelines_v2.cli workflow runs --file path/to/workflow.py
 uv run python -m pipelines_v2.cli workflow show --run-id wr_...
 uv run python -m pipelines_v2.cli workflow resume --file path/to/workflow.py --latest-failed
@@ -1423,18 +1427,32 @@ Important run flags:
 - `--reuse-completed`
 - `--catalog-postgres-env <ENV_VAR>`
 - `--local-catalog-root <PATH>`
+- `--logging <LEVEL>`
+  - emit structured workflow progress to stderr during `run`, `resume`,
+    `rerun-step`, and `rerun-from-step`
+  - useful values are `INFO` for normal operators and `DEBUG` when diagnosing
+    runner startup
 
 Additional workflow commands:
 - `workflow runs`
   - list locally tracked runs
 - `workflow show --run-id <run_id>`
   - show one persisted run plus its step records
+  - also includes the latest local progress snapshot for the run and each step
 - `workflow resume`
   - resume a failed run in place
 - `workflow rerun-step --run-id <run_id> --step <name>`
   - create a new run that reuses upstream artifacts from the source run and reruns only the named step
 - `workflow rerun-from-step --run-id <run_id> --step <name>`
   - create a new run that reuses upstream artifacts from the source run and reruns the named step plus downstream dependents
+
+Progress persistence:
+- the CLI persists workflow progress under the local registry root:
+  - `~/.xenon/pipelines_v2/catalog/workflow_progress/...`
+- this data is local operational state, separate from the artifact manifests and
+  workflow step rows in the configured catalog
+- Modal-backed remote execution also emits structured `XENON_PROGRESS {...}`
+  lines inside remote logs so future watchers can consume one stable format
 
 ## Practical Patterns
 
