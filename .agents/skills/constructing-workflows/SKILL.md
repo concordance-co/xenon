@@ -15,6 +15,7 @@ resuming, rerunning, and inspecting existing workflows, use
 ## Start Here
 
 1. Read:
+   - [AGENTS.md](/Users/brockelmore/concordance/xenon/AGENTS.md)
    - [docs/PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
    - [docs/ARCH2.md](/Users/brockelmore/concordance/xenon/docs/ARCH2.md)
 2. Inspect the nearest existing phase workflow under `projects/.../specs/workflow.py`.
@@ -56,6 +57,26 @@ multiple competing workflows to the same phase.
   - report packaging on `report_local`
 - Put engines on model-bound specs, not on runners.
 - If a workflow uses a shared external catalog, keep runner catalog identities aligned.
+- When a workflow needs local helper code at remote runtime, keep
+  `local_python_sources` narrow and explicit. Do not mount `"."` into Modal
+  unless the whole workspace is intentionally required.
+
+### Modal Source Mount Hygiene
+
+For builder-backed remote workflows, especially ones using
+`PromptMetadataBuilder.from_function(...)`:
+
+- prefer explicit roots such as:
+  - `("pipelines_v2",)`
+  - `("scripts",)`
+  - one project-local package root
+- avoid implicit workspace-root mounts
+- treat broad mounts as both a startup-cost problem and a correctness risk,
+  because mutable local files like `__pycache__` can change while Modal is
+  packaging the image
+
+If a workflow suddenly appears to hang before any remote logs appear, inspect
+its source mounts before assuming the model runtime is stuck.
 
 ## Dataset Construction
 
@@ -71,6 +92,26 @@ Do not rely on accidental key overlap.
 - `TokenSelector.section(...)` requires explicit token-section metadata
 - Use `PromptMetadataBuilder.from_function(...)`
 - Do not rely on inferred sections
+- If the metadata builder runs remotely, pass explicit narrow
+  `local_python_sources=...` so Modal only packages the code the function
+  actually needs
+
+## Validating A New Workflow
+
+This skill is about construction, not day-to-day operation, but while bringing
+up a new workflow you should validate it with the normal CLI surface:
+
+```bash
+uv run python -m pipelines_v2.cli workflow plan --file projects/.../specs/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file projects/.../specs/workflow.py --logging INFO
+```
+
+Use `--logging INFO` during bring-up so you can see structured workflow
+progress, Modal launch/app ids, and step heartbeats without manually polling the
+catalog.
+
+For resume, rerun, and inspection workflows after initial bring-up, switch to
+the `pipelines-v2-run-ops` skill.
 
 ## vLLM Routing Constraints
 
