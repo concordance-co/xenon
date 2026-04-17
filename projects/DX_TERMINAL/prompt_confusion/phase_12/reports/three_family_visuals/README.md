@@ -2,7 +2,7 @@
 
 Figures:
 
-- `directed_subspace_scatter_by_family_conflict.png`
+- `directed_subspace_scatter_by_family_conflict_v2.png`
 - `directed_subspace_scatter_by_conflict.png`
 - `shared_axis_distributions.png`
 
