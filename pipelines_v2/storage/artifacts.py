@@ -142,6 +142,45 @@ class ArtifactLabelRef:
 
 
 @dataclass(frozen=True, slots=True)
+class InlineArtifactLabelRef:
+    """In-memory label ref for inline workflow artifacts."""
+
+    artifact: Any
+    name: str
+    payload: Mapping[str, Any]
+
+    kind: ClassVar[str] = "inline_artifact_label_ref"
+
+    def equals(self, value: Any) -> Any:
+        from pipelines_v2.data.datasets import LabelPredicate
+
+        return LabelPredicate(label_set=self, op="equals", value=value)
+
+    def load(self) -> dict[str, Any]:
+        return dict(self.payload)
+
+    def resolve_values(self) -> Mapping[str, Any]:
+        values = self.load().get("values")
+        if not isinstance(values, Mapping):
+            raise TypeError("Inline artifact label payload must contain a 'values' mapping")
+        return {str(key): value for key, value in values.items()}
+
+    def resolve_example_keys(self) -> list[str]:
+        return sorted(str(key) for key in self.resolve_values())
+
+    def runtime_secrets(self) -> tuple[Any, ...]:
+        return ()
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "InlineArtifactLabelRef":
+        return cls(
+            artifact=artifact_from_dict(payload["artifact"]),
+            name=str(payload["name"]),
+            payload=dict(payload["payload"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FeatureLayerRef:
     """Reference to one layer inside a feature payload."""
     feature: FeatureRef
@@ -386,6 +425,52 @@ class OperationArtifact:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class InlineOperationArtifact:
+    """In-memory operation artifact for inline workflow transforms."""
+
+    payload: Mapping[str, Any] = field(default_factory=dict)
+    labels: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    artifact_kind: str = "inline_transform"
+
+    kind: ClassVar[str] = "inline_operation_artifact"
+
+    @property
+    def id(self) -> str:
+        return ""
+
+    def result(self) -> dict[str, Any]:
+        return dict(self.payload)
+
+    def label(self, name: str) -> InlineArtifactLabelRef:
+        labels = dict(self.labels)
+        if name not in labels:
+            raise KeyError(f"Inline artifact has no label {name!r}")
+        payload = labels[name]
+        if not isinstance(payload, Mapping):
+            raise TypeError(f"Inline label {name!r} must be a mapping payload")
+        return InlineArtifactLabelRef(artifact=self, name=name, payload=dict(payload))
+
+    def load_label(self, name: str) -> dict[str, Any]:
+        return self.label(name).load()
+
+    def summary(self) -> Any:
+        payload = self.result()
+        if isinstance(payload, Mapping) and "summary" in payload:
+            return payload["summary"]
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "InlineOperationArtifact":
+        return cls(
+            payload=dict(payload.get("payload", {})),
+            labels={str(key): dict(value) for key, value in dict(payload.get("labels", {})).items()},
+            metadata=dict(payload.get("metadata", {})),
+            artifact_kind=str(payload.get("artifact_kind", "inline_transform")),
+        )
+
+
 def artifact_from_manifest(manifest: ArtifactManifest, *, store: Any) -> CaptureArtifact | OperationArtifact:
     """Construct the correct typed artifact handle for a manifest and store."""
     if manifest.artifact_kind == "capture":
@@ -393,13 +478,15 @@ def artifact_from_manifest(manifest: ArtifactManifest, *, store: Any) -> Capture
     return OperationArtifact(_manifest=manifest, store=store)
 
 
-def artifact_from_dict(payload: Mapping[str, Any]) -> CaptureArtifact | OperationArtifact:
+def artifact_from_dict(payload: Mapping[str, Any]) -> CaptureArtifact | OperationArtifact | InlineOperationArtifact:
     """Reconstruct the correct typed artifact handle from a serialized payload."""
     kind = str(payload.get("kind") or "")
     if kind == CaptureArtifact.kind:
         return CaptureArtifact.from_dict(payload)
     if kind == OperationArtifact.kind:
         return OperationArtifact.from_dict(payload)
+    if kind == InlineOperationArtifact.kind:
+        return InlineOperationArtifact.from_dict(payload)
     manifest = ArtifactManifest.from_dict(payload["_manifest"])
     if manifest.artifact_kind == "capture":
         return CaptureArtifact.from_dict(payload)

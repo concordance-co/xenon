@@ -18,6 +18,7 @@ class DirectionSpec(OperationSpec):
     positive: Any = None
     negative: Any = None
     group_by: Any = None
+    subspace: Any = None
     layers: Sequence[int] = field(default_factory=tuple)
     tokens: TokenSelector = field(default_factory=TokenSelector.last)
     pooling: TokenPooling = field(default_factory=TokenPooling.mean)
@@ -25,7 +26,7 @@ class DirectionSpec(OperationSpec):
     kind: ClassVar[str] = "direction"
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
-        return runtime_secrets_from_refs(self.positive, self.negative, self.group_by)
+        return runtime_secrets_from_refs(self.positive, self.negative, self.group_by, self.subspace)
 
     def runtime_spec(self) -> Any | None:
         return analysis_runtime_spec()
@@ -38,6 +39,7 @@ class DirectionSpec(OperationSpec):
             positive=spec_value_from_dict(payload.get("positive")),
             negative=spec_value_from_dict(payload.get("negative")),
             group_by=spec_value_from_dict(payload.get("group_by")),
+            subspace=spec_value_from_dict(payload.get("subspace")),
             layers=tuple(int(layer) for layer in payload.get("layers", ())),
             tokens=TokenSelector.from_dict(payload.get("tokens", {"kind": "last"})),
             pooling=TokenPooling.from_dict(payload.get("pooling", {"kind": "mean"})),

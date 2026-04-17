@@ -19,35 +19,67 @@ from pipelines_v2.operations.common.builders import PromptMetadataBuilder, Trans
 from pipelines_v2.operations.common.schemas import TensorStorage
 from pipelines_v2.operations.common.tokens import TokenPooling, TokenSelector
 from pipelines_v2.operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
-from pipelines_v2.operations.interventions import ActivationPatchControl, ActivationPatchSpec, ResidualInterventionSite
+from pipelines_v2.operations.interventions import (
+    ActivationPatchSpec,
+    ActivationBankSpec,
+    AddDirectionPatch,
+    ExplicitPathEdge,
+    ExplicitPathMaskSpec,
+    GenerationRunSpec,
+    InterchangePatch,
+    InterventionSite,
+    PatchComparisonSpec,
+    PatchedGenerationSpec,
+    ProjectOutPatch,
+    RandomControlPatch,
+    ResidualInterventionSite,
+    ResidualPathPatch,
+    SwapComponentsPatch,
+    SwapMeanPatch,
+)
 from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from pipelines_v2.operations.reports import ReportSpec
-from pipelines_v2.operations.representation import BasisSpec, DirectionSpec, GeometrySpec
+from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 
 _capture_site_from_dict = capture_site_from_dict
 
 __all__ = [
     "ActivationPatchSpec",
-    "ActivationPatchControl",
+    "ActivationBankSpec",
+    "AddDirectionPatch",
     "BasisSpec",
     "CaptureSite",
     "CaptureSpec",
+    "CentroidSpec",
     "DirectionSpec",
+    "ExplicitPathEdge",
+    "ExplicitPathMaskSpec",
+    "GenerationRunSpec",
     "GeometrySpec",
     "GenerationSpec",
+    "InterchangePatch",
+    "InterventionSite",
     "LabelFieldsSpec",
     "LabelMapSpec",
     "MoERoutingSite",
+    "PatchComparisonSpec",
     "PairDeltaSpec",
+    "PatchedGenerationSpec",
     "PromptMetadataBuilder",
     "ProbeSpec",
     "ResidualizedProbeSpec",
     "ReportSpec",
+    "ProjectOutPatch",
+    "RandomControlPatch",
     "ResidualInterventionSite",
+    "ResidualPathPatch",
     "ResidualSite",
     "RoutingRecord",
+    "SwapComponentsPatch",
+    "SwapMeanPatch",
     "TensorStorage",
     "TextBaselineSpec",
+    "SubspaceSpec",
     "TokenPooling",
     "TokenSelector",
     "TransferProbeSpec",

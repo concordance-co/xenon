@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any
 
 from pipelines_v2.data.sources import PostgresSource
 from pipelines_v2.storage.artifacts import ArtifactManifest
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
+
+_SCHEMA_ENSURE_LOCK = Lock()
+_SCHEMA_ENSURED_URLS: set[str] = set()
+_SCHEMA_ENSURE_ADVISORY_LOCK_ID = 874220017401
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +37,7 @@ class PostgresCatalog:
 
         import psycopg
 
+        self._ensure_schema_ready()
         payload = manifest.to_dict()
         workflow_context = dict(manifest.workflow_context)
         produced_by_step_id = _workflow_step_id(
@@ -40,7 +46,6 @@ class PostgresCatalog:
         )
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     """
                     INSERT INTO pipelines_v2_artifacts (
@@ -84,9 +89,9 @@ class PostgresCatalog:
     def load_artifact(self, artifact_id: str) -> ArtifactManifest | None:
         import psycopg
 
+        self._ensure_schema_ready()
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     "SELECT manifest FROM pipelines_v2_artifacts WHERE artifact_id = %s",
                     (artifact_id,),
@@ -104,9 +109,9 @@ class PostgresCatalog:
     ) -> ArtifactManifest | None:
         import psycopg
 
+        self._ensure_schema_ready()
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     """
                     WITH target_step AS (
@@ -160,9 +165,9 @@ class PostgresCatalog:
 
         import psycopg
 
+        self._ensure_schema_ready()
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     """
                     INSERT INTO pipelines_v2_workflow_runs (
@@ -206,9 +211,9 @@ class PostgresCatalog:
     def load_workflow_run(self, run_id: str) -> WorkflowRunRecord | None:
         import psycopg
 
+        self._ensure_schema_ready()
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     """
                     SELECT
@@ -255,6 +260,7 @@ class PostgresCatalog:
     ) -> list[WorkflowRunRecord]:
         import psycopg
 
+        self._ensure_schema_ready()
         predicates: list[str] = []
         params: list[Any] = []
         if workflow_name is not None:
@@ -289,7 +295,6 @@ class PostgresCatalog:
         """
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(query, tuple(params))
                 rows = cur.fetchall()
         records: list[WorkflowRunRecord] = []
@@ -317,9 +322,9 @@ class PostgresCatalog:
 
         import psycopg
 
+        self._ensure_schema_ready()
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     """
                     INSERT INTO pipelines_v2_workflow_steps (
@@ -387,9 +392,9 @@ class PostgresCatalog:
     def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
         import psycopg
 
+        self._ensure_schema_ready()
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     """
                     SELECT
@@ -456,9 +461,9 @@ class PostgresCatalog:
 
         import psycopg
 
+        self._ensure_schema_ready()
         with psycopg.connect(self.source.connection_url()) as conn:
             with conn.cursor() as cur:
-                self._ensure_schema(cur)
                 cur.execute(
                     """
                     SELECT
@@ -514,6 +519,24 @@ class PostgresCatalog:
                 "reused_from_artifact_id": row[16],
             }
         )
+
+    def _ensure_schema_ready(self) -> None:
+        import psycopg
+
+        connection_url = self.source.connection_url()
+        if connection_url in _SCHEMA_ENSURED_URLS:
+            return
+        with _SCHEMA_ENSURE_LOCK:
+            if connection_url in _SCHEMA_ENSURED_URLS:
+                return
+            with psycopg.connect(connection_url, autocommit=True) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_lock(%s)", (_SCHEMA_ENSURE_ADVISORY_LOCK_ID,))
+                    try:
+                        self._ensure_schema(cur)
+                    finally:
+                        cur.execute("SELECT pg_advisory_unlock(%s)", (_SCHEMA_ENSURE_ADVISORY_LOCK_ID,))
+            _SCHEMA_ENSURED_URLS.add(connection_url)
 
     def _ensure_schema(self, cur: Any) -> None:
         cur.execute(

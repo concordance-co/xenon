@@ -9,6 +9,25 @@ from pipelines_v2.storage.artifacts import ArtifactManifest
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
 
 
+def iter_catalogs_depth_first(catalog: Any) -> tuple[Any, ...]:
+    """Flatten nested composite catalogs in depth-first order."""
+    if getattr(catalog, "kind", None) != "composite":
+        return (catalog,)
+    flattened: list[Any] = []
+    for child in getattr(catalog, "catalogs", ()):
+        flattened.extend(iter_catalogs_depth_first(child))
+    return tuple(flattened)
+
+
+def preferred_workflow_metadata_catalog(catalog: Any) -> Any:
+    """Prefer the local file catalog for workflow metadata operations when present."""
+    flattened = iter_catalogs_depth_first(catalog)
+    for child in flattened:
+        if getattr(child, "kind", None) == "file":
+            return child
+    return flattened[0] if flattened else catalog
+
+
 @dataclass(frozen=True, slots=True)
 class CompositeCatalog:
     """Mirror catalog writes into multiple backends and read from the first hit."""
@@ -57,7 +76,13 @@ class CompositeCatalog:
             catalog.record_workflow_run(record)
 
     def load_workflow_run(self, run_id: str) -> WorkflowRunRecord | None:
-        for catalog in self.catalogs:
+        preferred = preferred_workflow_metadata_catalog(self)
+        searched: set[int] = set()
+        for catalog in (preferred, *self.catalogs):
+            marker = id(catalog)
+            if marker in searched:
+                continue
+            searched.add(marker)
             record = catalog.load_workflow_run(run_id)
             if record is not None:
                 return record
@@ -71,6 +96,17 @@ class CompositeCatalog:
         status: str | None = None,
         limit: int | None = None,
     ) -> list[WorkflowRunRecord]:
+        preferred = preferred_workflow_metadata_catalog(self)
+        preferred_lister = getattr(preferred, "list_workflow_runs", None)
+        if callable(preferred_lister):
+            preferred_records = preferred_lister(
+                workflow_name=workflow_name,
+                workflow_hash=workflow_hash,
+                status=status,
+                limit=limit,
+            )
+            if preferred_records:
+                return preferred_records
         seen: set[str] = set()
         records: list[WorkflowRunRecord] = []
         for catalog in self.catalogs:
@@ -97,6 +133,12 @@ class CompositeCatalog:
             catalog.record_workflow_step(record)
 
     def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
+        preferred = preferred_workflow_metadata_catalog(self)
+        preferred_lister = getattr(preferred, "list_workflow_steps", None)
+        if callable(preferred_lister):
+            preferred_records = preferred_lister(run_id)
+            if preferred_records:
+                return preferred_records
         seen: set[tuple[str, str]] = set()
         records: list[WorkflowStepRecord] = []
         for catalog in self.catalogs:
@@ -116,6 +158,16 @@ class CompositeCatalog:
         step_semantic_hash: str,
         input_artifact_refs: tuple[str, ...],
     ) -> WorkflowStepRecord | None:
+        preferred = preferred_workflow_metadata_catalog(self)
+        finder = getattr(preferred, "find_latest_reusable_step", None)
+        if callable(finder):
+            preferred_record = finder(
+                step_name=step_name,
+                step_semantic_hash=step_semantic_hash,
+                input_artifact_refs=input_artifact_refs,
+            )
+            if preferred_record is not None:
+                return preferred_record
         latest: WorkflowStepRecord | None = None
         for catalog in self.catalogs:
             record = catalog.find_latest_reusable_step(

@@ -78,6 +78,8 @@ def run_on_modal(
         "timeout": int(resources.get("timeout_seconds") or 7200),
         "serialized": True,
     }
+    if runtime_env:
+        function_kwargs["env"] = runtime_env
     if resources.get("gpu") is not None:
         function_kwargs["gpu"] = resources.get("gpu")
     if resources.get("cpu") is not None:
@@ -124,7 +126,7 @@ def run_on_modal(
 
 
 def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any]) -> tuple[MountedVolume, ...]:
-    volumes = [
+    requested_volumes = [
         MountedVolume(
             name=str(store_config["name"]),
             mount_path=modal_volume_mount_path(str(store_config["root"])),
@@ -133,7 +135,7 @@ def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any])
         )
     ]
     for payload in resources.get("volumes", []):
-        volumes.append(
+        requested_volumes.append(
             MountedVolume(
                 name=str(payload["name"]),
                 mount_path=str(payload["mount_path"]),
@@ -141,11 +143,24 @@ def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any])
                 commit_on_success=bool(payload.get("commit_on_success", False)),
             )
         )
-    mounts = [volume.mount_path for volume in volumes]
-    duplicates = {mount for mount in mounts if mounts.count(mount) > 1}
-    if duplicates:
-        raise ValueError(f"Duplicate Modal volume mount paths: {sorted(duplicates)}")
-    return tuple(volumes)
+    by_mount_path: dict[str, MountedVolume] = {}
+    for volume in requested_volumes:
+        existing = by_mount_path.get(volume.mount_path)
+        if existing is None:
+            by_mount_path[volume.mount_path] = volume
+            continue
+        if existing.name != volume.name:
+            raise ValueError(
+                "Duplicate Modal volume mount paths with different volumes: "
+                f"{volume.mount_path!r} maps to both {existing.name!r} and {volume.name!r}"
+            )
+        by_mount_path[volume.mount_path] = MountedVolume(
+            name=existing.name,
+            mount_path=existing.mount_path,
+            create_if_missing=existing.create_if_missing or volume.create_if_missing,
+            commit_on_success=existing.commit_on_success or volume.commit_on_success,
+        )
+    return tuple(by_mount_path[mount_path] for mount_path in sorted(by_mount_path))
 
 
 def _commit_mounted_volumes(volumes: tuple[MountedVolume, ...]) -> list[str]:

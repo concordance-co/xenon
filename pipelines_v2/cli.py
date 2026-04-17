@@ -6,6 +6,7 @@ import argparse
 import importlib.util
 import inspect
 import json
+import logging
 import os
 import sys
 from collections import defaultdict, deque
@@ -16,6 +17,8 @@ from typing import Any, Sequence
 from pipelines_v2.core.config import WorkspaceConfig, load_workspace_config
 from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
+from pipelines_v2.storage.artifacts import InlineOperationArtifact
+from pipelines_v2.storage.composite import preferred_workflow_metadata_catalog
 from pipelines_v2.api import (
     CompositeCatalog,
     Dataset,
@@ -36,6 +39,8 @@ from pipelines_v2.api import (
     WorkflowSpec,
     WorkflowStep,
 )
+
+_LOG = logging.getLogger("pipelines_v2.cli")
 
 
 def load_python_workflow_file(
@@ -111,6 +116,7 @@ def _workflow_plan(ns: argparse.Namespace) -> int:
 
 
 def _workflow_run(ns: argparse.Namespace) -> int:
+    _configure_workflow_logging(getattr(ns, "logging", None))
     _, workflow, runner_specs = load_python_workflow_file(
         path=ns.file,
         dataset_fn_name=ns.dataset_fn,
@@ -127,6 +133,7 @@ def _workflow_run(ns: argparse.Namespace) -> int:
 
 
 def _workflow_resume(ns: argparse.Namespace) -> int:
+    _configure_workflow_logging(getattr(ns, "logging", None))
     _, workflow, runner_specs = load_python_workflow_file(
         path=ns.file,
         dataset_fn_name=ns.dataset_fn,
@@ -184,6 +191,7 @@ def _workflow_show(ns: argparse.Namespace) -> int:
 
 
 def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) -> int:
+    _configure_workflow_logging(getattr(ns, "logging", None))
     _, workflow, runner_specs = load_python_workflow_file(
         path=ns.file,
         dataset_fn_name=ns.dataset_fn,
@@ -282,7 +290,7 @@ def _registry_catalog(
     if runner_specs is not None:
         runners = _build_runners(ns, runner_specs)
         catalogs = [
-            runner.catalog
+            preferred_workflow_metadata_catalog(runner.catalog)
             for runner in runners.values()
             if getattr(getattr(runner, "catalog", None), "kind", "none") != "none"
         ]
@@ -472,7 +480,13 @@ def _forced_steps_for_rerun(
 def _workflow_result_payload(name: str | None, result: WorkflowResult) -> dict[str, Any]:
     steps: dict[str, Any] = {}
     for step_name, value in result.step_results.items():
-        if hasattr(value, "manifest"):
+        if isinstance(value, InlineOperationArtifact):
+            steps[step_name] = {
+                "artifact_id": None,
+                "artifact_kind": value.artifact_kind,
+                "summary": value.summary(),
+            }
+        elif hasattr(value, "manifest"):
             manifest = value.manifest()
             step_payload: dict[str, Any] = {
                 "artifact_id": manifest.artifact_id,
@@ -601,6 +615,34 @@ def _parse_volume_mount(value: str) -> ModalVolumeMount:
     return ModalVolumeMount(name=name.strip(), mount_path=mount_path.strip())
 
 
+def _configure_workflow_logging(level: str | None) -> None:
+    logger = logging.getLogger("pipelines_v2")
+    handler = next(
+        (candidate for candidate in logger.handlers if getattr(candidate, "_pipelines_v2_cli_handler", False)),
+        None,
+    )
+    if level is None:
+        if handler is not None:
+            logger.removeHandler(handler)
+        if not logger.handlers:
+            logger.setLevel(logging.NOTSET)
+            logger.propagate = True
+        return
+    level_name = str(level).strip().upper()
+    numeric_level = getattr(logging, level_name, None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Unsupported log level: {level!r}")
+    if handler is None:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        setattr(handler, "_pipelines_v2_cli_handler", True)
+        logger.addHandler(handler)
+    handler.setLevel(numeric_level)
+    logger.setLevel(numeric_level)
+    logger.propagate = False
+    _LOG.debug("workflow CLI logging configured level=%s", level_name)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m pipelines_v2.cli")
     subparsers = parser.add_subparsers(dest="command")
@@ -615,6 +657,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run = workflow_subparsers.add_parser("run", help="Run a workflow from a Python file.")
     _add_workflow_file_args(run, required=True)
     _add_workflow_runner_args(run)
+    _add_workflow_logging_arg(run)
     run.add_argument(
         "--resume-run-id",
         default=None,
@@ -629,6 +672,7 @@ def _build_parser() -> argparse.ArgumentParser:
     resume = workflow_subparsers.add_parser("resume", help="Resume the latest failed or a specific workflow run.")
     _add_workflow_file_args(resume, required=True)
     _add_workflow_runner_args(resume)
+    _add_workflow_logging_arg(resume)
     resume.add_argument("--run-id", default=None, help="Explicit workflow run id to resume.")
     resume.add_argument(
         "--latest-failed",
@@ -657,12 +701,14 @@ def _build_parser() -> argparse.ArgumentParser:
     rerun_step = workflow_subparsers.add_parser("rerun-step", help="Rerun one workflow step using artifacts from a prior run.")
     _add_workflow_file_args(rerun_step, required=True)
     _add_workflow_runner_args(rerun_step)
+    _add_workflow_logging_arg(rerun_step)
     rerun_step.add_argument("--run-id", default=None, help="Source workflow run id. Defaults to latest completed for the workflow file.")
     rerun_step.add_argument("--step", required=True, help="Step name to rerun.")
 
     rerun_from = workflow_subparsers.add_parser("rerun-from-step", help="Rerun one step and all downstream dependents.")
     _add_workflow_file_args(rerun_from, required=True)
     _add_workflow_runner_args(rerun_from)
+    _add_workflow_logging_arg(rerun_from)
     rerun_from.add_argument("--run-id", default=None, help="Source workflow run id. Defaults to latest completed for the workflow file.")
     rerun_from.add_argument("--step", required=True, help="Step name to rerun from.")
 
@@ -677,6 +723,15 @@ def _add_workflow_file_args(parser: argparse.ArgumentParser, *, required: bool) 
     )
     parser.add_argument("--dataset-fn", default="build_dataset", help="Dataset builder function name.")
     parser.add_argument("--workflow-fn", default="build_workflow", help="Workflow builder function name.")
+
+
+def _add_workflow_logging_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--logging",
+        default=None,
+        metavar="LEVEL",
+        help="Emit workflow progress logs to stderr at LEVEL (for example: DEBUG, INFO, WARNING, ERROR).",
+    )
 
 
 def _add_workflow_runner_args(parser: argparse.ArgumentParser) -> None:

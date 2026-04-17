@@ -5,22 +5,42 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
 
 from pipelines_v2.core.types import EngineCapability, SpecValidationError, stable_hash
 from pipelines_v2.data.datasets import Example
-from pipelines_v2.engine.base import EngineCaptureResult, EngineInterventionResult, PythonRuntimeSpec
+from pipelines_v2.engine.base import (
+    EngineCaptureResult,
+    EngineGenerationResult,
+    EngineInterventionResult,
+    PythonRuntimeSpec,
+)
 from pipelines_v2.engine.prompt_metadata import rebase_token_sections, resolve_prompt_metadata, token_sections_from_metadata
-from pipelines_v2.operations.interventions import ActivationPatchSpec
+from pipelines_v2.operations.interventions import (
+    ActivationPatchSpec,
+    AddDirectionPatch,
+    GenerationRunSpec,
+    InterchangePatch,
+    PatchedGenerationSpec,
+    ProjectOutPatch,
+    RandomControlPatch,
+    ResidualPathPatch,
+    SwapComponentsPatch,
+    SwapMeanPatch,
+)
 from pipelines_v2.operations.interventions.runtime import (
-    aggregate_patch_rows,
-    control_for_name,
-    evaluate_patch_row,
-    load_residual_source_feature,
-    resolve_patch_cases,
+    load_activation_bank_source,
+    load_centroid_source,
+    load_direction_source,
+    load_path_mask_source,
+    load_subspace_source,
+    partition_cases_by_activation_bank,
+    resolve_generation_examples,
+    resolve_patched_generation_cases,
+    resolve_patched_generation_targets,
 )
 from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord
 
@@ -105,9 +125,34 @@ class ToyEngine:
             metadata={"tokenizer": "toy_synthetic_sequence_v1"},
         )
 
-    def intervene(self, spec: ActivationPatchSpec) -> EngineInterventionResult:
-        source_payload = load_residual_source_feature(spec)
-        resolved_cases, skipped_cases = resolve_patch_cases(spec)
+    def generate(self, spec: GenerationRunSpec) -> EngineGenerationResult:
+        rows = [
+            {
+                "example_key": example.key,
+                "example": example.to_dict(),
+                **self._generation_run_payload(example, spec),
+            }
+            for example in resolve_generation_examples(spec)
+        ]
+        return EngineGenerationResult(
+            rows=rows,
+            metadata={"backend": "toy"},
+        )
+
+    def intervene(self, spec: PatchedGenerationSpec) -> EngineInterventionResult:
+        if spec.patch.requires_pairing():
+            return self._intervene_paired(spec)
+        return self._intervene_unpaired(spec)
+
+    def _intervene_paired(self, spec: PatchedGenerationSpec) -> EngineInterventionResult:
+        activation_bank = load_activation_bank_source(spec.patch)
+        resolved_cases, skipped_cases = resolve_patched_generation_cases(spec)
+        resolved_cases, source_feature_skips = partition_cases_by_activation_bank(
+            spec=spec,
+            activation_bank=activation_bank,
+            resolved_cases=resolved_cases,
+        )
+        skipped_cases.extend(source_feature_skips)
         rows: list[dict[str, Any]] = []
 
         for skipped in skipped_cases:
@@ -115,8 +160,7 @@ class ToyEngine:
                 {
                     "case_key": skipped.get("case_key"),
                     "status": "skipped",
-                    "skip_reason": skipped.get("skip_reason"),
-                    "controls": {},
+                    "skip_reason": skipped.get("skip_reason", ""),
                     "patch_stats": {},
                 }
             )
@@ -125,18 +169,16 @@ class ToyEngine:
             case_key = str(item["case_key"])
             target: Example = item["target"]
             donor: Example = item["donor"]
-            controls: dict[str, Example] = dict(item["controls"])
-
             target_sections = _toy_token_sections(target, spec.prompt_metadata_builder)
-            target_positions = spec.target_tokens.resolve(self.sequence_length, token_sections=target_sections)
-            donor_selector = spec.donor_tokens or spec.target_tokens
-            donor_positions, patch_stats, skip_reason = self._intervention_patch_state(
-                source_payload=source_payload,
-                target_key=target.key,
+            target_positions = spec.patch.target_tokens.resolve(
+                self.sequence_length,
+                token_sections=target_sections,
+            )
+            donor_positions, patch_stats, skip_reason = self._paired_patch_state(
+                patch=spec.patch,
+                activation_bank=activation_bank,
                 donor_key=donor.key,
                 target_positions=target_positions,
-                donor_selector=donor_selector,
-                layers=tuple(int(layer) for layer in spec.write_site.layers),
             )
             if skip_reason is not None:
                 rows.append(
@@ -144,67 +186,102 @@ class ToyEngine:
                         "case_key": case_key,
                         "example_key": target.key,
                         "donor_example_key": donor.key,
+                        "example": target.to_dict(),
                         "status": "skipped",
                         "skip_reason": skip_reason,
-                        "controls": {},
                         "patch_stats": patch_stats,
                     }
                 )
                 continue
 
-            baseline = self._intervention_generation_payload(target, donor=None)
-            patched = self._intervention_generation_payload(target, donor=donor)
-            control_payloads: dict[str, dict[str, Any]] = {}
-            for name, control_example in controls.items():
-                control_spec = control_for_name(tuple(spec.controls), name)
-                control_donor_positions, _, control_skip = self._intervention_patch_state(
-                    source_payload=source_payload,
-                    target_key=target.key,
-                    donor_key=control_example.key,
-                    target_positions=target_positions,
-                    donor_selector=(control_spec.donor_tokens if control_spec and control_spec.donor_tokens is not None else donor_selector),
-                    layers=tuple(int(layer) for layer in spec.write_site.layers),
-                )
-                if control_skip is None and control_donor_positions is not None:
-                    control_payloads[name] = self._intervention_generation_payload(target, donor=control_example)
-                else:
-                    control_payloads[name] = {
-                        "generated_text": baseline["generated_text"],
-                        "generated_token_ids": [],
-                        "finish_reason": "skipped",
-                        "request_id": f"control_skip:{name}:{target.key}",
-                    }
+            patched = self._patched_generation_payload(target, donor=donor)
+            row = {
+                "case_key": case_key,
+                "example_key": target.key,
+                "donor_example_key": donor.key,
+                "example": target.to_dict(),
+                "status": "ok",
+                "skip_reason": "",
+                **patched,
+                "patch_stats": patch_stats,
+                "target_tokens": list(target_positions),
+            }
+            if isinstance(spec.patch, InterchangePatch):
+                row["donor_tokens"] = list(donor_positions or ())
+            else:
+                row["read_tokens"] = list(donor_positions or ())
+            rows.append(row)
 
-            evaluation = evaluate_patch_row(
-                spec=spec,
-                example=target,
-                baseline=baseline,
-                patched=patched,
-                controls=control_payloads,
+        usable_rows = [row for row in rows if str(row.get("status") or "ok") == "ok"]
+        return EngineInterventionResult(
+            summary={
+                "example_count": len(rows),
+                "patched_count": len(usable_rows),
+                "skipped_count": len(rows) - len(usable_rows),
+                "case_count": len(resolved_cases) + len(skipped_cases),
+            },
+            rows=rows,
+            metadata={
+                "backend": "toy",
+                "write_site": spec.patch.write_site.site,
+                "operator": spec.patch.operator,
+            },
+        )
+
+    def _intervene_unpaired(self, spec: PatchedGenerationSpec) -> EngineInterventionResult:
+        targets = resolve_patched_generation_targets(spec)
+        rows: list[dict[str, Any]] = []
+        for target in targets:
+            target_sections = _toy_token_sections(target, spec.prompt_metadata_builder)
+            target_positions = spec.patch.target_tokens.resolve(
+                self.sequence_length,
+                token_sections=target_sections,
             )
+            patch_stats, skip_reason = self._unpaired_patch_state(
+                target=target,
+                target_positions=target_positions,
+                patch=spec.patch,
+            )
+            if skip_reason is not None:
+                rows.append(
+                    {
+                        "example_key": target.key,
+                        "example": target.to_dict(),
+                        "status": "skipped",
+                        "skip_reason": skip_reason,
+                        "patch_stats": patch_stats,
+                    }
+                )
+                continue
             rows.append(
                 {
-                    "case_key": case_key,
                     "example_key": target.key,
-                    "donor_example_key": donor.key,
+                    "example": target.to_dict(),
                     "status": "ok",
                     "skip_reason": "",
-                    "baseline": baseline,
-                    "patched": patched,
-                    "controls": control_payloads,
-                    "evaluation": evaluation,
+                    "generated_text": f"toy_generation:{spec.patch.operator}:{target.key}",
+                    "generated_token_ids": [],
+                    "finish_reason": "length",
+                    "request_id": f"{spec.patch.operator}:{target.key}",
                     "patch_stats": patch_stats,
                     "target_tokens": list(target_positions),
-                    "donor_tokens": list(donor_positions or ()),
                 }
             )
 
-        summary = aggregate_patch_rows(rows)
-        summary["case_count"] = len(resolved_cases) + len(skipped_cases)
+        usable_rows = [row for row in rows if str(row.get("status") or "ok") == "ok"]
         return EngineInterventionResult(
-            summary=summary,
+            summary={
+                "example_count": len(rows),
+                "patched_count": len(usable_rows),
+                "skipped_count": len(rows) - len(usable_rows),
+                "target_count": len(targets),
+            },
             rows=rows,
-            metadata={"backend": "toy", "write_site": spec.write_site.site},
+            metadata={
+                "backend": "toy",
+                "write_site": spec.patch.write_site.site,
+                "operator": spec.patch.operator,
+            },
         )
 
     def _generation_payload(self, example: Example, spec: CaptureSpec) -> dict[str, Any]:
@@ -216,20 +293,33 @@ class ToyEngine:
             "structured_output": structured,
         }
 
-    def _intervention_generation_payload(
+    def _generation_run_payload(
+        self,
+        example: Example,
+        spec: GenerationRunSpec,
+    ) -> dict[str, Any]:
+        if spec.generation.structured_output is None:
+            return {
+                "generated_text": f"toy_generation:{example.key}",
+                "generated_token_ids": [],
+                "finish_reason": "length",
+                "request_id": f"generation:{example.key}",
+            }
+        structured = _toy_structured_output(example)
+        return {
+            "generated_text": json.dumps(structured, sort_keys=True),
+            "generated_token_ids": [],
+            "finish_reason": "length",
+            "request_id": f"generation:{example.key}",
+            "structured_output": structured,
+        }
+
+    def _patched_generation_payload(
         self,
         example: Example,
         *,
-        donor: Example | None,
+        donor: Example,
     ) -> dict[str, Any]:
-        if donor is None:
-            label = str(example.labels.get("class") or example.key)
-            return {
-                "generated_text": f"toy_generation:{label}",
-                "generated_token_ids": [],
-                "finish_reason": "length",
-                "request_id": f"baseline:{example.key}",
-            }
         label = str(donor.labels.get("class") or donor.key)
         return {
             "generated_text": f"toy_generation:{label}",
@@ -238,22 +328,27 @@ class ToyEngine:
             "request_id": f"patched:{example.key}:{donor.key}",
         }
 
-    def _intervention_patch_state(
+    def _paired_patch_state(
         self,
         *,
-        source_payload: dict[str, Any],
-        target_key: str,
+        patch: ActivationPatchSpec,
+        activation_bank: dict[str, Any],
         donor_key: str,
         target_positions: Sequence[int],
-        donor_selector: Any,
-        layers: Sequence[int],
     ) -> tuple[list[int] | None, dict[str, Any], str | None]:
-        layers_payload = source_payload["layers"]
-        first_layer = str(int(layers[0]))
-        target_record = dict(layers_payload[first_layer]).get(target_key)
+        layers_payload = activation_bank["layers"]
+        if isinstance(patch, InterchangePatch):
+            donor_selector = patch.donor_tokens or patch.target_tokens
+            source_layers = tuple(int(patch.source_layer_for(int(write_layer))) for write_layer in patch.write_site.layers)
+        elif isinstance(patch, ResidualPathPatch):
+            donor_selector = patch.read_tokens or patch.target_tokens
+            source_layers = tuple(sorted({int(edge["source_layer"]) for edge in load_path_mask_source(patch)["edges"]}))
+        else:
+            return None, {}, f"unsupported paired patch type: {type(patch).__name__}"
+        first_layer = str(int(source_layers[0]))
         donor_record = dict(layers_payload[first_layer]).get(donor_key)
-        if not isinstance(target_record, dict) or not isinstance(donor_record, dict):
-            return None, {}, "source_feature is missing target or donor activation rows"
+        if not isinstance(donor_record, dict):
+            return None, {}, "activation_bank is missing donor activation rows"
         donor_values = np.asarray(donor_record.get("values"))
         donor_token_sections = donor_record.get("token_sections")
         donor_positions = donor_selector.resolve(
@@ -264,23 +359,183 @@ class ToyEngine:
             return donor_positions, {}, "target and donor token selections must have equal length"
 
         patch_stats: dict[str, Any] = {}
-        for layer in layers:
-            layer_record = dict(layers_payload[str(int(layer))])
-            layer_target = layer_record.get(target_key)
-            layer_donor = layer_record.get(donor_key)
-            if not isinstance(layer_target, dict) or not isinstance(layer_donor, dict):
-                return donor_positions, patch_stats, "source_feature is missing required per-layer activation rows"
-            target_values = np.asarray(layer_target.get("values"), dtype=np.float32)
-            donor_values = np.asarray(layer_donor.get("values"), dtype=np.float32)
-            delta = donor_values[donor_positions] - target_values[target_positions]
-            patch_stats[str(int(layer))] = {
-                "layer": int(layer),
-                "target_span": list(target_positions),
-                "donor_span": list(donor_positions),
-                "token_count": len(target_positions),
-                "delta_norm_raw": float(np.linalg.norm(delta)),
-            }
+        if isinstance(patch, InterchangePatch):
+            for write_layer in patch.write_site.layers:
+                source_layer = int(patch.source_layer_for(int(write_layer)))
+                layer_record = dict(layers_payload[str(int(source_layer))])
+                layer_donor = layer_record.get(donor_key)
+                if not isinstance(layer_donor, dict):
+                    return donor_positions, patch_stats, "activation_bank is missing required per-layer donor rows"
+                donor_values = np.asarray(layer_donor.get("values"), dtype=np.float32)
+                delta = donor_values[donor_positions]
+                patch_stats[str(int(write_layer))] = {
+                    "layer": int(write_layer),
+                    "source_layer": int(source_layer),
+                    "target_span": list(target_positions),
+                    "donor_span": list(donor_positions),
+                    "token_count": len(target_positions),
+                    "delta_norm_raw": float(np.linalg.norm(delta)),
+                }
+        else:
+            for edge in load_path_mask_source(patch)["edges"]:
+                source_layer = int(edge["source_layer"])
+                write_layer = int(edge["write_layer"])
+                if int(write_layer) not in {int(layer) for layer in patch.write_site.layers}:
+                    continue
+                layer_record = dict(layers_payload[str(int(source_layer))])
+                layer_donor = layer_record.get(donor_key)
+                if not isinstance(layer_donor, dict):
+                    return donor_positions, patch_stats, "activation_bank is missing required per-layer donor rows"
+                donor_values = np.asarray(layer_donor.get("values"), dtype=np.float32)
+                donor_section = donor_values[donor_positions]
+                weight = float(edge.get("weight", 1.0))
+                patch_stats[str(int(write_layer))] = {
+                    "layer": int(write_layer),
+                    "source_layer": int(source_layer),
+                    "operator": patch.operator,
+                    "transport": patch.transport,
+                    "weight": weight,
+                    "token_count": len(target_positions),
+                    "target_tokens": [int(pos) for pos in target_positions],
+                    "read_tokens": [int(pos) for pos in donor_positions],
+                    "delta_norm_raw": float(np.linalg.norm(weight * donor_section)),
+                }
         return donor_positions, patch_stats, None
+
+    def _unpaired_patch_state(
+        self,
+        *,
+        target: Example,
+        target_positions: Sequence[int],
+        patch: ActivationPatchSpec,
+    ) -> tuple[dict[str, Any], str | None]:
+        if not target_positions:
+            return {}, "target token selection resolved to no positions"
+        source_payload = (
+            load_subspace_source(patch)
+            if isinstance(patch, (ProjectOutPatch, RandomControlPatch, SwapComponentsPatch))
+            or (isinstance(patch, AddDirectionPatch) and patch.uses_subspace())
+            else None
+        )
+        direction_payload = load_direction_source(patch) if isinstance(patch, AddDirectionPatch) else None
+        centroid_payload = load_centroid_source(patch) if isinstance(patch, (SwapMeanPatch, SwapComponentsPatch)) else None
+        patch_stats: dict[str, Any] = {}
+        for write_layer in patch.write_site.layers:
+            source_layer = patch.source_layer_for(int(write_layer))
+            section = np.stack(
+                [self._activation_vector(target, int(write_layer), int(pos)) for pos in target_positions],
+                axis=0,
+            ).astype(np.float32)
+            mu = section.mean(axis=0)
+            selected_component_count = 0
+            if isinstance(patch, (ProjectOutPatch, RandomControlPatch, SwapComponentsPatch)):
+                assert source_payload is not None
+                layer_payload = dict(source_payload["layers"][str(int(source_layer))])
+                mean = np.asarray(layer_payload["mean"], dtype=np.float32)
+                scale = np.asarray(layer_payload["scale"], dtype=np.float32)
+                safe_scale = np.asarray(layer_payload["safe_scale"], dtype=np.float32)
+                components = np.asarray(layer_payload["components"], dtype=np.float32)
+                selected = patch.component_indices_for(int(write_layer))
+                if selected:
+                    components = components[list(selected)]
+                if components.ndim != 2 or components.shape[0] == 0:
+                    return patch_stats, f"no subspace components available for write layer {int(write_layer)}"
+                row_norms = np.linalg.norm(components, axis=1, keepdims=True)
+                components = components / np.where(row_norms == 0, 1.0, row_norms)
+                centered_std = (mu - mean) / safe_scale
+                coeff = centered_std @ components.T
+                projected = coeff @ components
+                selected_component_count = int(components.shape[0])
+            if isinstance(patch, ProjectOutPatch):
+                delta_raw = (-float(patch.strength) * projected) * scale
+            elif isinstance(patch, RandomControlPatch):
+                random_rows = self._random_orthogonal_rows(
+                    target_rows=components,
+                    num_rows=max(1, int(components.shape[0])),
+                    dim=int(mean.shape[0]),
+                    seed=int(patch.random_seed) + int(write_layer),
+                )
+                random_coeff = centered_std @ random_rows.T
+                random_projected = random_coeff @ random_rows
+                if patch.match_projected_norm:
+                    proj_norm = float(np.linalg.norm(projected))
+                    random_norm = float(np.linalg.norm(random_projected))
+                    if proj_norm > 0 and random_norm > 1e-8:
+                        random_projected = random_projected * (proj_norm / random_norm)
+                delta_raw = (-float(patch.strength) * random_projected) * scale
+            elif isinstance(patch, AddDirectionPatch):
+                assert direction_payload is not None
+                layer_payload = dict(direction_payload["layers"][str(int(source_layer))])
+                if patch.uses_subspace():
+                    assert source_payload is not None
+                    subspace_layer = dict(source_payload["layers"][str(int(source_layer))])
+                    scale = np.asarray(subspace_layer["scale"], dtype=np.float32)
+                    components = np.asarray(subspace_layer["components"], dtype=np.float32)
+                    selected = patch.component_indices_for(int(write_layer))
+                    if selected:
+                        components = components[list(selected)]
+                    weights = np.asarray(layer_payload.get("subspace_weights", ()), dtype=np.float32)
+                    if selected and weights.size:
+                        weights = weights[list(selected)]
+                    if components.ndim == 1:
+                        components = components[None, :]
+                    delta_std = weights @ components if weights.size else np.zeros((int(scale.shape[0]),), dtype=np.float32)
+                    delta_raw = float(patch.strength) * (delta_std * scale)
+                    selected_component_count = int(components.shape[0])
+                else:
+                    delta_raw = float(patch.strength) * np.asarray(layer_payload["raw_vector"], dtype=np.float32)
+            elif isinstance(patch, SwapMeanPatch):
+                assert centroid_payload is not None
+                layer_payload = dict(centroid_payload["layers"][str(int(source_layer))])
+                donor_mean = np.asarray(layer_payload["centroids"][patch.centroid_name], dtype=np.float32)
+                delta_raw = float(patch.strength) * (donor_mean - mu)
+            elif isinstance(patch, SwapComponentsPatch):
+                assert centroid_payload is not None
+                layer_payload = dict(centroid_payload["layers"][str(int(source_layer))])
+                donor_mean = np.asarray(layer_payload["centroids"][patch.centroid_name], dtype=np.float32)
+                donor_centered_std = (donor_mean - mean) / safe_scale
+                donor_coeff = donor_centered_std @ components.T
+                donor_projected = donor_coeff @ components
+                delta_raw = float(patch.strength) * ((donor_projected - projected) * scale)
+            else:
+                return patch_stats, f"unsupported toy patch operator: {patch.operator!r}"
+            patch_stats[str(int(write_layer))] = {
+                "layer": int(write_layer),
+                "source_layer": int(source_layer),
+                "operator": patch.operator,
+                "token_count": len(target_positions),
+                "target_tokens": [int(pos) for pos in target_positions],
+                "delta_norm_raw": float(np.linalg.norm(delta_raw)),
+                "selected_component_count": int(selected_component_count),
+            }
+        return patch_stats, None
+
+    def _random_orthogonal_rows(
+        self,
+        *,
+        target_rows: np.ndarray,
+        num_rows: int,
+        dim: int,
+        seed: int,
+    ) -> np.ndarray:
+        rng = np.random.default_rng(int(seed))
+        attempts = 0
+        while attempts < 8:
+            rand = rng.standard_normal((num_rows, dim), dtype=np.float32)
+            if target_rows.size:
+                rand = rand - (rand @ target_rows.T) @ target_rows
+            row_norm = np.linalg.norm(rand, axis=1)
+            keep = row_norm > 1e-6
+            rand = rand[keep]
+            if rand.shape[0] < num_rows:
+                attempts += 1
+                continue
+            q, _ = np.linalg.qr(rand[:num_rows].T)
+            ortho = q.T.astype(np.float32, copy=False)
+            if ortho.shape[0] == num_rows:
+                return ortho
+            attempts += 1
+        raise RuntimeError("Failed to sample random orthogonal control rows")
 
     def _capture_residual(self, site: ResidualSite, spec: CaptureSpec) -> dict[str, Any]:
         layers: dict[str, Any] = {}

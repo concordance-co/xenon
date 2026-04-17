@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
+import logging
 import uuid
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
@@ -11,11 +12,13 @@ from typing import Any, Mapping
 
 from pipelines_v2.core.types import SpecValidationError, stable_hash, utc_now_iso
 from pipelines_v2.data.datasets import CaseSet, Dataset, LabelPredicate, LabelSet
+from pipelines_v2.operations.derive import TransformSpec
+from pipelines_v2.operations.execution.derive import run_transform
 from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from pipelines_v2.operations.representation import GeometrySpec
 from pipelines_v2.operations.specs import CaptureSpec, TokenSelector
 from pipelines_v2.runtime import Runner
-from pipelines_v2.storage.artifacts import artifact_from_manifest
+from pipelines_v2.storage.artifacts import InlineOperationArtifact, artifact_from_manifest
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepContext, WorkflowStepRecord
 from pipelines_v2.workflow.specs import (
     StepFeatureRef,
@@ -25,6 +28,8 @@ from pipelines_v2.workflow.specs import (
     WorkflowSpec,
     WorkflowStepPlan,
 )
+
+_LOG = logging.getLogger("pipelines_v2.workflow")
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +110,12 @@ class WorkflowOrchestrator:
         workflow_hash = workflow.semantic_hash()
         workflow_spec_hash = workflow.spec_hash()
         run_id = resume_run_id or f"wr_{workflow_hash[:12]}_{uuid.uuid4().hex[:8]}"
+        _LOG.info(
+            "workflow started name=%s run_id=%s step_count=%d",
+            workflow.name,
+            run_id,
+            len(ordered_steps),
+        )
         catalog = self._workflow_catalog()
         existing_step_records: dict[str, WorkflowStepRecord] = {}
         reusable_step_records: dict[str, WorkflowStepRecord] = {}
@@ -240,6 +251,57 @@ class WorkflowOrchestrator:
                             step_spec_hash=step.spec_hash(),
                         )
                         input_artifact_refs = tuple(_input_artifact_ids_from_results(step, results))
+                        if _should_inline_transform_step(step):
+                            started_at = utc_now_iso()
+                            _LOG.info("step starting name=%s runner=%s mode=inline_transform", step.name, step.runner)
+                            try:
+                                results[step.name] = _run_inline_transform_step(resolved_spec)
+                            except Exception as exc:
+                                _LOG.exception("step failed name=%s runner=%s mode=inline_transform", step.name, step.runner)
+                                first_failure = exc
+                                failed_steps.add(step.name)
+                                pending.remove(step.name)
+                                progress_made = True
+                                if catalog is not None:
+                                    catalog.record_workflow_step(
+                                        WorkflowStepRecord(
+                                            run_id=run_id,
+                                            workflow_hash=workflow_hash,
+                                            workflow_step_key=step_context.workflow_step_key,
+                                            step_name=step.name,
+                                            step_index=step_index_by_name[step.name],
+                                            runner=step.runner,
+                                            status="failed",
+                                            step_semantic_hash=step_context.step_semantic_hash,
+                                            step_spec_hash=step_context.step_spec_hash,
+                                            input_artifact_refs=input_artifact_refs,
+                                            started_at=started_at,
+                                            finished_at=utc_now_iso(),
+                                        )
+                                    )
+                                break
+                            pending.remove(step.name)
+                            progress_made = True
+                            _LOG.info("step completed name=%s runner=%s kind=inline_transform", step.name, step.runner)
+                            if catalog is not None:
+                                catalog.record_workflow_step(
+                                    WorkflowStepRecord(
+                                        run_id=run_id,
+                                        workflow_hash=workflow_hash,
+                                        workflow_step_key=step_context.workflow_step_key,
+                                        step_name=step.name,
+                                        step_index=step_index_by_name[step.name],
+                                        runner=step.runner,
+                                        status="completed",
+                                        step_semantic_hash=step_context.step_semantic_hash,
+                                        step_spec_hash=step_context.step_spec_hash,
+                                        input_artifact_refs=input_artifact_refs,
+                                        artifact_kind="inline_transform",
+                                        started_at=started_at,
+                                        finished_at=utc_now_iso(),
+                                    )
+                                )
+                            continue
                         if catalog is not None:
                             resumed = existing_step_records.get(step.name)
                             if (
@@ -265,6 +327,13 @@ class WorkflowOrchestrator:
                                     if manifest is not None and store is not None:
                                         results[step.name] = artifact_from_manifest(manifest, store=store)
                                         now = utc_now_iso()
+                                        _LOG.info(
+                                            "step reused name=%s runner=%s source_run_id=%s artifact_id=%s",
+                                            step.name,
+                                            step.runner,
+                                            reusable.run_id,
+                                            reusable.artifact_id,
+                                        )
                                         catalog.record_workflow_step(
                                             WorkflowStepRecord(
                                                 run_id=run_id,
@@ -300,6 +369,13 @@ class WorkflowOrchestrator:
                                     store = getattr(runner, "artifacts", None)
                                     if manifest is not None and store is not None:
                                         results[step.name] = artifact_from_manifest(manifest, store=store)
+                                        _LOG.info(
+                                            "step reused name=%s runner=%s source_run_id=%s artifact_id=%s",
+                                            step.name,
+                                            step.runner,
+                                            reusable.run_id,
+                                            reusable.artifact_id,
+                                        )
                                         catalog.record_workflow_step(
                                             WorkflowStepRecord(
                                                 run_id=run_id,
@@ -344,6 +420,7 @@ class WorkflowOrchestrator:
                             step_started_at[step.name] = started_at
                         else:
                             step_started_at[step.name] = utc_now_iso()
+                        _LOG.info("step starting name=%s runner=%s spec_kind=%s", step.name, step.runner, step.spec.kind)
                         future = pool.submit(_run_with_workflow_context, runner, resolved_spec, step_context)
                         running[future] = step.name
                         pending.remove(step.name)
@@ -365,6 +442,18 @@ class WorkflowOrchestrator:
                     try:
                         result = future.result()
                         results[step_name] = result
+                        if hasattr(result, "manifest"):
+                            manifest = result.manifest()
+                            _LOG.info(
+                                "step completed name=%s runner=%s artifact_kind=%s artifact_id=%s runtime_app_id=%s",
+                                step_name,
+                                step_by_name[step_name].runner,
+                                manifest.artifact_kind,
+                                manifest.artifact_id,
+                                _manifest_runtime_app_id(manifest),
+                            )
+                        else:
+                            _LOG.info("step completed name=%s runner=%s", step_name, step_by_name[step_name].runner)
                         if catalog is not None and hasattr(result, "manifest"):
                             manifest = result.manifest()
                             catalog.record_workflow_step(
@@ -392,6 +481,7 @@ class WorkflowOrchestrator:
                                 )
                             )
                     except Exception as exc:
+                        _LOG.exception("step failed name=%s runner=%s", step_name, step_by_name[step_name].runner)
                         failed_steps.add(step_name)
                         if catalog is not None:
                             catalog.record_workflow_step(
@@ -418,6 +508,8 @@ class WorkflowOrchestrator:
 
         if first_failure is not None:
             blocked_steps = _blocked_pending_steps(pending, dependencies, failed_steps)
+            if blocked_steps:
+                _LOG.warning("workflow blocked run_id=%s blocked_steps=%s", run_id, sorted(blocked_steps))
             if catalog is not None:
                 finished_at = utc_now_iso()
                 for step_name in sorted(blocked_steps):
@@ -452,6 +544,7 @@ class WorkflowOrchestrator:
                         error=str(first_failure),
                     )
                 )
+            _LOG.error("workflow failed name=%s run_id=%s error=%s", workflow.name, run_id, first_failure)
             raise first_failure
 
         if catalog is not None:
@@ -468,6 +561,7 @@ class WorkflowOrchestrator:
                     finished_at=utc_now_iso(),
                 )
             )
+        _LOG.info("workflow completed name=%s run_id=%s", workflow.name, run_id)
         return WorkflowResult(run_id=run_id, workflow_hash=workflow_hash, step_results=results)
 
     def _workflow_catalog(self) -> Any | None:
@@ -704,6 +798,20 @@ def _run_with_workflow_context(runner: Any, spec: Any, step_context: WorkflowSte
     if "workflow_context" in signature.parameters:
         return runner.run(spec, workflow_context=step_context)
     return runner.run(spec)
+
+
+def _should_inline_transform_step(step: Any) -> bool:
+    return isinstance(getattr(step, "spec", None), TransformSpec) and bool(getattr(step.spec, "inline", False))
+
+
+def _run_inline_transform_step(spec: TransformSpec) -> InlineOperationArtifact:
+    result = run_transform(spec)
+    return InlineOperationArtifact(
+        payload=dict(result.payload),
+        labels={str(name): dict(payload) for name, payload in result.labels.items()},
+        metadata=dict(result.metadata),
+        artifact_kind="inline_transform",
+    )
 
 
 def _load_manifest_for_workflow_step(catalog: Any, record: WorkflowStepRecord) -> Any | None:

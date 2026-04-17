@@ -10,7 +10,8 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from pipelines_v2.core.types import SpecValidationError
 from pipelines_v2.data.datasets import LabelPredicate
-from pipelines_v2.operations.representation import BasisSpec, DirectionSpec, GeometrySpec
+from pipelines_v2.operations.execution.common import resolve_values_map
+from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 
 from .common import (
     OperationExecutionResult,
@@ -68,12 +69,24 @@ def run_direction(spec: DirectionSpec) -> OperationExecutionResult:
         vector = pos.mean(axis=0) - neg.mean(axis=0)
         norm = float(np.linalg.norm(vector))
         unit = vector / norm if norm > 0 else vector
-        layers[str(layer)] = {
+        layer_payload: dict[str, Any] = {
             "vector": unit.tolist(),
+            "raw_vector": vector.astype(np.float32).tolist(),
             "norm": norm,
             "positive_count": len(positive_keys),
             "negative_count": len(negative_keys),
         }
+        if spec.subspace is not None:
+            subspace_layer = _subspace_layer_payload(spec.subspace, int(layer))
+            safe_scale = np.asarray(subspace_layer["safe_scale"], dtype=np.float32)
+            components = np.asarray(subspace_layer["components"], dtype=np.float32)
+            if components.ndim == 1:
+                components = components[None, :]
+            standardized_vector = np.asarray(vector, dtype=np.float32) / safe_scale
+            weights = standardized_vector @ components.T if components.size else np.zeros((0,), dtype=np.float32)
+            layer_payload["subspace_weights"] = weights.astype(np.float32).tolist()
+            layer_payload["subspace_component_count"] = int(components.shape[0])
+        layers[str(layer)] = layer_payload
 
     payload = {
         "kind": "direction_result",
@@ -144,6 +157,126 @@ def run_basis(spec: BasisSpec) -> OperationExecutionResult:
             "materialized": True,
             "example_count": len(example_keys),
             "example_keys": list(example_keys),
+        },
+    )
+
+
+def run_subspace(spec: SubspaceSpec) -> OperationExecutionResult:
+    matrices, example_keys = feature_matrices(
+        spec.feature,
+        layers=tuple(spec.layers) if spec.layers else None,
+        token_selector=spec.tokens,
+        token_pooling=spec.pooling,
+    )
+
+    layers: dict[str, Any] = {}
+    for layer, X in matrices.items():
+        mean = X.mean(axis=0).astype(np.float32)
+        scale = X.std(axis=0).astype(np.float32)
+        safe_scale = np.where(scale == 0, 1.0, scale).astype(np.float32)
+        standardized = ((X - mean) / safe_scale).astype(np.float32)
+        n_components = max(1, min(spec.components, standardized.shape[0], standardized.shape[1]))
+        pca = PCA(n_components=n_components)
+        pca.fit(standardized)
+        named_components = {
+            str(name): int(index)
+            for name, index in dict(spec.named_components_by_layer.get(int(layer), {})).items()
+            if 0 <= int(index) < int(n_components)
+        }
+        layers[str(layer)] = {
+            "method": "standardized_pca",
+            "mean": mean.tolist(),
+            "scale": scale.tolist(),
+            "safe_scale": safe_scale.tolist(),
+            "components": pca.components_.astype(np.float32).tolist(),
+            "explained_variance_ratio": pca.explained_variance_ratio_.astype(np.float32).tolist(),
+            "example_count": int(X.shape[0]),
+            "component_count": int(n_components),
+            "named_components": named_components,
+        }
+
+    payload = {
+        "kind": "subspace_result",
+        "feature": feature_name(spec.feature),
+        "layers": layers,
+        "summary": {
+            "layer_count": len(layers),
+            "component_count": int(spec.components),
+            "method": "standardized_pca",
+        },
+    }
+    return OperationExecutionResult(
+        payload=payload,
+        example_coverage={
+            "materialized": True,
+            "example_count": len(example_keys),
+            "example_keys": list(example_keys),
+        },
+    )
+
+
+def run_centroid(spec: CentroidSpec) -> OperationExecutionResult:
+    matrices, feature_example_keys = feature_matrices(
+        spec.feature,
+        layers=tuple(spec.layers) if spec.layers else None,
+        token_selector=spec.tokens,
+        token_pooling=spec.pooling,
+    )
+    row_keys = align_example_keys_to_rows(feature_example_keys, spec.rows, label="CentroidSpec")
+    value_map = {str(key): value for key, value in resolve_values_map(spec.by, label="CentroidSpec.by").items()}
+    labels = sorted({str(value_map[key]) for key in row_keys})
+    if not labels:
+        raise SpecValidationError("CentroidSpec by did not resolve any centroid labels")
+
+    layers: dict[str, Any] = {}
+    for layer, X_all in matrices.items():
+        X = filter_matrix_by_keys(X_all, feature_example_keys, row_keys)
+        index_by_key = {key: index for index, key in enumerate(row_keys)}
+        centroids: dict[str, Any] = {}
+        counts: dict[str, int] = {}
+        for label in labels:
+            label_keys = [key for key in row_keys if str(value_map[key]) == label]
+            label_indices = [index_by_key[key] for key in label_keys]
+            centroid = X[np.asarray(label_indices, dtype=np.int64)].mean(axis=0).astype(np.float32)
+            centroids[label] = centroid.tolist()
+            counts[label] = len(label_keys)
+        layer_payload: dict[str, Any] = {
+            "centroids": centroids,
+            "counts": counts,
+            "example_count": int(X.shape[0]),
+            "centroid_count": len(centroids),
+        }
+        if spec.subspace is not None:
+            subspace_layer = _subspace_layer_payload(spec.subspace, int(layer))
+            mean = np.asarray(subspace_layer["mean"], dtype=np.float32)
+            safe_scale = np.asarray(subspace_layer["safe_scale"], dtype=np.float32)
+            components = np.asarray(subspace_layer["components"], dtype=np.float32)
+            if components.ndim == 1:
+                components = components[None, :]
+            standardized = {
+                label: (((np.asarray(vector, dtype=np.float32) - mean) / safe_scale) @ components.T).astype(np.float32).tolist()
+                for label, vector in centroids.items()
+            }
+            layer_payload["standardized_centroids"] = standardized
+            layer_payload["subspace_component_count"] = int(components.shape[0])
+        layers[str(layer)] = layer_payload
+
+    payload = {
+        "kind": "centroid_result",
+        "feature": feature_name(spec.feature),
+        "layers": layers,
+        "summary": {
+            "layer_count": len(layers),
+            "label_count": len(labels),
+            "example_count": len(row_keys),
+        },
+    }
+    return OperationExecutionResult(
+        payload=payload,
+        example_coverage={
+            "materialized": True,
+            "example_count": len(row_keys),
+            "example_keys": list(row_keys),
         },
     )
 
@@ -264,3 +397,22 @@ def _encode_geometry_labels(values: list[Any]) -> tuple[np.ndarray, list[str]]:
     encoder = LabelEncoder()
     encoded = encoder.fit_transform(np.asarray(values, dtype=object))
     return encoded.astype(np.int64), [str(item) for item in encoder.classes_]
+
+
+def _subspace_layer_payload(value: Any, layer: int) -> dict[str, Any]:
+    if value is None or not hasattr(value, "result"):
+        raise SpecValidationError("Expected a subspace operation artifact ref")
+    payload = value.result()
+    if not isinstance(payload, dict):
+        raise SpecValidationError("Subspace payload must be a mapping")
+    if str(payload.get("kind") or "") != "subspace_result":
+        raise SpecValidationError("Expected subspace_result payload")
+    layers = payload.get("layers")
+    if not isinstance(layers, dict):
+        raise SpecValidationError("Subspace payload is missing layers")
+    layer_payload = layers.get(str(int(layer)))
+    if not isinstance(layer_payload, dict):
+        raise SpecValidationError(f"Subspace payload is missing layer {int(layer)}")
+    if "safe_scale" not in layer_payload:
+        raise SpecValidationError(f"Subspace payload layer {int(layer)} is missing safe_scale")
+    return layer_payload

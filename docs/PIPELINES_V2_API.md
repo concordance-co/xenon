@@ -22,6 +22,9 @@ Current execution support:
 
 - implemented:
   - `CaptureSpec`
+  - `GenerationRunSpec`
+  - `PatchedGenerationSpec`
+  - `PatchComparisonSpec`
   - `ProbeSpec`
   - `TransferProbeSpec`
   - `TextBaselineSpec`
@@ -29,18 +32,18 @@ Current execution support:
   - `DirectionSpec`
   - `BasisSpec`
   - `GeometrySpec`
+  - `SubspaceSpec`
   - `PairDeltaSpec`
   - `LabelMapSpec`
   - `LabelFieldsSpec`
   - `TransformSpec`
   - `ReportSpec`
-- schema exists but execution is not implemented yet:
-  - `ActivationPatchSpec`
+  - `ActivationPatchSpec` as a nested patch recipe
 
 Current engine support:
 
 - `ToyEngine`: local deterministic test engine
-- `VLLMEngine`: real capture engine
+- `VLLMEngine`: real capture / generation / patched-generation engine
 
 Current runner support:
 
@@ -66,7 +69,7 @@ Current operation-module layout:
 - `pipelines_v2.operations.readouts`
   - readout and probe specs
 - `pipelines_v2.operations.representation`
-  - direction and decomposition specs
+  - direction and decomposition specs, including patch-oriented subspaces
 - `pipelines_v2.operations.interventions`
   - intervention specs such as patching
 - `pipelines_v2.operations.reports`
@@ -741,24 +744,156 @@ Typical use:
 ### `ActivationPatchSpec`
 
 What it is:
-- the planned model-bound intervention spec
+- a serializable residual patch recipe
+- not directly runnable
+
+Concrete recipe families:
+- `InterchangePatch`
+- `ProjectOutPatch`
+- `AddDirectionPatch`
+- `SwapMeanPatch`
+- `SwapComponentsPatch`
+- `RandomControlPatch`
+- `ResidualPathPatch`
+
+Shared fields:
+- `write_site`
+- `target_tokens`
+- `source_layer_map`
+- `strength`
+
+Operator-specific sources:
+- `InterchangePatch.activation_bank`
+- `ProjectOutPatch.subspace`
+- `AddDirectionPatch.direction`
+- `SwapMeanPatch.centroids`
+- `SwapComponentsPatch.subspace`
+- `SwapComponentsPatch.centroids`
+- `ResidualPathPatch.activation_bank`
+- `ResidualPathPatch.path_mask`
+
+Use them inside:
+- `PatchedGenerationSpec.patch`
+
+### `GenerationRunSpec`
+
+What it does:
+- runs plain model generation over a selected dataset row set
 
 Fields:
 - `engine`
 - `dataset`
-- `basis`
-- `site`
-- `layers`
-- `tokens`
-- `mode`
-- `components`
-- `strengths`
-- `controls`
-- `metrics`
+- `select_when`
+- `generation`
 
-Status:
-- serializable now
-- execution not implemented yet
+Artifact result:
+- `generation_run_result`
+- one row per generated target example
+
+### `PatchedGenerationSpec`
+
+What it does:
+- runs model generation under an `ActivationPatchSpec`
+
+Fields:
+- `engine`
+- `dataset`
+- `patch`
+- `select_when`
+- `pair_by`
+- `target_when`
+- `donor_when`
+- `generation`
+- `prompt_metadata_builder`
+
+Selection semantics:
+- for pairing-based patch families (`InterchangePatch`, `ResidualPathPatch`):
+  - `pair_by`, `target_when`, and `donor_when` are required
+- for unpaired patch families (`ProjectOutPatch`, `AddDirectionPatch`, `SwapMeanPatch`, `SwapComponentsPatch`, `RandomControlPatch`):
+  - `select_when` is the primary row selector
+  - `pair_by`, `target_when`, and `donor_when` are not required
+
+Artifact result:
+- `patched_generation_result`
+- one row per target example
+- interchange rows include donor metadata
+- subspace rows include per-layer patch stats and selected token positions
+
+### `SubspaceSpec`
+
+What it does:
+- learns a standardized PCA subspace over a captured residual feature
+- produces a reusable `subspace_result` artifact for activation patching
+
+Fields:
+- `feature`
+- `layers`
+- `components`
+- `tokens`
+- `pooling`
+
+Artifact result:
+- `subspace_result`
+- per layer:
+  - `mean`
+  - `scale`
+  - `safe_scale`
+  - normalized PCA `components`
+  - `explained_variance_ratio`
+  - `component_count`
+
+### `ActivationBankSpec`
+
+What it does:
+- materializes a captured residual feature into a donor/read bank for paired intervention workloads
+
+Artifact result:
+- `activation_bank_result`
+- per layer:
+  - per-example `values`
+  - `token_count`
+  - `token_sections`
+
+### `CentroidSpec`
+
+What it does:
+- computes per-group residual centroids for intervention workloads such as `SwapMeanPatch` and `SwapComponentsPatch`
+
+Artifact result:
+- `centroid_result`
+- per layer:
+  - `centroids`
+  - `counts`
+  - optional `standardized_centroids` when tied to a `SubspaceSpec`
+
+### `ExplicitPathMaskSpec`
+
+What it does:
+- stores explicit residual path edges for `ResidualPathPatch`
+
+Artifact result:
+- `explicit_path_mask_result`
+- edge list of `source_layer`, `write_layer`, and `weight`
+
+### `PatchComparisonSpec`
+
+What it does:
+- compares a baseline generation artifact against one or more named variant artifacts
+- runs a row evaluator outside the model runtime
+
+Fields:
+- `baseline`
+- `variants`
+- `row_evaluator`
+
+Evaluator inputs:
+- `example`
+- `baseline`
+- `variants`
+
+Artifact result:
+- `patch_comparison_result`
+- joined by `example_key`
 
 ### `ReportSpec`
 
@@ -1387,7 +1522,13 @@ probe_artifact = result.step("probe")
 
 ## Current Limits To Know About
 
-- `ActivationPatchSpec` is not executable yet.
+- `ActivationPatchSpec` is a nested recipe, not a runnable operation.
+- `PatchedGenerationSpec` currently supports:
+  - residual donor interchange
+  - residual subspace patching (`project_out`, `random_control`, `add_direction`, `swap_mean`, `swap_components`)
+  - residual path transport (`residual_path`)
+- `SubspaceSpec` currently uses standardized PCA only.
+- real vLLM validation is strongest today for `project_out`; broader patch families exist in the surface but should still be validated on target workloads.
 - `BasisSpec` only supports PCA today.
 - `LabelPredicate` only supports equality today.
 - artifact-bound analysis supports residual and MoE router features, but broader capture families still need dedicated ops.

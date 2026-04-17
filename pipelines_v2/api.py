@@ -14,16 +14,42 @@ from .core.types import (
 )
 from .data.datasets import CaseSet, Dataset, Example, LabelPredicate, LabelSet
 from .data.sources import InMemorySource, PostgresSource, Source
-from .engine import Engine, EngineCaptureResult, EngineInterventionResult, PythonRuntimeSpec, RuntimeSpec, ToyEngine, VLLMEngine
+from .engine import (
+    Engine,
+    EngineCaptureResult,
+    EngineGenerationResult,
+    EngineInterventionResult,
+    PythonRuntimeSpec,
+    RuntimeSpec,
+    ToyEngine,
+    VLLMEngine,
+)
 from .operations.capture import CaptureSpec, GenerationSpec, MoERoutingSite, ResidualSite, RoutingRecord
 from .operations.common.builders import PromptMetadataBuilder, TransformBuilder, TransformResult
 from .operations.common.schemas import TensorStorage
 from .operations.common.tokens import TokenPooling, TokenSelector
 from .operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
-from .operations.interventions import ActivationPatchControl, ActivationPatchSpec, ResidualInterventionSite
+from .operations.interventions import (
+    ActivationPatchSpec,
+    ActivationBankSpec,
+    AddDirectionPatch,
+    ExplicitPathEdge,
+    ExplicitPathMaskSpec,
+    GenerationRunSpec,
+    InterchangePatch,
+    InterventionSite,
+    PatchComparisonSpec,
+    PatchedGenerationSpec,
+    ProjectOutPatch,
+    RandomControlPatch,
+    ResidualInterventionSite,
+    ResidualPathPatch,
+    SwapComponentsPatch,
+    SwapMeanPatch,
+)
 from .operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from .operations.reports import ReportSpec
-from .operations.representation import BasisSpec, DirectionSpec, GeometrySpec
+from .operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 from .runtime import (
     ExecutionPlan,
     LocalResources,
@@ -65,7 +91,8 @@ from .workflow import (
 
 __all__ = [
     "ActivationPatchSpec",
-    "ActivationPatchControl",
+    "ActivationBankSpec",
+    "AddDirectionPatch",
     "ArtifactManifest",
     "ArtifactLabelRef",
     "ArtifactStore",
@@ -75,19 +102,24 @@ __all__ = [
     "CaptureSpec",
     "CaseSet",
     "Catalog",
+    "CentroidSpec",
     "CompositeCatalog",
     "Dataset",
     "DirectionSpec",
     "Engine",
     "EngineCapability",
     "EngineCaptureResult",
+    "EngineGenerationResult",
     "EngineInterventionResult",
     "Example",
     "ExecutionPlan",
     "FeatureLayerRef",
     "FeatureRef",
     "FileCatalog",
+    "ExplicitPathEdge",
+    "ExplicitPathMaskSpec",
     "GenerationSpec",
+    "GenerationRunSpec",
     "GeometrySpec",
     "InMemorySource",
     "LabelFieldsSpec",
@@ -108,6 +140,8 @@ __all__ = [
     "NullCatalog",
     "OperationSpec",
     "OperationArtifact",
+    "PatchComparisonSpec",
+    "PatchedGenerationSpec",
     "PipelinesV2Error",
     "PostgresCatalog",
     "PostgresSource",
@@ -116,7 +150,12 @@ __all__ = [
     "PythonRuntimeSpec",
     "ResidualizedProbeSpec",
     "ReportSpec",
+    "InterchangePatch",
+    "InterventionSite",
+    "ProjectOutPatch",
+    "RandomControlPatch",
     "ResidualInterventionSite",
+    "ResidualPathPatch",
     "ResidualSite",
     "RuntimeSecret",
     "RuntimeSpec",
@@ -130,6 +169,9 @@ __all__ = [
     "StepRef",
     "TensorStorage",
     "TextBaselineSpec",
+    "SubspaceSpec",
+    "SwapComponentsPatch",
+    "SwapMeanPatch",
     "TransformBuilder",
     "TransformResult",
     "TransformSpec",

@@ -1,9 +1,37 @@
 """Intervention specs."""
 
-from .patching import ActivationPatchControl, ActivationPatchSpec, ResidualInterventionSite
+from .evaluation import PatchComparisonSpec
+from .patching import (
+    ActivationPatchSpec,
+    AddDirectionPatch,
+    GenerationRunSpec,
+    InterchangePatch,
+    InterventionSite,
+    PatchedGenerationSpec,
+    ProjectOutPatch,
+    RandomControlPatch,
+    ResidualInterventionSite,
+    ResidualPathPatch,
+    SwapComponentsPatch,
+    SwapMeanPatch,
+)
+from .sources import ActivationBankSpec, ExplicitPathEdge, ExplicitPathMaskSpec
 
 __all__ = [
-    "ActivationPatchControl",
     "ActivationPatchSpec",
+    "ActivationBankSpec",
+    "AddDirectionPatch",
+    "ExplicitPathEdge",
+    "ExplicitPathMaskSpec",
+    "GenerationRunSpec",
+    "InterchangePatch",
+    "InterventionSite",
+    "PatchComparisonSpec",
+    "PatchedGenerationSpec",
+    "ProjectOutPatch",
+    "RandomControlPatch",
     "ResidualInterventionSite",
+    "ResidualPathPatch",
+    "SwapComponentsPatch",
+    "SwapMeanPatch",
 ]

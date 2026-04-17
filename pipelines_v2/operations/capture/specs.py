@@ -24,13 +24,34 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class GenerationSpec:
-    """Generation settings attached to a capture run."""
+    """Generation and chat-template settings attached to a model-bound run."""
 
     enabled: bool = False
     max_tokens: int = 0
     temperature: float = 0.0
+    top_p: float = 1.0
+    top_k: int = -1
     capture_reasoning: bool = False
+    chat_tools: tuple[dict[str, Any], ...] = field(default_factory=tuple)
+    tool_choice: str | dict[str, Any] | None = None
     structured_output: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "enabled", bool(self.enabled))
+        object.__setattr__(self, "max_tokens", int(self.max_tokens))
+        object.__setattr__(self, "temperature", float(self.temperature))
+        object.__setattr__(self, "top_p", float(self.top_p))
+        object.__setattr__(self, "top_k", int(self.top_k))
+        object.__setattr__(self, "capture_reasoning", bool(self.capture_reasoning))
+        object.__setattr__(
+            self,
+            "chat_tools",
+            tuple(dict(tool) for tool in (self.chat_tools or ())),
+        )
+        if int(self.max_tokens) < 0:
+            raise SpecValidationError("GenerationSpec max_tokens must be >= 0")
+        if float(self.top_p) <= 0.0:
+            raise SpecValidationError("GenerationSpec top_p must be > 0")
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "GenerationSpec":
@@ -38,7 +59,11 @@ class GenerationSpec:
             enabled=bool(payload.get("enabled", False)),
             max_tokens=int(payload.get("max_tokens", 0)),
             temperature=float(payload.get("temperature", 0.0)),
+            top_p=float(payload.get("top_p", 1.0)),
+            top_k=int(payload.get("top_k", -1)),
             capture_reasoning=bool(payload.get("capture_reasoning", False)),
+            chat_tools=tuple(dict(tool) for tool in payload.get("chat_tools", ()) or ()),
+            tool_choice=payload.get("tool_choice"),
             structured_output=payload.get("structured_output"),
         )
 

@@ -16,6 +16,7 @@ class TransformSpec(OperationSpec):
 
     builder: TransformBuilder | None = None
     inputs: Mapping[str, Any] = field(default_factory=dict)
+    inline: bool = False
 
     kind: ClassVar[str] = "transform"
 
@@ -54,6 +55,7 @@ class TransformSpec(OperationSpec):
             schema_version=int(payload.get("schema_version", 1)),
             builder=TransformBuilder.from_dict(dict(payload["builder"])),
             inputs={str(key): spec_value_from_dict(value) for key, value in dict(payload.get("inputs", {})).items()},
+            inline=bool(payload.get("inline", False)),
         )
 
 

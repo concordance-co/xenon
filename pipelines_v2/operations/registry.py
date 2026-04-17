@@ -7,10 +7,16 @@ from typing import Any, Callable
 from pipelines_v2.core.types import OperationSpec
 from pipelines_v2.operations.capture import CaptureSpec
 from pipelines_v2.operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
-from pipelines_v2.operations.interventions import ActivationPatchSpec
+from pipelines_v2.operations.interventions import (
+    ActivationBankSpec,
+    ExplicitPathMaskSpec,
+    GenerationRunSpec,
+    PatchComparisonSpec,
+    PatchedGenerationSpec,
+)
 from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from pipelines_v2.operations.reports import ReportSpec
-from pipelines_v2.operations.representation import BasisSpec, DirectionSpec, GeometrySpec
+from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 
 OperationLoader = Callable[[dict[str, Any]], OperationSpec]
 
@@ -22,12 +28,18 @@ _OPERATION_LOADERS: dict[str, OperationLoader] = {
     ResidualizedProbeSpec.kind: ResidualizedProbeSpec.from_dict,
     DirectionSpec.kind: DirectionSpec.from_dict,
     BasisSpec.kind: BasisSpec.from_dict,
+    CentroidSpec.kind: CentroidSpec.from_dict,
+    SubspaceSpec.kind: SubspaceSpec.from_dict,
     GeometrySpec.kind: GeometrySpec.from_dict,
+    ActivationBankSpec.kind: ActivationBankSpec.from_dict,
+    ExplicitPathMaskSpec.kind: ExplicitPathMaskSpec.from_dict,
     PairDeltaSpec.kind: PairDeltaSpec.from_dict,
     LabelMapSpec.kind: LabelMapSpec.from_dict,
     LabelFieldsSpec.kind: LabelFieldsSpec.from_dict,
     TransformSpec.kind: TransformSpec.from_dict,
-    ActivationPatchSpec.kind: ActivationPatchSpec.from_dict,
+    GenerationRunSpec.kind: GenerationRunSpec.from_dict,
+    PatchedGenerationSpec.kind: PatchedGenerationSpec.from_dict,
+    PatchComparisonSpec.kind: PatchComparisonSpec.from_dict,
     ReportSpec.kind: ReportSpec.from_dict,
 }
 
