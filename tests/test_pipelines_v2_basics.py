@@ -5860,6 +5860,132 @@ def test_residual_path_batch_custom_op_records_stats() -> None:
     assert float(stats_scalars[0, 1].item()) == pytest.approx(2.0)
 
 
+def test_set_batch_patch_specs_uses_dedicated_residual_path_runtime_fields() -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    from pipelines_v2.engine.vllm.patching.state import set_batch_patch_specs
+
+    model = SimpleNamespace(
+        _v2_activation_patch_bank={
+            4: {
+                "donor-1": {"values": torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)},
+                "target-1": {"values": torch.tensor([[0.5, 0.0], [0.0, 0.5]], dtype=torch.float32)},
+            }
+        },
+        _v2_activation_patch_subspace={},
+        _v2_activation_patch_batch_runtime_state={},
+        _v2_activation_patch_batch_tensor_stats={},
+    )
+
+    set_batch_patch_specs(
+        model,
+        [
+            {
+                "req_id": "req-1",
+                "patch_spec": {
+                    "operator": "residual_path",
+                    "target_layers": [4],
+                    "query_positions": [0, 1],
+                    "donor_example_key": "donor-1",
+                    "donor_positions": [0, 1],
+                    "target_read_positions": [0, 1],
+                    "example_key": "target-1",
+                    "transport": "replace",
+                    "path_edges": [{"source_layer": 4, "write_layer": 4, "weight": 0.5}],
+                    "strength": 2.0,
+                },
+            }
+        ],
+    )
+
+    layer_state = model._v2_activation_patch_batch_runtime_state[4]
+    assert int(layer_state["residual_path_transport_modes"][0].item()) == 1
+    assert float(layer_state["residual_path_replace_alphas"][0].item()) == pytest.approx(1.0)
+    assert int(layer_state["row_counts"][0].item()) == 0
+    assert float(layer_state["strengths"][0].item()) == pytest.approx(0.0)
+
+
+def test_run_custom_op_passes_residual_path_state_as_named_kwargs() -> None:
+    import torch
+
+    from pipelines_v2.engine.vllm.activation_patch_math import RESIDUAL_PATH_MODE_ID
+    from pipelines_v2.engine.vllm.patching.custom_ops import run_custom_op
+
+    seen: dict[str, object] = {}
+
+    def fake_custom_op(*args: object, **kwargs: object) -> torch.Tensor:
+        seen["args"] = args
+        seen["kwargs"] = kwargs
+        return args[0]  # type: ignore[index]
+
+    hidden = torch.zeros((2, 3), dtype=torch.float32)
+    run_custom_op(
+        hidden=hidden,
+        custom_op=fake_custom_op,
+        operator_id=RESIDUAL_PATH_MODE_ID,
+        mean=torch.zeros((3,), dtype=torch.float32),
+        scale=torch.ones((3,), dtype=torch.float32),
+        safe_scale=torch.ones((3,), dtype=torch.float32),
+        query_positions=torch.zeros((1, 1), dtype=torch.int32),
+        token_counts=torch.zeros((1,), dtype=torch.int32),
+        donor_rows=torch.zeros((1, 1, 3), dtype=torch.float32),
+        selected_rows=torch.zeros((1, 1, 3), dtype=torch.float32),
+        row_counts=torch.zeros((1,), dtype=torch.int32),
+        strengths=torch.zeros((1,), dtype=torch.float32),
+        active=torch.zeros((1,), dtype=torch.int32),
+        stats_valid=torch.zeros((1,), dtype=torch.int32),
+        stats_scalars=torch.zeros((1, 8), dtype=torch.float32),
+        stats_coeff_before=torch.zeros((1, 1), dtype=torch.float32),
+        stats_coeff_after=torch.zeros((1, 1), dtype=torch.float32),
+        residual_path_transport_modes=torch.tensor([1], dtype=torch.int32),
+        residual_path_replace_alphas=torch.tensor([0.25], dtype=torch.float32),
+    )
+
+    kwargs = seen["kwargs"]
+    assert isinstance(kwargs, dict)
+    assert "batch_residual_path_transport_modes" in kwargs
+    assert "batch_residual_path_replace_alphas" in kwargs
+
+
+def test_activation_patch_model_init_hook_restores_without_mutating_layer_class() -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    from pipelines_v2.engine.vllm.patching.hooks import (
+        install_activation_patch_model_init_hook,
+        restore_activation_patch_model_init_hook,
+    )
+
+    class DummyLayer(torch.nn.Module):
+        def forward(self, value: torch.Tensor) -> torch.Tensor:
+            return value + 1
+
+    class DummyModel:
+        def __init__(self) -> None:
+            self.model = SimpleNamespace(layers=[DummyLayer()])
+
+    original_model_init = DummyModel.__init__
+    original_layer_forward = DummyLayer.forward
+
+    assert install_activation_patch_model_init_hook(DummyModel) is True
+    patched_model = DummyModel()
+    patched_layer = patched_model.model.layers[0]
+
+    assert getattr(patched_layer, "_v2_activation_patch_instance_hooked", False) is True
+    assert callable(getattr(patched_layer, "_v2_activation_patch_original_forward", None))
+    assert DummyLayer.forward is original_layer_forward
+
+    assert restore_activation_patch_model_init_hook(DummyModel) is True
+    assert DummyModel.__init__ is original_model_init
+
+    restored_model = DummyModel()
+    restored_layer = restored_model.model.layers[0]
+    assert not getattr(restored_layer, "_v2_activation_patch_instance_hooked", False)
+
+
 def test_project_out_batch_custom_op_preserves_valid_stats_across_invalid_followup() -> None:
     import torch
 

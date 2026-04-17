@@ -499,6 +499,8 @@ def _ensure_batch_runtime_state_buffers(
         or "direction_std" not in layer_buffers
         or "donor_means" not in layer_buffers
         or "random_rows" not in layer_buffers
+        or "residual_path_transport_modes" not in layer_buffers
+        or "residual_path_replace_alphas" not in layer_buffers
         or int(layer_buffers["query_positions"].shape[1]) != int(max_tokens)
         or int(layer_buffers["donor_rows"].shape[1]) != int(max_tokens)
         or int(layer_buffers["donor_rows"].shape[2]) != int(hidden_dim)
@@ -531,6 +533,16 @@ def _ensure_batch_runtime_state_buffers(
             "donor_means": torch.zeros((_MAX_BATCH_PATCH_SLOTS, int(hidden_dim)), device=device, dtype=torch.float32),
             "random_rows": torch.zeros(
                 (_MAX_BATCH_PATCH_SLOTS, int(max_rows), int(hidden_dim)),
+                device=device,
+                dtype=torch.float32,
+            ),
+            "residual_path_transport_modes": torch.zeros(
+                (_MAX_BATCH_PATCH_SLOTS,),
+                device=device,
+                dtype=torch.int32,
+            ),
+            "residual_path_replace_alphas": torch.zeros(
+                (_MAX_BATCH_PATCH_SLOTS,),
                 device=device,
                 dtype=torch.float32,
             ),
@@ -722,6 +734,8 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
             runtime_buffers["direction_std"][slot_idx].zero_()
             runtime_buffers["donor_means"][slot_idx].zero_()
             runtime_buffers["random_rows"][slot_idx].zero_()
+            runtime_buffers["residual_path_transport_modes"][slot_idx] = 0
+            runtime_buffers["residual_path_replace_alphas"][slot_idx] = 0.0
             if spec.is_interchange():
                 if int(runtime_buffers["query_positions"].shape[1]) < int(token_count):
                     continue
@@ -804,8 +818,8 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
                 runtime_buffers["active"][slot_idx] = 1
                 runtime_buffers["mode_ids"][slot_idx] = int(operator_mode_id(spec.operator))
                 runtime_buffers["token_counts"][slot_idx] = int(token_count)
-                runtime_buffers["row_counts"][slot_idx] = int(spec.transport == "replace")
-                runtime_buffers["strengths"][slot_idx] = float(replace_alpha)
+                runtime_buffers["residual_path_transport_modes"][slot_idx] = int(spec.transport == "replace")
+                runtime_buffers["residual_path_replace_alphas"][slot_idx] = float(replace_alpha)
                 runtime_buffers["query_positions"][slot_idx, :token_count] = payload_rows.new_tensor(
                     list(spec.query_positions),
                     dtype=runtime_buffers["query_positions"].dtype,

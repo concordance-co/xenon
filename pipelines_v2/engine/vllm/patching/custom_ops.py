@@ -770,11 +770,6 @@ def noop_custom_op(hidden: Any, *, custom_op: Any, operator_id: int) -> Any:
         torch.zeros((1, 8), device=device, dtype=torch.float32),
         torch.zeros((1, 1), device=device, dtype=torch.float32),
         torch.zeros((1, 1), device=device, dtype=torch.float32),
-        torch.zeros((1, hidden_dim), device=device, dtype=torch.float32),
-        torch.zeros((1, hidden_dim), device=device, dtype=torch.float32),
-        torch.zeros((1, hidden_dim), device=device, dtype=torch.float32),
-        torch.zeros((1, 1, hidden_dim), device=device, dtype=torch.float32),
-        torch.zeros((1,), device=device, dtype=torch.int32),
     )
     return restore_hidden(patched)
 
@@ -805,6 +800,8 @@ def run_custom_op(
     donor_means: Any | None = None,
     random_rows: Any | None = None,
     match_projected_norm: Any | None = None,
+    residual_path_transport_modes: Any | None = None,
+    residual_path_replace_alphas: Any | None = None,
 ) -> Any:
     flat_hidden, restore_hidden = flatten_hidden_for_patch(hidden)
     if is_subspace_mode_id(int(operator_id)) and token_spans is not None:
@@ -839,6 +836,11 @@ def run_custom_op(
             batch_match_projected_norm=match_projected_norm,
         )
         return restore_hidden(patched)
+    extra_kwargs: dict[str, Any] = {}
+    if residual_path_transport_modes is not None:
+        extra_kwargs["batch_residual_path_transport_modes"] = residual_path_transport_modes
+    if residual_path_replace_alphas is not None:
+        extra_kwargs["batch_residual_path_replace_alphas"] = residual_path_replace_alphas
     patched = custom_op(
         flat_hidden,
         int(operator_id),
@@ -856,6 +858,7 @@ def run_custom_op(
         stats_scalars,
         stats_coeff_before,
         stats_coeff_after,
+        **extra_kwargs,
     )
     return restore_hidden(patched)
 

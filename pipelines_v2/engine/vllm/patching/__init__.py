@@ -2,7 +2,11 @@
 
 from .apply import register_torch_library_subspace_batch_op, register_torch_library_subspace_op
 from .apply import register_torch_library_project_out_batch_op
-from .hooks import init_activation_patching, install_activation_patch_model_init_hook
+from .hooks import (
+    init_activation_patching,
+    install_activation_patch_model_init_hook,
+    restore_activation_patch_model_init_hook,
+)
 from .state import (
     clear_batch_patch_specs,
     collect_patch_stats,
@@ -20,6 +24,7 @@ __all__ = [
     "harvest_batch_patch_stats",
     "init_activation_patching",
     "install_activation_patch_model_init_hook",
+    "restore_activation_patch_model_init_hook",
     "register_torch_library_subspace_batch_op",
     "register_torch_library_subspace_op",
     "register_torch_library_project_out_batch_op",

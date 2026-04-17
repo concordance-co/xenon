@@ -470,6 +470,8 @@ def apply_layer_output_patching(
             selected_rows=layer_state["selected_rows"],
             row_counts=layer_state["row_counts"],
             strengths=layer_state["strengths"],
+            residual_path_transport_modes=layer_state["residual_path_transport_modes"],
+            residual_path_replace_alphas=layer_state["residual_path_replace_alphas"],
             active=layer_state["active"],
             stats_valid=stats_state["valid"],
             stats_scalars=stats_state["scalars"],

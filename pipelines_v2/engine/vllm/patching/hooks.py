@@ -31,43 +31,40 @@ from .base import (
 from .state import _ensure_batch_runtime_state_buffers, _ensure_batch_tensor_stats_buffers
 
 
-def install_activation_patch_forward_hook(layer_cls: type[Any]) -> bool:
-    if getattr(layer_cls, "_v2_activation_patch_forward_installed", False):
-        return True
+def _bind_activation_patch_layer_instance(owner_model: Any, *, layer_idx: int, layer: Any) -> None:
+    if not getattr(layer, "_v2_activation_patch_forward_installed", False):
+        original_forward = layer.forward
 
-    original_forward = layer_cls.forward
+        @functools.wraps(original_forward)
+        def patched_layer_forward(*args: Any, **kwargs: Any) -> Any:
+            debug_panic(
+                "layer_forward_entry",
+                layer_cls=type(layer).__name__,
+                has_owner_ref=hasattr(layer, "_v2_activation_patch_owner_ref"),
+                layer_idx=getattr(layer, "_v2_activation_patch_layer_idx", None),
+            )
+            output = original_forward(*args, **kwargs)
+            owner_ref = getattr(layer, "_v2_activation_patch_owner_ref", None)
+            resolved_owner_model = owner_ref() if owner_ref is not None else None
+            resolved_layer_idx = getattr(layer, "_v2_activation_patch_layer_idx", None)
+            if resolved_owner_model is None or resolved_layer_idx is None:
+                return output
+            return apply_layer_output_patching(
+                owner_model=resolved_owner_model,
+                layer_idx=int(resolved_layer_idx),
+                custom_op=getattr(layer, "activation_patch_hidden_states_op", None),
+                output=output,
+            )
 
-    @functools.wraps(original_forward)
-    def patched_layer_forward(self: Any, *args: Any, **kwargs: Any) -> Any:
-        debug_panic(
-            "layer_forward_entry",
-            layer_cls=type(self).__name__,
-            has_owner_ref=hasattr(self, "_v2_activation_patch_owner_ref"),
-            layer_idx=getattr(self, "_v2_activation_patch_layer_idx", None),
-        )
-        output = original_forward(self, *args, **kwargs)
-        owner_ref = getattr(self, "_v2_activation_patch_owner_ref", None)
-        owner_model = owner_ref() if owner_ref is not None else None
-        layer_idx = getattr(self, "_v2_activation_patch_layer_idx", None)
-        if owner_model is None or layer_idx is None:
-            return output
-        return apply_layer_output_patching(
-            owner_model=owner_model,
-            layer_idx=int(layer_idx),
-            custom_op=getattr(self, "activation_patch_hidden_states_op", None),
-            output=output,
-        )
-
-    layer_cls.forward = patched_layer_forward
-    patched_layer_forward.__signature__ = inspect.signature(original_forward)
-    layer_cls._v2_activation_patch_forward_installed = True
-    layer_cls._v2_activation_patch_original_forward = original_forward
-    return True
+        patched_layer_forward.__signature__ = inspect.signature(original_forward)
+        layer._v2_activation_patch_original_forward = original_forward
+        layer.forward = patched_layer_forward
+        layer._v2_activation_patch_forward_installed = True
 
 
 def bind_activation_patch_layers(owner_model: Any) -> None:
     for layer_idx, layer in find_decoder_layers(owner_model).items():
-        install_activation_patch_forward_hook(type(layer))
+        _bind_activation_patch_layer_instance(owner_model, layer_idx=int(layer_idx), layer=layer)
         if not hasattr(layer, "activation_patch_hidden_states_op"):
             try:
                 from ..activation_patch_custom_op import build_activation_patch_hidden_states_op
@@ -77,8 +74,8 @@ def bind_activation_patch_layers(owner_model: Any) -> None:
                 layer.activation_patch_hidden_states_op = None
         layer._v2_activation_patch_owner_ref = weakref.ref(owner_model)
         layer._v2_activation_patch_layer_idx = int(layer_idx)
-        layer._v2_activation_patch_class_hooked = True
-    owner_model._v2_activation_patch_class_hooked = True
+        layer._v2_activation_patch_instance_hooked = True
+    owner_model._v2_activation_patch_layers_bound = True
 
 
 def init_activation_patching(model: Any) -> None:
@@ -100,7 +97,7 @@ def init_activation_patching(model: Any) -> None:
     if container is None:
         raise RuntimeError("No decoder layer container found on model")
 
-    early_hooked = all(getattr(layer, "_v2_activation_patch_class_hooked", False) for layer in layers.values())
+    early_hooked = all(getattr(layer, "_v2_activation_patch_instance_hooked", False) for layer in layers.values())
     if not early_hooked:
         for layer_idx, layer in layers.items():
             if isinstance(layer, ActivationPatchedLayer):
@@ -167,7 +164,20 @@ def install_activation_patch_model_init_hook(model_cls: type[Any]) -> bool:
     return True
 
 
+def restore_activation_patch_model_init_hook(model_cls: type[Any]) -> bool:
+    if not getattr(model_cls, "_v2_activation_patch_init_installed", False):
+        return False
+    original_model_init = getattr(model_cls, "_v2_activation_patch_original_init", None)
+    if callable(original_model_init):
+        model_cls.__init__ = original_model_init
+    if hasattr(model_cls, "_v2_activation_patch_original_init"):
+        delattr(model_cls, "_v2_activation_patch_original_init")
+    model_cls._v2_activation_patch_init_installed = False
+    return True
+
+
 __all__ = [
     "init_activation_patching",
     "install_activation_patch_model_init_hook",
+    "restore_activation_patch_model_init_hook",
 ]

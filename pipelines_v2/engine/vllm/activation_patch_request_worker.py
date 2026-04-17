@@ -213,6 +213,7 @@ class ActivationPatchGPUModelRunner(GPUModelRunner):
         from pipelines_v2.engine.vllm.activation_patch_core import (
             init_activation_patching,
             install_activation_patch_model_init_hook,
+            restore_activation_patch_model_init_hook,
         )
 
         gm.logger.info_once(
@@ -241,10 +242,13 @@ class ActivationPatchGPUModelRunner(GPUModelRunner):
                     f"architecture={model_arch} class={model_cls.__module__}.{model_cls.__name__}"
                 )
                 model_loader = gm.get_model_loader(self.load_config)
-                self.model = model_loader.load_model(
-                    vllm_config=self.vllm_config,
-                    model_config=self.model_config,
-                )
+                try:
+                    self.model = model_loader.load_model(
+                        vllm_config=self.vllm_config,
+                        model_config=self.model_config,
+                    )
+                finally:
+                    restore_activation_patch_model_init_hook(model_cls)
                 if self.lora_config:
                     self.model = self.load_lora_model(
                         self.model,

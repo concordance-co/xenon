@@ -145,8 +145,10 @@ if _VLLMCustomOp is not None:
                 batch_query_positions = args[5]
                 batch_token_counts = args[6]
                 batch_payload_rows = args[7]
-                batch_transport_modes = args[9]
-                batch_replace_alphas = args[10]
+                batch_transport_modes = kwargs.get("batch_residual_path_transport_modes")
+                batch_replace_alphas = kwargs.get("batch_residual_path_replace_alphas")
+                if batch_transport_modes is None or batch_replace_alphas is None:
+                    return self.forward_native(*args, **kwargs)
                 batch_active = args[11]
                 stats_valid = args[12]
                 stats_scalars = args[13]
@@ -249,8 +251,10 @@ if _VLLMCustomOp is not None:
                 batch_query_positions = args[5]
                 batch_token_counts = args[6]
                 batch_payload_rows = args[7]
-                batch_transport_modes = args[9]
-                batch_replace_alphas = args[10]
+                batch_transport_modes = kwargs.get("batch_residual_path_transport_modes")
+                batch_replace_alphas = kwargs.get("batch_residual_path_replace_alphas")
+                if batch_transport_modes is None or batch_replace_alphas is None:
+                    return hidden_states
                 batch_active = args[11]
                 stats_valid = args[12]
                 stats_scalars = args[13]
