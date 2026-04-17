@@ -99,8 +99,15 @@ class LocalRunner:
             errors=tuple(errors),
         )
 
-    def run(self, spec: OperationSpec, *, workflow_context: WorkflowStepContext | None = None) -> Any:
+    def run(
+        self,
+        spec: OperationSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+        progress_callback: Any | None = None,
+    ) -> Any:
         """Execute one supported spec locally and return its artifact."""
+        del progress_callback
         self.plan(spec).validate()
         if isinstance(spec, CaptureSpec):
             return self._run_capture(spec, workflow_context=workflow_context)

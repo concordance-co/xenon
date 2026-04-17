@@ -101,6 +101,7 @@ from pipelines_v2.runtime.remote_executor import execute_remote
 from pipelines_v2.runtime.modal_worker import _mounted_volumes, _resolved_runtime_spec, run_on_modal
 from pipelines_v2.storage.artifacts import InlineOperationArtifact
 from pipelines_v2.storage.composite import preferred_workflow_metadata_catalog
+from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
 from pipelines_v2.testing import (
     ArtifactStoreContractSuite,
     CatalogContractSuite,
@@ -1738,6 +1739,7 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
     tmp_path: Path,
 ) -> None:
     captured: dict[str, object] = {}
+    progress_events: list[dict[str, object]] = []
 
     class FakeImage:
         def pip_install(self, *packages: str) -> "FakeImage":
@@ -1847,12 +1849,19 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
         },
         spec_payload=spec.to_dict(),
         workflow_context=None,
+        progress_callback=lambda payload: progress_events.append(dict(payload)),
     )
 
     function_kwargs = dict(captured["function_kwargs"])
     assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert captured["image_env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert result["runner"]["runtime_app_id"] == "ap-test-env"
+    assert [event["stage"] for event in progress_events] == [
+        "modal_launching",
+        "modal_app_started",
+        "remote_execution_finished",
+    ]
+    assert progress_events[0]["metrics"]["source_mount_count"] >= 0
 
 
 def test_modal_runner_raises_clear_error_on_cancelled_remote_run(
@@ -1924,6 +1933,78 @@ def test_workflow_orchestrator_records_runtime_app_id_for_completed_remote_step(
     assert step_records["capture"].status == "completed"
     assert step_records["capture"].runtime_app_id == "ap-runtime-test"
     assert result.step("capture").manifest().runner["runtime_app_id"] == "ap-runtime-test"
+
+
+def test_workflow_orchestrator_persists_progress_snapshot_for_remote_step_submission(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    progress_store = FileWorkflowProgressStore(tmp_path / "catalog")
+
+    def fake_run_on_modal(
+        *,
+        runner_config: dict[str, object],
+        store_config: dict[str, object],
+        spec_payload: dict[str, object],
+        workflow_context: dict[str, object] | None = None,
+        progress_callback: Any | None = None,
+    ) -> dict[str, object]:
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "status": "running",
+                    "stage": "modal_app_started",
+                    "runtime_kind": "modal",
+                    "runtime_app_id": "ap-progress-test",
+                    "message": "Modal app started",
+                }
+            )
+        return {
+            "artifact_id": "capture_test_progress",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-17T00:00:00+00:00",
+            "engine": spec_payload["engine"],
+            "runner": {
+                **runner_config,
+                "runtime_app_id": "ap-progress-test",
+            },
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"features": {}},
+            "metadata": {},
+            "workflow_context": dict(workflow_context or {}),
+        }
+
+    monkeypatch.setattr("pipelines_v2.runtime.modal.run_on_modal", fake_run_on_modal)
+    catalog = FileCatalog(tmp_path / "catalog")
+    runner = ModalRunner(
+        resources=ModalResources(gpu="L4"),
+        artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
+        catalog=catalog,
+    )
+    orchestrator = WorkflowOrchestrator(
+        runners={"capture_gpu": runner},
+        progress_sink=WorkflowProgressSink(store=progress_store),
+    )
+    workflow = WorkflowSpec(
+        name="modal_runtime_progress",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture_gpu",
+                spec=make_toy_capture_spec(),
+            ),
+        ),
+    )
+
+    result = orchestrator.run(workflow)
+
+    snapshot = progress_store.load_step_snapshots(result.run_id or "")["capture"]
+    assert snapshot["status"] == "completed"
+    assert snapshot["runtime_app_id"] == "ap-progress-test"
 
 
 def test_workflow_orchestrator_records_runtime_app_id_for_failed_remote_step(
@@ -5076,6 +5157,8 @@ def test_pipelines_v2_cli_tracks_runs_in_local_registry(tmp_path: Path, monkeypa
     assert exit_code == 0
     assert show_payload["run"]["run_id"] == run_id
     assert [step["step_name"] for step in show_payload["steps"]] == ["capture", "probe", "report"]
+    assert show_payload["progress"]["run"]["status"] == "completed"
+    assert show_payload["progress"]["steps"]["report"]["status"] == "completed"
 
 
 def test_pipelines_v2_cli_workflow_run_logging_emits_progress_to_stderr(
@@ -5102,6 +5185,7 @@ def test_pipelines_v2_cli_workflow_run_logging_emits_progress_to_stderr(
     assert exit_code == 0
     assert run_payload["workflow"] == "cli_local_workflow"
     assert "workflow started name=cli_local_workflow" in captured.err
+    assert "workflow progress run=" in captured.err
     assert "step completed name=report" in captured.err
     assert "workflow completed name=cli_local_workflow" in captured.err
 

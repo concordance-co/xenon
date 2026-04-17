@@ -12,13 +12,14 @@ import sys
 from collections import defaultdict, deque
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from pipelines_v2.core.config import WorkspaceConfig, load_workspace_config
 from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
 from pipelines_v2.storage.artifacts import InlineOperationArtifact
-from pipelines_v2.storage.composite import preferred_workflow_metadata_catalog
+from pipelines_v2.storage.composite import iter_catalogs_depth_first, preferred_workflow_metadata_catalog
+from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
 from pipelines_v2.api import (
     CompositeCatalog,
     Dataset,
@@ -122,7 +123,11 @@ def _workflow_run(ns: argparse.Namespace) -> int:
         dataset_fn_name=ns.dataset_fn,
         workflow_fn_name=ns.workflow_fn,
     )
-    orchestrator = WorkflowOrchestrator(runners=_build_runners(ns, runner_specs))
+    runners = _build_runners(ns, runner_specs)
+    orchestrator = WorkflowOrchestrator(
+        runners=runners,
+        progress_sink=_build_workflow_progress_sink(ns, runners=runners),
+    )
     result = orchestrator.run(
         workflow,
         resume_run_id=ns.resume_run_id,
@@ -147,7 +152,11 @@ def _workflow_resume(ns: argparse.Namespace) -> int:
     )
     if run_id is None:
         raise RuntimeError("Could not resolve a workflow run id to resume")
-    orchestrator = WorkflowOrchestrator(runners=_build_runners(ns, runner_specs))
+    runners = _build_runners(ns, runner_specs)
+    orchestrator = WorkflowOrchestrator(
+        runners=runners,
+        progress_sink=_build_workflow_progress_sink(ns, runners=runners),
+    )
     result = orchestrator.run(workflow, resume_run_id=run_id)
     print(json.dumps(_workflow_result_payload(workflow.name, result), indent=2, sort_keys=True))
     return 0
@@ -182,9 +191,14 @@ def _workflow_show(ns: argparse.Namespace) -> int:
     run = local_catalog.load_workflow_run(ns.run_id)
     if run is None:
         raise RuntimeError(f"Unknown workflow run id: {ns.run_id}")
+    progress_store = FileWorkflowProgressStore(root=_workflow_progress_root(ns))
     payload = {
         "run": run.to_dict(),
         "steps": [record.to_dict() for record in local_catalog.list_workflow_steps(ns.run_id)],
+        "progress": {
+            "run": progress_store.load_run_snapshot(ns.run_id),
+            "steps": progress_store.load_step_snapshots(ns.run_id),
+        },
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
@@ -202,7 +216,11 @@ def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) ->
     if source_run_id is None:
         raise RuntimeError("Could not resolve a completed workflow run id for rerun")
     subworkflow = _workflow_slice_for_step(workflow, step_name=ns.step, include_downstream=include_downstream)
-    orchestrator = WorkflowOrchestrator(runners=_build_runners(ns, runner_specs))
+    runners = _build_runners(ns, runner_specs)
+    orchestrator = WorkflowOrchestrator(
+        runners=runners,
+        progress_sink=_build_workflow_progress_sink(ns, runners=runners),
+    )
     result = orchestrator.run(
         subworkflow,
         reuse_from_run_id=source_run_id,
@@ -280,6 +298,28 @@ def _local_registry_catalog(ns: argparse.Namespace) -> FileCatalog:
     configured = _configured_local_catalog_root(ns)
     root = configured if configured is not None else pipelines_v2_catalog_root()
     return FileCatalog(root=root)
+
+
+def _build_workflow_progress_sink(
+    ns: argparse.Namespace,
+    *,
+    runners: Mapping[str, object] | None = None,
+) -> WorkflowProgressSink:
+    store = FileWorkflowProgressStore(root=_workflow_progress_root(ns, runners=runners))
+    numeric_level = _workflow_logging_level(getattr(ns, "logging", None))
+    return WorkflowProgressSink(store=store, log_level=numeric_level)
+
+
+def _workflow_progress_root(ns: argparse.Namespace, *, runners: Mapping[str, object] | None = None) -> Path:
+    if runners is not None:
+        for runner in runners.values():
+            catalog = getattr(runner, "catalog", None)
+            if catalog is None:
+                continue
+            for candidate in iter_catalogs_depth_first(catalog):
+                if getattr(candidate, "kind", None) == "file" and hasattr(candidate, "root"):
+                    return Path(candidate.root)
+    return _local_registry_catalog(ns).root
 
 
 def _registry_catalog(
@@ -641,6 +681,16 @@ def _configure_workflow_logging(level: str | None) -> None:
     logger.setLevel(numeric_level)
     logger.propagate = False
     _LOG.debug("workflow CLI logging configured level=%s", level_name)
+
+
+def _workflow_logging_level(level: str | None) -> int | None:
+    if level is None:
+        return None
+    level_name = str(level).strip().upper()
+    numeric_level = getattr(logging, level_name, None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Unsupported log level: {level!r}")
+    return numeric_level
 
 
 def _build_parser() -> argparse.ArgumentParser:

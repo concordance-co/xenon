@@ -15,7 +15,13 @@ class Runner(Protocol):
         """Preflight a spec against this runner."""
         ...
 
-    def run(self, spec: OperationSpec, *, workflow_context: Any | None = None) -> Any:
+    def run(
+        self,
+        spec: OperationSpec,
+        *,
+        workflow_context: Any | None = None,
+        progress_callback: Any | None = None,
+    ) -> Any:
         """Execute one spec and return its typed artifact/result."""
         ...
 

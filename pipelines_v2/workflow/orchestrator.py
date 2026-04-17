@@ -8,7 +8,7 @@ import logging
 import uuid
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from pipelines_v2.core.types import SpecValidationError, stable_hash, utc_now_iso
 from pipelines_v2.data.datasets import CaseSet, Dataset, LabelPredicate, LabelSet
@@ -19,6 +19,7 @@ from pipelines_v2.operations.representation import GeometrySpec
 from pipelines_v2.operations.specs import CaptureSpec, TokenSelector
 from pipelines_v2.runtime import Runner
 from pipelines_v2.storage.artifacts import InlineOperationArtifact, artifact_from_manifest
+from pipelines_v2.workflow.progress import WorkflowProgressEvent, WorkflowProgressSink
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepContext, WorkflowStepRecord
 from pipelines_v2.workflow.specs import (
     StepFeatureRef,
@@ -51,6 +52,8 @@ class WorkflowOrchestrator:
 
     runners: Mapping[str, Runner]
     max_parallelism: int | None = None
+    progress_sink: WorkflowProgressSink | None = None
+    progress_heartbeat_seconds: float = 30.0
 
     def plan(self, workflow: WorkflowSpec) -> WorkflowPlan:
         """Preflight each workflow step against its assigned runner."""
@@ -115,6 +118,15 @@ class WorkflowOrchestrator:
             workflow.name,
             run_id,
             len(ordered_steps),
+        )
+        self._emit_progress(
+            WorkflowProgressEvent(
+                run_id=run_id,
+                workflow_name=workflow.name,
+                status="running",
+                stage="started",
+                message=f"workflow started with {len(ordered_steps)} steps",
+            )
         )
         catalog = self._workflow_catalog()
         existing_step_records: dict[str, WorkflowStepRecord] = {}
@@ -254,10 +266,36 @@ class WorkflowOrchestrator:
                         if _should_inline_transform_step(step):
                             started_at = utc_now_iso()
                             _LOG.info("step starting name=%s runner=%s mode=inline_transform", step.name, step.runner)
+                            self._emit_progress(
+                                WorkflowProgressEvent(
+                                    run_id=run_id,
+                                    workflow_name=workflow.name,
+                                    step_name=step.name,
+                                    step_index=step_index_by_name[step.name],
+                                    runner=step.runner,
+                                    spec_kind=step.spec.kind,
+                                    status="running",
+                                    stage="inline_running",
+                                    message="running inline transform",
+                                )
+                            )
                             try:
                                 results[step.name] = _run_inline_transform_step(resolved_spec)
                             except Exception as exc:
                                 _LOG.exception("step failed name=%s runner=%s mode=inline_transform", step.name, step.runner)
+                                self._emit_progress(
+                                    WorkflowProgressEvent(
+                                        run_id=run_id,
+                                        workflow_name=workflow.name,
+                                        step_name=step.name,
+                                        step_index=step_index_by_name[step.name],
+                                        runner=step.runner,
+                                        spec_kind=step.spec.kind,
+                                        status="failed",
+                                        stage="failed",
+                                        message=str(exc),
+                                    )
+                                )
                                 first_failure = exc
                                 failed_steps.add(step.name)
                                 pending.remove(step.name)
@@ -283,6 +321,20 @@ class WorkflowOrchestrator:
                             pending.remove(step.name)
                             progress_made = True
                             _LOG.info("step completed name=%s runner=%s kind=inline_transform", step.name, step.runner)
+                            self._emit_progress(
+                                WorkflowProgressEvent(
+                                    run_id=run_id,
+                                    workflow_name=workflow.name,
+                                    step_name=step.name,
+                                    step_index=step_index_by_name[step.name],
+                                    runner=step.runner,
+                                    spec_kind=step.spec.kind,
+                                    status="completed",
+                                    stage="completed",
+                                    artifact_kind="inline_transform",
+                                    message="inline transform completed",
+                                )
+                            )
                             if catalog is not None:
                                 catalog.record_workflow_step(
                                     WorkflowStepRecord(
@@ -357,6 +409,22 @@ class WorkflowOrchestrator:
                                         )
                                         pending.remove(step.name)
                                         progress_made = True
+                                        self._emit_progress(
+                                            WorkflowProgressEvent(
+                                                run_id=run_id,
+                                                workflow_name=workflow.name,
+                                                step_name=step.name,
+                                                step_index=step_index_by_name[step.name],
+                                                runner=step.runner,
+                                                spec_kind=step.spec.kind,
+                                                status="reused",
+                                                stage="reused",
+                                                runtime_app_id=reusable.runtime_app_id,
+                                                artifact_id=reusable.artifact_id,
+                                                artifact_kind=reusable.artifact_kind,
+                                                message=f"reused from run {reusable.run_id}",
+                                            )
+                                        )
                                         continue
                             if reuse_completed:
                                 reusable = catalog.find_latest_reusable_step(
@@ -399,6 +467,22 @@ class WorkflowOrchestrator:
                                         )
                                         pending.remove(step.name)
                                         progress_made = True
+                                        self._emit_progress(
+                                            WorkflowProgressEvent(
+                                                run_id=run_id,
+                                                workflow_name=workflow.name,
+                                                step_name=step.name,
+                                                step_index=step_index_by_name[step.name],
+                                                runner=step.runner,
+                                                spec_kind=step.spec.kind,
+                                                status="reused",
+                                                stage="reused",
+                                                runtime_app_id=reusable.runtime_app_id,
+                                                artifact_id=reusable.artifact_id,
+                                                artifact_kind=reusable.artifact_kind,
+                                                message=f"reused from run {reusable.run_id}",
+                                            )
+                                        )
                                         continue
                             started_at = utc_now_iso()
                             catalog.record_workflow_step(
@@ -421,7 +505,26 @@ class WorkflowOrchestrator:
                         else:
                             step_started_at[step.name] = utc_now_iso()
                         _LOG.info("step starting name=%s runner=%s spec_kind=%s", step.name, step.runner, step.spec.kind)
-                        future = pool.submit(_run_with_workflow_context, runner, resolved_spec, step_context)
+                        self._emit_progress(
+                            WorkflowProgressEvent(
+                                run_id=run_id,
+                                workflow_name=workflow.name,
+                                step_name=step.name,
+                                step_index=step_index_by_name[step.name],
+                                runner=step.runner,
+                                spec_kind=step.spec.kind,
+                                status="running",
+                                stage="dispatching",
+                                message="submitting step to runner",
+                            )
+                        )
+                        future = pool.submit(
+                            _run_with_workflow_context,
+                            runner,
+                            resolved_spec,
+                            step_context,
+                            self._runner_progress_callback(step_context=step_context, spec_kind=step.spec.kind),
+                        )
                         running[future] = step.name
                         pending.remove(step.name)
                         progress_made = True
@@ -436,7 +539,28 @@ class WorkflowOrchestrator:
                         f"Workflow could not make progress; unresolved steps remain: {unresolved}"
                     )
 
-                done, _ = wait(set(running), return_when=FIRST_COMPLETED)
+                done, _ = wait(
+                    set(running),
+                    timeout=self.progress_heartbeat_seconds if self.progress_sink is not None else None,
+                    return_when=FIRST_COMPLETED,
+                )
+                if not done:
+                    for step_name in running.values():
+                        step = step_by_name[step_name]
+                        self._emit_progress(
+                            WorkflowProgressEvent(
+                                run_id=run_id,
+                                workflow_name=workflow.name,
+                                step_name=step_name,
+                                step_index=step_index_by_name[step_name],
+                                runner=step.runner,
+                                spec_kind=step.spec.kind,
+                                status="running",
+                                stage="heartbeat",
+                                message="step still running",
+                            )
+                        )
+                    continue
                 for future in done:
                     step_name = running.pop(future)
                     try:
@@ -454,6 +578,24 @@ class WorkflowOrchestrator:
                             )
                         else:
                             _LOG.info("step completed name=%s runner=%s", step_name, step_by_name[step_name].runner)
+                        self._emit_progress(
+                            WorkflowProgressEvent(
+                                run_id=run_id,
+                                workflow_name=workflow.name,
+                                step_name=step_name,
+                                step_index=step_index_by_name[step_name],
+                                runner=step_by_name[step_name].runner,
+                                spec_kind=step_by_name[step_name].spec.kind,
+                                status="completed",
+                                stage="completed",
+                                runtime_app_id=(
+                                    _manifest_runtime_app_id(manifest) if hasattr(result, "manifest") else None
+                                ),
+                                artifact_id=manifest.artifact_id if hasattr(result, "manifest") else None,
+                                artifact_kind=manifest.artifact_kind if hasattr(result, "manifest") else None,
+                                message="step completed",
+                            )
+                        )
                         if catalog is not None and hasattr(result, "manifest"):
                             manifest = result.manifest()
                             catalog.record_workflow_step(
@@ -482,6 +624,20 @@ class WorkflowOrchestrator:
                             )
                     except Exception as exc:
                         _LOG.exception("step failed name=%s runner=%s", step_name, step_by_name[step_name].runner)
+                        self._emit_progress(
+                            WorkflowProgressEvent(
+                                run_id=run_id,
+                                workflow_name=workflow.name,
+                                step_name=step_name,
+                                step_index=step_index_by_name[step_name],
+                                runner=step_by_name[step_name].runner,
+                                spec_kind=step_by_name[step_name].spec.kind,
+                                status="failed",
+                                stage="failed",
+                                runtime_app_id=getattr(exc, "runtime_app_id", None),
+                                message=str(exc),
+                            )
+                        )
                         failed_steps.add(step_name)
                         if catalog is not None:
                             catalog.record_workflow_step(
@@ -514,6 +670,19 @@ class WorkflowOrchestrator:
                 finished_at = utc_now_iso()
                 for step_name in sorted(blocked_steps):
                     step = step_by_name[step_name]
+                    self._emit_progress(
+                        WorkflowProgressEvent(
+                            run_id=run_id,
+                            workflow_name=workflow.name,
+                            step_name=step_name,
+                            step_index=step_index_by_name[step_name],
+                            runner=step.runner,
+                            spec_kind=step.spec.kind,
+                            status="blocked",
+                            stage="blocked",
+                            message="blocked by upstream failure",
+                        )
+                    )
                     catalog.record_workflow_step(
                         WorkflowStepRecord(
                             run_id=run_id,
@@ -545,6 +714,15 @@ class WorkflowOrchestrator:
                     )
                 )
             _LOG.error("workflow failed name=%s run_id=%s error=%s", workflow.name, run_id, first_failure)
+            self._emit_progress(
+                WorkflowProgressEvent(
+                    run_id=run_id,
+                    workflow_name=workflow.name,
+                    status="failed",
+                    stage="failed",
+                    message=str(first_failure),
+                )
+            )
             raise first_failure
 
         if catalog is not None:
@@ -562,6 +740,15 @@ class WorkflowOrchestrator:
                 )
             )
         _LOG.info("workflow completed name=%s run_id=%s", workflow.name, run_id)
+        self._emit_progress(
+            WorkflowProgressEvent(
+                run_id=run_id,
+                workflow_name=workflow.name,
+                status="completed",
+                stage="completed",
+                message="workflow completed",
+            )
+        )
         return WorkflowResult(run_id=run_id, workflow_hash=workflow_hash, step_results=results)
 
     def _workflow_catalog(self) -> Any | None:
@@ -579,6 +766,46 @@ class WorkflowOrchestrator:
                 "WorkflowOrchestrator requires one shared catalog identity across runners to persist workflow runs"
             )
         return catalogs[0]
+
+    def _emit_progress(self, event: WorkflowProgressEvent) -> None:
+        if self.progress_sink is None:
+            return
+        self.progress_sink.emit(event)
+
+    def _runner_progress_callback(
+        self,
+        *,
+        step_context: WorkflowStepContext,
+        spec_kind: str,
+    ) -> Callable[[Mapping[str, Any]], None] | None:
+        if self.progress_sink is None:
+            return None
+
+        def _callback(payload: Mapping[str, Any]) -> None:
+            self._emit_progress(
+                WorkflowProgressEvent(
+                    run_id=step_context.run_id,
+                    workflow_name=step_context.workflow_name,
+                    step_name=step_context.step_name,
+                    step_index=step_context.step_index,
+                    runner=step_context.runner,
+                    spec_kind=spec_kind,
+                    status=str(payload.get("status") or "running"),
+                    stage=str(payload.get("stage") or "running"),
+                    message=str(payload["message"]) if payload.get("message") is not None else None,
+                    runtime_kind=str(payload["runtime_kind"]) if payload.get("runtime_kind") is not None else None,
+                    runtime_app_id=(
+                        str(payload["runtime_app_id"]) if payload.get("runtime_app_id") is not None else None
+                    ),
+                    artifact_id=str(payload["artifact_id"]) if payload.get("artifact_id") is not None else None,
+                    artifact_kind=(
+                        str(payload["artifact_kind"]) if payload.get("artifact_kind") is not None else None
+                    ),
+                    metrics=dict(payload.get("metrics", {})),
+                )
+            )
+
+        return _callback
 
 
 def _resolve_step_refs(value: Any, results: Mapping[str, Any]) -> Any:
@@ -790,13 +1017,23 @@ def _input_artifact_ids_from_results(step: Any, results: Mapping[str, Any], *, s
     return sorted(set(artifact_ids))
 
 
-def _run_with_workflow_context(runner: Any, spec: Any, step_context: WorkflowStepContext) -> Any:
+def _run_with_workflow_context(
+    runner: Any,
+    spec: Any,
+    step_context: WorkflowStepContext,
+    progress_callback: Callable[[Mapping[str, Any]], None] | None = None,
+) -> Any:
     try:
         signature = inspect.signature(runner.run)
     except (TypeError, ValueError):
         return runner.run(spec)
+    kwargs: dict[str, Any] = {}
     if "workflow_context" in signature.parameters:
-        return runner.run(spec, workflow_context=step_context)
+        kwargs["workflow_context"] = step_context
+    if "progress_callback" in signature.parameters:
+        kwargs["progress_callback"] = progress_callback
+    if kwargs:
+        return runner.run(spec, **kwargs)
     return runner.run(spec)
 
 

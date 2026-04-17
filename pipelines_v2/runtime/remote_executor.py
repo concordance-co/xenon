@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import uuid
 from typing import Any
 
@@ -34,6 +36,8 @@ from pipelines_v2.storage.artifacts import ArtifactLabelRef, CaptureArtifact, Fe
 from pipelines_v2.storage.features import write_capture_features
 from pipelines_v2.operations.interventions.runtime import rows_example_coverage
 
+_PROGRESS_LOG = logging.getLogger("pipelines_v2.remote_progress")
+
 
 def execute_remote(
     *,
@@ -44,6 +48,13 @@ def execute_remote(
 ) -> dict[str, Any]:
     """Execute a serialized operation in a remote worker."""
     spec = operation_spec_from_dict(spec_payload)
+    _emit_remote_progress(
+        workflow_context=workflow_context,
+        status="running",
+        stage="remote_started",
+        spec_kind=spec.kind,
+        message=f"remote execution started for {spec.kind}",
+    )
     store = artifact_store_from_dict(store_config)
 
     if isinstance(spec, CaptureSpec):
@@ -75,6 +86,30 @@ def execute_remote(
             workflow_context=workflow_context,
         )
     raise NotImplementedError(f"Remote executor cannot run {spec.kind!r} specs yet")
+
+
+def _emit_remote_progress(
+    *,
+    workflow_context: dict[str, Any] | None,
+    status: str,
+    stage: str,
+    spec_kind: str,
+    message: str,
+    metrics: dict[str, Any] | None = None,
+) -> None:
+    payload = {
+        "run_id": workflow_context.get("run_id") if workflow_context else None,
+        "workflow_name": workflow_context.get("workflow_name") if workflow_context else None,
+        "step_name": workflow_context.get("step_name") if workflow_context else None,
+        "step_index": workflow_context.get("step_index") if workflow_context else None,
+        "runner": workflow_context.get("runner") if workflow_context else None,
+        "status": status,
+        "stage": stage,
+        "spec_kind": spec_kind,
+        "message": message,
+        "metrics": dict(metrics or {}),
+    }
+    _PROGRESS_LOG.info("XENON_PROGRESS %s", json.dumps(payload, sort_keys=True))
 
 
 def _execute_capture(

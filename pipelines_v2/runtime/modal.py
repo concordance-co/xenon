@@ -160,11 +160,17 @@ class ModalRunner:
             errors=tuple(errors),
         )
 
-    def run(self, spec: OperationSpec, *, workflow_context: WorkflowStepContext | None = None) -> Any:
+    def run(
+        self,
+        spec: OperationSpec,
+        *,
+        workflow_context: WorkflowStepContext | None = None,
+        progress_callback: Any | None = None,
+    ) -> Any:
         """Execute one supported spec remotely and return its artifact."""
         self.plan(spec).validate()
         if isinstance(spec, (CaptureSpec, GenerationRunSpec, PatchedGenerationSpec, *_ARTIFACT_BOUND_SPECS)):
-            return self._run_remote(spec, workflow_context=workflow_context)
+            return self._run_remote(spec, workflow_context=workflow_context, progress_callback=progress_callback)
         raise NotImplementedError(f"ModalRunner cannot run {spec.kind!r} specs yet")
 
     def _run_remote(
@@ -172,6 +178,7 @@ class ModalRunner:
         spec: OperationSpec,
         *,
         workflow_context: WorkflowStepContext | None = None,
+        progress_callback: Any | None = None,
     ) -> CaptureArtifact | OperationArtifact:
         run_kwargs = {
             "runner_config": self.identity(),
@@ -186,6 +193,8 @@ class ModalRunner:
             run_kwargs["workflow_context"] = (
                 workflow_context.to_manifest_dict() if workflow_context is not None else None
             )
+        if signature is None or "progress_callback" in signature.parameters:
+            run_kwargs["progress_callback"] = progress_callback
         manifest_payload = run_on_modal(**run_kwargs)
         if manifest_payload is None:
             raise RuntimeError("Modal runner did not receive a manifest payload; the remote run was likely cancelled")
