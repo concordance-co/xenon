@@ -80,7 +80,7 @@ def _save_directed_scatter(
     conflicts: np.ndarray,
     output_path: Path,
 ) -> None:
-    fig, axes = plt.subplots(1, len(LAYERS), figsize=(16, 5), constrained_layout=True)
+    fig, axes = plt.subplots(1, len(LAYERS), figsize=(16, 5), constrained_layout=False)
     if len(LAYERS) == 1:
         axes = [axes]
     for ax, layer in zip(axes, LAYERS, strict=False):
@@ -97,7 +97,6 @@ def _save_directed_scatter(
                     c=FAMILY_COLORS[family],
                     marker=CONFLICT_MARKERS[conflict],
                     linewidths=0,
-                    label=f"{family} / {'conflict' if conflict else 'aligned'}",
                 )
         ax.set_title(f"L{layer}")
         ax.set_xlabel("Directed PC1")
@@ -105,23 +104,49 @@ def _save_directed_scatter(
         ax.axhline(0.0, color="#dddddd", linewidth=0.8, zorder=0)
         ax.axvline(0.0, color="#dddddd", linewidth=0.8, zorder=0)
 
-    handles = []
-    labels = []
-    for family in FAMILIES:
-        for conflict in (False, True):
-            handles.append(
-                plt.Line2D(
-                    [0],
-                    [0],
-                    marker=CONFLICT_MARKERS[conflict],
-                    color="w",
-                    markerfacecolor=FAMILY_COLORS[family],
-                    markersize=8,
-                    linestyle="None",
-                )
-            )
-            labels.append(f"{family} / {'conflict' if conflict else 'aligned'}")
-    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.02))
+    family_handles = [
+        plt.Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=FAMILY_COLORS[family],
+            markersize=8,
+            linestyle="None",
+            label=family,
+        )
+        for family in FAMILIES
+    ]
+    conflict_handles = [
+        plt.Line2D(
+            [0],
+            [0],
+            marker=CONFLICT_MARKERS[False],
+            color="#555555",
+            markersize=8,
+            linestyle="None",
+            label="aligned",
+        ),
+        plt.Line2D(
+            [0],
+            [0],
+            marker=CONFLICT_MARKERS[True],
+            color="#555555",
+            markersize=8,
+            linestyle="None",
+            label="conflict",
+        ),
+    ]
+    fig.subplots_adjust(bottom=0.28)
+    fig.legend(
+        handles=family_handles + conflict_handles,
+        loc="lower center",
+        ncol=5,
+        frameon=False,
+        bbox_to_anchor=(0.5, 0.01),
+        columnspacing=1.2,
+        handletextpad=0.6,
+    )
     fig.suptitle("Three-family directed subspace projection", fontsize=14)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=220, bbox_inches="tight")
@@ -246,7 +271,7 @@ def _write_summary(
         "",
         "Figures:",
         "",
-        "- `directed_subspace_scatter_by_family_conflict.png`",
+        "- `directed_subspace_scatter_by_family_conflict_v2.png`",
         "- `directed_subspace_scatter_by_conflict.png`",
         "- `shared_axis_distributions.png`",
         "",
@@ -310,7 +335,7 @@ def main() -> None:
         projections_by_layer=projections_by_layer,
         families=families,
         conflicts=conflicts,
-        output_path=output_dir / "directed_subspace_scatter_by_family_conflict.png",
+        output_path=output_dir / "directed_subspace_scatter_by_family_conflict_v2.png",
     )
     _save_conflict_only_scatter(
         projections_by_layer=projections_by_layer,
