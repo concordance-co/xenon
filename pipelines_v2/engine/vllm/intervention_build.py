@@ -22,7 +22,14 @@ if TYPE_CHECKING:
     from pipelines_v2.engine.vllm.engine import VLLMEngine
 
 
-def build_llm_kwargs(engine: "VLLMEngine") -> tuple[dict[str, Any], str]:
+_PATCH_WORKER_CLS = "pipelines_v2.engine.vllm.activation_patch_request_worker.ActivationPatchGPUWorker"
+
+
+def build_llm_kwargs(
+    engine: "VLLMEngine",
+    *,
+    compiled_operator_hint: str | None = None,
+) -> tuple[dict[str, Any], str]:
     llm_kwargs: dict[str, Any] = {
         "model": engine.model_id,
         "enforce_eager": bool(engine.enforce_eager),
@@ -31,12 +38,19 @@ def build_llm_kwargs(engine: "VLLMEngine") -> tuple[dict[str, Any], str]:
         "enable_prefix_caching": bool(engine.enable_prefix_caching),
         "tensor_parallel_size": int(engine.tensor_parallel_size or 1),
         "gpu_memory_utilization": float(engine.gpu_memory_utilization or 0.90),
-        "worker_cls": "pipelines_v2.engine.vllm.activation_patch_request_worker.ActivationPatchGPUWorker",
+        "worker_cls": _PATCH_WORKER_CLS,
     }
     if not bool(engine.enforce_eager):
         llm_kwargs["compilation_config"] = {
             "custom_ops": ["none", "+activation_patch_hidden_states"],
         }
+        additional_config = {
+            "xenon_activation_patch_worker_cls": _PATCH_WORKER_CLS,
+        }
+        hint = str(compiled_operator_hint or "").strip()
+        if hint:
+            additional_config["xenon_activation_patch_compiled_operator"] = hint
+        llm_kwargs["additional_config"] = additional_config
     if engine.max_model_len:
         llm_kwargs["max_model_len"] = int(engine.max_model_len)
     if engine.max_num_batched_tokens is not None:

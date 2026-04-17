@@ -93,7 +93,10 @@ class VLLMEngine:
         }
 
     def runtime_spec(self) -> PythonRuntimeSpec:
-        env = {"VLLM_ALLOW_INSECURE_SERIALIZATION": "1"}
+        env = {
+            "VLLM_ALLOW_INSECURE_SERIALIZATION": "1",
+            "VLLM_COMPILE_CACHE_SAVE_FORMAT": "binary",
+        }
         debug_value = str(os.getenv("XENON_ACTIVATION_PATCH_DEBUG", "") or "").strip()
         if debug_value:
             env["XENON_ACTIVATION_PATCH_DEBUG"] = debug_value

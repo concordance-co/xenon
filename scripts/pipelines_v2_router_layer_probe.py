@@ -2,6 +2,9 @@ from __future__ import annotations
 
 """Minimal Modal workflow to inspect actual Qwen3 router layer capture."""
 
+from functools import lru_cache
+from pathlib import Path, PurePosixPath
+
 from pipelines_v2.api import (
     CaptureSpec,
     Dataset,
@@ -17,11 +20,27 @@ from pipelines_v2.api import (
     WorkflowSpec,
     WorkflowStep,
 )
+from pipelines_v2.core.config import ModalDefaults, load_workspace_config
+
+DEFAULT_MODEL_VOLUME_NAME = "xenon-models"
+MODEL_SUBPATH = PurePosixPath("Qwen/Qwen3-30B-A3B")
 
 
-MODEL_VOLUME_NAME = "xenon-models"
-MODEL_VOLUME_PATH = "/models"
-MODEL_ID = "/models/Qwen/Qwen3-30B-A3B"
+@lru_cache(maxsize=1)
+def _modal_defaults() -> ModalDefaults:
+    return load_workspace_config(Path(__file__)).modal
+
+
+def _model_volume_name() -> str:
+    return _modal_defaults().model_volume or DEFAULT_MODEL_VOLUME_NAME
+
+
+def _model_volume_path() -> str:
+    return _modal_defaults().model_volume_path or "/models"
+
+
+def _model_id() -> str:
+    return str(PurePosixPath(_model_volume_path()) / MODEL_SUBPATH)
 
 
 def build_dataset() -> Dataset:
@@ -61,7 +80,12 @@ def build_runner_specs() -> dict[str, object]:
         "capture_gpu": ModalRunnerSpec(
             resources=ModalResources(
                 gpu="A100-80GB",
-                volumes=(ModalVolumeMount(name=MODEL_VOLUME_NAME, mount_path=MODEL_VOLUME_PATH),),
+                volumes=(
+                    ModalVolumeMount(
+                        name=_model_volume_name(),
+                        mount_path=_model_volume_path(),
+                    ),
+                ),
             ),
             artifacts=ModalVolumeStore(
                 name="xenon-data",
@@ -81,7 +105,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
                 runner="capture_gpu",
                 spec=CaptureSpec(
                     engine=VLLMEngine(
-                        model_id=MODEL_ID,
+                        model_id=_model_id(),
                         max_model_len=8192,
                         enforce_eager=False,
                         max_num_seqs=4,

@@ -34,6 +34,7 @@ from pipelines_v2.operations.specs import (
     TransformSpec,
 )
 from pipelines_v2.runtime.base import ExecutionPlan
+from pipelines_v2.runtime.env import applied_runtime_env, merged_runtime_env
 from pipelines_v2.storage.artifacts import (
     ArtifactLabelRef,
     ArtifactManifest,
@@ -53,13 +54,20 @@ from pipelines_v2.operations.interventions.runtime import patched_generation_pla
 class LocalResources:
     """Optional local resource hints for local execution."""
     device: str | None = None
+    env: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"device": self.device}
+        return {
+            "device": self.device,
+            "env": dict(self.env),
+        }
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "LocalResources":
-        return cls(device=payload.get("device"))
+        return cls(
+            device=payload.get("device"),
+            env={str(key): str(value) for key, value in dict(payload.get("env", {})).items()},
+        )
 
 
 @dataclass(slots=True)
@@ -75,7 +83,7 @@ class LocalRunner:
         """Return a serializable description of this runner."""
         return {
             "kind": self.kind,
-            "resources": {"device": self.resources.device if self.resources else None},
+            "resources": self.resources.to_dict() if self.resources is not None else {"device": None, "env": {}},
         }
 
     def plan(self, spec: OperationSpec) -> ExecutionPlan:
@@ -109,15 +117,16 @@ class LocalRunner:
         """Execute one supported spec locally and return its artifact."""
         del progress_callback
         self.plan(spec).validate()
-        if isinstance(spec, CaptureSpec):
-            return self._run_capture(spec, workflow_context=workflow_context)
-        if isinstance(spec, GenerationRunSpec):
-            return self._run_generation(spec, workflow_context=workflow_context)
-        if isinstance(spec, PatchedGenerationSpec):
-            return self._run_intervention(spec, workflow_context=workflow_context)
-        if isinstance(spec, _ARTIFACT_BOUND_SPECS):
-            return self._run_artifact_operation(spec, workflow_context=workflow_context)
-        raise NotImplementedError(f"LocalRunner cannot run {spec.kind!r} specs yet")
+        with applied_runtime_env(_runtime_env_for_local(spec=spec, resources=self.resources)):
+            if isinstance(spec, CaptureSpec):
+                return self._run_capture(spec, workflow_context=workflow_context)
+            if isinstance(spec, GenerationRunSpec):
+                return self._run_generation(spec, workflow_context=workflow_context)
+            if isinstance(spec, PatchedGenerationSpec):
+                return self._run_intervention(spec, workflow_context=workflow_context)
+            if isinstance(spec, _ARTIFACT_BOUND_SPECS):
+                return self._run_artifact_operation(spec, workflow_context=workflow_context)
+            raise NotImplementedError(f"LocalRunner cannot run {spec.kind!r} specs yet")
 
     def _run_capture(self, spec: CaptureSpec, *, workflow_context: WorkflowStepContext | None = None) -> CaptureArtifact:
         engine = spec.bound_engine()
@@ -348,6 +357,21 @@ def _local_plan_errors(spec: OperationSpec) -> list[str]:
         except Exception as exc:
             errors.append(str(exc))
     return errors
+
+
+def _runtime_env_for_local(
+    *,
+    spec: OperationSpec,
+    resources: LocalResources | None,
+) -> dict[str, str]:
+    runtime_spec = spec.runtime_spec()
+    spec_env: dict[str, str] = {}
+    if runtime_spec is not None:
+        env_payload = getattr(runtime_spec, "env", None)
+        if isinstance(env_payload, dict):
+            spec_env = {str(key): str(value) for key, value in env_payload.items()}
+    resource_env = resources.env if resources is not None else {}
+    return merged_runtime_env(spec_env, resource_env)
 
 
 def _iter_transfer_refs(value: Any) -> list[FeatureRef | FeatureLayerRef | ArtifactLabelRef]:

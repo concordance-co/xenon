@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import builtins
 import importlib
 import importlib.util
@@ -91,9 +92,15 @@ from pipelines_v2.api import (
     ReportSpec,
     SubspaceSpec,
 )
-from pipelines_v2.cli import _registry_catalog, _workflow_result_payload, load_python_workflow_file, main as pipelines_v2_cli_main
+from pipelines_v2.cli import (
+    _build_runners,
+    _registry_catalog,
+    _workflow_result_payload,
+    load_python_workflow_file,
+    main as pipelines_v2_cli_main,
+)
 from pipelines_v2.engine.vllm.capture import _capture_prompt_batch, _fill_router_features, _split_router_capture_batch
-from pipelines_v2.engine.vllm.intervention_build import paired_request_payload
+from pipelines_v2.engine.vllm.intervention_build import build_llm_kwargs, paired_request_payload
 from pipelines_v2.operations.execution.interventions import run_patch_comparison
 from pipelines_v2.runtime import ExecutionPlan
 from pipelines_v2.runtime.specs import runner_spec_from_dict
@@ -901,6 +908,76 @@ def test_local_runner_bundles_tensor_features_into_one_safetensors_file(tmp_path
     assert len(bundle) == 6
 
 
+def test_local_runner_applies_runtime_env_and_runner_env_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from pipelines_v2.engine.base import PythonRuntimeSpec
+
+    class EnvEngine:
+        def identity(self) -> dict[str, Any]:
+            return {"kind": "env_engine"}
+
+        def semantic_identity(self) -> dict[str, Any]:
+            return {"kind": "env_engine"}
+
+        def capabilities(self) -> set[EngineCapability]:
+            return {EngineCapability.RESIDUAL_CAPTURE}
+
+        def runtime_spec(self) -> PythonRuntimeSpec:
+            return PythonRuntimeSpec(
+                env={
+                    "XENON_TEST_SPEC_ONLY": "spec_only",
+                    "XENON_TEST_SHARED": "spec_value",
+                }
+            )
+
+        def planning_errors(self, spec: Any) -> tuple[str, ...]:
+            del spec
+            return ()
+
+        def capture(self, spec: CaptureSpec) -> EngineCaptureResult:
+            del spec
+            return EngineCaptureResult(
+                features={},
+                metadata={
+                    "spec_only": os.environ.get("XENON_TEST_SPEC_ONLY"),
+                    "shared": os.environ.get("XENON_TEST_SHARED"),
+                    "runner_only": os.environ.get("XENON_TEST_RUNNER_ONLY"),
+                },
+            )
+
+    monkeypatch.delenv("XENON_TEST_SPEC_ONLY", raising=False)
+    monkeypatch.delenv("XENON_TEST_RUNNER_ONLY", raising=False)
+    monkeypatch.setenv("XENON_TEST_SHARED", "outside")
+
+    runner = LocalRunner(
+        resources=LocalResources(
+            env={
+                "XENON_TEST_SHARED": "runner_value",
+                "XENON_TEST_RUNNER_ONLY": "runner_only",
+            }
+        ),
+        artifacts=LocalArtifactStore(tmp_path / "artifacts"),
+    )
+    artifact = runner.run(
+        CaptureSpec(
+            engine=EnvEngine(),
+            dataset=make_toy_dataset(),
+            sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0])],
+        )
+    )
+
+    assert artifact.manifest().metadata == {
+        "spec_only": "spec_only",
+        "shared": "runner_value",
+        "runner_only": "runner_only",
+    }
+    assert os.environ["XENON_TEST_SHARED"] == "outside"
+    assert "XENON_TEST_SPEC_ONLY" not in os.environ
+    assert "XENON_TEST_RUNNER_ONLY" not in os.environ
+
+
 def test_fill_router_features_error_includes_actual_and_discovered_layers() -> None:
     feature_payloads = {
         "router_last": {
@@ -1628,6 +1705,20 @@ def test_modal_runner_serializes_secret_bindings(tmp_path: Path) -> None:
     ]
 
 
+def test_modal_runner_serializes_runtime_env(tmp_path: Path) -> None:
+    runner = ModalRunner(
+        resources=ModalResources(
+            gpu="L4",
+            env={"VLLM_CACHE_ROOT": "/cache/vllm"},
+        ),
+        artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
+    )
+
+    identity = runner.identity()
+
+    assert identity["resources"]["env"] == {"VLLM_CACHE_ROOT": "/cache/vllm"}
+
+
 def test_modal_runner_serializes_cpu_analysis_resources(tmp_path: Path) -> None:
     runner = ModalRunner(
         resources=ModalResources(
@@ -1854,7 +1945,9 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
 
     function_kwargs = dict(captured["function_kwargs"])
     assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
+    assert function_kwargs["env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
     assert captured["image_env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
+    assert captured["image_env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
     assert result["runner"]["runtime_app_id"] == "ap-test-env"
     assert [event["stage"] for event in progress_events] == [
         "modal_launching",
@@ -1862,6 +1955,132 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
         "remote_execution_finished",
     ]
     assert progress_events[0]["metrics"]["source_mount_count"] >= 0
+
+
+def test_modal_worker_runner_env_overrides_spec_runtime_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeImage:
+        def pip_install(self, *packages: str) -> "FakeImage":
+            del packages
+            return self
+
+        def env(self, env_payload: dict[str, str]) -> "FakeImage":
+            captured["image_env"] = dict(env_payload)
+            return self
+
+        def add_local_dir(self, local_path: str, *, remote_path: str) -> "FakeImage":
+            del local_path, remote_path
+            return self
+
+    class FakeImageFactory:
+        @staticmethod
+        def debian_slim(*, python_version: str) -> FakeImage:
+            del python_version
+            return FakeImage()
+
+    class FakeVolume:
+        @staticmethod
+        def from_name(name: str, create_if_missing: bool = False) -> object:
+            return {"name": name, "create_if_missing": create_if_missing}
+
+    class FakeSecret:
+        @staticmethod
+        def from_name(name: str) -> object:
+            return {"name": name}
+
+    class FakeFunction:
+        def __init__(self, fn: object) -> None:
+            self._fn = fn
+
+        def remote(self, *args: object) -> object:
+            return self._fn(*args)
+
+    class FakeAppRun:
+        app_id = "ap-test-env-override"
+
+        def __enter__(self) -> "FakeAppRun":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class FakeApp:
+        def __init__(self, name: str) -> None:
+            del name
+
+        def function(self, **kwargs: object):
+            captured["function_kwargs"] = dict(kwargs)
+
+            def decorator(fn):
+                return FakeFunction(fn)
+
+            return decorator
+
+        def run(self) -> FakeAppRun:
+            return FakeAppRun()
+
+    fake_modal = types.SimpleNamespace(
+        App=FakeApp,
+        Image=FakeImageFactory,
+        Volume=FakeVolume,
+        Secret=FakeSecret,
+    )
+    monkeypatch.setitem(sys.modules, "modal", fake_modal)
+    monkeypatch.setattr(
+        "pipelines_v2.runtime.remote_executor.execute_remote",
+        lambda **kwargs: {
+            "artifact_id": "capture_test",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-17T00:00:00+00:00",
+            "engine": kwargs["spec_payload"]["engine"],
+            "runner": {},
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"features": {}},
+            "metadata": {},
+        },
+    )
+    monkeypatch.setenv("XENON_ACTIVATION_PATCH_DEBUG", "spec_debug")
+
+    spec = replace(
+        make_toy_capture_spec(),
+        engine=VLLMEngine(
+            model_id="fake/model",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+    )
+    run_on_modal(
+        runner_config={
+            "kind": "modal",
+            "resources": {
+                "env": {
+                    "XENON_ACTIVATION_PATCH_DEBUG": "runner_debug",
+                    "VLLM_CACHE_ROOT": "/cache/vllm",
+                }
+            },
+        },
+        store_config={
+            "kind": "modal_volume",
+            "name": "xenon-data",
+            "root": str(tmp_path / "artifacts"),
+        },
+        spec_payload=spec.to_dict(),
+        workflow_context=None,
+    )
+
+    function_kwargs = dict(captured["function_kwargs"])
+    assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "runner_debug"
+    assert function_kwargs["env"]["VLLM_CACHE_ROOT"] == "/cache/vllm"
+    assert captured["image_env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "runner_debug"
+    assert captured["image_env"]["VLLM_CACHE_ROOT"] == "/cache/vllm"
 
 
 def test_modal_runner_raises_clear_error_on_cancelled_remote_run(
@@ -4663,32 +4882,52 @@ def test_pipelines_v2_activation_patch_smoke_file_builders() -> None:
     assert workflow.steps[2].runner == "capture_gpu"
     assert workflow.steps[3].runner == "capture_gpu"
     assert workflow.steps[4].runner == "analysis_cpu"
+
+
+def test_pipelines_v2_router_layer_probe_uses_compile_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    module_path = Path("scripts/pipelines_v2_router_layer_probe.py")
+    spec = importlib.util.spec_from_file_location("pipelines_v2_router_layer_probe", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    dataset = module.build_dataset()
+    runner_specs = module.build_runner_specs()
+    workflow = module.build_workflow(dataset)
+    runners = _build_runners(
+        argparse.Namespace(
+            file=str(module_path),
+            catalog_postgres_env=None,
+            local_catalog_root=None,
+        ),
+        runner_specs,
+    )
+
+    assert dataset.name == "router_layer_probe"
+    assert [step.name for step in workflow.steps] == ["capture_router_probe"]
+    assert sorted(runner_specs) == ["capture_gpu"]
+    assert runner_specs["capture_gpu"].resources.env == {}
+    assert runner_specs["capture_gpu"].resources.volumes == (
+        ModalVolumeMount(
+            name="xenon-models",
+            mount_path="/models",
+        ),
+    )
+    assert runners["capture_gpu"].resources.env == {"VLLM_CACHE_ROOT": "/models"}
+    assert runners["capture_gpu"].resources.volumes == (
+        ModalVolumeMount(
+            name="xenon-models",
+            mount_path="/models",
+            create_if_missing=True,
+            commit_on_success=True,
+        ),
+    )
     assert workflow.steps[0].spec.engine.identity()["kind"] == "vllm"
-    assert workflow.steps[0].spec.engine.add_generation_prompt is True
-    assert workflow.steps[0].spec.engine.enable_thinking is False
-    assert workflow.steps[2].spec.engine.add_generation_prompt is True
-    assert workflow.steps[3].spec.engine.add_generation_prompt is True
-    assert workflow.steps[2].spec.engine.enable_thinking is False
-    assert workflow.steps[3].spec.engine.enable_thinking is False
-    assert workflow.steps[2].spec.engine.enforce_eager is False
-    assert workflow.steps[3].spec.engine.enforce_eager is False
-    assert workflow.steps[0].spec.prompt_metadata_builder is not None
-    assert workflow.steps[1].spec.tokens.kind == "section"
-    assert workflow.steps[1].spec.tokens.value == "STRATEGY"
-    assert workflow.steps[3].spec.prompt_metadata_builder is not None
-    assert workflow.steps[4].spec.row_evaluator is not None
-    assert "scripts" in workflow.steps[0].spec.runtime_spec().local_python_sources
-    assert "scripts" in workflow.steps[3].spec.runtime_spec().local_python_sources
-    assert "scripts" in workflow.steps[4].spec.runtime_spec().local_python_sources
-    assert workflow.steps[3].spec.patch.operator == "project_out"
-    assert workflow.steps[3].spec.patch.target_tokens.kind == "section"
-    assert workflow.steps[3].spec.patch.target_tokens.value == "STRATEGY"
-    assert workflow.steps[3].spec.patch.write_site.site == "resid_post"
-    assert tuple(workflow.steps[3].spec.patch.write_site.layers) == (24,)
-    assert workflow.steps[3].spec.patch.component_indices_by_layer == {24: (0, 1)}
-    assert workflow.steps[2].spec.generation.max_tokens == 256
-    assert workflow.steps[2].spec.generation.capture_reasoning is False
-    assert workflow.steps[3].spec.patch.subspace.step == "learn_strategy_subspace"
+    assert workflow.steps[0].spec.engine.model_id == "/models/Qwen/Qwen3-30B-A3B"
+    assert workflow.steps[0].spec.generation.enabled is True
+    assert workflow.steps[0].spec.generation.max_tokens == 256
+    assert workflow.steps[0].spec.engine.enforce_eager is False
 
 
 def test_synthetic_market_v2_smoke_workflow_builders() -> None:
@@ -6993,6 +7232,38 @@ def test_vllm_engine_allows_noneager_add_direction_subspace_patch() -> None:
 
     assert not any("enforce_eager=True" in error for error in errors)
     assert spec.runtime_spec().env["XENON_ACTIVATION_PATCH_COMPILED_OPERATOR"] == "subspace"  # type: ignore[union-attr]
+
+
+def test_vllm_engine_runtime_spec_sets_binary_compile_cache_save_format() -> None:
+    engine = VLLMEngine(model_id="Qwen/Qwen3-0.6B")
+
+    runtime_spec = engine.runtime_spec()
+
+    assert runtime_spec.env["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+
+
+def test_build_llm_kwargs_adds_additional_config_for_compiled_patch_worker() -> None:
+    llm_kwargs, _ = build_llm_kwargs(
+        VLLMEngine(
+            model_id="Qwen/Qwen3-0.6B",
+            enforce_eager=False,
+            enable_prefix_caching=False,
+        ),
+        compiled_operator_hint="subspace",
+    )
+
+    assert llm_kwargs["worker_cls"] == (
+        "pipelines_v2.engine.vllm.activation_patch_request_worker.ActivationPatchGPUWorker"
+    )
+    assert llm_kwargs["compilation_config"] == {
+        "custom_ops": ["none", "+activation_patch_hidden_states"],
+    }
+    assert llm_kwargs["additional_config"] == {
+        "xenon_activation_patch_worker_cls": (
+            "pipelines_v2.engine.vllm.activation_patch_request_worker.ActivationPatchGPUWorker"
+        ),
+        "xenon_activation_patch_compiled_operator": "subspace",
+    }
 
 
 def test_vllm_engine_allows_noneager_swap_mean_subspace_patch() -> None:

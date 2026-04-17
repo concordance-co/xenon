@@ -6,8 +6,10 @@ from pathlib import Path
 from pipelines_v2.cli import _build_runners
 from pipelines_v2.core.config import load_workspace_config
 from pipelines_v2.dashboard.catalog import build_catalog
-from pipelines_v2.runtime.specs import LocalRunnerSpec
+from pipelines_v2.runtime.specs import LocalRunnerSpec, ModalRunnerSpec
 from pipelines_v2.storage.local import FileCatalog, LocalArtifactStore
+from pipelines_v2.storage.modal import ModalVolumeStore
+from pipelines_v2.api import ModalResources, ModalVolumeMount
 
 
 def _write_workspace(tmp_path: Path, *, config_text: str) -> None:
@@ -36,6 +38,28 @@ static_dir = "dashboard/dist"
     assert config.workflow_local_catalog_root() == (tmp_path / "state" / "catalog").resolve()
     assert config.dashboard_catalog_postgres_env() == "TEST_EXTERNAL_DB"
     assert config.dashboard_static_dir() == (tmp_path / "dashboard" / "dist").resolve()
+
+
+def test_load_workspace_config_reads_modal_defaults(tmp_path: Path) -> None:
+    _write_workspace(
+        tmp_path,
+        config_text="""
+[pipelines_v2.modal]
+model_volume = "xenon-models"
+model_volume_path = "/models"
+vllm_cache_volume = "xenon-models"
+vllm_cache_root = "/models"
+use_vllm_torch_compile_cache = true
+""".strip(),
+    )
+
+    config = load_workspace_config(tmp_path)
+
+    assert config.modal.model_volume == "xenon-models"
+    assert config.modal.model_volume_path == "/models"
+    assert config.modal.resolved_vllm_cache_volume() == "xenon-models"
+    assert config.modal.resolved_vllm_cache_root() == "/models"
+    assert config.modal.use_vllm_torch_compile_cache is True
 
 
 def test_dashboard_build_catalog_uses_workspace_config_defaults(
@@ -127,3 +151,88 @@ catalog_postgres_env = "TEST_EXTERNAL_DB"
     capture_identity = runners["capture_gpu"].catalog.identity()
     assert capture_identity["kind"] == "composite"
     assert all(catalog["kind"] != "postgres" for catalog in capture_identity["catalogs"])
+
+
+def test_cli_workspace_modal_defaults_fill_missing_gpu_runner_mounts_and_env(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _write_workspace(
+        tmp_path,
+        config_text="""
+[pipelines_v2.modal]
+model_volume = "xenon-models"
+model_volume_path = "/models"
+vllm_cache_volume = "xenon-models"
+vllm_cache_root = "/models"
+use_vllm_torch_compile_cache = true
+""".strip(),
+    )
+    monkeypatch.chdir(tmp_path)
+
+    ns = argparse.Namespace(
+        file=None,
+        catalog_postgres_env=None,
+        local_catalog_root=None,
+    )
+    runners = _build_runners(
+        ns,
+        {
+            "capture_gpu": ModalRunnerSpec(
+                resources=ModalResources(gpu="L4"),
+                artifacts=ModalVolumeStore(name="xenon-data", root="/data/artifacts"),
+            ),
+        },
+    )
+
+    resources = runners["capture_gpu"].resources
+    assert resources.env["VLLM_CACHE_ROOT"] == "/models"
+    assert resources.volumes == (
+        ModalVolumeMount(
+            name="xenon-models",
+            mount_path="/models",
+            create_if_missing=True,
+            commit_on_success=True,
+        ),
+    )
+
+
+def test_cli_workspace_modal_defaults_do_not_override_explicit_gpu_runner_cache_settings(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _write_workspace(
+        tmp_path,
+        config_text="""
+[pipelines_v2.modal]
+model_volume = "xenon-models"
+model_volume_path = "/models"
+vllm_cache_volume = "xenon-models"
+vllm_cache_root = "/models"
+use_vllm_torch_compile_cache = true
+""".strip(),
+    )
+    monkeypatch.chdir(tmp_path)
+
+    ns = argparse.Namespace(
+        file=None,
+        catalog_postgres_env=None,
+        local_catalog_root=None,
+    )
+    runners = _build_runners(
+        ns,
+        {
+            "capture_gpu": ModalRunnerSpec(
+                resources=ModalResources(
+                    gpu="L4",
+                    env={"VLLM_CACHE_ROOT": "/explicit-cache"},
+                    volumes=(ModalVolumeMount(name="custom-models", mount_path="/models"),),
+                ),
+                artifacts=ModalVolumeStore(name="xenon-data", root="/data/artifacts"),
+            ),
+        },
+    )
+
+    resources = runners["capture_gpu"].resources
+    assert resources.env["VLLM_CACHE_ROOT"] == "/explicit-cache"
+    assert resources.volumes == (ModalVolumeMount(name="custom-models", mount_path="/models"),)

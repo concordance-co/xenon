@@ -12,6 +12,7 @@ from pipelines_v2.core.paths import find_workspace_root, resolve_workspace_path
 from pipelines_v2.core.types import RuntimeSecret
 from pipelines_v2.engine import PythonRuntimeSpec
 from pipelines_v2.operations import operation_spec_from_dict
+from pipelines_v2.runtime.env import merged_runtime_env
 from pipelines_v2.storage.modal import modal_volume_mount_path
 
 
@@ -55,7 +56,7 @@ def run_on_modal(
     image = modal.Image.debian_slim(python_version=runtime_spec.python_version)
     if runtime_spec.pip_packages:
         image = image.pip_install(*runtime_spec.pip_packages)
-    runtime_env = dict(runtime_spec.env)
+    runtime_env = merged_runtime_env(runtime_spec.env, resources.get("env"))
     source_mounts, pythonpath_entries = _resolved_local_python_sources(runtime_spec.local_python_sources)
     if pythonpath_entries:
         existing_pythonpath = runtime_env.get("PYTHONPATH", "")

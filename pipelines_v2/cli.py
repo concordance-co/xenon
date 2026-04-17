@@ -10,7 +10,7 @@ import logging
 import os
 import sys
 from collections import defaultdict, deque
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import ModuleType
 from typing import Any, Mapping, Sequence
 
@@ -247,12 +247,15 @@ def _build_runners(
     else:
         runners = _build_runners_from_args(ns)
         _apply_workspace_catalog_defaults(runners, ns)
+    _apply_workspace_modal_defaults(runners, ns)
     return _attach_local_registry(runners, _local_registry_catalog(ns))
 
 
 def _build_runners_from_args(ns: argparse.Namespace) -> dict[str, object]:
     secrets = tuple(_parse_secret_binding(value) for value in ns.secret)
     capture_volumes = tuple(_parse_volume_mount(value) for value in ns.capture_volume)
+    capture_env = dict(_parse_env_assignment(value) for value in ns.capture_env)
+    analysis_env = dict(_parse_env_assignment(value) for value in ns.analysis_env)
     catalog = _build_catalog(_configured_catalog_postgres_env(ns))
     artifact_store = ModalVolumeStore(
         name=ns.artifact_volume_name,
@@ -264,6 +267,7 @@ def _build_runners_from_args(ns: argparse.Namespace) -> dict[str, object]:
             resources=ModalResources(
                 gpu=ns.capture_gpu,
                 timeout_seconds=ns.timeout_seconds,
+                env=capture_env,
                 secrets=secrets,
                 volumes=capture_volumes,
             ),
@@ -275,6 +279,7 @@ def _build_runners_from_args(ns: argparse.Namespace) -> dict[str, object]:
                 cpu=ns.analysis_cpu,
                 memory_mb=ns.analysis_memory_mb,
                 timeout_seconds=ns.timeout_seconds,
+                env=analysis_env,
                 secrets=secrets,
             ),
             artifacts=artifact_store,
@@ -391,6 +396,138 @@ def _apply_workspace_catalog_defaults(runners: dict[str, object], ns: argparse.N
         current = getattr(runner, "catalog", NullCatalog())
         if getattr(current, "kind", "none") == "none":
             runner.catalog = shared_catalog
+
+
+def _apply_workspace_modal_defaults(runners: dict[str, object], ns: argparse.Namespace) -> None:
+    modal_defaults = _workspace_config_for_ns(ns).modal
+    if modal_defaults.model_volume is None and not modal_defaults.use_vllm_torch_compile_cache:
+        return
+    for runner in runners.values():
+        if not isinstance(runner, ModalRunner):
+            continue
+        if runner.resources.gpu is None:
+            continue
+        runner.resources = _modal_resources_with_workspace_defaults(
+            resources=runner.resources,
+            modal_defaults=modal_defaults,
+        )
+
+
+def _modal_resources_with_workspace_defaults(*, resources: ModalResources, modal_defaults: Any) -> ModalResources:
+    env = dict(resources.env)
+    volumes = list(resources.volumes)
+    changed = False
+
+    model_volume = str(modal_defaults.model_volume or "").strip()
+    model_volume_path = str(modal_defaults.model_volume_path or "").strip() or "/models"
+    if model_volume:
+        volumes, volume_changed = _ensure_modal_volume_mount(
+            volumes,
+            ModalVolumeMount(
+                name=model_volume,
+                mount_path=model_volume_path,
+            ),
+            required_path=model_volume_path,
+        )
+        changed = changed or volume_changed
+
+    default_cache_root = modal_defaults.resolved_vllm_cache_root()
+    default_cache_volume = modal_defaults.resolved_vllm_cache_volume()
+    explicit_cache_root = env.get("VLLM_CACHE_ROOT")
+    effective_cache_root = explicit_cache_root or default_cache_root
+
+    if modal_defaults.use_vllm_torch_compile_cache and explicit_cache_root is None and default_cache_root:
+        env["VLLM_CACHE_ROOT"] = default_cache_root
+        changed = True
+
+    if (
+        modal_defaults.use_vllm_torch_compile_cache
+        and effective_cache_root
+        and default_cache_volume
+        and (explicit_cache_root is None or explicit_cache_root == default_cache_root)
+    ):
+        cache_mount_path = _default_cache_mount_path(
+            model_volume=model_volume,
+            model_volume_path=model_volume_path,
+            cache_volume=default_cache_volume,
+            cache_root=effective_cache_root,
+        )
+        volumes, volume_changed = _ensure_modal_volume_mount(
+            volumes,
+            ModalVolumeMount(
+                name=default_cache_volume,
+                mount_path=cache_mount_path,
+                create_if_missing=True,
+                commit_on_success=True,
+            ),
+            required_path=effective_cache_root,
+        )
+        changed = changed or volume_changed
+
+    if not changed:
+        return resources
+    return ModalResources(
+        gpu=resources.gpu,
+        cpu=resources.cpu,
+        memory_mb=resources.memory_mb,
+        timeout_seconds=resources.timeout_seconds,
+        env=env,
+        secrets=resources.secrets,
+        volumes=tuple(volumes),
+    )
+
+
+def _default_cache_mount_path(
+    *,
+    model_volume: str,
+    model_volume_path: str,
+    cache_volume: str,
+    cache_root: str,
+) -> str:
+    if model_volume and cache_volume == model_volume and _posix_path_covers(model_volume_path, cache_root):
+        return model_volume_path
+    return cache_root
+
+
+def _ensure_modal_volume_mount(
+    volumes: list[ModalVolumeMount],
+    mount: ModalVolumeMount,
+    *,
+    required_path: str,
+) -> tuple[list[ModalVolumeMount], bool]:
+    for index, existing in enumerate(volumes):
+        if existing.name == mount.name and _posix_path_covers(existing.mount_path, required_path):
+            merged = ModalVolumeMount(
+                name=existing.name,
+                mount_path=existing.mount_path,
+                create_if_missing=existing.create_if_missing or mount.create_if_missing,
+                commit_on_success=existing.commit_on_success or mount.commit_on_success,
+            )
+            if merged != existing:
+                volumes[index] = merged
+                return volumes, True
+            return volumes, False
+
+    for existing in volumes:
+        if _posix_path_covers(existing.mount_path, required_path):
+            return volumes, False
+        if _normalize_posix_path(existing.mount_path) == _normalize_posix_path(mount.mount_path):
+            return volumes, False
+
+    volumes.append(mount)
+    return volumes, True
+
+
+def _posix_path_covers(parent: str, child: str) -> bool:
+    normalized_parent = PurePosixPath(_normalize_posix_path(parent))
+    normalized_child = PurePosixPath(_normalize_posix_path(child))
+    return normalized_parent == normalized_child or normalized_parent in normalized_child.parents
+
+
+def _normalize_posix_path(path: str) -> str:
+    pure = PurePosixPath(str(path).strip() or "/")
+    text = str(pure)
+    return text if text.startswith("/") else f"/{text}"
 
 
 def _attach_local_registry(runners: dict[str, object], local_catalog: FileCatalog) -> dict[str, object]:
@@ -655,6 +792,17 @@ def _parse_volume_mount(value: str) -> ModalVolumeMount:
     return ModalVolumeMount(name=name.strip(), mount_path=mount_path.strip())
 
 
+def _parse_env_assignment(value: str) -> tuple[str, str]:
+    try:
+        name, env_value = value.split("=", 1)
+    except ValueError as exc:
+        raise ValueError(f"Env assignment must be NAME=VALUE, got {value!r}") from exc
+    env_name = name.strip()
+    if not env_name:
+        raise ValueError(f"Env assignment must include a variable name: {value!r}")
+    return env_name, env_value
+
+
 def _configure_workflow_logging(level: str | None) -> None:
     logger = logging.getLogger("pipelines_v2")
     handler = next(
@@ -832,6 +980,18 @@ def _add_workflow_runner_args(parser: argparse.ArgumentParser) -> None:
         action="append",
         default=[],
         help="Extra capture volume mount as NAME:MOUNT_PATH. Repeat as needed.",
+    )
+    parser.add_argument(
+        "--capture-env",
+        action="append",
+        default=[],
+        help="Extra env var for the capture runner as NAME=VALUE. Repeat as needed.",
+    )
+    parser.add_argument(
+        "--analysis-env",
+        action="append",
+        default=[],
+        help="Extra env var for the analysis runner as NAME=VALUE. Repeat as needed.",
     )
     parser.add_argument(
         "--catalog-postgres-env",

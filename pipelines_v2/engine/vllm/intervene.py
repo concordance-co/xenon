@@ -60,7 +60,13 @@ def run_vllm_intervention(*, engine: "VLLMEngine", spec: PatchedGenerationSpec) 
     from vllm import LLM
 
     tokenizer = AutoTokenizer.from_pretrained(engine.model_id, trust_remote_code=True)
-    llm_kwargs, reasoning_parser = build_llm_kwargs(engine)
+    compiled_operator_hint = None
+    if spec.patch.operator in {"project_out", "add_direction", "swap_mean", "swap_components", "random_control"}:
+        compiled_operator_hint = "subspace"
+    llm_kwargs, reasoning_parser = build_llm_kwargs(
+        engine,
+        compiled_operator_hint=compiled_operator_hint,
+    )
     llm = LLM(**llm_kwargs)
     reasoning_parser_instance = _build_reasoning_parser(
         tokenizer=tokenizer,

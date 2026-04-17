@@ -31,6 +31,31 @@ class DashboardDefaults:
 
 
 @dataclass(frozen=True, slots=True)
+class ModalDefaults:
+    """Workspace defaults for Modal-backed workflow runners."""
+
+    model_volume: str | None = None
+    model_volume_path: str = "/models"
+    vllm_cache_volume: str | None = None
+    vllm_cache_root: str | None = None
+    use_vllm_torch_compile_cache: bool = False
+
+    def resolved_vllm_cache_volume(self) -> str | None:
+        if self.vllm_cache_volume is not None:
+            return self.vllm_cache_volume
+        if self.use_vllm_torch_compile_cache:
+            return self.model_volume
+        return None
+
+    def resolved_vllm_cache_root(self) -> str | None:
+        if self.vllm_cache_root is not None:
+            return self.vllm_cache_root
+        if self.use_vllm_torch_compile_cache:
+            return self.model_volume_path
+        return None
+
+
+@dataclass(frozen=True, slots=True)
 class WorkspaceConfig:
     """Resolved workspace config plus convenience accessors."""
 
@@ -40,6 +65,7 @@ class WorkspaceConfig:
     local_catalog_root: Path | None = None
     workflow: WorkflowDefaults = field(default_factory=WorkflowDefaults)
     dashboard: DashboardDefaults = field(default_factory=DashboardDefaults)
+    modal: ModalDefaults = field(default_factory=ModalDefaults)
 
     def workflow_catalog_postgres_env(self) -> str | None:
         return self.workflow.catalog_postgres_env or self.catalog_postgres_env
@@ -75,6 +101,7 @@ def load_workspace_config(start: Path | None = None) -> WorkspaceConfig:
     section = _mapping(payload.get("pipelines_v2"))
     workflow_section = _mapping(section.get("workflow"))
     dashboard_section = _mapping(section.get("dashboard"))
+    modal_section = _mapping(section.get("modal"))
 
     return WorkspaceConfig(
         workspace_root=workspace_root,
@@ -90,6 +117,16 @@ def load_workspace_config(start: Path | None = None) -> WorkspaceConfig:
             catalog_postgres_env=_string(dashboard_section.get("catalog_postgres_env")),
             local_catalog_root=_path(dashboard_section.get("local_catalog_root"), workspace_root=workspace_root),
             static_dir=_path(dashboard_section.get("static_dir"), workspace_root=workspace_root),
+        ),
+        modal=ModalDefaults(
+            model_volume=_string(modal_section.get("model_volume")),
+            model_volume_path=_string(modal_section.get("model_volume_path")) or "/models",
+            vllm_cache_volume=_string(modal_section.get("vllm_cache_volume")),
+            vllm_cache_root=_string(modal_section.get("vllm_cache_root")),
+            use_vllm_torch_compile_cache=_bool(
+                modal_section.get("use_vllm_torch_compile_cache"),
+                default=False,
+            ),
         ),
     )
 

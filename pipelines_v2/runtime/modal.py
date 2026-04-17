@@ -99,6 +99,7 @@ class ModalResources:
     cpu: int | float | None = None
     memory_mb: int | None = None
     timeout_seconds: int | None = None
+    env: dict[str, str] = field(default_factory=dict)
     secrets: tuple[ModalSecret, ...] = ()
     volumes: tuple[ModalVolumeMount, ...] = ()
 
@@ -108,6 +109,7 @@ class ModalResources:
             "cpu": self.cpu,
             "memory_mb": self.memory_mb,
             "timeout_seconds": self.timeout_seconds,
+            "env": dict(self.env),
             "secrets": [secret.to_dict() for secret in self.secrets],
             "volumes": [volume.to_dict() for volume in self.volumes],
         }
@@ -119,6 +121,7 @@ class ModalResources:
             cpu=payload.get("cpu"),
             memory_mb=int(payload["memory_mb"]) if payload.get("memory_mb") is not None else None,
             timeout_seconds=int(payload["timeout_seconds"]) if payload.get("timeout_seconds") is not None else None,
+            env={str(key): str(value) for key, value in dict(payload.get("env", {})).items()},
             secrets=tuple(ModalSecret.from_dict(dict(secret)) for secret in payload.get("secrets", ())),
             volumes=tuple(ModalVolumeMount.from_dict(dict(volume)) for volume in payload.get("volumes", ())),
         )
