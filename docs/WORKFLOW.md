@@ -38,6 +38,49 @@ the external catalog env var and dashboard static dir. CLI flags still win when
 you pass them explicitly, and workflow runner specs still win when they set
 their own catalog directly.
 
+## Modal Defaults In `xenon.toml`
+
+Modal-backed workflow defaults live under `[pipelines_v2.modal]`.
+
+Example:
+
+```toml
+[pipelines_v2.modal]
+model_volume = "xenon-models"
+model_volume_path = "/models"
+vllm_cache_volume = "xenon-models"
+vllm_cache_root = "/models"
+use_vllm_torch_compile_cache = true
+```
+
+Meaning:
+
+- `model_volume`
+  - default Modal volume for model weights on GPU runners
+- `model_volume_path`
+  - where that volume is mounted inside the container
+- `vllm_cache_volume`
+  - default Modal volume for the vLLM torch.compile cache
+- `vllm_cache_root`
+  - the `VLLM_CACHE_ROOT` path passed to vLLM
+- `use_vllm_torch_compile_cache`
+  - enables CLI-managed default wiring for `VLLM_CACHE_ROOT` plus a persistent
+    cache volume mount on Modal GPU runners
+
+Operational notes:
+
+- Prefer `VLLM_CACHE_ROOT=/models` or another shared parent directory, not a
+  workflow-specific cache prefix. vLLM already namespaces artifacts by its own
+  cache hash under `torch_compile_cache/` and `torch_aot_compile/`.
+- These settings fill missing values. If a workflow runner already sets its own
+  Modal volume mounts or `VLLM_CACHE_ROOT`, those explicit values win.
+- When `model_volume` and `vllm_cache_volume` are the same, mount the shared
+  volume once at `/models` and let the CLI upgrade that mount for cache
+  persistence.
+- Compile-cache reuse on Modal is still hardware-specific. Reuse is best when
+  the later run lands on the same GPU family and variant that produced the
+  cache.
+
 ## Source Of Truth
 
 The executable source of truth is the checked-in Python workflow file:

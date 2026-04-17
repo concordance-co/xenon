@@ -295,6 +295,53 @@ Workspace defaults for `pipelines_v2` can live in repo-root `xenon.toml`. Use
 that for shared defaults such as the external catalog env var. The CLI still
 writes the local run registry under `~/.xenon/pipelines_v2/catalog`.
 
+## Workspace Modal Defaults
+
+Shared Modal runner defaults for `pipelines_v2` live under
+`[pipelines_v2.modal]` in repo-root `xenon.toml`.
+
+Current keys:
+
+- `model_volume`
+  - Modal volume name to mount for model weights on Modal GPU runners.
+- `model_volume_path`
+  - Mount path for the model volume. Default is `/models`.
+- `vllm_cache_volume`
+  - Modal volume name to use for the vLLM torch.compile cache. If omitted and
+    torch-compile caching is enabled, it defaults to `model_volume`.
+- `vllm_cache_root`
+  - Value to use for `VLLM_CACHE_ROOT`. If omitted and torch-compile caching is
+    enabled, it defaults to `model_volume_path`.
+- `use_vllm_torch_compile_cache`
+  - When `true`, the CLI fills missing `VLLM_CACHE_ROOT` on Modal GPU runners
+    and ensures the cache volume mount is created with
+    `create_if_missing=true` and `commit_on_success=true`.
+
+Current repo default:
+
+```toml
+[pipelines_v2.modal]
+model_volume = "xenon-models"
+model_volume_path = "/models"
+vllm_cache_volume = "xenon-models"
+vllm_cache_root = "/models"
+use_vllm_torch_compile_cache = true
+```
+
+Operational rules:
+
+- Prefer a shared cache root such as `/models`, not a workflow-specific cache
+  prefix. vLLM already creates its own hashed subdirectories under
+  `torch_compile_cache/` and `torch_aot_compile/`.
+- These defaults only fill missing settings. Explicit runner-spec mounts or
+  `env={"VLLM_CACHE_ROOT": ...}` still win.
+- The defaults apply to Modal GPU runners. Local runners should set
+  `LocalResources(env={"VLLM_CACHE_ROOT": ...})` explicitly when persistent
+  local caching is desired.
+- If the model volume and cache volume are the same and the cache root is under
+  the model mount, use one shared `/models` mount and let the CLI upgrade it
+  for cache persistence rather than adding a second overlapping mount.
+
 ## Practical Agent Workflow
 
 When starting fresh on a new project:
