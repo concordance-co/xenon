@@ -33,6 +33,8 @@ else:
     NewRequestData = Any
     SchedulerOutput = Any
 
+from pipelines_v2.engine.vllm.patching.base import debug_log
+
 
 class ActivationPatchRequestHelper:
     def __init__(self) -> None:
@@ -65,11 +67,15 @@ class ActivationPatchRequestHelper:
             payload = extra_args.get("activation_patch_spec")
             if isinstance(payload, dict):
                 self.req_id_to_patch_spec[str(new_req.req_id)] = dict(payload)
-                print(
-                    "[activation-patch] registered request patch "
-                    f"req_id={new_req.req_id} operator={payload.get('operator')} "
-                    f"layers={payload.get('target_layers') or payload.get('write_layers')} "
-                    f"target_positions={len(payload.get('target_positions', ())) or len(payload.get('query_positions', ()))}"
+                debug_log(
+                    "request_patch_registered",
+                    req_id=str(new_req.req_id),
+                    operator=payload.get("operator"),
+                    layers=payload.get("target_layers") or payload.get("write_layers"),
+                    target_positions=(
+                        len(payload.get("target_positions", ()))
+                        or len(payload.get("query_positions", ()))
+                    ),
                 )
 
     def build_step_specs(
@@ -121,6 +127,7 @@ class ActivationPatchRequestHelper:
             target_read_positions = [int(pos) for pos in payload.get("target_read_positions", ())]
             kept_query_positions: list[int] = []
             kept_donor_positions: list[int] = []
+            kept_target_read_positions: list[int] = []
             covered_abs_positions: list[int] = []
             if operator == "interchange":
                 for target_pos, donor_pos in zip(target_positions, donor_positions, strict=False):
@@ -129,11 +136,24 @@ class ActivationPatchRequestHelper:
                         kept_query_positions.append(int(query_start + (int(target_pos) - chunk_abs_start)))
                         kept_donor_positions.append(int(donor_pos))
             elif operator == "residual_path":
-                for target_pos, donor_pos in zip(target_positions, donor_positions, strict=False):
-                    if chunk_abs_start <= int(target_pos) < chunk_abs_end:
-                        covered_abs_positions.append(int(target_pos))
-                        kept_query_positions.append(int(query_start + (int(target_pos) - chunk_abs_start)))
-                        kept_donor_positions.append(int(donor_pos))
+                if target_read_positions:
+                    for target_pos, donor_pos, target_read_pos in zip(
+                        target_positions,
+                        donor_positions,
+                        target_read_positions,
+                        strict=False,
+                    ):
+                        if chunk_abs_start <= int(target_pos) < chunk_abs_end:
+                            covered_abs_positions.append(int(target_pos))
+                            kept_query_positions.append(int(query_start + (int(target_pos) - chunk_abs_start)))
+                            kept_donor_positions.append(int(donor_pos))
+                            kept_target_read_positions.append(int(target_read_pos))
+                else:
+                    for target_pos, donor_pos in zip(target_positions, donor_positions, strict=False):
+                        if chunk_abs_start <= int(target_pos) < chunk_abs_end:
+                            covered_abs_positions.append(int(target_pos))
+                            kept_query_positions.append(int(query_start + (int(target_pos) - chunk_abs_start)))
+                            kept_donor_positions.append(int(donor_pos))
             else:
                 for target_pos in target_positions:
                     if chunk_abs_start <= int(target_pos) < chunk_abs_end:
@@ -149,7 +169,7 @@ class ActivationPatchRequestHelper:
             local_payload["covered_abs_positions"] = [int(pos) for pos in covered_abs_positions]
             if operator in {"interchange", "residual_path"}:
                 local_payload["donor_positions"] = kept_donor_positions
-                local_payload["target_read_positions"] = target_read_positions
+                local_payload["target_read_positions"] = kept_target_read_positions
             else:
                 local_payload.pop("donor_positions", None)
                 local_payload.pop("target_read_positions", None)
@@ -166,9 +186,10 @@ class ActivationPatchRequestHelper:
 
         self.current_step_specs = step_specs
         if step_specs:
-            print(
-                "[activation-patch] prepared batch specs "
-                f"count={len(step_specs)} req_ids={[str(item.get('req_id')) for item in step_specs]}"
+            debug_log(
+                "prepared_batch_specs",
+                count=len(step_specs),
+                req_ids=[str(item.get("req_id")) for item in step_specs],
             )
 
     def cleanup_finished(self, finished_req_ids: list[str] | None) -> None:

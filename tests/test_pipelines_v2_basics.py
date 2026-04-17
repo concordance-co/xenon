@@ -5537,7 +5537,52 @@ def test_activation_patch_request_helper_rebases_subspace_query_positions_withou
     assert len(helper.current_step_specs) == 1
     payload = helper.current_step_specs[0]["patch_spec"]
     assert payload["query_positions"] == [4, 5]
-    assert "donor_positions" not in payload
+
+
+def test_activation_patch_request_helper_rebases_residual_path_target_read_positions_per_chunk() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-1",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "operator": "residual_path",
+                            "target_layers": [24],
+                            "target_positions": [11, 13, 15],
+                            "donor_example_key": "donor-1",
+                            "donor_positions": [21, 23, 25],
+                            "target_read_positions": [31, 33, 35],
+                            "transport": "delta",
+                            "path_edges": [{"source_layer": 4, "write_layer": 24, "weight": 1.0}],
+                            "case_key": "pair-1",
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1"],
+            num_computed_tokens_cpu=[12],
+            num_prompt_tokens=[20],
+        ),
+        num_scheduled_tokens=[2],
+    )
+
+    assert len(helper.current_step_specs) == 1
+    payload = helper.current_step_specs[0]["patch_spec"]
+    assert payload["query_positions"] == [1]
+    assert payload["donor_positions"] == [23]
+    assert payload["target_read_positions"] == [33]
+    assert payload["covered_abs_positions"] == [13]
 
 
 def test_collect_patch_stats_matches_short_request_ids() -> None:
@@ -5605,6 +5650,129 @@ def test_record_patch_stats_merges_coverage_spans() -> None:
     assert model._v2_activation_patch_stats_by_req["req-1"][4]["covered_abs_spans"] == [[10, 18]]
     assert model._v2_activation_patch_stats_by_req["req-1"][4]["covered_abs_tokens"] == 8
     assert model._v2_activation_patch_stats_by_req["req-1"][4]["coverage_fraction"] == 1.0
+
+
+def test_record_patch_stats_merges_residual_path_chunk_scalars_without_last_chunk_overwrite() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.patching.state import _record_patch_stats
+
+    model = SimpleNamespace(_v2_activation_patch_stats_by_req={})
+
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "residual_path",
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "donor_positions": [10, 11],
+            "target_read_positions": [20, 21],
+            "covered_abs_spans": [[10, 12]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 3.0,
+            "replace_alpha": 0.0,
+        },
+    )
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "residual_path",
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "donor_positions": [12, 13],
+            "target_read_positions": [22, 23],
+            "covered_abs_spans": [[20, 22]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 4.0,
+            "replace_alpha": 0.0,
+        },
+    )
+
+    merged = model._v2_activation_patch_stats_by_req["req-1"][4]
+    assert merged["chunk_count"] == 2
+    assert len(merged["chunk_stats"]) == 2
+    assert merged["token_count"] == 4
+    assert merged["delta_norm_raw"] == pytest.approx(5.0)
+    assert merged["covered_abs_spans"] == [[10, 12], [20, 22]]
+    assert merged["covered_abs_tokens"] == 4
+    assert merged["coverage_fraction"] == 1.0
+    assert "query_positions" not in merged
+    assert "donor_positions" not in merged
+    assert "target_read_positions" not in merged
+
+
+def test_record_patch_stats_keeps_chunk_stats_for_multichunk_subspace_rows() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.patching.state import _record_patch_stats
+
+    model = SimpleNamespace(_v2_activation_patch_stats_by_req={})
+
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "project_out",
+            "strength": 1.0,
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "covered_abs_spans": [[10, 12]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 1.0,
+            "selected_coeff_before": [0.5],
+            "selected_coeff_after": [0.0],
+            "selected_component_count": 1,
+        },
+    )
+    _record_patch_stats(
+        model,
+        req_id="req-1",
+        layer_idx=4,
+        stats={
+            "layer": 4,
+            "status": "ok",
+            "operator": "project_out",
+            "strength": 1.0,
+            "token_count": 2,
+            "query_positions": [0, 1],
+            "covered_abs_spans": [[12, 14]],
+            "covered_abs_tokens": 2,
+            "target_abs_tokens": 4,
+            "coverage_fraction": 0.5,
+            "delta_norm_raw": 2.0,
+            "selected_coeff_before": [0.25],
+            "selected_coeff_after": [0.0],
+            "selected_component_count": 1,
+        },
+    )
+
+    merged = model._v2_activation_patch_stats_by_req["req-1"][4]
+    assert merged["chunk_count"] == 2
+    assert len(merged["chunk_stats"]) == 2
+    assert merged["token_count"] == 4
+    assert merged["covered_abs_spans"] == [[10, 14]]
+    assert merged["covered_abs_tokens"] == 4
+    assert merged["coverage_fraction"] == 1.0
+    assert "delta_norm_raw" not in merged
+    assert "selected_coeff_before" not in merged
+    assert "selected_coeff_after" not in merged
 
 
 def test_harvest_batch_patch_stats_residual_path_includes_runtime_coverage() -> None:

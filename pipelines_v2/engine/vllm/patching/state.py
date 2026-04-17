@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import torch
@@ -11,6 +12,7 @@ from .base import (
     _DEFAULT_COMPILED_PATCH_MAX_COMPONENTS,
     _MAX_BATCH_PATCH_SLOTS,
     contiguous_token_span,
+    debug_log,
     infer_model_device,
     spec_from_payload,
     unwrap_model,
@@ -79,15 +81,13 @@ def register_activation_patch_subspace(model: Any, subspace_payload: dict[int, d
             },
         }
     model._v2_activation_patch_subspace = registered
-    print(
-        "[activation-patch] registered subspace "
-        f"layers={sorted(int(layer) for layer in registered)} "
-        f"component_counts={{"
-        + ", ".join(
-            f"{int(layer)}:{int(payload['components'].shape[0])}"
+    debug_log(
+        "registered_subspace",
+        layers=sorted(int(layer) for layer in registered),
+        component_counts={
+            int(layer): int(payload["components"].shape[0])
             for layer, payload in sorted(registered.items())
-        )
-        + "}"
+        },
     )
     return {
         "layers": sorted(int(layer) for layer in registered),
@@ -210,9 +210,11 @@ def harvest_batch_patch_stats(model: Any, batch_specs: list[dict[str, Any]]) -> 
                 continue
             valid = int(layer_buffers["valid"][slot_idx].item())
             if valid <= 0:
-                print(
-                    "[activation-patch] missing harvested stats "
-                    f"req_id={req_id or '<empty>'} layer={int(layer_idx)} operator={spec.operator}"
+                debug_log(
+                    "missing_harvested_stats",
+                    req_id=req_id or "<empty>",
+                    layer=int(layer_idx),
+                    operator=spec.operator,
                 )
                 continue
             scalars = layer_buffers["scalars"][slot_idx].detach().cpu().tolist()
@@ -303,11 +305,130 @@ def harvest_batch_patch_stats(model: Any, batch_specs: list[dict[str, Any]]) -> 
                 layer_idx=int(layer_idx),
                 stats=stats,
             )
-            print(
-                "[activation-patch] harvested stats "
-                f"req_id={req_id or '<empty>'} layer={int(layer_idx)} operator={spec.operator} "
-                f"token_count={stats.get('token_count')} delta_norm_raw={stats.get('delta_norm_raw')}"
+            debug_log(
+                "harvested_stats",
+                req_id=req_id or "<empty>",
+                layer=int(layer_idx),
+                operator=spec.operator,
+                token_count=stats.get("token_count"),
+                delta_norm_raw=stats.get("delta_norm_raw"),
             )
+
+
+def _normalize_chunk_stats(stats: dict[str, Any]) -> list[dict[str, Any]]:
+    chunk_stats = stats.get("chunk_stats")
+    if isinstance(chunk_stats, list):
+        normalized = [dict(item) for item in chunk_stats if isinstance(item, dict)]
+        if normalized:
+            return normalized
+    base = dict(stats)
+    base.pop("chunk_stats", None)
+    base.pop("chunk_count", None)
+    return [base]
+
+
+def _merge_covered_abs_spans(*stats_payloads: dict[str, Any]) -> list[list[int]]:
+    covered_spans = [
+        [int(start), int(end)]
+        for payload in stats_payloads
+        for start, end in [
+            (span[0], span[1])
+            for span in payload.get("covered_abs_spans", ())
+            if isinstance(span, (list, tuple)) and len(span) == 2
+        ]
+    ]
+    if not covered_spans:
+        return []
+    covered_spans.sort()
+    coalesced: list[list[int]] = []
+    cur_start, cur_end = covered_spans[0]
+    for start, end in covered_spans[1:]:
+        if int(start) <= int(cur_end):
+            cur_end = max(int(cur_end), int(end))
+        else:
+            coalesced.append([int(cur_start), int(cur_end)])
+            cur_start, cur_end = int(start), int(end)
+    coalesced.append([int(cur_start), int(cur_end)])
+    return coalesced
+
+
+def _maybe_stable_scalar(chunk_stats: list[dict[str, Any]], key: str) -> float | int | None:
+    values = [item.get(key) for item in chunk_stats if item.get(key) is not None]
+    if not values:
+        return None
+    first = values[0]
+    if isinstance(first, bool):
+        return int(first)
+    if isinstance(first, int):
+        if all(int(value) == int(first) for value in values if isinstance(value, (int, float))):
+            return int(first)
+        return None
+    if isinstance(first, float):
+        if all(math.isclose(float(value), float(first), rel_tol=1e-6, abs_tol=1e-6) for value in values if isinstance(value, (int, float))):
+            return float(first)
+        return None
+    return None
+
+
+def _aggregate_patch_stats(operator: str, chunk_stats: list[dict[str, Any]]) -> dict[str, Any]:
+    aggregated: dict[str, Any] = {
+        "chunk_count": int(len(chunk_stats)),
+        "chunk_stats": [dict(item) for item in chunk_stats],
+    }
+
+    token_count = 0
+    saw_token_count = False
+    for item in chunk_stats:
+        value = item.get("token_count")
+        if isinstance(value, (int, float)):
+            token_count += int(value)
+            saw_token_count = True
+    if saw_token_count:
+        aggregated["token_count"] = int(token_count)
+
+    covered_abs_spans = _merge_covered_abs_spans(*chunk_stats)
+    if covered_abs_spans:
+        aggregated["covered_abs_spans"] = covered_abs_spans
+        aggregated["covered_abs_tokens"] = sum(max(0, int(end) - int(start)) for start, end in covered_abs_spans)
+        target_abs_tokens = next(
+            (
+                int(value)
+                for value in (
+                    item.get("target_abs_tokens")
+                    for item in reversed(chunk_stats)
+                )
+                if isinstance(value, (int, float)) and int(value) > 0
+            ),
+            0,
+        )
+        if target_abs_tokens > 0:
+            aggregated["target_abs_tokens"] = int(target_abs_tokens)
+            aggregated["coverage_fraction"] = float(aggregated["covered_abs_tokens"]) / float(target_abs_tokens)
+
+    if operator in {"interchange", "residual_path"}:
+        delta_norms = [
+            float(item["delta_norm_raw"])
+            for item in chunk_stats
+            if isinstance(item.get("delta_norm_raw"), (int, float))
+        ]
+        if delta_norms:
+            aggregated["delta_norm_raw"] = float(math.sqrt(sum(value * value for value in delta_norms)))
+
+    if operator == "add_direction":
+        direction_norm_raw = _maybe_stable_scalar(chunk_stats, "direction_norm_raw")
+        if direction_norm_raw is not None:
+            aggregated["direction_norm_raw"] = float(direction_norm_raw)
+
+    stable_strength = _maybe_stable_scalar(chunk_stats, "strength")
+    if stable_strength is not None:
+        aggregated["strength"] = float(stable_strength)
+
+    if operator == "residual_path":
+        stable_replace_alpha = _maybe_stable_scalar(chunk_stats, "replace_alpha")
+        if stable_replace_alpha is not None:
+            aggregated["replace_alpha"] = float(stable_replace_alpha)
+
+    return aggregated
 
 
 def _record_patch_stats(owner_model: Any, *, req_id: str, layer_idx: int, stats: dict[str, Any]) -> None:
@@ -324,37 +445,34 @@ def _record_patch_stats(owner_model: Any, *, req_id: str, layer_idx: int, stats:
     merged = dict(existing)
     merged.update(dict(stats))
 
-    covered_spans = [
-        [int(start), int(end)]
-        for start, end in [
-            *[
-                (span[0], span[1])
-                for span in existing.get("covered_abs_spans", ())
-                if isinstance(span, (list, tuple)) and len(span) == 2
-            ],
-            *[
-                (span[0], span[1])
-                for span in stats.get("covered_abs_spans", ())
-                if isinstance(span, (list, tuple)) and len(span) == 2
-            ],
-        ]
-    ]
-    if covered_spans:
-        covered_spans.sort()
-        coalesced: list[list[int]] = []
-        cur_start, cur_end = covered_spans[0]
-        for start, end in covered_spans[1:]:
-            if int(start) <= int(cur_end):
-                cur_end = max(int(cur_end), int(end))
-            else:
-                coalesced.append([int(cur_start), int(cur_end)])
-                cur_start, cur_end = int(start), int(end)
-        coalesced.append([int(cur_start), int(cur_end)])
-        merged["covered_abs_spans"] = coalesced
-        merged["covered_abs_tokens"] = sum(max(0, int(end) - int(start)) for start, end in coalesced)
-        target_abs_tokens = int(merged.get("target_abs_tokens", 0))
-        if target_abs_tokens > 0:
-            merged["coverage_fraction"] = float(merged["covered_abs_tokens"]) / float(target_abs_tokens)
+    chunk_stats = _normalize_chunk_stats(existing)
+    chunk_stats.append(dict(stats))
+    operator = str(merged.get("operator") or existing.get("operator") or stats.get("operator") or "")
+    aggregated = _aggregate_patch_stats(operator, chunk_stats)
+    merged.update(aggregated)
+    if int(aggregated.get("chunk_count", 1)) > 1:
+        for field in (
+            "query_positions",
+            "donor_positions",
+            "target_read_positions",
+            "covered_abs_positions",
+        ):
+            merged.pop(field, None)
+        if operator not in {"interchange", "residual_path"}:
+            for field in (
+                "delta_norm_raw",
+                "delta_norm_std",
+                "mean_norm_before",
+                "mean_norm_after",
+                "mean_std_norm_before",
+                "mean_std_norm_after",
+                "selected_proj_norm_before",
+                "selected_coeff_before",
+                "selected_coeff_after",
+                "selected_component_count",
+            ):
+                if field not in aggregated:
+                    merged.pop(field, None)
 
     req_stats[int(layer_idx)] = merged
 
