@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { ReportFigure, ReportTableSummary } from "@/types/api";
 import { JsonView } from "@/components/JsonView";
@@ -279,20 +279,45 @@ function FigureGrid({
   artifactId: string;
   columns: 2 | 3;
 }) {
+  const [lightbox, setLightbox] = useState<ReportFigure | null>(null);
   const cls =
     columns === 3
       ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
       : "grid grid-cols-1 md:grid-cols-2 gap-3";
   return (
-    <div className={cls}>
-      {figures.map((fig) => (
-        <FigureCard key={fig.figure_id} fig={fig} artifactId={artifactId} />
-      ))}
-    </div>
+    <>
+      <div className={cls}>
+        {figures.map((fig) => (
+          <FigureCard
+            key={fig.figure_id}
+            fig={fig}
+            artifactId={artifactId}
+            onOpen={() => setLightbox(fig)}
+          />
+        ))}
+      </div>
+      {lightbox ? (
+        <Lightbox
+          fig={lightbox}
+          artifactId={artifactId}
+          figures={figures}
+          onClose={() => setLightbox(null)}
+          onNavigate={setLightbox}
+        />
+      ) : null}
+    </>
   );
 }
 
-function FigureCard({ fig, artifactId }: { fig: ReportFigure; artifactId: string }) {
+function FigureCard({
+  fig,
+  artifactId,
+  onOpen,
+}: {
+  fig: ReportFigure;
+  artifactId: string;
+  onOpen: () => void;
+}) {
   const [broken, setBroken] = useState(false);
   const url = api.reportAssetUrl(artifactId, fig.path);
   return (
@@ -308,12 +333,11 @@ function FigureCard({ fig, artifactId }: { fig: ReportFigure; artifactId: string
           <p className="text-2xs font-mono text-ink-400 leading-relaxed">{fig.caption}</p>
         ) : null}
       </figcaption>
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        className="flex-1 flex items-center justify-center bg-ink-950 min-h-0"
-        title="open full-size"
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex-1 flex items-center justify-center bg-ink-950 min-h-0 cursor-zoom-in"
+        title="click to enlarge"
       >
         {broken ? (
           <div className="flex items-center justify-center h-20 text-2xs font-mono text-status-fail">
@@ -328,8 +352,114 @@ function FigureCard({ fig, artifactId }: { fig: ReportFigure; artifactId: string
             loading="lazy"
           />
         )}
-      </a>
+      </button>
     </figure>
+  );
+}
+
+function Lightbox({
+  fig,
+  artifactId,
+  figures,
+  onClose,
+  onNavigate,
+}: {
+  fig: ReportFigure;
+  artifactId: string;
+  figures: ReportFigure[];
+  onClose: () => void;
+  onNavigate: (fig: ReportFigure) => void;
+}) {
+  const url = api.reportAssetUrl(artifactId, fig.path);
+  const idx = figures.findIndex((f) => f.figure_id === fig.figure_id);
+  const prev = idx > 0 ? figures[idx - 1] : null;
+  const next = idx < figures.length - 1 ? figures[idx + 1] : null;
+
+  // Keyboard navigation: Esc to close, ←/→ to navigate.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && prev) onNavigate(prev);
+      if (e.key === "ArrowRight" && next) onNavigate(next);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/90"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-[90vw] max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-ink-900 border-b border-ink-800 rounded-t-sm">
+          <div className="min-w-0">
+            <div className="text-xs font-mono text-ink-50 font-semibold truncate">
+              {fig.title ?? fig.figure_id}
+            </div>
+            {fig.caption ? (
+              <div className="text-2xs font-mono text-ink-400 truncate mt-0.5">
+                {fig.caption}
+              </div>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {figures.length > 1 ? (
+              <span className="text-[0.625rem] font-mono text-ink-500 tabular-nums">
+                {idx + 1}/{figures.length}
+              </span>
+            ) : null}
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-ghost"
+              title="open in new tab"
+            >
+              ↗
+            </a>
+            <button type="button" onClick={onClose} className="btn-ghost" title="close (Esc)">
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Image */}
+        <div className="bg-ink-950 flex items-center justify-center p-4 overflow-auto rounded-b-sm">
+          <img
+            src={url}
+            alt={fig.title ?? fig.figure_id}
+            className="max-w-full max-h-[80vh] object-contain"
+          />
+        </div>
+
+        {/* Prev / Next arrows */}
+        {prev ? (
+          <button
+            type="button"
+            onClick={() => onNavigate(prev)}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full px-2 py-8 text-xl text-ink-400 hover:text-ink-50 transition-colors"
+            title="previous (←)"
+          >
+            ‹
+          </button>
+        ) : null}
+        {next ? (
+          <button
+            type="button"
+            onClick={() => onNavigate(next)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full px-2 py-8 text-xl text-ink-400 hover:text-ink-50 transition-colors"
+            title="next (→)"
+          >
+            ›
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

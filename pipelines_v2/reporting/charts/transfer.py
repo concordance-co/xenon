@@ -6,7 +6,22 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Mapping
 
-from pipelines_v2.reporting.chart_style import display_metric, display_name, metric_value, new_figure, save_figure
+from pipelines_v2.reporting.chart_style import (
+    best_series_point,
+    display_metric,
+    display_name,
+    format_layer,
+    format_regularization,
+    format_stat,
+    header_legend,
+    highlight_point,
+    metric_value,
+    new_figure,
+    plot_series,
+    save_figure,
+    style_axes,
+    value_limits,
+)
 
 _METRICS = ("balanced_accuracy", "auroc")
 
@@ -131,8 +146,10 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
             filename = f"{metric}_cross_cohort.png"
             _plot_series_by_layer(
                 series_map=cross_metric_series[metric],
+                step_name=step_name,
+                detail=f"Cross cohort \u00b7 {display_metric(metric)}",
                 ylabel=display_metric(metric),
-                title=f"{display_metric(metric)} cross cohort: {display_name(step_name)}",
+                metric_axis=True,
                 output_path=asset_dir / filename,
             )
             figures.append(
@@ -148,8 +165,9 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
     if any(series for series in delta_series.values()):
         _plot_series_by_layer(
             series_map=delta_series,
+            step_name=step_name,
+            detail="Transfer delta vs test-cohort within baseline",
             ylabel="Transfer Delta vs Test Within",
-            title=f"Transfer delta by layer: {display_name(step_name)}",
             output_path=asset_dir / "transfer_delta_balanced_accuracy.png",
         )
         figures.append(
@@ -165,8 +183,10 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
     if any(series for series in direction_series.values()):
         _plot_series_by_layer(
             series_map=direction_series,
+            step_name=step_name,
+            detail="Direction similarity across layers",
             ylabel="Cosine Similarity",
-            title=f"Direction similarity by layer: {display_name(step_name)}",
+            metric_axis=True,
             output_path=asset_dir / "direction_similarity.png",
         )
         figures.append(
@@ -187,8 +207,10 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
             filename = f"{split_name}_{metric}.png"
             _plot_series_by_layer(
                 series_map=series,
+                step_name=step_name,
+                detail=f"{display_name(split_name)} \u00b7 {display_metric(metric)}",
                 ylabel=display_metric(metric),
-                title=f"{display_metric(metric)} {display_name(split_name)}: {display_name(step_name)}",
+                metric_axis=True,
                 output_path=asset_dir / filename,
             )
             figures.append(
@@ -206,8 +228,10 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
             filename = f"regularization_sweep_{metric}.png"
             _plot_sweep_series(
                 series_map=sweep_series[metric],
+                step_name=step_name,
+                detail=f"Regularization sweep \u00b7 {display_metric(metric)}",
                 ylabel=display_metric(metric),
-                title=f"Regularization sweep {display_metric(metric)}: {display_name(step_name)}",
+                metric_axis=True,
                 output_path=asset_dir / filename,
             )
             figures.append(
@@ -414,36 +438,100 @@ def _is_metric_payload(payload: Any) -> bool:
 def _plot_series_by_layer(
     *,
     series_map: Mapping[str, list[tuple[int, float | None]]],
+    step_name: str,
+    detail: str,
     ylabel: str,
-    title: str,
+    metric_axis: bool = False,
     output_path: Path,
 ) -> None:
-    fig, ax = new_figure()
+    best_label, best_x, best_value = best_series_point(series_map)
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="TRANSFER PROBE",
+        metric_label=detail.upper(),
+        metric_value=format_stat(best_value),
+        right_label="BEST LAYER",
+        right_value=format_layer(best_x),
+    )
+    line_by_label = {}
+    x_values: list[int] = []
+    plotted_values: list[float] = []
     for label, pairs in sorted(series_map.items()):
         ordered = sorted(pairs, key=lambda item: item[0])
-        ax.plot([item[0] for item in ordered], [item[1] for item in ordered], marker="o", label=display_name(label))
-    ax.set_xlabel("Layer")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.legend(loc="best", fontsize=8)
+        xs = [item[0] for item in ordered]
+        ys = [item[1] for item in ordered]
+        line_by_label[label] = plot_series(
+            ax,
+            xs,
+            ys,
+            label=display_name(label),
+            dashed=("within" in label or "baseline" in label),
+        )
+        x_values.extend(xs)
+        plotted_values.extend(float(value) for value in ys if value is not None)
+    if best_label is not None and best_x is not None and best_value is not None:
+        highlight_point(ax, best_x, best_value, color=line_by_label[best_label].get_color())
+    y_limits = value_limits(plotted_values)
+    style_axes(
+        ax,
+        xlabel="Layer",
+        ylabel=ylabel,
+        x_values=x_values,
+        layer_axis=True,
+        metric_axis=metric_axis,
+        y_limits=y_limits,
+    )
+    header_legend(ax, ncol=2 if len(series_map) > 2 else 1)
     save_figure(fig, output_path)
 
 
 def _plot_sweep_series(
     *,
     series_map: Mapping[str, list[tuple[float, float | None]]],
+    step_name: str,
+    detail: str,
     ylabel: str,
-    title: str,
+    metric_axis: bool = False,
     output_path: Path,
 ) -> None:
-    fig, ax = new_figure()
+    best_label, best_x, best_value = best_series_point(series_map)
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="TRANSFER PROBE",
+        metric_label=detail.upper(),
+        metric_value=format_stat(best_value),
+        right_label="BEST C",
+        right_value=format_regularization(best_x),
+    )
+    line_by_label = {}
+    x_values: list[float] = []
+    plotted_values: list[float] = []
     for label, pairs in sorted(series_map.items()):
         ordered = sorted(pairs, key=lambda item: item[0])
-        ax.plot([item[0] for item in ordered], [item[1] for item in ordered], marker="o", label=display_name(label))
-    ax.set_xlabel("Regularization C")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.legend(loc="best", fontsize=8)
+        xs = [item[0] for item in ordered]
+        ys = [item[1] for item in ordered]
+        line_by_label[label] = plot_series(
+            ax,
+            xs,
+            ys,
+            label=display_name(label),
+            dashed=("within" in label or "baseline" in label),
+        )
+        x_values.extend(xs)
+        plotted_values.extend(float(value) for value in ys if value is not None)
+    if best_label is not None and best_x is not None and best_value is not None:
+        highlight_point(ax, best_x, best_value, color=line_by_label[best_label].get_color())
+    use_log_scale = all(value > 0.0 for value in x_values)
+    y_limits = value_limits(plotted_values)
+    style_axes(
+        ax,
+        xlabel="Regularization C",
+        ylabel=ylabel,
+        metric_axis=metric_axis,
+        y_limits=y_limits,
+        xscale="log" if use_log_scale else None,
+    )
+    header_legend(ax, ncol=2 if len(series_map) > 2 else 1)
     save_figure(fig, output_path)
 
 

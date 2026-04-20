@@ -2,6 +2,7 @@ import type {
   DatasetPreview,
   LabelPreview,
   PromptPreview,
+  ReportGenerationResponse,
   ReportDetail,
   ResultPreview,
   RunDetail,
@@ -58,6 +59,11 @@ export const api = {
 
   getRun: (runId: string) => req<RunDetail>(`/api/runs/${encodeURIComponent(runId)}`),
 
+  getReportStatus: (runId: string) =>
+    req<import("@/types/api").RunReportStatus>(
+      `/api/runs/${encodeURIComponent(runId)}/report-status`,
+    ),
+
   getStep: (runId: string, stepName: string) =>
     req<StepDetail>(`/api/runs/${encodeURIComponent(runId)}/steps/${encodeURIComponent(stepName)}`),
 
@@ -85,6 +91,12 @@ export const api = {
     ),
 
   getReport: (artifactId: string) => req<ReportDetail>(`/api/reports/${encodeURIComponent(artifactId)}`),
+
+  generateReport: (runId: string, opts: { step_name?: string } = {}) =>
+    req<ReportGenerationResponse>(
+      `/api/runs/${encodeURIComponent(runId)}/report${qs({ step_name: opts.step_name })}`,
+      { method: "POST" },
+    ),
 
   reportAssetUrl: (artifactId: string, assetPath: string) =>
     `/api/reports/${encodeURIComponent(artifactId)}/assets/${assetPath.split("/").map(encodeURIComponent).join("/")}`,

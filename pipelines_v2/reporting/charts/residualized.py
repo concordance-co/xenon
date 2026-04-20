@@ -5,7 +5,22 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pipelines_v2.reporting.chart_style import display_metric, display_name, metric_value, new_figure, save_figure
+from pipelines_v2.reporting.chart_style import (
+    best_point,
+    display_metric,
+    display_name,
+    format_layer,
+    format_stat,
+    header_legend,
+    highlight_point,
+    horizontal_reference,
+    metric_value,
+    new_figure,
+    plot_series,
+    save_figure,
+    style_axes,
+    value_limits,
+)
 
 
 def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_root: Path) -> dict[str, Any]:
@@ -134,57 +149,103 @@ def _plot_raw_vs_residualized(
     x_values = [int(row["layer"]) for row in rows]
     raw_key = f"raw_{metric}"
     residualized_key = f"residualized_{metric}"
-    fig, ax = new_figure()
-    ax.plot(x_values, [metric_value(row, raw_key) for row in rows], marker="o", label="Raw")
-    ax.plot(x_values, [metric_value(row, residualized_key) for row in rows], marker="o", label="Residualized")
-    ax.set_xlabel("Layer")
-    ax.set_ylabel(display_metric(metric))
-    ax.set_ylim(0.0, 1.05)
-    ax.set_title(f"{display_metric(metric)} raw vs residualized: {display_name(step_name)}")
-    ax.legend(loc="best")
+    raw_values = [metric_value(row, raw_key) for row in rows]
+    residualized_values = [metric_value(row, residualized_key) for row in rows]
+    raw_best_layer, raw_best_value = best_point(x_values, raw_values)
+    residualized_best_layer, residualized_best_value = best_point(x_values, residualized_values)
+    if (residualized_best_value or float("-inf")) > (raw_best_value or float("-inf")):
+        best_layer, best_value = residualized_best_layer, residualized_best_value
+    else:
+        best_layer, best_value = raw_best_layer, raw_best_value
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="RESIDUALIZED PROBE",
+        metric_label=f"BEST {display_metric(metric).upper()}",
+        metric_value=format_stat(best_value),
+        right_label="BEST LAYER",
+        right_value=format_layer(best_layer),
+    )
+    raw_line = plot_series(ax, x_values, raw_values, label="Raw")
+    residualized_line = plot_series(ax, x_values, residualized_values, label="Residualized")
+    if best_layer is not None and best_value is not None:
+        highlight_color = residualized_line.get_color() if best_value == residualized_best_value else raw_line.get_color()
+        highlight_point(ax, best_layer, best_value, color=highlight_color)
+    style_axes(
+        ax,
+        xlabel="Layer",
+        ylabel=display_metric(metric),
+        x_values=x_values,
+        layer_axis=True,
+        metric_axis=True,
+        y_limits=value_limits([*raw_values, *residualized_values]),
+    )
+    header_legend(ax, ncol=2)
     save_figure(fig, output_path)
 
 
 def _plot_delta(*, rows: list[dict[str, Any]], step_name: str, output_path: Path) -> None:
     x_values = [int(row["layer"]) for row in rows]
-    fig, ax = new_figure()
+    plotted_pairs: list[tuple[int, float]] = []
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="RESIDUALIZED PROBE",
+        detail="Raw minus residualized delta across captured layers",
+    )
     plotted = False
     for metric in ("balanced_accuracy", "auroc"):
         key = f"delta_raw_minus_null_{metric}"
         if not _has_metric(rows, key):
             continue
-        ax.plot(x_values, [metric_value(row, key) for row in rows], marker="o", label=display_metric(metric))
+        y_values = [metric_value(row, key) for row in rows]
+        plot_series(ax, x_values, y_values, label=display_metric(metric))
+        plotted_pairs.extend((layer, float(value)) for layer, value in zip(x_values, y_values, strict=False) if value is not None)
         plotted = True
     if not plotted:
-        ax.plot(x_values, [0.0 for _ in rows], marker="o", label="Delta")
-    ax.set_xlabel("Layer")
-    ax.set_ylabel("Raw - Residualized")
-    ax.set_title(f"Residualization delta by layer: {display_name(step_name)}")
-    ax.axhline(0.0, color="#6b7280", linewidth=1.0, linestyle="--")
-    ax.legend(loc="best")
+        zero_values = [0.0 for _ in rows]
+        plot_series(ax, x_values, zero_values, label="Delta")
+        plotted_pairs.extend((layer, 0.0) for layer in x_values)
+    max_abs = max((abs(value) for _, value in plotted_pairs), default=0.0)
+    delta_limit = max(0.05, max_abs + 0.05)
+    style_axes(
+        ax,
+        xlabel="Layer",
+        ylabel="Raw - Residualized",
+        x_values=x_values,
+        layer_axis=True,
+        y_limits=(-delta_limit, delta_limit),
+    )
+    horizontal_reference(ax, 0.0)
+    header_legend(ax)
     save_figure(fig, output_path)
 
 
 def _plot_nuisance_accuracy(*, rows: list[dict[str, Any]], step_name: str, output_path: Path) -> None:
     x_values = [int(row["layer"]) for row in rows]
-    fig, ax = new_figure()
-    ax.plot(
-        x_values,
-        [metric_value(row, "nuisance_accuracy_raw_training_fit") for row in rows],
-        marker="o",
-        label="Raw training fit",
+    raw_values = [metric_value(row, "nuisance_accuracy_raw_training_fit") for row in rows]
+    null_values = [metric_value(row, "nuisance_accuracy_on_null_training_fit") for row in rows]
+    best_layer, best_value = best_point(x_values, raw_values)
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="RESIDUALIZED PROBE",
+        metric_label="BEST RAW TRAINING FIT",
+        metric_value=format_stat(best_value),
+        right_label="BEST LAYER",
+        right_value=format_layer(best_layer),
     )
-    ax.plot(
-        x_values,
-        [metric_value(row, "nuisance_accuracy_on_null_training_fit") for row in rows],
-        marker="o",
-        label="Null-space training fit",
+    raw_line = plot_series(ax, x_values, raw_values, label="Raw training fit")
+    plot_series(ax, x_values, null_values, label="Null-space training fit")
+    if best_layer is not None and best_value is not None:
+        highlight_point(ax, best_layer, best_value, color=raw_line.get_color())
+    style_axes(
+        ax,
+        xlabel="Layer",
+        ylabel="Balanced Accuracy",
+        x_values=x_values,
+        layer_axis=True,
+        metric_axis=True,
+        y_limits=value_limits([*raw_values, *null_values]),
     )
-    ax.set_xlabel("Layer")
-    ax.set_ylabel("Balanced Accuracy")
-    ax.set_ylim(0.0, 1.05)
-    ax.set_title(f"Nuisance accuracy by layer: {display_name(step_name)}")
-    ax.legend(loc="best")
+    header_legend(ax)
     save_figure(fig, output_path)
 
 

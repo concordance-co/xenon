@@ -11,20 +11,30 @@ describe("RunsIndex", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the runs table with status chips and report flag", async () => {
+  it("groups runs by workflow and expands to show individual runs", async () => {
     const spy = vi.spyOn(api, "listRuns").mockResolvedValue(runsFixture);
 
     renderWithProviders(<RunsIndex />);
 
-    await waitFor(() => expect(screen.getByText("run_alpha")).toBeInTheDocument());
+    // Wait for the workflow group header to appear (both test runs share
+    // "demo_wf" so they merge into one group row).
+    await waitFor(() =>
+      expect(screen.getAllByText("demo_wf").length).toBeGreaterThan(0),
+    );
     expect(spy).toHaveBeenCalled();
+
+    // Group summary shows run count.
+    expect(screen.getByText(/2 runs/)).toBeInTheDocument();
+
+    // Individual run IDs are behind the toggle — click to expand.
+    expect(screen.queryByText("run_alpha")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText("demo_wf"));
+
+    // Now the table with individual rows is visible.
+    expect(await screen.findByText("run_alpha")).toBeInTheDocument();
     expect(screen.getByText("run_beta")).toBeInTheDocument();
-    // Status chips render as the status text.
     expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
     expect(screen.getAllByText("failed").length).toBeGreaterThan(0);
-    // has_report chip for alpha.
-    expect(screen.getByText("yes")).toBeInTheDocument();
-    // Error text for beta is surfaced.
     expect(screen.getByText(/out of memory/)).toBeInTheDocument();
   });
 
@@ -35,7 +45,9 @@ describe("RunsIndex", () => {
       .mockResolvedValueOnce(runsFixture);
 
     renderWithProviders(<RunsIndex />);
-    await waitFor(() => expect(screen.getByText("run_alpha")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getAllByText("demo_wf").length).toBeGreaterThan(0),
+    );
 
     const select = screen.getByLabelText("status") as HTMLSelectElement;
     await userEvent.selectOptions(select, "failed");

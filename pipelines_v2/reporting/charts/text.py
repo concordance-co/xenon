@@ -6,7 +6,24 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Mapping
 
-from pipelines_v2.reporting.chart_style import display_metric, display_name, metric_value, new_figure, save_figure
+from pipelines_v2.reporting.chart_style import (
+    annotate_bars,
+    best_named_value,
+    best_series_point,
+    display_metric,
+    display_name,
+    format_regularization,
+    format_stat,
+    header_legend,
+    highlight_point,
+    metric_value,
+    new_figure,
+    plot_series,
+    save_figure,
+    style_axes,
+    style_bars,
+    value_limits,
+)
 
 _METRICS = ("balanced_accuracy", "auroc")
 
@@ -132,8 +149,9 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
             filename = f"{metric}_cross_cohort.png"
             _plot_bar_series(
                 series_map=cross_series[metric],
+                step_name=step_name,
+                detail=f"Cross cohort \u00b7 {display_metric(metric)}",
                 ylabel=display_metric(metric),
-                title=f"{display_metric(metric)} cross cohort: {display_name(step_name)}",
                 output_path=asset_dir / filename,
             )
             figures.append(
@@ -153,8 +171,9 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
             filename = f"{split_name}_{metric}.png"
             _plot_named_values(
                 values=metric_map[metric],
+                step_name=step_name,
+                detail=f"{display_name(split_name)} \u00b7 {display_metric(metric)}",
                 ylabel=display_metric(metric),
-                title=f"{display_metric(metric)} {display_name(split_name)}: {display_name(step_name)}",
                 output_path=asset_dir / filename,
             )
             figures.append(
@@ -172,8 +191,9 @@ def render(*, step_name: str, step_slug: str, result: dict[str, Any], report_roo
             filename = f"regularization_sweep_{metric}.png"
             _plot_sweep_series(
                 series_map=sweep_series[metric],
+                step_name=step_name,
+                detail=f"Regularization sweep \u00b7 {display_metric(metric)}",
                 ylabel=display_metric(metric),
-                title=f"Regularization sweep {display_metric(metric)}: {display_name(step_name)}",
                 output_path=asset_dir / filename,
             )
             figures.append(
@@ -301,42 +321,103 @@ def _plot_grouped_cv(*, grouped_metrics: Mapping[str, Any], step_name: str, outp
     }
     _plot_named_values(
         values=plotted,
+        step_name=step_name,
+        detail="Grouped CV metrics",
         ylabel="Metric Value",
-        title=f"Grouped CV metrics: {display_name(step_name)}",
         output_path=output_path,
     )
 
 
-def _plot_bar_series(*, series_map: Mapping[str, float | None], ylabel: str, title: str, output_path: Path) -> None:
-    _plot_named_values(values=series_map, ylabel=ylabel, title=title, output_path=output_path)
+def _plot_bar_series(*, series_map: Mapping[str, float | None], step_name: str, detail: str, ylabel: str, output_path: Path) -> None:
+    _plot_named_values(values=series_map, step_name=step_name, detail=detail, ylabel=ylabel, output_path=output_path)
 
 
-def _plot_named_values(*, values: Mapping[str, float | None], ylabel: str, title: str, output_path: Path) -> None:
+def _plot_named_values(
+    *,
+    values: Mapping[str, float | None],
+    step_name: str,
+    detail: str,
+    ylabel: str,
+    output_path: Path,
+) -> None:
     labels = list(values)
-    fig, ax = new_figure()
-    ax.bar(range(len(labels)), [values[label] for label in labels])
-    ax.set_xticks(range(len(labels)), [display_name(label) for label in labels], rotation=25, ha="right")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    best_label, best_value = best_named_value(values)
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="TEXT BASELINE",
+        metric_label=detail.upper(),
+        metric_value=format_stat(best_value),
+        right_label="BEST",
+        right_value=display_name(best_label) if best_label is not None else "n/a",
+    )
+    heights = [values[label] for label in labels]
+    bar_width = 0.55 if len(labels) == 1 else 0.72
+    bars = ax.bar(range(len(labels)), heights, width=bar_width)
+    style_bars(ax, bars)
+    rotation = 0 if len(labels) == 1 else 25
+    ha = "center" if len(labels) == 1 else "right"
+    ax.set_xticks(range(len(labels)), [display_name(label) for label in labels], rotation=rotation, ha=ha)
+    if len(labels) == 1:
+        ax.set_xlim(-0.45, 0.45)
+    metric_values = [float(value) for value in heights if value is not None]
+    y_limits = (0.0, 1.10) if _is_metric_scale(metric_values) else _bar_limits(metric_values)
+    style_axes(ax, ylabel=ylabel, metric_axis=_is_metric_scale(metric_values), y_limits=y_limits)
+    annotate_bars(ax, bars, digits=2 if ylabel == "Metric Value" else 3)
     save_figure(fig, output_path)
 
 
 def _plot_sweep_series(
     *,
     series_map: Mapping[str, list[tuple[float, float | None]]],
+    step_name: str,
+    detail: str,
     ylabel: str,
-    title: str,
     output_path: Path,
 ) -> None:
-    fig, ax = new_figure()
+    best_label, best_x, best_value = best_series_point(series_map)
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="TEXT BASELINE",
+        metric_label=detail.upper(),
+        metric_value=format_stat(best_value),
+        right_label="BEST C",
+        right_value=format_regularization(best_x),
+    )
+    line_by_label = {}
+    x_values: list[float] = []
+    plotted_values: list[float] = []
     for label, pairs in sorted(series_map.items()):
         ordered = sorted(pairs, key=lambda item: item[0])
-        ax.plot([item[0] for item in ordered], [item[1] for item in ordered], marker="o", label=display_name(label))
-    ax.set_xlabel("Regularization C")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.legend(loc="best", fontsize=8)
+        xs = [item[0] for item in ordered]
+        ys = [item[1] for item in ordered]
+        line_by_label[label] = plot_series(ax, xs, ys, label=display_name(label))
+        x_values.extend(xs)
+        plotted_values.extend(float(value) for value in ys if value is not None)
+    if best_label is not None and best_x is not None and best_value is not None:
+        highlight_point(ax, best_x, best_value, color=line_by_label[best_label].get_color())
+    style_axes(
+        ax,
+        xlabel="Regularization C",
+        ylabel=ylabel,
+        metric_axis=_is_metric_scale(plotted_values),
+        y_limits=value_limits(plotted_values) if plotted_values else _bar_limits(plotted_values),
+        xscale="log" if x_values and all(value > 0.0 for value in x_values) else None,
+    )
+    header_legend(ax, ncol=2 if len(series_map) > 2 else 1)
     save_figure(fig, output_path)
+
+
+def _is_metric_scale(values: list[float]) -> bool:
+    return bool(values) and min(values) >= 0.0 and max(values) <= 1.05
+
+
+def _bar_limits(values: list[float]) -> tuple[float, float]:
+    if not values:
+        return (0.0, 1.0)
+    lower = min(0.0, min(values))
+    upper = max(values)
+    padding = max((upper - lower) * 0.12, 0.08)
+    return (lower, upper + padding)
 
 
 def _iter_sweep(payload: Mapping[str, Any]) -> list[dict[str, Any]]:

@@ -155,14 +155,20 @@ def _collect_tables(assets_manifest: Mapping[str, Any], root: Path) -> list[Repo
         if not isinstance(record, Mapping):
             continue
         path_rel = str(record.get("path", ""))
-        rows, columns = _table_shape(root / path_rel)
+        rows = record.get("rows")
+        columns = record.get("columns")
+        if isinstance(rows, int) and isinstance(columns, list):
+            resolved_rows = int(rows)
+            resolved_columns = [str(column) for column in columns]
+        else:
+            resolved_rows, resolved_columns = _table_shape(root / path_rel)
         out.append(
             ReportTableSummary(
                 slug=str(slug),
                 step_name=_optional_str(record.get("step_name")),
                 result_kind=_optional_str(record.get("result_kind")),
-                rows=rows,
-                columns=columns,
+                rows=resolved_rows,
+                columns=resolved_columns,
                 path=path_rel,
             )
         )

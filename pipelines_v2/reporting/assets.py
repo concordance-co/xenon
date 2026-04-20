@@ -99,10 +99,13 @@ def generate_report_assets(*, report_root: Path, payload: dict[str, Any]) -> dic
         table_payload.setdefault("step_name", step_name)
         table_payload.setdefault("result_kind", result_kind)
         _write_json(table_path, table_payload)
+        table_rows, table_columns = _table_shape(table_payload)
         table_registry[step_slug] = {
             "path": table_relative_path,
             "step_name": step_name,
             "result_kind": result_kind,
+            "rows": table_rows,
+            "columns": table_columns,
         }
 
         headline_metrics = dict(rendered.get("headline_metrics", {}))
@@ -112,6 +115,7 @@ def generate_report_assets(*, report_root: Path, payload: dict[str, Any]) -> dic
 
         step_summary = {
             "kind": result_kind,
+            "step_name": step_name,
             "headline_metrics": headline_metrics,
             "table_path": table_relative_path,
         }
@@ -178,6 +182,20 @@ def _write_json(path: Path, payload: Any) -> None:
     with tmp.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, sort_keys=True)
     os.replace(tmp, path)
+
+
+def _table_shape(payload: dict[str, Any]) -> tuple[int, list[str]]:
+    if isinstance(payload.get("rows"), list):
+        rows = payload["rows"]
+        columns = list(payload.get("columns", []))
+        if not columns and rows and isinstance(rows[0], dict):
+            columns = list(rows[0].keys())
+        return len(rows), [str(column) for column in columns]
+    if isinstance(payload.get("records"), list):
+        records = payload["records"]
+        columns = list(records[0].keys()) if records and isinstance(records[0], dict) else []
+        return len(records), [str(column) for column in columns]
+    return 0, []
 
 
 def _run_template_postprocessor(

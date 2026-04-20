@@ -246,16 +246,18 @@ class CachedCatalog:
         cached = self._cache.get(key)
         if cached is not _MISS:
             return cached
+        # Try local first — disk reads are ~50ms vs ~13s from Neon for runs
+        # with large embedded datasets. Also: after report generation, the
+        # run is mirrored locally and local is the most up-to-date source.
         value = None
-        if self._pg is not None:
+        if self._local is not None:
+            value = self._local.load_workflow_run(run_id)
+        if value is None and self._pg is not None:
             try:
                 value = self._pg.load_workflow_run(run_id)
             except Exception:
                 value = None
-        if value is None and self._local is not None:
-            value = self._local.load_workflow_run(run_id)
-        if value is None and self._pg is None:
-            # No pg: fall back to composite which also covers the local path.
+        if value is None:
             value = self._inner.load_workflow_run(run_id)
         ttl = self._ttl_for_run_status(value.status) if value is not None else self._miss_ttl
         self._cache.put(key, value, ttl)
@@ -267,17 +269,20 @@ class CachedCatalog:
         if cached is not _MISS:
             return cached
         value: list[WorkflowStepRecord] = []
-        if self._pg is not None:
+        # Try local FIRST — after report generation the dashboard mirrors
+        # step records locally with updated artifact_ids. The local version
+        # is strictly more up-to-date than Postgres for any mirrored run.
+        if self._local is not None:
+            try:
+                value = self._local.list_workflow_steps(run_id)
+            except Exception:
+                value = []
+        if not value and self._pg is not None:
             try:
                 value = self._pg.list_workflow_steps(run_id)
             except Exception:
                 value = []
-            if not value and self._local is not None:
-                try:
-                    value = self._local.list_workflow_steps(run_id)
-                except Exception:
-                    value = []
-        else:
+        if not value:
             value = self._inner.list_workflow_steps(run_id)
         run = self._cache.get(("load_workflow_run", run_id))
         if run is _MISS or run is None:
@@ -292,15 +297,17 @@ class CachedCatalog:
         cached = self._cache.get(key)
         if cached is not _MISS:
             return cached
+        # Local first — generated report artifacts are only in the local
+        # FileCatalog, not in Postgres.
         value = None
-        if self._pg is not None:
+        if self._local is not None:
+            value = self._local.load_artifact(artifact_id)
+        if value is None and self._pg is not None:
             try:
                 value = self._pg.load_artifact(artifact_id)
             except Exception:
                 value = None
-        if value is None and self._local is not None:
-            value = self._local.load_artifact(artifact_id)
-        if value is None and self._pg is None:
+        if value is None:
             value = self._inner.load_artifact(artifact_id)
         ttl = self._cold_ttl if value is not None else self._miss_ttl
         self._cache.put(key, value, ttl)

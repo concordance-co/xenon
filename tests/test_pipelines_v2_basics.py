@@ -93,8 +93,11 @@ from pipelines_v2.api import (
     SubspaceSpec,
 )
 from pipelines_v2.cli import (
+    _build_report_spec_from_run,
     _build_runners,
     _registry_catalog,
+    _resolve_report_step,
+    _resolve_workflow_metadata_catalog,
     _workflow_result_payload,
     load_python_workflow_file,
     main as pipelines_v2_cli_main,
@@ -3227,6 +3230,148 @@ def test_registry_catalog_prefers_local_file_catalog_from_runner_specs(monkeypat
 
     assert catalog.kind == "file"
     assert catalog.identity() == local.identity()
+
+
+def test_resolve_workflow_metadata_catalog_falls_back_to_workspace_registry_for_explicit_run_id(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    primary = FileCatalog(tmp_path / "runner_catalog")
+    fallback = FileCatalog(tmp_path / "workspace_catalog")
+    workflow = WorkflowSpec(name="fallback_lookup", steps=())
+    record = WorkflowRunRecord(
+        run_id="wr_lookup_only_in_workspace",
+        workflow_name=workflow.name,
+        workflow_hash=workflow.semantic_hash(),
+        workflow_spec_hash=workflow.spec_hash(),
+        workflow_payload=workflow.to_dict(),
+        status="completed",
+        started_at=utc_now_iso(),
+    )
+    fallback.record_workflow_run(record)
+
+    def fake_registry(ns: Any, *, runner_specs: Any = None) -> Any:
+        return primary if runner_specs is not None else fallback
+
+    monkeypatch.setattr("pipelines_v2.cli._registry_catalog", fake_registry)
+
+    catalog, run_id = _resolve_workflow_metadata_catalog(
+        types.SimpleNamespace(),
+        runner_specs={},
+        run_id=record.run_id,
+        workflow=workflow,
+        status="completed",
+    )
+
+    assert run_id == record.run_id
+    assert catalog.identity() == fallback.identity()
+
+
+def test_workflow_orchestrator_can_reuse_steps_from_explicit_workflow_catalog(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos"}),
+            Example(key="b", prompt="beta", labels={"class": "neg"}),
+        ]
+    )
+    shared_catalog = FileCatalog(tmp_path / "shared_catalog")
+    local_catalog = FileCatalog(tmp_path / "local_catalog")
+    shared_store = LocalArtifactStore(tmp_path / "artifacts")
+    source_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=shared_catalog))
+    source_workflow = WorkflowSpec(
+        name="explicit_workflow_catalog_reuse",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture",
+                spec=CaptureSpec(
+                    engine=ToyEngine(hidden_size=4, num_layers=2),
+                    dataset=dataset,
+                    sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0])],
+                ),
+            ),
+        ),
+    )
+
+    first = WorkflowOrchestrator(runners={"capture": source_runner}).run(source_workflow)
+
+    reuse_runner = _FailOnceRunner(LocalRunner(artifacts=shared_store, catalog=local_catalog))
+    reused = WorkflowOrchestrator(
+        runners={"capture": reuse_runner},
+        workflow_catalog=shared_catalog,
+    ).run(source_workflow, reuse_from_run_id=first.run_id)
+
+    assert reused.step("capture").id == first.step("capture").id
+    assert reuse_runner.calls.count("capture") == 0
+
+
+def test_build_report_spec_from_run_uses_source_artifacts_without_rerunning_ancestors(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key="a", prompt="alpha", labels={"class": "pos"}),
+            Example(key="b", prompt="beta", labels={"class": "neg"}),
+        ]
+    )
+    catalog = FileCatalog(tmp_path / "catalog")
+    store = LocalArtifactStore(tmp_path / "artifacts")
+    capture_runner = _FailOnceRunner(LocalRunner(artifacts=store, catalog=catalog))
+    report_runner = _FailOnceRunner(LocalRunner(artifacts=store, catalog=catalog))
+    runners = {"capture": capture_runner, "report": report_runner}
+    workflow = WorkflowSpec(
+        name="report_regeneration",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="capture",
+                spec=CaptureSpec(
+                    engine=ToyEngine(hidden_size=4, num_layers=2),
+                    dataset=dataset,
+                    sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0])],
+                ),
+            ),
+            WorkflowStep(
+                name="report",
+                runner="report",
+                spec=ReportSpec(
+                    template="summary",
+                    output_dir=str(tmp_path / "reports"),
+                    inputs=(StepRef("capture"),),
+                ),
+            ),
+        ),
+    )
+
+    first = WorkflowOrchestrator(runners=runners, workflow_catalog=catalog).run(workflow)
+
+    report_step = _resolve_report_step(workflow, step_name="report")
+    regenerated = _build_report_spec_from_run(
+        run=catalog.load_workflow_run(first.run_id or "") or WorkflowRunRecord(
+            run_id="",
+            workflow_name=workflow.name,
+            workflow_hash=workflow.semantic_hash(),
+            workflow_spec_hash=workflow.spec_hash(),
+            workflow_payload=workflow.to_dict(),
+            status="completed",
+            started_at=utc_now_iso(),
+        ),
+        report_step=report_step,
+        workflow_catalog=catalog,
+        local_cache_root=None,
+    )
+
+    assert isinstance(regenerated, ReportSpec)
+    assert not any(isinstance(value, StepRef) for value in regenerated.inputs)
+
+    second = WorkflowOrchestrator(runners=runners, workflow_catalog=catalog).run(
+        WorkflowSpec(
+            name=workflow.name,
+            steps=(WorkflowStep(name="report", runner="report", spec=regenerated),),
+        ),
+    )
+
+    assert second.step("report").manifest().artifact_kind == "report"
+    assert capture_runner.calls.count("capture") == 1
+    assert report_runner.calls.count("report") == 2
 
 
 def test_composite_catalog_prefers_local_workflow_step_reads_without_touching_remote(tmp_path: Path) -> None:

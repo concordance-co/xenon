@@ -15,6 +15,21 @@ from pipelines_v2.storage.json import json_default
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
 
 
+def _workflow_payload_summary(payload: Any) -> tuple[int, bool]:
+    steps = payload.get("steps", ()) if isinstance(payload, dict) else ()
+    if not isinstance(steps, (list, tuple)):
+        return 0, False
+    has_report = False
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        spec = step.get("spec")
+        if isinstance(spec, dict) and spec.get("kind") == "report":
+            has_report = True
+            break
+    return len(steps), has_report
+
+
 @dataclass(frozen=True, slots=True)
 class LocalArtifactStore:
     """Artifact store backed by the local filesystem."""
@@ -153,6 +168,15 @@ class FileCatalog:
         with tmp.open("w", encoding="utf-8") as f:
             json.dump(record.to_dict(), f, sort_keys=True, indent=2, default=json_default)
         os.replace(tmp, path)
+        existing_summary = self._load_workflow_run_summary(record.run_id)
+        step_counts = (
+            dict(existing_summary.get("step_counts", {}))
+            if existing_summary is not None
+            else self._compute_step_status_counts(record.run_id)
+        )
+        self._write_workflow_run_summary(
+            self._build_workflow_run_summary(record, step_counts=step_counts)
+        )
 
     def load_workflow_run(self, run_id: str) -> WorkflowRunRecord | None:
         path = self._workflow_runs_root() / f"{run_id}.json"
@@ -186,12 +210,47 @@ class FileCatalog:
             return records[:limit]
         return records
 
+    def list_workflow_runs_light(
+        self,
+        *,
+        workflow_name: str | None = None,
+        workflow_hash: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        self._ensure_workflow_run_summaries()
+        root = self._workflow_run_summaries_root()
+        rows: list[dict[str, Any]] = []
+        for path in root.glob("*.json"):
+            with path.open("r", encoding="utf-8") as f:
+                row = dict(json.load(f))
+            if workflow_name is not None and row.get("workflow_name") != workflow_name:
+                continue
+            if workflow_hash is not None and row.get("workflow_hash") != workflow_hash:
+                continue
+            if status is not None and row.get("status") != status:
+                continue
+            rows.append(row)
+        rows.sort(key=lambda item: (str(item.get("started_at", "")), str(item.get("run_id", ""))), reverse=True)
+        if limit is not None:
+            return rows[:limit]
+        return rows
+
     def record_workflow_step(self, record: WorkflowStepRecord) -> None:
         path = self._workflow_steps_root(record.run_id) / f"{record.step_name}.json"
+        previous: WorkflowStepRecord | None = None
+        if path.exists():
+            with path.open("r", encoding="utf-8") as f:
+                previous = WorkflowStepRecord.from_dict(json.load(f))
         tmp = path.with_suffix(".json.tmp")
         with tmp.open("w", encoding="utf-8") as f:
             json.dump(record.to_dict(), f, sort_keys=True, indent=2, default=json_default)
         os.replace(tmp, path)
+        self._update_workflow_run_summary_for_step(
+            run_id=record.run_id,
+            previous=previous,
+            current=record,
+        )
 
     def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
         root = self._workflow_steps_root(run_id)
@@ -243,6 +302,123 @@ class FileCatalog:
         root = Path(self.root) / "workflow_steps" / run_id
         root.mkdir(parents=True, exist_ok=True)
         return root
+
+    def _workflow_run_summaries_root(self) -> Path:
+        root = Path(self.root) / "workflow_run_summaries"
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
+    def _workflow_run_summary_path(self, run_id: str) -> Path:
+        return self._workflow_run_summaries_root() / f"{run_id}.json"
+
+    def _load_workflow_run_summary(self, run_id: str) -> dict[str, Any] | None:
+        path = self._workflow_run_summary_path(run_id)
+        if not path.exists():
+            return None
+        with path.open("r", encoding="utf-8") as f:
+            payload = json.load(f)
+        if not isinstance(payload, dict):
+            return None
+        return payload
+
+    def _write_workflow_run_summary(self, payload: dict[str, Any]) -> None:
+        path = self._workflow_run_summary_path(str(payload["run_id"]))
+        tmp = path.with_suffix(".json.tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, sort_keys=True, indent=2, default=json_default)
+        os.replace(tmp, path)
+
+    def _ensure_workflow_run_summaries(self) -> None:
+        runs_root = self._workflow_runs_root()
+        summary_root = self._workflow_run_summaries_root()
+        summary_ids = {path.stem for path in summary_root.glob("*.json")}
+        missing = [path for path in runs_root.glob("*.json") if path.stem not in summary_ids]
+        for path in missing:
+            with path.open("r", encoding="utf-8") as f:
+                record = WorkflowRunRecord.from_dict(json.load(f))
+            self._write_workflow_run_summary(
+                self._build_workflow_run_summary(
+                    record,
+                    step_counts=self._compute_step_status_counts(record.run_id),
+                )
+            )
+
+    def _build_workflow_run_summary(
+        self,
+        record: WorkflowRunRecord,
+        *,
+        step_counts: dict[str, int] | None = None,
+    ) -> dict[str, Any]:
+        step_total, has_report = _workflow_payload_summary(dict(record.workflow_payload))
+        counts = {
+            str(name): int(count)
+            for name, count in dict(step_counts or {}).items()
+            if int(count) > 0
+        }
+        step_total = max(step_total, sum(counts.values()))
+        return {
+            "run_id": record.run_id,
+            "workflow_name": record.workflow_name,
+            "workflow_hash": record.workflow_hash,
+            "workflow_spec_hash": record.workflow_spec_hash,
+            "status": record.status,
+            "started_at": record.started_at,
+            "finished_at": record.finished_at,
+            "parent_run_id": record.parent_run_id,
+            "error": record.error,
+            "has_report": has_report,
+            "step_total": step_total,
+            "step_counts": counts,
+        }
+
+    def _compute_step_status_counts(self, run_id: str) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for record in self.list_workflow_steps(run_id):
+            status = str(record.status or "").lower()
+            if not status:
+                continue
+            counts[status] = counts.get(status, 0) + 1
+        return counts
+
+    def _update_workflow_run_summary_for_step(
+        self,
+        *,
+        run_id: str,
+        previous: WorkflowStepRecord | None,
+        current: WorkflowStepRecord,
+    ) -> None:
+        summary = self._load_workflow_run_summary(run_id)
+        if summary is None:
+            run = self.load_workflow_run(run_id)
+            if run is None:
+                return
+            summary = self._build_workflow_run_summary(
+                run,
+                step_counts=self._compute_step_status_counts(run_id),
+            )
+        counts = {
+            str(name): int(count)
+            for name, count in dict(summary.get("step_counts", {})).items()
+            if int(count) > 0
+        }
+        if previous is not None:
+            previous_status = str(previous.status or "").lower()
+            if previous_status in counts:
+                new_value = counts[previous_status] - 1
+                if new_value > 0:
+                    counts[previous_status] = new_value
+                else:
+                    counts.pop(previous_status, None)
+        current_status = str(current.status or "").lower()
+        if current_status:
+            counts[current_status] = counts.get(current_status, 0) + 1
+        summary["step_counts"] = counts
+        summary["step_total"] = max(
+            int(summary.get("step_total") or 0),
+            current.step_index + 1,
+            sum(counts.values()),
+        )
+        self._write_workflow_run_summary(summary)
 
 
 @dataclass(frozen=True, slots=True)

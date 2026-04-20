@@ -5,7 +5,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pipelines_v2.reporting.chart_style import display_metric, display_name, metric_value, new_figure, save_figure
+from pipelines_v2.reporting.chart_style import (
+    best_point,
+    display_metric,
+    display_name,
+    format_layer,
+    format_stat,
+    header_legend,
+    highlight_point,
+    metric_value,
+    new_figure,
+    plot_series,
+    save_figure,
+    style_axes,
+    value_limits,
+)
 
 _PROBE_METRICS = ("balanced_accuracy", "accuracy", "auroc", "selectivity")
 
@@ -118,12 +132,27 @@ def _plot_metric_by_layer(
 ) -> None:
     x_values = [int(row["layer"]) for row in rows]
     y_values = [metric_value(row, metric) for row in rows]
-    fig, ax = new_figure()
-    ax.plot(x_values, y_values, marker="o")
-    ax.set_xlabel("Layer")
-    ax.set_ylabel(display_metric(metric))
-    ax.set_ylim(0.0, 1.05)
-    ax.set_title(f"{display_metric(metric)} by layer: {display_name(step_name)}")
+    best_layer, best_value = best_point(x_values, y_values)
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="PROBE",
+        metric_label=f"BEST {display_metric(metric).upper()}",
+        metric_value=format_stat(best_value),
+        right_label="BEST LAYER",
+        right_value=format_layer(best_layer),
+    )
+    plot_series(ax, x_values, y_values)
+    if best_layer is not None and best_value is not None:
+        highlight_point(ax, best_layer, best_value)
+    style_axes(
+        ax,
+        xlabel="Layer",
+        ylabel=display_metric(metric),
+        x_values=x_values,
+        layer_axis=True,
+        metric_axis=True,
+        y_limits=value_limits(y_values),
+    )
     save_figure(fig, output_path)
 
 
@@ -135,15 +164,26 @@ def _plot_combined_metrics(
     output_path: Path,
 ) -> None:
     x_values = [int(row["layer"]) for row in rows]
-    fig, ax = new_figure()
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="PROBE",
+        detail="Metric overview across captured layers",
+    )
+    plotted_values: list[float] = []
     for metric in metrics:
         y_values = [metric_value(row, metric) for row in rows]
-        ax.plot(x_values, y_values, marker="o", label=display_metric(metric))
-    ax.set_xlabel("Layer")
-    ax.set_ylabel("Metric Value")
-    ax.set_ylim(0.0, 1.05)
-    ax.set_title(f"Probe metrics by layer: {display_name(step_name)}")
-    ax.legend(loc="best")
+        plot_series(ax, x_values, y_values, label=display_metric(metric))
+        plotted_values.extend(float(value) for value in y_values if value is not None)
+    style_axes(
+        ax,
+        xlabel="Layer",
+        ylabel="Metric Value",
+        x_values=x_values,
+        layer_axis=True,
+        metric_axis=True,
+        y_limits=value_limits(plotted_values),
+    )
+    header_legend(ax, ncol=min(2, len(metrics)))
     save_figure(fig, output_path)
 
 

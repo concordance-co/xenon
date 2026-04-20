@@ -51,6 +51,7 @@ class WorkflowOrchestrator:
     """Execute a workflow over named runners with dependency-aware fanout."""
 
     runners: Mapping[str, Runner]
+    workflow_catalog: Any | None = None
     max_parallelism: int | None = None
     progress_sink: WorkflowProgressSink | None = None
     progress_heartbeat_seconds: float = 30.0
@@ -752,6 +753,8 @@ class WorkflowOrchestrator:
         return WorkflowResult(run_id=run_id, workflow_hash=workflow_hash, step_results=results)
 
     def _workflow_catalog(self) -> Any | None:
+        if self.workflow_catalog is not None:
+            return self.workflow_catalog
         catalogs = [
             runner.catalog
             for runner in self.runners.values()

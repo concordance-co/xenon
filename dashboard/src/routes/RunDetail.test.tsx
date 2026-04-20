@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { Routes, Route } from "react-router-dom";
 import { RunDetail } from "./RunDetail";
 import { renderWithProviders } from "@/test/harness";
-import { runDetailFixture, stepDetailFixture } from "@/test/fixtures";
+import { reportDetailFixture, runDetailFixture, stepDetailFixture } from "@/test/fixtures";
 import { api } from "@/lib/api";
 
 /**
@@ -46,5 +46,68 @@ describe("RunDetail", () => {
     await waitFor(() =>
       expect((api.getStep as Mock).mock.calls.length).toBeGreaterThanOrEqual(1),
     );
+  });
+
+  it("offers report generation when the workflow has a report step but no local report", async () => {
+    const withoutLocalReport = {
+      ...runDetailFixture,
+      report: {
+        has_report_step: true,
+        step_name: "report",
+        artifact_id: "a_report",
+        local_available: false,
+        reason: "report output_dir does not exist: /tmp/missing-report",
+      },
+    };
+    const withLocalReport = {
+      ...runDetailFixture,
+      report: {
+        has_report_step: true,
+        step_name: "report",
+        artifact_id: "a_report_local",
+        local_available: true,
+        reason: null,
+      },
+      steps: runDetailFixture.steps.map((step) =>
+        step.step_name === "report"
+          ? { ...step, artifact_id: "a_report_local" }
+          : step,
+      ),
+    };
+
+    vi.spyOn(api, "getRun")
+      .mockResolvedValueOnce(withoutLocalReport)
+      .mockResolvedValueOnce(withLocalReport);
+    vi.spyOn(api, "getStep").mockResolvedValue(stepDetailFixture);
+    vi.spyOn(api, "generateReport").mockResolvedValue({
+      run_id: "run_alpha",
+      step_name: "report",
+      artifact_id: "a_report_local",
+      report: {
+        ...reportDetailFixture,
+        artifact_id: "a_report_local",
+      },
+    });
+    vi.spyOn(api, "getReport").mockResolvedValue({
+      ...reportDetailFixture,
+      artifact_id: "a_report_local",
+    });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/runs/:runId" element={<RunDetail />} />
+      </Routes>,
+      { initialEntries: ["/runs/run_alpha"] },
+    );
+
+    await waitFor(() => expect(screen.getAllByText("demo_wf").length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole("button", { name: "report" }));
+    expect(await screen.findByRole("button", { name: /generate report/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /generate report/i }));
+
+    await waitFor(() => expect(api.generateReport).toHaveBeenCalledWith("run_alpha", { step_name: "report" }));
+    await waitFor(() => expect(screen.getByText("Probe accuracy")).toBeInTheDocument());
   });
 });

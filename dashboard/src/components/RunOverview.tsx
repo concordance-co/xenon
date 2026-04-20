@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   DatasetPreview,
+  ReportFigure,
   ResultPreview,
   RunDetail,
   StepSummary,
@@ -2011,6 +2012,7 @@ function ReportStripCard({
     queryKey: ["report", artifactId],
     queryFn: () => api.getReport(artifactId),
   });
+  const [lightbox, setLightbox] = useState<ReportFigure | null>(null);
   const data = q.data ?? null;
   const primaries = (data?.figures ?? []).filter((f) => f.primary).slice(0, 6);
   return (
@@ -2034,8 +2036,8 @@ function ReportStripCard({
                   <ReportThumb
                     key={fig.figure_id}
                     artifactId={artifactId}
-                    path={fig.path}
-                    alt={fig.title ?? fig.figure_id}
+                    fig={fig}
+                    onOpen={() => setLightbox(fig)}
                   />
                 ))}
               </div>
@@ -2045,35 +2047,127 @@ function ReportStripCard({
           </>
         )}
       </div>
+      {lightbox ? (
+        <OverviewLightbox
+          fig={lightbox}
+          artifactId={artifactId}
+          figures={primaries}
+          onClose={() => setLightbox(null)}
+          onNavigate={setLightbox}
+        />
+      ) : null}
     </div>
   );
 }
 
 function ReportThumb({
   artifactId,
-  path,
-  alt,
+  fig,
+  onOpen,
 }: {
   artifactId: string;
-  path: string;
-  alt: string;
+  fig: ReportFigure;
+  onOpen: () => void;
 }) {
-  const url = api.reportAssetUrl(artifactId, path);
+  const url = api.reportAssetUrl(artifactId, fig.path);
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="block border border-ink-800 bg-ink-950 aspect-[4/3] flex items-center justify-center overflow-hidden group hover:border-accent/60"
-      title={alt}
+    <button
+      type="button"
+      onClick={onOpen}
+      className="block border border-ink-800 bg-ink-950 aspect-[4/3] flex items-center justify-center overflow-hidden group hover:border-accent/60 cursor-zoom-in"
+      title={fig.title ?? fig.figure_id}
     >
       <img
         src={url}
-        alt={alt}
+        alt={fig.title ?? fig.figure_id}
         loading="lazy"
         className="max-w-full max-h-full object-contain opacity-90 group-hover:opacity-100"
       />
-    </a>
+    </button>
+  );
+}
+
+function OverviewLightbox({
+  fig,
+  artifactId,
+  figures,
+  onClose,
+  onNavigate,
+}: {
+  fig: ReportFigure;
+  artifactId: string;
+  figures: ReportFigure[];
+  onClose: () => void;
+  onNavigate: (fig: ReportFigure) => void;
+}) {
+  const url = api.reportAssetUrl(artifactId, fig.path);
+  const idx = figures.findIndex((f) => f.figure_id === fig.figure_id);
+  const prev = idx > 0 ? figures[idx - 1] : null;
+  const next = idx < figures.length - 1 ? figures[idx + 1] : null;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && prev) onNavigate(prev);
+      if (e.key === "ArrowRight" && next) onNavigate(next);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/90"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-[90vw] max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-ink-900 border-b border-ink-800 rounded-t-sm">
+          <div className="text-xs font-mono text-ink-50 font-semibold truncate">
+            {fig.title ?? fig.figure_id}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {figures.length > 1 ? (
+              <span className="text-[0.625rem] font-mono text-ink-500 tabular-nums">
+                {idx + 1}/{figures.length}
+              </span>
+            ) : null}
+            <button type="button" onClick={onClose} className="btn-ghost" title="close (Esc)">
+              ×
+            </button>
+          </div>
+        </div>
+        <div className="bg-ink-950 flex items-center justify-center p-4 overflow-auto rounded-b-sm">
+          <img
+            src={url}
+            alt={fig.title ?? fig.figure_id}
+            className="max-w-full max-h-[80vh] object-contain"
+          />
+        </div>
+        {prev ? (
+          <button
+            type="button"
+            onClick={() => onNavigate(prev)}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full px-2 py-8 text-xl text-ink-400 hover:text-ink-50"
+            title="previous (←)"
+          >
+            ‹
+          </button>
+        ) : null}
+        {next ? (
+          <button
+            type="button"
+            onClick={() => onNavigate(next)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full px-2 py-8 text-xl text-ink-400 hover:text-ink-50"
+            title="next (→)"
+          >
+            ›
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

@@ -22,6 +22,7 @@ export const runsFixture: RunsResponse = {
       error: null,
       step_counts: { total: 3, completed: 2, failed: 0, running: 0, reused: 1, pending: 0, other: 0 },
       has_report: true,
+      report_local: true,
     },
     {
       run_id: "run_beta",
@@ -35,6 +36,7 @@ export const runsFixture: RunsResponse = {
       error: "step `probe` failed: out of memory",
       step_counts: { total: 3, completed: 1, failed: 1, running: 0, reused: 0, pending: 1, other: 0 },
       has_report: false,
+      report_local: null,
     },
   ],
 };
@@ -143,6 +145,13 @@ export const runDetailFixture: RunDetail = {
       resolved_depends_on: ["probe"],
     },
   ],
+  report: {
+    has_report_step: true,
+    step_name: "report",
+    artifact_id: "a_report",
+    local_available: true,
+    reason: null,
+  },
 };
 
 export const stepDetailFixture: StepDetail = {

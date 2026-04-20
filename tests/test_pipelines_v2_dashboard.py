@@ -20,6 +20,9 @@ from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
 
 from pipelines_v2.dashboard.catalog import DashboardCatalog
 from pipelines_v2.dashboard.normalize import build_run_detail, build_run_summary
+from pipelines_v2.dashboard.pg import DashboardPg
+from pipelines_v2.dashboard.result_preview import read_result_payload
+from pipelines_v2.storage.artifacts import ArtifactManifest
 
 
 # ---------------------------------------------------------------------------
@@ -131,17 +134,20 @@ def test_composite_catalog_dedupes_by_run_id_and_orders_newest_first(tmp_path: P
     middle = _make_run_record(run_id="r2", workflow_payload=wf, started_at="2026-04-12T00:00:00Z")
     newer = _make_run_record(run_id="r3", workflow_payload=wf, started_at="2026-04-14T00:00:00Z")
 
-    # Write the same run to both catalogs to exercise dedupe.
-    for record in (older, middle):
+    # Write all three to the primary (preferred) catalog so the preferred
+    # fast-path returns the full set. CompositeCatalog now prefers the local
+    # file catalog for workflow metadata when present.
+    for record in (older, middle, newer):
         primary.record_workflow_run(record)
-    for record in (middle, newer):
-        secondary.record_workflow_run(record)
+    # Write a duplicate into secondary to verify dedupe still works when
+    # the preferred path isn't taken.
+    secondary.record_workflow_run(middle)
 
     composite = CompositeCatalog(catalogs=(primary, secondary))
     runs = composite.list_workflow_runs()
 
     run_ids = [r.run_id for r in runs]
-    assert run_ids == ["r3", "r2", "r1"], "newest-first order with dedupe"
+    assert run_ids == ["r3", "r2", "r1"], "newest-first order"
     assert len(runs) == 3
 
 
@@ -287,6 +293,185 @@ def test_api_runs_and_run_detail_roundtrip(tmp_path: Path) -> None:
     assert {(e["source"], e["target"]) for e in detail["edges"]} == {("cap", "probe")}
     assert detail["run"]["workflow_name"] == "demo"
     assert detail["workflow_payload"]["steps"][0]["name"] == "cap"
+
+
+def test_run_bundle_cache_is_app_scoped(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from pipelines_v2.dashboard.server import create_app
+
+    same_run_id = "shared_run"
+    first_root = tmp_path / "first"
+    second_root = tmp_path / "second"
+
+    first_local = FileCatalog(root=first_root)
+    first_composite = CompositeCatalog(catalogs=(first_local,))
+    first_workflow = _workflow_payload([_capture_step_payload("cap")], name="wf_one")
+    first_local.record_workflow_run(
+        _make_run_record(
+            run_id=same_run_id,
+            workflow_payload=first_workflow,
+            started_at="2026-04-15T00:00:00Z",
+        )
+    )
+    first_local.record_workflow_step(
+        _make_step_record(run_id=same_run_id, step_index=0, step_name="cap", runner="capture")
+    )
+
+    second_local = FileCatalog(root=second_root)
+    second_composite = CompositeCatalog(catalogs=(second_local,))
+    second_workflow = _workflow_payload([_capture_step_payload("cap")], name="wf_two")
+    second_local.record_workflow_run(
+        _make_run_record(
+            run_id=same_run_id,
+            workflow_payload=second_workflow,
+            started_at="2026-04-16T00:00:00Z",
+        )
+    )
+    second_local.record_workflow_step(
+        _make_step_record(run_id=same_run_id, step_index=0, step_name="cap", runner="capture")
+    )
+
+    first_app = create_app(
+        catalog=DashboardCatalog(
+            local=first_local,
+            composite=first_composite,
+            raw=first_composite,
+            local_root=first_root,
+            postgres_env=None,
+        )
+    )
+    second_app = create_app(
+        catalog=DashboardCatalog(
+            local=second_local,
+            composite=second_composite,
+            raw=second_composite,
+            local_root=second_root,
+            postgres_env=None,
+        )
+    )
+
+    first_client = TestClient(first_app)
+    second_client = TestClient(second_app)
+
+    first_resp = first_client.get(f"/api/runs/{same_run_id}")
+    second_resp = second_client.get(f"/api/runs/{same_run_id}")
+
+    assert first_resp.status_code == 200
+    assert second_resp.status_code == 200
+    assert first_resp.json()["run"]["workflow_name"] == "wf_one"
+    assert second_resp.json()["run"]["workflow_name"] == "wf_two"
+
+
+def test_run_bundle_builder_state_cleans_up_after_failure(tmp_path: Path) -> None:
+    from pipelines_v2.dashboard import server as dashboard_server
+    from pipelines_v2.dashboard.server import create_app
+
+    app = create_app(catalog=_seed_catalog(tmp_path))
+    runtime_state = app.state.dashboard_runtime
+    dash = app.state.dashboard_catalog
+
+    original = dashboard_server.build_run_detail
+    dashboard_server.build_run_detail = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom"))
+    try:
+        with pytest.raises(RuntimeError, match="boom"):
+            dashboard_server._load_run_bundle(runtime_state, dash, "run_abc")
+    finally:
+        dashboard_server.build_run_detail = original
+
+    assert runtime_state.run_bundle_building == {}
+    bundle = dashboard_server._load_run_bundle(runtime_state, dash, "run_abc")
+    assert bundle.run.run_id == "run_abc"
+
+
+def test_run_detail_prefers_fresher_step_records_over_longer_local_list(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from pipelines_v2.dashboard.server import create_app
+
+    root = tmp_path / "catalog"
+    local = FileCatalog(root=root)
+    composite = CompositeCatalog(catalogs=(local,))
+    workflow = _workflow_payload(
+        [
+            _capture_step_payload("cap"),
+            _probe_step_payload("probe", depends_on=["cap"]),
+        ],
+        name="merge_demo",
+    )
+    run = _make_run_record(
+        run_id="run_merge",
+        workflow_payload=workflow,
+        started_at="2026-04-15T00:00:00Z",
+        status="running",
+    )
+    local.record_workflow_run(run)
+    stale_cap = _make_step_record(
+        run_id="run_merge",
+        step_index=0,
+        step_name="cap",
+        runner="capture",
+        status="completed",
+    )
+    stale_probe = _make_step_record(
+        run_id="run_merge",
+        step_index=1,
+        step_name="probe",
+        runner="analysis",
+        status="completed",
+    )
+    local.record_workflow_step(stale_cap)
+    local.record_workflow_step(stale_probe)
+
+    fresher_cap = WorkflowStepRecord(
+        run_id="run_merge",
+        workflow_hash="wh_run_merge",
+        workflow_step_key="wh_run_merge.cap",
+        step_name="cap",
+        step_index=0,
+        runner="capture",
+        status="failed",
+        step_semantic_hash="ss_cap",
+        step_spec_hash="sp_cap",
+        started_at="2026-04-15T00:00:00Z",
+        finished_at="2026-04-15T00:02:00Z",
+    )
+
+    class FakePg:
+        def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
+            return [fresher_cap] if run_id == "run_merge" else []
+
+        def load_workflow_run(self, _run_id: str) -> None:
+            return None
+
+        def load_artifact(self, _artifact_id: str) -> None:
+            return None
+
+        def find_artifact_for_workflow_step(self, **_kwargs: Any) -> None:
+            return None
+
+        def close(self) -> None:
+            pass
+
+        def stats(self) -> dict[str, Any]:
+            return {"pool": {}}
+
+    dash = DashboardCatalog(
+        local=local,
+        composite=composite,
+        raw=composite,
+        local_root=root,
+        postgres_env=None,
+        pg=FakePg(),  # type: ignore[arg-type]
+    )
+    app = create_app(catalog=dash)
+    client = TestClient(app)
+
+    resp = client.get("/api/runs/run_merge")
+    assert resp.status_code == 200
+    steps = {step["step_name"]: step for step in resp.json()["steps"]}
+    assert steps["cap"]["status"] == "failed"
+    assert steps["probe"]["status"] == "completed"
 
 
 def test_cached_catalog_hits_inner_once_for_repeat_reads(tmp_path: Path) -> None:
@@ -459,6 +644,177 @@ def test_runs_endpoint_uses_pg_counts_fast_path(tmp_path: Path) -> None:
     assert fake.light_calls == 1
     assert len(fake.calls) == 1
     assert sorted(fake.calls[0]) == ["run_pg_0", "run_pg_1", "run_pg_2"]
+
+
+def test_file_catalog_light_run_summaries_backfill_and_reuse_sidecars(tmp_path: Path) -> None:
+    root = tmp_path / "catalog"
+    local = FileCatalog(root=root)
+    workflow = _workflow_payload(
+        [
+            _capture_step_payload("cap"),
+            _probe_step_payload("probe", depends_on=["cap"]),
+        ],
+        name="light_runs",
+    )
+    local.record_workflow_run(
+        _make_run_record(
+            run_id="run_light",
+            workflow_payload=workflow,
+            started_at="2026-04-15T00:00:00Z",
+            status="running",
+        )
+    )
+    local.record_workflow_step(
+        _make_step_record(
+            run_id="run_light",
+            step_index=0,
+            step_name="cap",
+            runner="capture",
+            status="completed",
+        )
+    )
+
+    summary_path = root / "workflow_run_summaries" / "run_light.json"
+    assert summary_path.is_file()
+
+    rows = local.list_workflow_runs_light()
+    assert rows[0]["run_id"] == "run_light"
+    assert rows[0]["step_total"] == 2
+    assert rows[0]["step_counts"]["completed"] == 1
+
+    # The light listing should keep working from the sidecar even if the full
+    # workflow payload file is unreadable.
+    (root / "workflow_runs" / "run_light.json").write_text("{not valid json", encoding="utf-8")
+    rows = local.list_workflow_runs_light()
+    assert rows[0]["run_id"] == "run_light"
+
+
+def test_read_result_payload_accepts_local_store_refs(tmp_path: Path) -> None:
+    result_path = tmp_path / "result.json"
+    result_path.write_text('{"summary":{"ok":true}}', encoding="utf-8")
+    manifest = ArtifactManifest(
+        artifact_id="report_local_test",
+        artifact_kind="report",
+        schema_version=1,
+        operation_spec_hash="spec",
+        operation_semantic_hash="semantic",
+        created_at="2026-04-15T00:00:00Z",
+        engine={},
+        runner={"kind": "local"},
+        input_artifact_refs=(),
+        example_coverage={},
+        storage_refs={
+            "result": {
+                "store": "local",
+                "path": str(result_path),
+                "format": "json",
+                "bytes": result_path.stat().st_size,
+            }
+        },
+        metadata={},
+        workflow_context={},
+    )
+
+    preview = read_result_payload(
+        artifact_manifest=manifest,
+        report_manifest=None,
+        step_name="report",
+    )
+
+    assert preview.available is True
+    assert preview.path == str(result_path)
+    assert preview.payload["summary"]["ok"] is True
+
+
+def test_read_result_payload_truncates_large_local_results(tmp_path: Path) -> None:
+    import json as _json
+
+    result_path = tmp_path / "large_result.json"
+    result_path.write_text(
+        _json.dumps({"rows": [{"value": "x" * 2_000_000}]}),
+        encoding="utf-8",
+    )
+    manifest = ArtifactManifest(
+        artifact_id="large_result_test",
+        artifact_kind="probe",
+        schema_version=1,
+        operation_spec_hash="spec",
+        operation_semantic_hash="semantic",
+        created_at="2026-04-15T00:00:00Z",
+        engine={},
+        runner={"kind": "local"},
+        input_artifact_refs=(),
+        example_coverage={},
+        storage_refs={
+            "result": {
+                "store": "local",
+                "path": str(result_path),
+                "format": "json",
+                "bytes": result_path.stat().st_size,
+            }
+        },
+        metadata={},
+        workflow_context={},
+    )
+
+    preview = read_result_payload(
+        artifact_manifest=manifest,
+        report_manifest=None,
+        step_name="probe",
+    )
+
+    assert preview.available is True
+    assert preview.truncated is True
+    assert preview.bytes == result_path.stat().st_size
+    assert "__dashboard_notice__" in (preview.payload or {})
+    assert preview.tables == []
+
+
+def test_dashboard_pg_retries_once_on_stale_connection_error() -> None:
+    class FakeOperationalError(Exception):
+        __module__ = "psycopg"
+
+    class FakeCursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, sql: str, params: tuple[Any, ...]) -> None:
+            self.sql = sql
+            self.params = params
+
+        def fetchone(self):
+            return ("ok",)
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def cursor(self):
+            return FakeCursor()
+
+    class FakePool:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def connection(self):
+            self.calls += 1
+            if self.calls == 1:
+                raise FakeOperationalError("discarding closed connection: <psycopg.Connection [BAD]>")
+            return FakeConn()
+
+    pg = DashboardPg.__new__(DashboardPg)
+    pg._pool = FakePool()
+
+    row = pg._fetchone("SELECT 1", ())
+
+    assert row == ("ok",)
+    assert pg._pool.calls == 2
 
 
 def test_bulk_steps_detail_endpoint(tmp_path: Path) -> None:
@@ -991,3 +1347,381 @@ def test_report_detail_404_for_non_report_artifact(tmp_path: Path) -> None:
 
     resp = client.get("/api/reports/not_a_report")
     assert resp.status_code == 404
+
+
+def test_report_detail_uses_manifest_table_metadata_without_table_file(tmp_path: Path) -> None:
+    import json as _json
+
+    from fastapi.testclient import TestClient
+    from pipelines_v2.dashboard.server import create_app
+    from pipelines_v2.storage.local import FileCatalog
+    from pipelines_v2.storage.composite import CompositeCatalog
+
+    report_root = tmp_path / "reports" / "artifact_r2"
+    (report_root / "assets").mkdir(parents=True)
+    (report_root / "report.json").write_text(_json.dumps({"template": "summary"}))
+    (report_root / "summary.json").write_text(_json.dumps({"template": "summary"}))
+    (report_root / "assets" / "manifest.json").write_text(
+        _json.dumps(
+            {
+                "figures": {},
+                "tables": {
+                    "probe": {
+                        "path": "tables/probe.json",
+                        "step_name": "probe",
+                        "result_kind": "probe_result",
+                        "rows": 2,
+                        "columns": ["metric", "value"],
+                    }
+                },
+                "unsupported_inputs": [],
+            }
+        )
+    )
+
+    catalog_root = tmp_path / "catalog_meta"
+    local = FileCatalog(root=catalog_root)
+    composite = CompositeCatalog(catalogs=(local,))
+    manifest = ArtifactManifest.from_dict(
+        {
+            "artifact_id": "artifact_r2",
+            "artifact_kind": "report",
+            "schema_version": 1,
+            "operation_spec_hash": "h",
+            "operation_semantic_hash": "h",
+            "created_at": "2026-04-15T00:00:00Z",
+            "engine": {},
+            "runner": {},
+            "input_artifact_refs": [],
+            "example_coverage": {},
+            "storage_refs": {},
+            "metadata": {"published_report": {"output_dir": str(report_root)}},
+            "workflow_context": {"run_id": "run_report_meta"},
+        }
+    )
+    local.record_artifact(manifest)
+
+    app = create_app(
+        catalog=DashboardCatalog(
+            local=local,
+            composite=composite,
+            raw=composite,
+            local_root=catalog_root,
+            postgres_env=None,
+        )
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/reports/artifact_r2")
+    assert resp.status_code == 200
+    table = resp.json()["tables"][0]
+    assert table["rows"] == 2
+    assert table["columns"] == ["metric", "value"]
+
+
+def test_generate_report_materializes_local_report_and_updates_run_detail(tmp_path: Path) -> None:
+    import json as _json
+
+    from fastapi.testclient import TestClient
+
+    from pipelines_v2.dashboard.server import create_app
+    from pipelines_v2.data.datasets import Dataset, Example
+    from pipelines_v2.engine.toy import ToyEngine
+    from pipelines_v2.operations.capture.sites import ResidualSite
+    from pipelines_v2.operations.capture.specs import CaptureSpec, GenerationSpec
+    from pipelines_v2.operations.reports import ReportSpec
+    from pipelines_v2.workflow.specs import StepRef, WorkflowSpec, WorkflowStep
+
+    catalog_root = tmp_path / "catalog"
+    local = FileCatalog(root=catalog_root)
+    composite = CompositeCatalog(catalogs=(local,))
+
+    source_artifacts_root = tmp_path / "source_artifacts"
+    source_artifact_id = "cap_seed"
+    source_artifact_root = source_artifacts_root / source_artifact_id
+    source_artifact_root.mkdir(parents=True)
+    (source_artifact_root / "manifest.json").write_text(_json.dumps({"artifact_id": source_artifact_id}))
+
+    report_output_root = tmp_path / "report_outputs"
+    workflow_payload = WorkflowSpec(
+        name="reportable_demo",
+        steps=(
+            WorkflowStep(
+                name="cap",
+                runner="capture",
+                spec=CaptureSpec(
+                    engine=ToyEngine(),
+                    dataset=Dataset.from_examples(
+                        (Example(key="ex1", prompt="demo prompt", labels={"cls": "a"}),)
+                    ),
+                    sites=(ResidualSite(name="resid", site="post", layers=(0,)),),
+                    generation=GenerationSpec(max_tokens=0),
+                ),
+            ),
+            WorkflowStep(
+                name="report",
+                runner="report",
+                spec=ReportSpec(
+                    inputs=(StepRef(step="cap"),),
+                    template="summary",
+                    output_dir=str(report_output_root),
+                ),
+                depends_on=("cap",),
+            ),
+        ),
+    )
+    run = _make_run_record(
+        run_id="run_reportable",
+        workflow_payload=workflow_payload.to_dict(),
+        started_at="2026-04-15T00:00:00Z",
+        status="completed",
+        finished_at="2026-04-15T00:05:00Z",
+    )
+    local.record_workflow_run(run)
+    local.record_workflow_step(
+        _make_step_record(
+            run_id="run_reportable",
+            step_index=0,
+            step_name="cap",
+            runner="capture",
+            artifact_id=source_artifact_id,
+            artifact_kind="capture",
+        )
+    )
+    local.record_workflow_step(
+        _make_step_record(
+            run_id="run_reportable",
+            step_index=1,
+            step_name="report",
+            runner="report",
+            status="pending",
+            artifact_id=None,
+            artifact_kind=None,
+        )
+    )
+    local.record_artifact(
+        ArtifactManifest.from_dict(
+            {
+                "artifact_id": source_artifact_id,
+                "artifact_kind": "capture",
+                "schema_version": 1,
+                "operation_spec_hash": "cap_hash",
+                "operation_semantic_hash": "cap_hash",
+                "created_at": "2026-04-15T00:01:00Z",
+                "engine": {},
+                "runner": {"kind": "local"},
+                "input_artifact_refs": [],
+                "example_coverage": {},
+                "storage_refs": {
+                    "manifest": {
+                        "store": "local_path",
+                        "path": str(source_artifact_root / "manifest.json"),
+                        "format": "json",
+                    }
+                },
+                "metadata": {},
+                "workflow_context": {
+                    "run_id": "run_reportable",
+                    "workflow_name": "reportable_demo",
+                    "workflow_hash": "wh_run_reportable",
+                    "workflow_step_key": "wh_run_reportable.cap",
+                    "step_name": "cap",
+                    "step_index": 0,
+                    "runner": "capture",
+                    "step_semantic_hash": "ss_cap",
+                    "step_spec_hash": "sp_cap",
+                },
+            }
+        )
+    )
+
+    dash = DashboardCatalog(local=local, composite=composite, raw=composite, local_root=catalog_root, postgres_env=None)
+    app = create_app(catalog=dash)
+    client = TestClient(app)
+
+    before = client.get("/api/runs/run_reportable")
+    assert before.status_code == 200
+    assert before.json()["report"]["has_report_step"] is True
+    assert before.json()["report"]["local_available"] is False
+
+    resp = client.post("/api/runs/run_reportable/report")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["run_id"] == "run_reportable"
+    assert payload["step_name"] == "report"
+    assert payload["report"]["run_id"] == "run_reportable"
+    assert payload["report"]["report"]["template"] == "summary"
+
+    generated_artifact_id = payload["artifact_id"]
+    detail = client.get(f"/api/reports/{generated_artifact_id}")
+    assert detail.status_code == 200
+    assert detail.json()["artifact_id"] == generated_artifact_id
+
+    after = client.get("/api/runs/run_reportable")
+    assert after.status_code == 200
+    assert after.json()["report"]["local_available"] is True
+    assert after.json()["report"]["artifact_id"] == generated_artifact_id
+
+
+def test_generate_report_falls_back_to_raw_catalog_when_cached_catalog_misses(tmp_path: Path) -> None:
+    import json as _json
+
+    from fastapi.testclient import TestClient
+
+    from pipelines_v2.dashboard.server import create_app
+    from pipelines_v2.data.datasets import Dataset, Example
+    from pipelines_v2.engine.toy import ToyEngine
+    from pipelines_v2.operations.capture.sites import ResidualSite
+    from pipelines_v2.operations.capture.specs import CaptureSpec, GenerationSpec
+    from pipelines_v2.operations.reports import ReportSpec
+    from pipelines_v2.workflow.specs import StepRef, WorkflowSpec, WorkflowStep
+
+    class MissCatalog:
+        kind = "miss"
+
+        def identity(self) -> dict[str, str]:
+            return {"kind": self.kind}
+
+        def load_workflow_run(self, _run_id: str) -> None:
+            return None
+
+        def list_workflow_steps(self, _run_id: str) -> list[Any]:
+            return []
+
+        def load_artifact(self, _artifact_id: str) -> None:
+            return None
+
+        def find_artifact_for_workflow_step(
+            self,
+            *,
+            run_id: str,  # noqa: ARG002 - interface compatibility
+            workflow_step_key: str,  # noqa: ARG002 - interface compatibility
+        ) -> None:
+            return None
+
+    catalog_root = tmp_path / "catalog"
+    local = FileCatalog(root=catalog_root)
+    remote = FileCatalog(root=tmp_path / "remote_catalog")
+    raw = CompositeCatalog(catalogs=(local, remote))
+
+    source_artifacts_root = tmp_path / "remote_artifacts"
+    source_artifact_id = "cap_remote_seed"
+    source_artifact_root = source_artifacts_root / source_artifact_id
+    source_artifact_root.mkdir(parents=True)
+    (source_artifact_root / "manifest.json").write_text(_json.dumps({"artifact_id": source_artifact_id}))
+
+    workflow_payload = WorkflowSpec(
+        name="remote_reportable_demo",
+        steps=(
+            WorkflowStep(
+                name="cap",
+                runner="capture",
+                spec=CaptureSpec(
+                    engine=ToyEngine(),
+                    dataset=Dataset.from_examples(
+                        (Example(key="ex1", prompt="demo prompt", labels={"cls": "a"}),)
+                    ),
+                    sites=(ResidualSite(name="resid", site="post", layers=(0,)),),
+                    generation=GenerationSpec(max_tokens=0),
+                ),
+            ),
+            WorkflowStep(
+                name="report",
+                runner="report",
+                spec=ReportSpec(
+                    inputs=(StepRef(step="cap"),),
+                    template="summary",
+                    output_dir=str(tmp_path / "report_outputs"),
+                ),
+                depends_on=("cap",),
+            ),
+        ),
+    )
+    run = _make_run_record(
+        run_id="run_reportable_remote",
+        workflow_payload=workflow_payload.to_dict(),
+        started_at="2026-04-15T00:00:00Z",
+        status="completed",
+        finished_at="2026-04-15T00:05:00Z",
+    )
+    remote.record_workflow_run(run)
+    remote.record_workflow_step(
+        _make_step_record(
+            run_id="run_reportable_remote",
+            step_index=0,
+            step_name="cap",
+            runner="capture",
+            artifact_id=source_artifact_id,
+            artifact_kind="capture",
+        )
+    )
+    remote.record_workflow_step(
+        _make_step_record(
+            run_id="run_reportable_remote",
+            step_index=1,
+            step_name="report",
+            runner="report",
+            status="pending",
+            artifact_id=None,
+            artifact_kind=None,
+        )
+    )
+    remote.record_artifact(
+        ArtifactManifest.from_dict(
+            {
+                "artifact_id": source_artifact_id,
+                "artifact_kind": "capture",
+                "schema_version": 1,
+                "operation_spec_hash": "cap_hash_remote",
+                "operation_semantic_hash": "cap_hash_remote",
+                "created_at": "2026-04-15T00:01:00Z",
+                "engine": {},
+                "runner": {"kind": "local"},
+                "input_artifact_refs": [],
+                "example_coverage": {},
+                "storage_refs": {
+                    "manifest": {
+                        "store": "local_path",
+                        "path": str(source_artifact_root / "manifest.json"),
+                        "format": "json",
+                    }
+                },
+                "metadata": {},
+                "workflow_context": {
+                    "run_id": "run_reportable_remote",
+                    "workflow_name": "remote_reportable_demo",
+                    "workflow_hash": "wh_run_reportable_remote",
+                    "workflow_step_key": "wh_run_reportable_remote.cap",
+                    "step_name": "cap",
+                    "step_index": 0,
+                    "runner": "capture",
+                    "step_semantic_hash": "ss_cap",
+                    "step_spec_hash": "sp_cap",
+                },
+            }
+        )
+    )
+
+    dash = DashboardCatalog(
+        local=local,
+        composite=MissCatalog(),
+        raw=raw,
+        local_root=catalog_root,
+        postgres_env=None,
+    )
+    app = create_app(catalog=dash)
+    client = TestClient(app)
+
+    detail = client.get("/api/runs/run_reportable_remote")
+    assert detail.status_code == 200
+    assert detail.json()["run"]["run_id"] == "run_reportable_remote"
+
+    resp = client.post("/api/runs/run_reportable_remote/report")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["run_id"] == "run_reportable_remote"
+
+    after = client.get("/api/runs/run_reportable_remote")
+    assert after.status_code == 200
+    assert after.json()["report"]["local_available"] is True
+    assert after.json()["report"]["artifact_id"] == payload["artifact_id"]

@@ -39,6 +39,7 @@ class RunSummary(BaseModel):
     error: str | None = None
     step_counts: StepCounts
     has_report: bool = False
+    report_local: bool | None = None  # True/False/None(unknown)
 
 
 class RunsResponse(BaseModel):
@@ -97,6 +98,7 @@ class RunDetail(BaseModel):
     nodes: list[DagNode]
     edges: list[DagEdge]
     steps: list[StepSummary]
+    report: RunReportStatus | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -142,15 +144,21 @@ class ResultSummary(BaseModel):
 class ResultPreviewTable(BaseModel):
     name: str
     rows: list[dict[str, Any]] = Field(default_factory=list)
+    columns: list[str] = Field(default_factory=list)
+    total_rows: int | None = None
+    truncated: bool = False
 
 
 class ResultPreview(BaseModel):
     available: bool
     reason: str | None = None
     path: str | None = None
+    bytes: int | None = None
     payload: dict[str, Any] | None = None
     headline: dict[str, Any] | None = None
     tables: list[ResultPreviewTable] = Field(default_factory=list)
+    truncated: bool = False
+    truncation_reason: str | None = None
 
 
 class SpecSummaryItem(BaseModel):
@@ -315,6 +323,14 @@ class PromptPreview(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class RunReportStatus(BaseModel):
+    has_report_step: bool = False
+    step_name: str | None = None
+    artifact_id: str | None = None
+    local_available: bool = False
+    reason: str | None = None
+
+
 class ReportFigure(BaseModel):
     figure_id: str
     path: str
@@ -355,6 +371,14 @@ class ReportDetail(BaseModel):
     unsupported_inputs: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class ReportGenerationResponse(BaseModel):
+    run_id: str
+    step_name: str
+    artifact_id: str
+    report: ReportDetail
+
+
 # Resolve the forward reference for StepDetailList now that StepDetail is
 # defined above.
+RunDetail.model_rebuild()
 StepDetailList.model_rebuild()

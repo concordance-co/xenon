@@ -40,6 +40,7 @@ export interface RunSummary {
   error: string | null;
   step_counts: StepCounts;
   has_report: boolean;
+  report_local: boolean | null;
 }
 
 export interface RunsResponse {
@@ -91,6 +92,15 @@ export interface RunDetail {
   nodes: DagNode[];
   edges: DagEdge[];
   steps: StepSummary[];
+  report: RunReportStatus | null;
+}
+
+export interface RunReportStatus {
+  has_report_step: boolean;
+  step_name: string | null;
+  artifact_id: string | null;
+  local_available: boolean;
+  reason: string | null;
 }
 
 // Phase C — step detail
@@ -257,15 +267,21 @@ export interface PromptPreview {
 export interface ResultPreviewTable {
   name: string;
   rows: Array<Record<string, unknown>>;
+  columns?: string[];
+  total_rows?: number | null;
+  truncated?: boolean;
 }
 
 export interface ResultPreview {
   available: boolean;
   reason?: string | null;
   path?: string | null;
+  bytes?: number | null;
   payload?: Record<string, unknown> | null;
   headline?: Record<string, unknown> | null;
   tables?: ResultPreviewTable[];
+  truncated?: boolean;
+  truncation_reason?: string | null;
 }
 
 // Phase F — reports
@@ -307,4 +323,11 @@ export interface ReportDetail {
   tables: ReportTableSummary[];
   results: ReportResult[];
   unsupported_inputs: Array<Record<string, unknown>>;
+}
+
+export interface ReportGenerationResponse {
+  run_id: string;
+  step_name: string;
+  artifact_id: string;
+  report: ReportDetail;
 }

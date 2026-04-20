@@ -23,6 +23,7 @@ cached composite catalog. Nothing here touches core storage code.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import logging
 from typing import Any, Iterable
 
@@ -45,9 +46,13 @@ class DashboardPg:
             conninfo=conninfo,
             min_size=min_size,
             max_size=max_size,
-            kwargs={"autocommit": True},
+            kwargs={"autocommit": True, "connect_timeout": 5},
             open=True,
+            check=ConnectionPool.check_connection,
             name="pipelines_v2_dashboard",
+            timeout=5.0,
+            max_idle=300.0,
+            reconnect_timeout=30.0,
         )
 
     def close(self) -> None:
@@ -59,6 +64,31 @@ class DashboardPg:
     # ------------------------------------------------------------------
     # Aggregated reads
     # ------------------------------------------------------------------
+
+    @contextmanager
+    def _connection(self):
+        try:
+            with self._pool.connection() as conn:
+                yield conn
+                return
+        except Exception as exc:
+            if not _is_retryable_connection_error(exc):
+                raise
+            logger.warning("dashboard pg transient connection failure; retrying once: %s", exc)
+        with self._pool.connection() as conn:
+            yield conn
+
+    def _fetchall(self, sql: str, params: tuple[Any, ...]) -> list[Any]:
+        with self._connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                return list(cur.fetchall())
+
+    def _fetchone(self, sql: str, params: tuple[Any, ...]) -> Any | None:
+        with self._connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                return cur.fetchone()
 
     def step_status_counts(
         self, run_ids: Iterable[str]
@@ -79,11 +109,8 @@ class DashboardPg:
             GROUP BY run_id, status
         """
         out: dict[str, dict[str, int]] = {}
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (ids,))
-                for run_id, status, n in cur.fetchall():
-                    out.setdefault(run_id, {})[str(status)] = int(n)
+        for run_id, status, n in self._fetchall(sql, (ids,)):
+            out.setdefault(run_id, {})[str(status)] = int(n)
         return out
 
     def batch_load_artifacts(
@@ -103,17 +130,69 @@ class DashboardPg:
             WHERE artifact_id = ANY(%s)
         """
         out: dict[str, ArtifactManifest] = {}
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (ids,))
-                for artifact_id, manifest in cur.fetchall():
-                    out[str(artifact_id)] = ArtifactManifest.from_dict(manifest)
+        for artifact_id, manifest in self._fetchall(sql, (ids,)):
+            out[str(artifact_id)] = ArtifactManifest.from_dict(manifest)
         return out
 
     # ------------------------------------------------------------------
     # Single-row reads via the pool (drop-in replacements for
     # PostgresCatalog's per-call `psycopg.connect()` methods)
     # ------------------------------------------------------------------
+
+    def load_workflow_run_light(self, run_id: str):
+        """Load a workflow run with the payload stripped of embedded dataset
+        examples — the multi-MB part. Keeps spec.kind, depends_on, sites,
+        tokens, labels, and all other fields the dashboard needs for the DAG,
+        overview, and spec summary. Transfers ~50KB instead of ~50MB.
+
+        Dataset/prompt previews use the full payload via separate endpoints.
+        """
+        from pipelines_v2.workflow.records import WorkflowRunRecord
+
+        sql = """
+            SELECT
+                run_id, workflow_name, workflow_hash, workflow_spec_hash,
+                status, started_at, parent_run_id, finished_at, error,
+                jsonb_set(
+                    workflow_payload,
+                    '{steps}',
+                    COALESCE(
+                        (SELECT jsonb_agg(
+                            CASE
+                                WHEN step->'spec'->'dataset'->'examples' IS NOT NULL
+                                THEN jsonb_set(
+                                    step,
+                                    '{spec,dataset}',
+                                    (step->'spec'->'dataset') - 'examples'
+                                )
+                                ELSE step
+                            END
+                        ) FROM jsonb_array_elements(
+                            workflow_payload->'steps'
+                        ) AS step),
+                        '[]'::jsonb
+                    )
+                ) AS workflow_payload
+            FROM pipelines_v2_workflow_runs
+            WHERE run_id = %s
+        """
+        row = self._fetchone(sql, (run_id,))
+        if row is None:
+            return None
+        return WorkflowRunRecord.from_dict(
+            {
+                "run_id": row[0],
+                "workflow_name": row[1],
+                "workflow_hash": row[2],
+                "workflow_spec_hash": row[3],
+                "status": row[4],
+                "started_at": _iso(row[5]),
+                "parent_run_id": row[6],
+                "finished_at": _iso(row[7]),
+                "error": row[8],
+                "workflow_payload": row[9],
+            }
+        )
 
     def load_workflow_run(self, run_id: str):
         from pipelines_v2.workflow.records import WorkflowRunRecord
@@ -126,10 +205,7 @@ class DashboardPg:
             FROM pipelines_v2_workflow_runs
             WHERE run_id = %s
         """
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (run_id,))
-                row = cur.fetchone()
+        row = self._fetchone(sql, (run_id,))
         if row is None:
             return None
         return WorkflowRunRecord.from_dict(
@@ -162,41 +238,35 @@ class DashboardPg:
             ORDER BY step_index ASC, step_name ASC
         """
         out = []
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (run_id,))
-                for row in cur.fetchall():
-                    out.append(
-                        WorkflowStepRecord.from_dict(
-                            {
-                                "run_id": row[0],
-                                "workflow_hash": row[1],
-                                "workflow_step_key": row[2],
-                                "step_name": row[3],
-                                "step_index": row[4],
-                                "runner": row[5],
-                                "status": row[6],
-                                "step_semantic_hash": row[7],
-                                "step_spec_hash": row[8],
-                                "input_artifact_refs": row[9],
-                                "artifact_id": row[10],
-                                "artifact_kind": row[11],
-                                "started_at": _iso(row[12]),
-                                "finished_at": _iso(row[13]),
-                                "runtime_app_id": row[14],
-                                "reused_from_run_id": row[15],
-                                "reused_from_artifact_id": row[16],
-                            }
-                        )
-                    )
+        for row in self._fetchall(sql, (run_id,)):
+            out.append(
+                WorkflowStepRecord.from_dict(
+                    {
+                        "run_id": row[0],
+                        "workflow_hash": row[1],
+                        "workflow_step_key": row[2],
+                        "step_name": row[3],
+                        "step_index": row[4],
+                        "runner": row[5],
+                        "status": row[6],
+                        "step_semantic_hash": row[7],
+                        "step_spec_hash": row[8],
+                        "input_artifact_refs": row[9],
+                        "artifact_id": row[10],
+                        "artifact_kind": row[11],
+                        "started_at": _iso(row[12]),
+                        "finished_at": _iso(row[13]),
+                        "runtime_app_id": row[14],
+                        "reused_from_run_id": row[15],
+                        "reused_from_artifact_id": row[16],
+                    }
+                )
+            )
         return out
 
     def load_artifact(self, artifact_id: str) -> ArtifactManifest | None:
         sql = "SELECT manifest FROM pipelines_v2_artifacts WHERE artifact_id = %s"
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (artifact_id,))
-                row = cur.fetchone()
+        row = self._fetchone(sql, (artifact_id,))
         if row is None:
             return None
         return ArtifactManifest.from_dict(row[0])
@@ -237,13 +307,10 @@ class DashboardPg:
             ORDER BY created_at DESC
             LIMIT 1
         """
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql,
-                    (run_id, workflow_step_key, run_id, workflow_step_key, run_id, workflow_step_key),
-                )
-                row = cur.fetchone()
+        row = self._fetchone(
+            sql,
+            (run_id, workflow_step_key, run_id, workflow_step_key, run_id, workflow_step_key),
+        )
         if row is None:
             return None
         return ArtifactManifest.from_dict(row[0])
@@ -279,26 +346,23 @@ class DashboardPg:
             {limit_clause}
         """
         out = []
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, tuple(params))
-                for row in cur.fetchall():
-                    out.append(
-                        WorkflowRunRecord.from_dict(
-                            {
-                                "run_id": row[0],
-                                "workflow_name": row[1],
-                                "workflow_hash": row[2],
-                                "workflow_spec_hash": row[3],
-                                "status": row[4],
-                                "started_at": _iso(row[5]),
-                                "parent_run_id": row[6],
-                                "finished_at": _iso(row[7]),
-                                "error": row[8],
-                                "workflow_payload": row[9],
-                            }
-                        )
-                    )
+        for row in self._fetchall(sql, tuple(params)):
+            out.append(
+                WorkflowRunRecord.from_dict(
+                    {
+                        "run_id": row[0],
+                        "workflow_name": row[1],
+                        "workflow_hash": row[2],
+                        "workflow_spec_hash": row[3],
+                        "status": row[4],
+                        "started_at": _iso(row[5]),
+                        "parent_run_id": row[6],
+                        "finished_at": _iso(row[7]),
+                        "error": row[8],
+                        "workflow_payload": row[9],
+                    }
+                )
+            )
         return out
 
     def list_workflow_runs_light(
@@ -340,24 +404,21 @@ class DashboardPg:
             {limit_clause}
         """
         out: list[dict[str, Any]] = []
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, tuple(params))
-                for row in cur.fetchall():
-                    out.append(
-                        {
-                            "run_id": row[0],
-                            "workflow_name": row[1],
-                            "workflow_hash": row[2],
-                            "workflow_spec_hash": row[3],
-                            "status": row[4],
-                            "started_at": _iso(row[5]),
-                            "parent_run_id": row[6],
-                            "finished_at": _iso(row[7]),
-                            "error": row[8],
-                            "has_report": bool(row[9]),
-                        }
-                    )
+        for row in self._fetchall(sql, tuple(params)):
+            out.append(
+                {
+                    "run_id": row[0],
+                    "workflow_name": row[1],
+                    "workflow_hash": row[2],
+                    "workflow_spec_hash": row[3],
+                    "status": row[4],
+                    "started_at": _iso(row[5]),
+                    "parent_run_id": row[6],
+                    "finished_at": _iso(row[7]),
+                    "error": row[8],
+                    "has_report": bool(row[9]),
+                }
+            )
         return out
 
     @staticmethod
@@ -379,6 +440,27 @@ class DashboardPg:
             predicates.append("status = %s")
             params.append(status)
         return predicates, params
+
+    def report_artifact_ids_for_runs(
+        self, run_ids: Iterable[str]
+    ) -> dict[str, str]:
+        """Return `{run_id: artifact_id}` for any run that has a completed
+        report step with an artifact. One query for all runs."""
+        ids = [str(rid) for rid in run_ids]
+        if not ids:
+            return {}
+        sql = """
+            SELECT DISTINCT ON (run_id) run_id, artifact_id
+            FROM pipelines_v2_workflow_steps
+            WHERE run_id = ANY(%s)
+              AND artifact_kind = 'report'
+              AND artifact_id IS NOT NULL
+            ORDER BY run_id, step_index ASC
+        """
+        out: dict[str, str] = {}
+        for run_id, artifact_id in self._fetchall(sql, (ids,)):
+            out[str(run_id)] = str(artifact_id)
+        return out
 
     def find_artifacts_for_run(
         self, run_id: str
@@ -412,13 +494,10 @@ class DashboardPg:
             ORDER BY created_at DESC
         """
         out: dict[str, ArtifactManifest] = {}
-        with self._pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (run_id, run_id, run_id))
-                for key, manifest, _created in cur.fetchall():
-                    if key is None:
-                        continue
-                    out.setdefault(str(key), ArtifactManifest.from_dict(manifest))
+        for key, manifest, _created in self._fetchall(sql, (run_id, run_id, run_id)):
+            if key is None:
+                continue
+            out.setdefault(str(key), ArtifactManifest.from_dict(manifest))
         return out
 
     # ------------------------------------------------------------------
@@ -449,6 +528,17 @@ def _iso(value: Any) -> Any:
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return value
+
+
+def _is_retryable_connection_error(exc: Exception) -> bool:
+    module = type(exc).__module__
+    name = type(exc).__name__
+    if module.startswith("psycopg") and name in {"OperationalError", "InterfaceError"}:
+        return True
+    if module.startswith("psycopg_pool") and name == "PoolTimeout":
+        return True
+    message = str(exc).lower()
+    return "discarding closed connection" in message or "connection is closed" in message
 
 
 def build_pg(conninfo: str | None) -> DashboardPg | None:

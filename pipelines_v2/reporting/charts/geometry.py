@@ -11,10 +11,14 @@ from pipelines_v2.reporting.chart_style import (
     categorical_colors,
     display_name,
     first_two_components,
-    metric_value,
+    format_layer,
+    header_legend,
     new_figure,
+    plot_series,
     save_figure,
     slugify,
+    style_axes,
+    value_limits,
 )
 
 
@@ -121,34 +125,57 @@ def _table_row(layer: dict[str, Any]) -> dict[str, Any]:
 
 def _plot_scatter(*, layer: dict[str, Any], label_values: list[Any], title: str, output_path: Path) -> None:
     x_values, y_values = first_two_components(layer.get("components", []))
-    fig, ax = new_figure(figsize=(7.0, 5.4))
+    fig, ax = new_figure(
+        figsize=(7.6, 5.4),
+        title=display_name(title),
+        subtitle="GEOMETRY",
+        detail=f"{format_layer(int(layer.get('layer', 0)))} \u00b7 two-component projection",
+    )
     label_strings = [str(value) for value in label_values]
     unique_labels = sorted(set(label_strings))
     colors = categorical_colors(len(unique_labels))
     for label, color in zip(unique_labels, colors, strict=False):
         mask = np.asarray([item == label for item in label_strings], dtype=bool)
-        ax.scatter(x_values[mask], y_values[mask], label=label, s=28, alpha=0.8, color=color)
-    ax.set_xlabel("Component 1")
-    ax.set_ylabel("Component 2")
-    ax.set_title(title)
+        ax.scatter(
+            x_values[mask],
+            y_values[mask],
+            label=display_name(label),
+            s=34,
+            alpha=0.9,
+            color=color,
+            edgecolors="white",
+            linewidths=0.25,
+        )
+    style_axes(ax, xlabel="Component 1", ylabel="Component 2")
     if unique_labels:
-        ax.legend(loc="best", fontsize=8)
+        header_legend(ax, ncol=2 if len(unique_labels) > 4 else 1)
     save_figure(fig, output_path)
 
 
 def _plot_explained_variance(*, layers: list[dict[str, Any]], step_name: str, output_path: Path) -> None:
     x_values = [int(layer.get("layer", 0)) for layer in layers]
     max_components = max(len(layer.get("explained_variance_ratio") or []) for layer in layers)
-    fig, ax = new_figure()
+    fig, ax = new_figure(
+        title=display_name(step_name),
+        subtitle="GEOMETRY",
+        detail="Explained variance by principal component",
+    )
+    plotted_values: list[float] = []
     for component_index in range(max_components):
         y_values = []
         for layer in layers:
             explained_variance = list(layer.get("explained_variance_ratio") or [])
             y_values.append(float(explained_variance[component_index]) if component_index < len(explained_variance) else None)
-        ax.plot(x_values, y_values, marker="o", label=f"Component {component_index + 1}")
-    ax.set_xlabel("Layer")
-    ax.set_ylabel("Explained Variance Ratio")
-    ax.set_ylim(0.0, 1.05)
-    ax.set_title(f"Explained variance by layer: {display_name(step_name)}")
-    ax.legend(loc="best", fontsize=8)
+        plot_series(ax, x_values, y_values, label=f"Component {component_index + 1}")
+        plotted_values.extend(float(value) for value in y_values if value is not None)
+    style_axes(
+        ax,
+        xlabel="Layer",
+        ylabel="Explained Variance Ratio",
+        x_values=x_values,
+        layer_axis=True,
+        metric_axis=True,
+        y_limits=value_limits(plotted_values),
+    )
+    header_legend(ax, ncol=2 if max_components > 2 else 1)
     save_figure(fig, output_path)

@@ -45,7 +45,10 @@ export function ResultsTab({ detail, runId }: { detail: StepDetail; runId: strin
           ) : null}
 
           {(data.tables ?? []).map((t) => (
-            <Section key={t.name} title={`table · ${t.name} (${t.rows.length})`}>
+            <Section
+              key={t.name}
+              title={`table · ${t.name} (${t.total_rows ?? t.rows.length}${t.truncated ? ` · preview ${t.rows.length}` : ""})`}
+            >
               <DataTable rows={t.rows} columns={columnsForRows(t.rows)} maxHeight="20rem" />
             </Section>
           ))}
@@ -54,6 +57,11 @@ export function ResultsTab({ detail, runId }: { detail: StepDetail; runId: strin
             {data.path ? (
               <div className="text-[0.58rem] font-mono text-ink-600 uppercase tracking-widest mb-1 truncate">
                 {data.path}
+              </div>
+            ) : null}
+            {data.truncated && data.truncation_reason ? (
+              <div className="mb-2 border border-status-warn/40 bg-status-warn/5 text-status-warn p-2 text-2xs font-mono">
+                {data.truncation_reason}
               </div>
             ) : null}
             <JsonView value={data.payload ?? {}} collapsed />

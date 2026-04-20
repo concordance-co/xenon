@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import importlib.util
 import inspect
 import json
@@ -17,7 +18,7 @@ from typing import Any, Mapping, Sequence
 from pipelines_v2.core.config import WorkspaceConfig, load_workspace_config
 from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
-from pipelines_v2.storage.artifacts import InlineOperationArtifact
+from pipelines_v2.storage.artifacts import InlineOperationArtifact, artifact_from_manifest
 from pipelines_v2.storage.composite import iter_catalogs_depth_first, preferred_workflow_metadata_catalog
 from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
 from pipelines_v2.api import (
@@ -34,12 +35,15 @@ from pipelines_v2.api import (
     NullCatalog,
     PostgresCatalog,
     PostgresSource,
+    ReportSpec,
     RunnerSpec,
+    StepRef,
     WorkflowOrchestrator,
     WorkflowResult,
     WorkflowSpec,
     WorkflowStep,
 )
+from pipelines_v2.workflow.records import WorkflowRunRecord
 
 _LOG = logging.getLogger("pipelines_v2.cli")
 
@@ -74,6 +78,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _workflow_plan(ns)
         if ns.workflow_command == "run":
             return _workflow_run(ns)
+        if ns.workflow_command == "report":
+            return _workflow_report(ns)
         if ns.workflow_command == "resume":
             return _workflow_resume(ns)
         if ns.workflow_command == "runs":
@@ -126,6 +132,7 @@ def _workflow_run(ns: argparse.Namespace) -> int:
     runners = _build_runners(ns, runner_specs)
     orchestrator = WorkflowOrchestrator(
         runners=runners,
+        workflow_catalog=_registry_catalog(ns, runner_specs=runner_specs),
         progress_sink=_build_workflow_progress_sink(ns, runners=runners),
     )
     result = orchestrator.run(
@@ -144,9 +151,10 @@ def _workflow_resume(ns: argparse.Namespace) -> int:
         dataset_fn_name=ns.dataset_fn,
         workflow_fn_name=ns.workflow_fn,
     )
-    local_catalog = _registry_catalog(ns, runner_specs=runner_specs)
-    run_id = ns.run_id or _select_latest_run_id(
-        local_catalog,
+    workflow_catalog, run_id = _resolve_workflow_metadata_catalog(
+        ns,
+        runner_specs=runner_specs,
+        run_id=ns.run_id,
         workflow=workflow,
         status="failed",
     )
@@ -155,10 +163,47 @@ def _workflow_resume(ns: argparse.Namespace) -> int:
     runners = _build_runners(ns, runner_specs)
     orchestrator = WorkflowOrchestrator(
         runners=runners,
+        workflow_catalog=workflow_catalog,
         progress_sink=_build_workflow_progress_sink(ns, runners=runners),
     )
     result = orchestrator.run(workflow, resume_run_id=run_id)
     print(json.dumps(_workflow_result_payload(workflow.name, result), indent=2, sort_keys=True))
+    return 0
+
+
+def _workflow_report(ns: argparse.Namespace) -> int:
+    catalog = _registry_catalog(ns)
+    run = catalog.load_workflow_run(ns.run_id)
+    if run is None:
+        raise RuntimeError(f"Unknown workflow run id: {ns.run_id}")
+    workflow = WorkflowSpec.from_dict(run.workflow_payload)
+    report_step = _resolve_report_step(workflow, step_name=ns.step)
+    report_spec = _build_report_spec_from_run(
+        run=run,
+        report_step=report_step,
+        workflow_catalog=catalog,
+        local_cache_root=Path(ns.local_cache_root).expanduser().resolve() if ns.local_cache_root else None,
+    )
+    runner = LocalRunner(
+        artifacts=_report_artifact_store_for_run(
+            run=run,
+            report_step=report_step,
+            workflow_catalog=catalog,
+            fallback_root=Path(ns.report_artifact_root),
+            local_cache_root=Path(ns.local_cache_root).expanduser().resolve() if ns.local_cache_root else None,
+        ),
+        catalog=NullCatalog(),
+    )
+    artifact = runner.run(report_spec)
+    payload = {
+        "run_id": run.run_id,
+        "step": report_step.name,
+        "artifact_id": artifact.id,
+        "artifact_kind": artifact.manifest().artifact_kind,
+        "location": _artifact_location_hint(artifact.manifest()),
+        "summary": artifact.summary(),
+    }
+    print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
 
 
@@ -211,14 +256,24 @@ def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) ->
         dataset_fn_name=ns.dataset_fn,
         workflow_fn_name=ns.workflow_fn,
     )
-    local_catalog = _registry_catalog(ns, runner_specs=runner_specs)
-    source_run_id = ns.run_id or _select_latest_run_id(local_catalog, workflow=workflow, status="completed")
+    workflow_catalog, source_run_id = _resolve_workflow_metadata_catalog(
+        ns,
+        runner_specs=runner_specs,
+        run_id=ns.run_id,
+        workflow=workflow,
+        status="completed",
+    )
     if source_run_id is None:
         raise RuntimeError("Could not resolve a completed workflow run id for rerun")
-    subworkflow = _workflow_slice_for_step(workflow, step_name=ns.step, include_downstream=include_downstream)
     runners = _build_runners(ns, runner_specs)
+    subworkflow = _workflow_slice_for_step(
+        workflow,
+        step_name=ns.step,
+        include_downstream=include_downstream,
+    )
     orchestrator = WorkflowOrchestrator(
         runners=runners,
+        workflow_catalog=workflow_catalog,
         progress_sink=_build_workflow_progress_sink(ns, runners=runners),
     )
     result = orchestrator.run(
@@ -570,7 +625,7 @@ def _attach_local_registry(runners: dict[str, object], local_catalog: FileCatalo
 
 
 def _select_latest_run_id(
-    catalog: FileCatalog,
+    catalog: Any,
     *,
     workflow: WorkflowSpec,
     status: str | None = None,
@@ -584,6 +639,36 @@ def _select_latest_run_id(
     if not records:
         return None
     return records[0].run_id
+
+
+def _resolve_workflow_metadata_catalog(
+    ns: argparse.Namespace,
+    *,
+    runner_specs: dict[str, RunnerSpec] | None,
+    run_id: str | None,
+    workflow: WorkflowSpec,
+    status: str | None,
+) -> tuple[Any, str | None]:
+    primary = _registry_catalog(ns, runner_specs=runner_specs)
+    fallback = _registry_catalog(ns)
+    primary_identity = primary.identity() if hasattr(primary, "identity") else None
+    fallback_identity = fallback.identity() if hasattr(fallback, "identity") else None
+
+    if run_id is not None:
+        if primary.load_workflow_run(run_id) is not None:
+            return primary, run_id
+        if fallback_identity != primary_identity and fallback.load_workflow_run(run_id) is not None:
+            return fallback, run_id
+        return primary, run_id
+
+    resolved = _select_latest_run_id(primary, workflow=workflow, status=status)
+    if resolved is not None:
+        return primary, resolved
+    if fallback_identity != primary_identity:
+        fallback_resolved = _select_latest_run_id(fallback, workflow=workflow, status=status)
+        if fallback_resolved is not None:
+            return fallback, fallback_resolved
+    return primary, None
 
 
 def _workflow_slice_for_step(
@@ -627,6 +712,129 @@ def _workflow_slice_for_step(
 
     steps = tuple(step for step in workflow.ordered_steps() if step.name in included)
     return WorkflowSpec(name=workflow.name, schema_version=workflow.schema_version, steps=steps)
+
+
+def _resolve_report_step(workflow: WorkflowSpec, *, step_name: str | None) -> WorkflowStep:
+    report_steps = [step for step in workflow.ordered_steps() if isinstance(step.spec, ReportSpec)]
+    if not report_steps:
+        raise RuntimeError("Workflow run does not contain any report steps")
+    if step_name is None:
+        if len(report_steps) == 1:
+            return report_steps[0]
+        names = [step.name for step in report_steps]
+        raise RuntimeError(f"Workflow run contains multiple report steps; choose one with --step: {names}")
+    for step in report_steps:
+        if step.name == step_name:
+            return step
+    raise RuntimeError(f"Workflow run does not contain report step {step_name!r}")
+
+
+def _build_report_spec_from_run(
+    *,
+    run: WorkflowRunRecord,
+    report_step: WorkflowStep,
+    workflow_catalog: Any,
+    local_cache_root: Path | None,
+) -> ReportSpec:
+    workflow = WorkflowSpec.from_dict(run.workflow_payload)
+    step_by_name = {step.name: step for step in workflow.steps}
+    source_step_records = {record.step_name: record for record in workflow_catalog.list_workflow_steps(run.run_id)}
+    resolved_inputs = tuple(
+        _resolve_report_input_from_source_run(
+            value,
+            source_step_records=source_step_records,
+            step_by_name=step_by_name,
+            workflow_catalog=workflow_catalog,
+            local_cache_root=local_cache_root,
+        )
+        for value in report_step.spec.inputs
+    )
+    return dataclasses.replace(report_step.spec, inputs=resolved_inputs)
+
+
+def _resolve_report_input_from_source_run(
+    value: Any,
+    *,
+    source_step_records: Mapping[str, Any],
+    step_by_name: Mapping[str, WorkflowStep],
+    workflow_catalog: Any,
+    local_cache_root: Path | None,
+) -> Any:
+    if not isinstance(value, StepRef):
+        return value
+    step = step_by_name.get(value.step)
+    if step is None:
+        raise RuntimeError(f"Report input step {value.step!r} is not present in the persisted workflow")
+    record = source_step_records.get(value.step)
+    if record is None or not record.artifact_id:
+        raise RuntimeError(f"Source run does not contain a completed artifact for report input step {value.step!r}")
+    manifest = workflow_catalog.load_artifact(record.artifact_id)
+    if manifest is None:
+        raise RuntimeError(f"Could not load artifact manifest {record.artifact_id!r} for report input step {value.step!r}")
+    store = _artifact_store_from_manifest(manifest, local_cache_root=local_cache_root)
+    return artifact_from_manifest(manifest, store=store)
+
+
+def _report_artifact_store_for_run(
+    *,
+    run: WorkflowRunRecord,
+    report_step: WorkflowStep,
+    workflow_catalog: Any,
+    fallback_root: Path,
+    local_cache_root: Path | None,
+) -> Any:
+    source_step_records = {record.step_name: record for record in workflow_catalog.list_workflow_steps(run.run_id)}
+    report_record = source_step_records.get(report_step.name)
+    if report_record is not None and report_record.artifact_id:
+        manifest = workflow_catalog.load_artifact(report_record.artifact_id)
+        if manifest is not None:
+            return _artifact_store_from_manifest(manifest, local_cache_root=local_cache_root)
+    return LocalArtifactStore(fallback_root)
+
+
+def _artifact_store_from_manifest(manifest: Any, *, local_cache_root: Path | None) -> Any:
+    ref = _first_storage_ref(manifest.storage_refs)
+    if ref is None:
+        raise RuntimeError(f"Artifact {manifest.artifact_id!r} has no storage refs to infer a store from")
+    store_kind = str(ref.get("store") or "").strip()
+    path = ref.get("path")
+    if not path:
+        raise RuntimeError(f"Artifact {manifest.artifact_id!r} storage ref is missing a path")
+    root = _infer_artifact_root(path, manifest.artifact_id)
+    if store_kind == "modal_volume":
+        name = ref.get("name")
+        if not name:
+            raise RuntimeError(f"Artifact {manifest.artifact_id!r} Modal ref is missing a volume name")
+        return ModalVolumeStore(name=str(name), root=str(root), local_cache_root=local_cache_root)
+    if store_kind in {"local", "local_path"}:
+        return LocalArtifactStore(root=root)
+    raise RuntimeError(f"Unsupported artifact store kind for report regeneration: {store_kind!r}")
+
+
+def _first_storage_ref(value: Any) -> Mapping[str, Any] | None:
+    if isinstance(value, Mapping):
+        if "store" in value and "path" in value:
+            return value
+        for child in value.values():
+            found = _first_storage_ref(child)
+            if found is not None:
+                return found
+    return None
+
+
+def _infer_artifact_root(path: str | Path, artifact_id: str) -> Path:
+    resolved = Path(path)
+    parts = resolved.parts
+    try:
+        index = parts.index(artifact_id)
+    except ValueError:
+        return resolved.parent
+    if index == 0:
+        return resolved.parent
+    root = Path(parts[0])
+    for part in parts[1:index]:
+        root /= part
+    return root
 
 
 def _forced_steps_for_rerun(
@@ -876,6 +1084,37 @@ def _build_parser() -> argparse.ArgumentParser:
         "--latest-failed",
         action="store_true",
         help="Resume the latest failed run for the current workflow file.",
+    )
+
+    report = workflow_subparsers.add_parser(
+        "report",
+        help="Regenerate a local report directly from an existing workflow run.",
+    )
+    report.add_argument("run_id", help="Workflow run id whose report step should be regenerated.")
+    report.add_argument(
+        "--step",
+        default=None,
+        help="Optional report step name. Required only when the run has multiple report steps.",
+    )
+    report.add_argument(
+        "--report-artifact-root",
+        default="tmp/pipelines_v2_cli_local_reports",
+        help="Fallback local artifact root when the source run has no prior local report artifact to infer from.",
+    )
+    report.add_argument(
+        "--local-cache-root",
+        default=None,
+        help="Optional local cache root for downloading remote artifact refs (for example, Modal volume results).",
+    )
+    report.add_argument(
+        "--catalog-postgres-env",
+        default=None,
+        help="Optional env var name for a Postgres-backed catalog. Falls back to xenon.toml when omitted.",
+    )
+    report.add_argument(
+        "--local-catalog-root",
+        default=None,
+        help="Optional local workflow state root; falls back to xenon.toml or ~/.xenon/pipelines_v2/catalog.",
     )
 
     runs = workflow_subparsers.add_parser("runs", help="List locally tracked workflow runs.")
