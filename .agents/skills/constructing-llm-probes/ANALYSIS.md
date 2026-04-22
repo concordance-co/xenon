@@ -1,5 +1,25 @@
 # Representation Analysis Techniques
 
+## Readout is not mechanism by itself
+
+A strong probe or PCA separation supports a representational claim:
+
+- the information is present and decodable
+
+It does **not** by itself establish:
+
+- where the computation first formed
+- whether the site is causally important
+- whether the same layer is the best place to intervene
+
+For mechanistic workflows, treat representation analysis as one part of a broader chain:
+
+1. behavioral sanity
+2. probe readout
+3. span / position localization
+4. causal intervention
+5. mechanism follow-up
+
 ## PCA on activations
 
 Visualize how representations are organized by projecting to 2D/3D:

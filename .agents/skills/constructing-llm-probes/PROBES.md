@@ -1,5 +1,16 @@
 # Probe Types, Training, and Evaluation
 
+## Start with the split you actually need
+
+Before fitting a probe, decide whether the evaluation should be:
+
+- cross-validation on one pooled dataset
+- explicit train/test split
+- lexical-family holdout
+- action/domain holdout
+
+If the benchmark already encodes a meaningful split, prefer using it directly instead of defaulting to CV. Otherwise you may overstate abstraction.
+
 ## Probe selection guide
 
 | Probe | When to use | Interpretability | Capacity |
@@ -133,6 +144,26 @@ df = pd.DataFrame(results)
 
 ## Evaluation and baselines
 
+### Binary metrics beyond accuracy
+
+For binary probes, accuracy alone is often not enough.
+
+- **Balanced accuracy**: useful when classes are imbalanced or when you want one thresholded operating point
+- **AUROC**: useful when you care about score separability across all thresholds
+- **AUPRC**: useful when the positive class is rare
+
+Interpretation:
+
+- high AUROC + imperfect balanced accuracy often means the representation is strong but the threshold is imperfect
+- low AUROC means the classes are not cleanly separated by the probe score
+
+If available, also report:
+
+- `TPR@FPR=5%`
+- `TPR@FPR=10%`
+
+These are especially useful when the downstream use case is monitoring rather than raw classification.
+
 ### Mandatory baselines
 
 1. **Majority class**: always predict the most common label
@@ -160,7 +191,26 @@ print(f"Selectivity: {selectivity:.4f}")
 - High-dimensional activations + small datasets = overfitting. Use regularization (C parameter in LogisticRegression, alpha in Ridge)
 - More probe parameters != better. The probe should be a *diagnostic tool*, not a powerful model
 - Cross-validate. Don't report single train/test split results
+- If the benchmark uses an explicit split, do not replace it with CV unless you are very clear that you are changing the claim
 - Consider **MDL probes** (minimum description length) as an alternative to accuracy — they measure how compressible the labels are given the representations
+
+## Span-local probes
+
+For many relational tasks, probing only the last token is too coarse.
+
+Useful alternatives:
+
+- pooled activation over a named span
+- probe at a claim span
+- probe at a rule / evidence span
+- probe at post-comparison context
+
+This is especially valuable when you want to distinguish:
+
+- lexical identity
+- null sites
+- comparison-result sites
+- late consolidated readout
 
 ## Saving and loading probes
 

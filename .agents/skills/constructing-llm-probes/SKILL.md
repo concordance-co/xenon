@@ -7,14 +7,30 @@ description: Constructs linear and nonlinear probes for LLM interpretability in 
 
 Build probes that test what information is linearly (or nonlinearly) encoded in LLM hidden states. This covers the full pipeline: activation extraction, probe design, training, evaluation, and visualization.
 
+## Before you probe
+
+`Behavioral sanity comes first.`
+
+Before treating probe results as meaningful, verify that the underlying task is behaviorally sane:
+
+- inspect real prompt examples from each class
+- run the base model on a small slice
+- verify outputs are parseable
+- verify the model is actually solving the intended task
+- inspect failures manually
+
+If the task is malformed, ambiguous, or role-format dependent, probe results may reflect prompt artifacts rather than the target variable.
+
 ## Approach
 
 1. **Identify the hypothesis**: what information do you believe the model encodes? (e.g., syntax, position, sentiment, factual knowledge)
 2. **Design the labeling function**: map each token position to a ground-truth label
-3. **Extract activations**: run inference with `output_hidden_states=True`, collect per-layer hidden states
-4. **Train probes**: fit a linear (or nonlinear) model from activations to labels
-5. **Evaluate**: compare probe accuracy against baselines, sweep across layers
-6. **Analyze**: PCA/SAE on activations, logit lens, intervention experiments
+3. **Choose the split scheme**: lexical holdout, domain holdout, action holdout, or explicit train/test split that matches the claim
+4. **Extract activations**: run inference with `output_hidden_states=True`, collect per-layer hidden states
+5. **Train probes**: fit a linear (or nonlinear) model from activations to labels
+6. **Evaluate**: compare probe metrics against baselines, sweep across layers
+7. **Localize**: compare positions / spans instead of only the last token when the variable is relational
+8. **Analyze**: PCA/SAE on activations, logit lens, intervention experiments
 
 For details on each step, see the reference files:
 - [EXTRACTION.md](EXTRACTION.md) — hidden state extraction patterns (batched, memory-efficient, multi-model)
@@ -82,7 +98,11 @@ print(f"Accuracy: {accuracy_score(y_test, probe.predict(X_test)):.4f}")
 - **Always compare against baselines**: random labels, majority class, shuffled controls
 - **Selectivity**: real accuracy minus control accuracy; this isolates what the *model* encodes vs what the *probe* memorizes
 - **Sweep layers**: plot probe performance per layer to find where information emerges, peaks, and decays
-- **Report R² for regression, accuracy + F1 for classification**
+- **Use explicit train/test splits when the benchmark already defines them** — especially for lexical holdout or action holdout claims
+- **For binary probes, report AUROC in addition to thresholded accuracy** — AUROC captures separability even when a single threshold is imperfect
+- **For relational tasks, compare multiple spans or positions** — a strong last-token probe does not tell you where the signal first appears
+- **Do not equate best readout layer with best intervention layer** — later layers may be easiest to decode while earlier layers are better causal sites
+- **Report R² for regression, accuracy + F1 for classification, and AUROC / AUPRC for binary tasks when possible**
 - **Mind the dataset size**: linear probes in high-dimensional spaces can overfit; use cross-validation or held-out test sets
 
 ## Dependencies
