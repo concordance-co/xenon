@@ -3,6 +3,19 @@ name: benchmark-mech-interp
 description: Use when evaluating a benchmark as a substrate for mechanistic interpretability discovery, building a benchmark-specific mech interp spec, or mapping benchmark labels to candidate latent features, methods, confound checks, and first experiments.
 ---
 
+> ARCHIVAL NOTE
+>
+> This skill has been superseded by the phase-based benchmark-flow skills:
+> - [benchmark-validation](../benchmark-validation/SKILL.md)
+> - [benchmark-to-latent-labels](../benchmark-to-latent-labels/SKILL.md)
+> - [latent-label-data-augmentation](../latent-label-data-augmentation/SKILL.md)
+> - [benchmark-mech-interp-analysis](../benchmark-mech-interp-analysis/SKILL.md)
+> - [mechanistic-interventions](../mechanistic-interventions/SKILL.md)
+>
+> Keep this file as an archival/reference artifact while the new flow settles.
+> Benchmark-specific worked examples should move into benchmark sidecars such as:
+> - [morebench-context.md](../../../docs/mech-interp/morebench-context.md)
+
 # Benchmark Mech Interp
 
 Use this skill when the task is not “review a mech interp paper,” but rather:

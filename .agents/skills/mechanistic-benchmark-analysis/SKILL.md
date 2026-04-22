@@ -3,6 +3,14 @@ name: mechanistic-benchmark-analysis
 description: Use when planning or reviewing a full mechanistic benchmark workflow: behavioral sanity checks, probe analysis, span localization, causal patching, attention follow-up, and interpretation. Especially useful for turning an initial benchmark idea into a credible mechanistic result without skipping necessary controls.
 ---
 
+> ARCHIVAL NOTE
+>
+> This skill's cross-cutting methodology has been promoted into:
+> - [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
+> - [benchmark-mech-interp-analysis](../benchmark-mech-interp-analysis/SKILL.md)
+>
+> Keep this file as an archival/reference artifact while the new phase-based flow settles.
+
 # Mechanistic Benchmark Analysis
 
 Use this skill when the user wants to:

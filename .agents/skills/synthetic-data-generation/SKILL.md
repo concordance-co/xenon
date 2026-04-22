@@ -1,6 +1,6 @@
 ---
 name: synthetic-data-generation
-description: Use when creating or repairing synthetic datasets, prompts, or evaluation benchmarks for behavioral experiments, probing, causal patching, or mechanistic interpretability. Especially useful for designing relational benchmarks, lexical controls, split schemes, prompt role placement, and agent/task logic so the resulting data is behaviorally sane and experimentally valid.
+description: Use when designing or repairing benchmark and prompt data so later experiments are behaviorally sane and experimentally valid. Especially useful for lexical controls, split schemes, matched pairs, prompt role placement, relational task design, and preserving the real decision bottleneck.
 ---
 
 # Synthetic Data Generation
@@ -183,84 +183,19 @@ Better pattern:
 
 - family-specific environment contracts
 
-### 2.3 Use the pipelines workflow path deliberately
+### 2.3 Repo-specific workflow operations live elsewhere
 
-When the benchmark is meant to run through the repo's workflow infra, keep the layers distinct:
+If the task turns into:
 
-- source dataset table: the synthetic rows you generated
-- published workflow relation: the workflow-facing dataset relation/view
-- capture runtime metadata: infra bookkeeping about activation artifacts and responses
+- workflow file design
+- workflow execution
+- runtime bookkeeping
+- run triage
 
-Do not confuse these.
+use the repo-operational skills instead:
 
-Operational guidance:
-
-- keep the checked-in phase workflow snapshot current
-- register it in Neon for canonical runtime use
-- for quick smoke tests, prefer CLI overrides on the existing spec instead of inventing new spec files
-- remember that Modal capture writes activations to the remote volume; local `--output-dir` is mostly bookkeeping in the workflow run config
-- capture/inference parameters are persisted in `workflow_runs.config_json`, so inspect that when behavior does not match the expected run settings
-
-### 2.4 Behavior-validating smoke tests need model outputs, not just activations
-
-For prompt-confusion-style benchmarks, an activation-only smoke test is not enough.
-
-You need to inspect:
-
-- the prompt
-- the captured activations
-- the model's generated answer
-
-Otherwise you can only validate infra, not benchmark behavior.
-
-Rule:
-
-- if the purpose of the smoke test is behavioral sanity, persist generated outputs alongside capture metadata
-
-Practical implication:
-
-- prompt-side activation capture and response generation can be separated within the same worker run
-- do not assume a prefill-only activation path gives you enough information to audit model behavior
-- generated model outputs should live in a phase/spec-scoped outputs table, not in generic activation-bookkeeping tables
-
-### 2.4.1 Smoke-run CLI guidance
-
-For quick smoke tests on an existing workflow spec:
-
-- prefer runtime CLI overrides such as layer subsets, max model length, or generation toggles
-- do not create extra workflow spec files unless the workflow contract itself has changed
-
-Examples of good smoke-only overrides:
-
-- `--layers 8,24,40`
-- `--max-model-len 8192`
-- `--capture-generation`
-- `--capture-reasoning` or `--no-capture-reasoning`
-
-### 2.5 Make runtime bookkeeping tables forward-compatible
-
-Infra tables such as capture metadata often outlive a single benchmark.
-
-Bad pattern:
-
-- assuming `CREATE TABLE IF NOT EXISTS` is enough when the table may already exist with an older schema
-
-Better pattern:
-
-- additive migrations such as `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
-
-This matters because runtime schema drift can fail a smoke test even when the dataset and workflow relation are correct.
-
-### 2.6 Keep runtime tables separated by responsibility
-
-Use separate storage surfaces for:
-
-- synthetic source rows
-- published workflow relations
-- activation bookkeeping metadata
-- behavior outputs from smoke or capture runs
-
-Do not collapse these into one table just because it is convenient during debugging.
+- [constructing-workflows](../constructing-workflows/SKILL.md)
+- [pipelines-v2-run-ops](../pipelines-v2-run-ops/SKILL.md)
 
 ### 2.2 Operationalize the same latent variable differently by family
 

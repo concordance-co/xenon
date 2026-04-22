@@ -15,6 +15,17 @@ Use this skill when the user wants to:
 
 This skill is about **causal evaluation design**, not just how to run a patch operator.
 
+It owns:
+
+- patch operator choice
+- layer-by-layer execution strategy
+- concrete patching controls in execution
+- flip-rate and malformed-output interpretation
+
+Upstream intervention framing, donor-target pair design, and success criteria should be set in:
+
+- [mechanistic-interventions](../mechanistic-interventions/SKILL.md)
+
 ## Core rule
 
 `A readable signal is not automatically a writable signal.`

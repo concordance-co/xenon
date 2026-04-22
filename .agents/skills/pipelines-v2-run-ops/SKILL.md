@@ -113,6 +113,17 @@ Do not rebuild the whole workflow for that.
   - compiled mode and batched capture are allowed
   - if generation is enabled, capture and generation should share the same step so vLLM only runs one request pass
 
+When behavior-validating smoke tests are the goal:
+
+- inspect generated outputs, not just activations
+- prefer CLI overrides on the existing workflow spec rather than inventing new workflow files
+- keep runtime storage surfaces separated:
+  - source dataset rows
+  - published workflow relations
+  - capture metadata
+  - generated behavior outputs
+- if runtime tables evolve, prefer additive migrations over assuming `CREATE TABLE IF NOT EXISTS` is enough
+
 ## Failure Triage
 
 When a run fails:
