@@ -164,6 +164,14 @@ Commit the label spec before activation work.
 
 This is the wall against post-hoc relabeling.
 
+If some labels are still honestly blocked:
+
+- freeze the usable subset anyway
+- mark blocked labels explicitly in the frozen label set
+- record the blocker and the next phase that must resolve it
+
+Do not silently skip the freeze because one label family still needs augmentation or generations.
+
 ### 12. Produce the gap list
 
 Explicitly note what the benchmark still cannot support without augmentation.
@@ -182,6 +190,8 @@ At minimum, leave behind:
   target-vs-nuisance concerns and planned controls
 - `docs/mech-interp/benchmarks/<benchmark>/01-frozen-label-set.csv` or `.parquet`
   row-level first-pass labels with version/freeze metadata
+  - partial frozen label sets are allowed when some labels are still blocked
+  - blocked labels must carry explicit status / blocker metadata, not disappear from the artifact
 - `docs/mech-interp/benchmarks/<benchmark>/01-gap-list.md`
   what must be repaired or augmented before deeper work
 - `docs/mech-interp/benchmarks/<benchmark>/01-latent-label-summary.json`
@@ -206,6 +216,17 @@ Someone reviewing this phase should be able to see:
 - what the refined labels are
 - why they were chosen
 - what remains missing
+
+## Phase Done Criteria
+
+This phase is done when:
+
+- required inputs are recorded explicitly
+- the canonical label spec, labeling-functions doc, confound audit, gap list, and summary exist
+- a real frozen label set exists at the canonical path
+- if the frozen label set is partial, each blocked label family has explicit status and blocker metadata
+- response-side labels are not frozen as if they were direct prompt-side labels when generations are still missing
+- the benchmark sidecar is updated with the refined ontology, key confounds, and the current gap list
 
 ## References
 

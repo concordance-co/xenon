@@ -1,0 +1,60 @@
+{
+  "benchmark_name": "MoReBench",
+  "artifact_freeze_date": "2026-04-22",
+  "source_urls": {
+    "morebench_public": "https://huggingface.co/datasets/morebench/morebench/resolve/main/morebench_public.csv",
+    "morebench_theory": "https://huggingface.co/datasets/morebench/morebench/resolve/main/morebench_theory.csv"
+  },
+  "scope": "Claims here are grounded in direct inspection of the morebench_public and morebench_theory CSVs downloaded from Hugging Face.",
+  "public_split": {
+    "row_count": 500,
+    "fields": [
+      "DILEMMA",
+      "DILEMMA_SOURCE",
+      "DILEMMA_TYPE",
+      "THEORY",
+      "RUBRIC",
+      "ROLE_DOMAIN",
+      "CONTEXT"
+    ],
+    "rubric_dimension_counts": {
+      "identifying": 4370,
+      "logical process": 2801,
+      "helpful outcome": 1791,
+      "clear process": 1584,
+      "harmless outcome": 881,
+      "other": 23
+    }
+  },
+  "theory_split": {
+    "row_count": 150,
+    "fields": [
+      "DILEMMA",
+      "DILEMMA_SOURCE",
+      "DILEMMA_TYPE",
+      "THEORY",
+      "RUBRIC",
+      "ROLE_DOMAIN",
+      "CONTEXT"
+    ],
+    "rubric_dimension_counts": {
+      "identifying": 1326,
+      "logical process": 1051,
+      "clear process": 765,
+      "helpful outcome": 468,
+      "harmless outcome": 224,
+      "other": 1
+    }
+  },
+  "initial_readiness_judgment": {
+    "status": "ready_with_restrictions",
+    "ready_now": [
+      "benchmark-to-latent-label extraction",
+      "behavioral smoke setup on a stratified prompt slice"
+    ],
+    "not_ready_yet": [
+      "advisor-vs-agent mechanistic claims on the public split without augmentation",
+      "theory-conditioned mechanistic claims without prompt exposure confirmation or augmentation"
+    ]
+  }
+}

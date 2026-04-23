@@ -1,0 +1,26 @@
+[
+  {
+    "priority": 1,
+    "track": "theory_identity",
+    "action": "use the materialized theory prompts, wording variants, and neutral controls for the theory track",
+    "reason": "This is now the cleanest prompt-side comparison family available."
+  },
+  {
+    "priority": 2,
+    "track": "action_locus",
+    "action": "expand the repaired 10-pair coherent-role rewrite batch toward a broader 30-pair source-balanced set",
+    "reason": "The zero-cell failure remains the highest-severity unrepaired prompt-side issue, but only coherent role rewrites should be scaled."
+  },
+  {
+    "priority": 3,
+    "track": "prompt_confounds",
+    "action": "materialize structure, length, and person-grammar controls",
+    "reason": "Needed so phase 02 does not merely move confounds around."
+  },
+  {
+    "priority": 4,
+    "track": "response_side_labels",
+    "action": "run fresh generations on the augmented prompt families",
+    "reason": "Response-side labels remain blocked until generation data exists."
+  }
+]

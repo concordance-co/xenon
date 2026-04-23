@@ -1,0 +1,779 @@
+{
+  "target_label": "action_locus",
+  "scope": "morebench_public",
+  "summary": {
+    "total_rows": 500,
+    "source_cells_with_both_roles": 0,
+    "source_type_cells_with_both_roles": 0,
+    "source_type_context_cells_with_both_roles": 0
+  },
+  "source_role_cells": [
+    {
+      "source": "ai_risk_dilemmas",
+      "role_counts": {
+        "ai_agent": 200
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "role_counts": {
+        "ai_advisor": 200
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_collab",
+      "role_counts": {
+        "ai_agent": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "role_counts": {
+        "ai_advisor": 51
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "role_counts": {
+        "ai_advisor": 30
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "role_counts": {
+        "ai_advisor": 12
+      },
+      "has_both_roles": false
+    }
+  ],
+  "source_type_role_cells": [
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "role_counts": {
+        "ai_agent": 100
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "role_counts": {
+        "ai_agent": 100
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "role_counts": {
+        "ai_advisor": 100
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "role_counts": {
+        "ai_advisor": 100
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_collab",
+      "dilemma_type": "expert_case",
+      "role_counts": {
+        "ai_agent": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "role_counts": {
+        "ai_advisor": 51
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "role_counts": {
+        "ai_advisor": 30
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "dilemma_type": "expert_case",
+      "role_counts": {
+        "ai_advisor": 12
+      },
+      "has_both_roles": false
+    }
+  ],
+  "source_type_context_role_cells": [
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Animal & Environment",
+      "role_counts": {
+        "ai_agent": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Bioethics & Healthcare",
+      "role_counts": {
+        "ai_agent": 10
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_agent": 14
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Education",
+      "role_counts": {
+        "ai_agent": 11
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Entertainment",
+      "role_counts": {
+        "ai_agent": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Organization",
+      "role_counts": {
+        "ai_agent": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Others",
+      "role_counts": {
+        "ai_agent": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Science & Techonology",
+      "role_counts": {
+        "ai_agent": 39
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Transport",
+      "role_counts": {
+        "ai_agent": 4
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Animal & Environment",
+      "role_counts": {
+        "ai_agent": 11
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Bioethics & Healthcare",
+      "role_counts": {
+        "ai_agent": 17
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_agent": 8
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Education",
+      "role_counts": {
+        "ai_agent": 6
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Entertainment",
+      "role_counts": {
+        "ai_agent": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Organization",
+      "role_counts": {
+        "ai_agent": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Science & Techonology",
+      "role_counts": {
+        "ai_agent": 39
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "ai_risk_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Transport",
+      "role_counts": {
+        "ai_agent": 10
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Animal & Environment",
+      "role_counts": {
+        "ai_advisor": 8
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Bioethics & Healthcare",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_advisor": 16
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Education",
+      "role_counts": {
+        "ai_advisor": 4
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Interpersonal relationship",
+      "role_counts": {
+        "ai_advisor": 26
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Media & Journalism",
+      "role_counts": {
+        "ai_advisor": 3
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Others",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Professional Ethics",
+      "role_counts": {
+        "ai_advisor": 10
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Religion",
+      "role_counts": {
+        "ai_advisor": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Right & Duty & Justice",
+      "role_counts": {
+        "ai_advisor": 20
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Science & Techonology",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "long_case",
+      "context": "Sports",
+      "role_counts": {
+        "ai_advisor": 3
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Animal & Environment",
+      "role_counts": {
+        "ai_advisor": 3
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_advisor": 13
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Education",
+      "role_counts": {
+        "ai_advisor": 7
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Interpersonal relationship",
+      "role_counts": {
+        "ai_advisor": 37
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Media & Journalism",
+      "role_counts": {
+        "ai_advisor": 3
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Professional Ethics",
+      "role_counts": {
+        "ai_advisor": 8
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Religion",
+      "role_counts": {
+        "ai_advisor": 5
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Right & Duty & Justice",
+      "role_counts": {
+        "ai_advisor": 18
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Science & Techonology",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "daily_dilemmas",
+      "dilemma_type": "short_case",
+      "context": "Sports",
+      "role_counts": {
+        "ai_advisor": 5
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_collab",
+      "dilemma_type": "expert_case",
+      "context": "Bioethics & Healthcare",
+      "role_counts": {
+        "ai_agent": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_collab",
+      "dilemma_type": "expert_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_agent": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_collab",
+      "dilemma_type": "expert_case",
+      "context": "Education",
+      "role_counts": {
+        "ai_agent": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_collab",
+      "dilemma_type": "expert_case",
+      "context": "Others",
+      "role_counts": {
+        "ai_agent": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_collab",
+      "dilemma_type": "expert_case",
+      "context": "Right & Duty & Justice",
+      "role_counts": {
+        "ai_agent": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Animal & Environment",
+      "role_counts": {
+        "ai_advisor": 6
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Art & Culture",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Bioethics & Healthcare",
+      "role_counts": {
+        "ai_advisor": 13
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Education",
+      "role_counts": {
+        "ai_advisor": 4
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Interpersonal relationship",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Media & Journalism",
+      "role_counts": {
+        "ai_advisor": 4
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Others",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Professional Ethics",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Right & Duty & Justice",
+      "role_counts": {
+        "ai_advisor": 5
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Science & Techonology",
+      "role_counts": {
+        "ai_advisor": 8
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_bowl",
+      "dilemma_type": "expert_case",
+      "context": "Sports",
+      "role_counts": {
+        "ai_advisor": 3
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Animal & Environment",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Art & Culture",
+      "role_counts": {
+        "ai_advisor": 4
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Bioethics & Healthcare",
+      "role_counts": {
+        "ai_advisor": 5
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_advisor": 3
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Education",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Interpersonal relationship",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Media & Journalism",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Professional Ethics",
+      "role_counts": {
+        "ai_advisor": 5
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Science & Techonology",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_ethic_unwrapped",
+      "dilemma_type": "expert_case",
+      "context": "Sports",
+      "role_counts": {
+        "ai_advisor": 4
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "dilemma_type": "expert_case",
+      "context": "Business & Workplace",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "dilemma_type": "expert_case",
+      "context": "Interpersonal relationship",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "dilemma_type": "expert_case",
+      "context": "Media & Journalism",
+      "role_counts": {
+        "ai_advisor": 1
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "dilemma_type": "expert_case",
+      "context": "Organization",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "dilemma_type": "expert_case",
+      "context": "Others",
+      "role_counts": {
+        "ai_advisor": 2
+      },
+      "has_both_roles": false
+    },
+    {
+      "source": "expert_written_literature",
+      "dilemma_type": "expert_case",
+      "context": "Professional Ethics",
+      "role_counts": {
+        "ai_advisor": 4
+      },
+      "has_both_roles": false
+    }
+  ],
+  "judgment": {
+    "status": "not_probeable_without_augmentation",
+    "reason": "Post-stratification usable N is effectively nonexistent. Under source control there are zero cells containing both advisor and agent examples, and that remains true after adding type or context controls."
+  },
+  "recommended_fix": [
+    "Create matched advisor/agent rewrites within the same source family.",
+    "Use augmentation rather than regularization to repair the design.",
+    "Do not treat current public ROLE_DOMAIN as a standalone probe target."
+  ]
+}

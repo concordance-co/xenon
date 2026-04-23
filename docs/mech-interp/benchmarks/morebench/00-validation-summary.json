@@ -1,0 +1,12 @@
+{
+  "benchmark": "morebench",
+  "phase": "00",
+  "status": "proceed_to_benchmark_to_latent_labels",
+  "public_row_count": 500,
+  "theory_row_count": 150,
+  "top_findings": [
+    "action_locus not probeable on current public split",
+    "theory structurally promising but not automatically prompt-side",
+    "dense rubric structure supports richer mechanistic questions"
+  ]
+}

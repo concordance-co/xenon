@@ -1,0 +1,18 @@
+[
+  {
+    "experiment": "behavioral smoke on stratified public slice",
+    "purpose": "Verify parseability and task sanity before probing response-side labels."
+  },
+  {
+    "experiment": "prompt-side readout for stakeholder_tradeoff_density",
+    "purpose": "Test the cleanest benchmark-native prompt-side distinction."
+  },
+  {
+    "experiment": "generation-time labeling pilot for tradeoff_engagement and commitment_style",
+    "purpose": "Create the first usable response-side labels from fresh generations."
+  },
+  {
+    "experiment": "separate helpfulness_invoked and harm_avoidance_invoked labels on the same responses",
+    "purpose": "Test separability directly rather than baking it into one balance scalar."
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "variable": "DILEMMA_SOURCE",
+    "reason": "strong source/template aliasing with role, style, and domain"
+  },
+  {
+    "variable": "DILEMMA_TYPE",
+    "reason": "co-moves with source and changes prompt structure"
+  },
+  {
+    "variable": "prompt length",
+    "reason": "substantial variation in dilemma length across case families"
+  },
+  {
+    "variable": "CONTEXT",
+    "reason": "topic/domain concentration differs sharply by source"
+  },
+  {
+    "variable": "lexical template family",
+    "reason": "prompt wording may leak source identity"
+  },
+  {
+    "variable": "theory metadata when not exposed to the prompt",
+    "reason": "evaluator-side field, not automatically model-side input"
+  }
+]

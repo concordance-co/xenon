@@ -1,0 +1,19 @@
+{
+  "unique_theory_dilemmas": 30,
+  "group_size_distribution": {
+    "5": 30
+  },
+  "all_groups_are_five_way_theory_sets": true,
+  "exact_dilemma_overlap_with_public": {
+    "overlap_count": 18,
+    "theory_unique_count": 30
+  },
+  "judgment": {
+    "status": "caution_now_but_good_augmentation_candidate",
+    "reason": "The theory split is cleanly paired at the evaluator level, but the repeated rows share the same DILEMMA text. Treat theory as a high-priority augmentation target rather than a current prompt-side variable unless the runtime prompt injects THEORY."
+  },
+  "augmentation_priority": {
+    "priority": "high",
+    "reason": "Creating matched prompt sets that expose theory cleanly is likely one of the cheapest and highest-value augmentation steps available."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "target_label": "theory_identity",
+  "status": "materialized_starter_batch",
+  "why_now": "The existing theory split already supplies clean five-way matched dilemma sets. The repair move is to make theory explicit in prompt text while preserving the underlying dilemma content.",
+  "dataset_budget": {
+    "matched_groups": 30,
+    "theory_variants_per_group": 5,
+    "direct_prompt_count": 150,
+    "wording_variant_count": 150,
+    "neutral_control_count": 30
+  },
+  "required_controls": [
+    "neutral wrapper control with identical prompt skeleton minus the theory clause",
+    "same-label wording variants per theory",
+    "held-out dilemma groups across source families where possible"
+  ],
+  "framework_anchor_rule": "Each theory prompt must include one framework-specific anchor sentence beyond the theory name.",
+  "success_condition": "Theory is explicitly present in the prompt and can be studied as a prompt-side variable with matched dilemma content and structurally matched controls."
+}

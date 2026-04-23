@@ -1,0 +1,77 @@
+---
+benchmark: morebench
+phase: 02
+version: v1
+frozen_date: 2026-04-22
+input_artifacts:
+  - docs/mech-interp/benchmarks/morebench/01-gap-list.md
+  - projects/MECH_INTERP/morebench/phase_02/outputs/action_locus_rewrite_pairs.jsonl
+---
+
+# MoReBench 02 Gap List Resolution
+
+## Gap To Repair Mapping
+
+- `theory_identity` not clean prompt-side -> partially resolved with explicit theory exposure, framework anchors, wording variants, and matched neutral controls
+- `action_locus` not probeable -> partially resolved with a 10-pair matched rewrite starter batch
+- response-side labels need fresh generations -> unresolved in this phase; next step remains generation capture
+- `stakeholder_tradeoff_density` needs gold validation -> unresolved in this phase; remains a phase 03 gate item
+
+## Materialized Data Snapshot
+
+{
+  "benchmark": "morebench",
+  "phase": "02",
+  "status": "partial_repair_materialized",
+  "phase_status": "partial_repair_materialized",
+  "behavioral_smoke_status": "not_run",
+  "datasets": [
+    {
+      "name": "theory_prompt_augmentation_examples",
+      "path": "projects/MECH_INTERP/morebench/phase_02/outputs/theory_prompt_augmentation_examples.jsonl",
+      "row_count": 150,
+      "rows_with_all_placeholders_substituted": 150,
+      "controls_structurally_matched_to_target": null,
+      "known_bugs": [],
+      "purpose": "make theory explicit with framework-specific anchors"
+    },
+    {
+      "name": "theory_control_augmentation_examples",
+      "path": "projects/MECH_INTERP/morebench/phase_02/outputs/theory_control_augmentation_examples.jsonl",
+      "row_count": 30,
+      "rows_with_all_placeholders_substituted": 30,
+      "controls_structurally_matched_to_target": 30,
+      "known_bugs": [],
+      "purpose": "provide structurally matched neutral controls for theory studies"
+    },
+    {
+      "name": "theory_wording_variant_examples",
+      "path": "projects/MECH_INTERP/morebench/phase_02/outputs/theory_wording_variant_examples.jsonl",
+      "row_count": 150,
+      "rows_with_all_placeholders_substituted": 150,
+      "controls_structurally_matched_to_target": 150,
+      "known_bugs": [],
+      "purpose": "same-label wording variants per theory"
+    },
+    {
+      "name": "action_locus_rewrite_pairs",
+      "path": "projects/MECH_INTERP/morebench/phase_02/outputs/action_locus_rewrite_pairs.jsonl",
+      "row_count": 10,
+      "rows_with_all_placeholders_substituted": 10,
+      "controls_structurally_matched_to_target": 10,
+      "known_bugs": [],
+      "purpose": "starter matched advisor/agent rewrite batch built only from coherent agent-owned scenarios"
+    }
+  ],
+  "residual_repairs_needed": [
+    "expanded advisor/agent rewrite dataset",
+    "structure-normalized prompt variants",
+    "length-matched controls",
+    "person-grammar controls",
+    "fresh generation dataset for response-side labels",
+    "behavioral smoke on augmented prompt slice"
+  ],
+  "behavioral_smoke_summary": null,
+  "behavioral_smoke_artifact": null,
+  "generation_protocol_artifact": "docs/mech-interp/benchmarks/morebench/02-generation-protocol.md"
+}

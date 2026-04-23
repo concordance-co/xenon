@@ -21,8 +21,10 @@ Canonical shared rules live in:
   `500` rows in `morebench_public/test`
 - Theory config exposed in dataset card:
   `morebench_theory`
+- Theory split size reviewed:
+  `150` rows forming `30` unique dilemmas x `5` theory labels
 - Scope convention:
-  unless otherwise noted, structural claims here refer to the `500` reviewed rows of `morebench_public/test`
+  unless otherwise noted, structural claims here refer to the reviewed public and theory CSVs as loaded from the HF dataset on `2026-04-22`
 
 ## 2. Why It Matters
 
@@ -66,21 +68,24 @@ Public rubric dimensions observed:
 Important note:
 
 - the interesting supervision is mostly inside the stringified `RUBRIC` field
+- rubric criteria are weighted and signed
+- negative weights are present and are concentrated in `harmless outcome`
 
 ## 4. Refined Latent Label View
 
 ### Prompt-side candidates
 
-- `role_framing`
-  advisor-like vs agent-like setup
-- `subject_of_action`
-  AI system, human actor, institutional actor
-- `person_grammar`
-  first / second / third person framing
-- `information_stance`
-  facts stipulated vs facts uncertain
-- `stakes_framing`
-  life-safety / welfare / relational / institutional / mixed
+- `action_locus`
+  advisor-like vs agent-like setup, derived from `ROLE_DOMAIN` plus prompt text
+  currently not probeable on the public split without augmentation
+- `dilemma_structure`
+  long-case / short-case / expert-case framing, primarily a nuisance or auxiliary label
+- `stakeholder_tradeoff_density`
+  how many distinct stakeholder or consequence clusters are explicitly live in the prompt
+- `domain_topic`
+  broad scenario domain, primarily nuisance
+- `theory_identity`
+  high-priority augmentation target rather than a current clean prompt-side label
 - `source_template`
   kept as nuisance variable
 - `length_bucket`
@@ -88,12 +93,12 @@ Important note:
 
 ### Response-side candidates
 
-- `considerations_represented`
-- `uncertainty_markers_present`
-- `commitment_transition`
+- `tradeoff_engagement`
+- `commitment_style`
 - `refuses_or_hedges`
-- `harm_avoidance_invoked`
 - `helpfulness_invoked`
+- `harm_avoidance_invoked`
+- `uncertainty_and_scope_calibration`
 
 ### Validation-only or caution labels
 
@@ -113,31 +118,45 @@ Important note:
 Most important current confounds:
 
 - `DILEMMA_SOURCE` is heavily aliased with role and topic
-- `ai_agent` rows are largely tied to `ai_risk_dilemmas`
+- `DILEMMA_SOURCE` is also heavily aliased with `DILEMMA_TYPE`
+- `ai_agent` rows are almost entirely tied to `ai_risk_dilemmas`, with only `7` public `expert_written_collab` exceptions
 - source also predicts topic mix and writing style
 - rubric titles, especially `Identifying`, are often case-specific grader instructions
 - prompt length and type vary by source
+- theory is not automatically a prompt-side variable just because a `THEORY` field exists
 
 Observed public-split pattern from review:
 
 - `daily_dilemmas` were all `ai_advisor`
 - `ai_risk_dilemmas` were all `ai_agent`
+- `expert_written_ethic_bowl`, `expert_written_ethic_unwrapped`, and `expert_written_literature` were all `ai_advisor`
+- `expert_written_collab` contributed the only public `expert_case` agent rows
 
 This means advisor-vs-agent is interesting, but currently high-confound.
+More strongly: it is effectively not probeable on the current public split without augmentation, because the number of source-controlled usable mixed-role cells is zero.
 
 ## 5.1 Benchmark-Specific Gotchas
 
 - The public viewer path is under `morebench/morebench`, but practical loading may differ depending on tooling or mirrors; always verify the actual load path used in code.
 - Dataset docs and actual field values may differ in naming conventions; verify the concrete values in the loaded split before building labelers.
 - Treat viewer descriptions and README summaries as suggestive, not authoritative, until checked against the actual rows.
+- The theory split is structurally paired at the evaluator level: `30` unique dilemma texts appear under all `5` theory labels.
+- But those repeated theory rows share the same `DILEMMA` text, so theory should not be treated as prompt-side signal unless the actual runtime prompt explicitly injects the `THEORY` field.
+- This still looks like one of the easiest and highest-value augmentation opportunities: build matched prompts that expose theory explicitly while preserving the paired dilemma structure.
+- Phase 02 now materializes a first repair slice for this:
+  `150` direct theory-exposed prompt variants, `150` same-label wording variants, `30` structurally matched neutral controls, and a `10`-pair action-locus rewrite starter batch under the MoReBench phase 02 outputs.
+- `CONTEXT` is partially missing in the theory split.
 
 ## 6. Behavioral Sanity Notes
 
 What has been checked so far:
 
 - schema inspection
+- direct CSV inspection for `morebench_public` and `morebench_theory`
 - public row review
 - rubric distribution review
+- exact source/role/type cross-tab review
+- theory pairing review
 - high-level label-pattern analysis
 
 What has not yet been completed:
@@ -156,11 +175,11 @@ It is useful as a caution against forcing binary philosophical axes too early wh
 ## 7. Strong Candidate Feature Hypotheses
 
 - `helpful vs harmless`
-  likely the strongest first-pass objective-orientation contrast
+  likely the strongest first-pass objective-orientation contrast, but best treated as two separable labels before any combined relation label
 - `advisor vs agent`
-  plausible control-state distinction, but needs confound care
-- `dilemma representation vs recommendation selection`
-  likely a generation-trace distinction rather than a prompt-side label
+  plausible control-state distinction, but blocked on augmentation in the current public split
+- `multi-consideration representation`
+  strongest benchmark-native prompt/generation bridge
 - `tradeoff-engaged vs single-axis collapse`
   good response-side deliberative-process target
 
@@ -193,7 +212,7 @@ For follow-up:
 ## 9. Methods Or Hypotheses To Be Careful About
 
 - theory overlay claims from `morebench_theory`
-  currently likely underpaired and confounded
+  paired at the evaluator level, but still not automatically prompt-side
 - obligation-vs-prohibition taxonomy
   conceptually interesting, but likely low-yield without dedicated annotation
 - direct probing of raw `Identifying`
@@ -204,7 +223,8 @@ For follow-up:
 - response generations under the intended model/protocol
 - matched or rewritten advisor/agent contrasts
 - source-balanced or template-balanced slices
-- clearer paired theory variants if theory is a priority
+- structure-normalized, length-matched, and person-grammar control variants
+- behavioral smoke on the augmented prompt slice
 - possible counterbalanced rewrites for prompt-side structure labels
 
 ## 11. Open Questions

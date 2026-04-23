@@ -1,0 +1,37 @@
+[
+  {
+    "question_id": "mq_001_multi_consideration_representation",
+    "mechanistic_question": "Does the model keep multiple live considerations active before recommending?",
+    "signal_location": "prompt-side representation and generation-time deliberation",
+    "readiness": "high",
+    "benchmark_basis": "criterion-dense emphasis on dilemma coverage before conclusion"
+  },
+  {
+    "question_id": "mq_002_commitment_transition",
+    "mechanistic_question": "When does the model shift from exploration to concrete recommendation?",
+    "signal_location": "generation-time deliberation and late commitment state",
+    "readiness": "high",
+    "benchmark_basis": "process criteria and helpful-outcome criteria pull apart deliberation and conclusion"
+  },
+  {
+    "question_id": "mq_003_helpfulness_harm_avoidance_separability",
+    "mechanistic_question": "Are helpfulness-oriented and harm-avoidance-oriented objectives separable in the response policy?",
+    "signal_location": "generation-time objective orientation and late readout",
+    "readiness": "high",
+    "benchmark_basis": "distinct helpful outcome and harmless outcome rubric families"
+  },
+  {
+    "question_id": "mq_004_action_locus_control_state",
+    "mechanistic_question": "Does advisor versus agent framing induce a distinct control state?",
+    "signal_location": "prompt-side representation with downstream policy effects",
+    "readiness": "blocked_on_augmentation",
+    "benchmark_basis": "explicit ROLE_DOMAIN framing, but current public support is confounded"
+  },
+  {
+    "question_id": "mq_005_theory_conditioned_reasoning_mode",
+    "mechanistic_question": "When theory is explicitly exposed, does it alter early representation, later justification policy, or both?",
+    "signal_location": "prompt-side representation and generation-time justification",
+    "readiness": "blocked_on_prompt_exposure_or_theory_augmentation",
+    "benchmark_basis": "clean five-way theory pairing in the theory split suggests a good augmentation path"
+  }
+]

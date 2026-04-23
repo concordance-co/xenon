@@ -1,0 +1,28 @@
+{
+  "benchmark": "morebench",
+  "phase": "01",
+  "status": "proceed_to_latent_label_data_augmentation",
+  "prompt_side_labels": [
+    "action_locus",
+    "stakeholder_tradeoff_density",
+    "dilemma_structure",
+    "domain_topic",
+    "theory_identity"
+  ],
+  "response_side_labels": [
+    "tradeoff_engagement",
+    "commitment_style",
+    "refuses_or_hedges",
+    "helpfulness_invoked",
+    "harm_avoidance_invoked",
+    "uncertainty_and_scope_calibration"
+  ],
+  "freeze_status": "partial",
+  "blocked_items": [
+    "operational thresholds and labeler rules for response-side labels",
+    "gold-slice validation for stakeholder_tradeoff_density",
+    "clean action_locus target set",
+    "clean theory_identity target set"
+  ],
+  "next_action": "augmentation"
+}

@@ -51,6 +51,12 @@ In particular:
 
 If the task is not behaviorally sane for the target model, stop and repair it first.
 
+The preferred canonical input artifact for this gate is:
+
+- `docs/mech-interp/benchmarks/<benchmark>/02-behavioral-smoke-report.md`
+
+If an equivalent artifact is used instead, name it explicitly and explain why.
+
 ## What this skill owns
 
 ### 1. Feature hypotheses from latent labels

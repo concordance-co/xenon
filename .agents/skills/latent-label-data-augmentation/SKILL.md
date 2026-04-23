@@ -84,6 +84,17 @@ If the downstream question is causal, try to create:
 - same-label controls
 - cross-label contrasts with nuisance dimensions held fixed
 
+Matched pairs and controls must preserve everything except the target variable.
+
+`Preserve` means at the level of:
+
+- scenario content
+- stakes
+- action alternatives
+- prompt skeleton when the repair is a wrapper or framing control
+
+A prefix-only rewrite is not a pair.
+
 ### 3. Generate model responses when labels are response-side
 
 If the label lives in:
@@ -123,6 +134,20 @@ If possible, construct data that lets these be:
 - held out
 - explicitly contrasted
 
+## Output hygiene rules
+
+Materialized artifacts in `outputs/` must be fully instantiated.
+
+Do not place literal placeholder tokens such as:
+
+- `<FRAMEWORK>`
+- `<THEORY>`
+- `<LABEL>`
+
+inside materialized JSON, JSONL, CSV, or parquet outputs.
+
+If templates with holes are useful, store them under `specs/` or `specs/templates/`.
+
 ## Required outputs
 
 Produce:
@@ -133,6 +158,11 @@ Produce:
 - expected confounds reduced
 - residual confounds
 - mapping back to the original gap list
+- current phase status:
+  - `scaffold_only`
+  - `partial_repair_materialized`
+  - `repair_complete_for_track`
+  - `phase_complete`
 
 ## Required artifacts
 
@@ -146,11 +176,17 @@ At minimum, leave behind:
   where rewritten, paired, generated, or counterbalanced data now lives
 - `docs/mech-interp/benchmarks/<benchmark>/02-augmentation-report.md`
   what was changed, what improved, and what residual confounds remain
+- `docs/mech-interp/benchmarks/<benchmark>/02-behavioral-smoke-report.md`
+  small-slice behavioral sanity check on the augmented data before phase 03
+
+If a phase materializes prompts or responses, also leave behind:
+
+- `docs/mech-interp/benchmarks/<benchmark>/02-generation-protocol.md`
+  prompt / rewrite / generation rules used for the materialized data
 
 If new rows or slices were created, also leave behind:
 
 - dataset location(s)
-- generation protocol details if responses were generated
 - pairing or rewrite rules used
 
 Use simple frontmatter on markdown artifacts:
@@ -166,6 +202,26 @@ Someone inspecting this phase should be able to answer:
 - what defect in the original benchmark was being repaired
 - what data was added or changed
 - whether the repair actually reduced the intended confound
+
+The augmented-data manifest should make quality visible, not just existence.
+At minimum, each materialized dataset entry should record:
+
+- `row_count`
+- `rows_with_all_placeholders_substituted`
+- `controls_structurally_matched_to_target` when applicable
+- `known_bugs`
+
+If a confound-repair matrix marks a track as `ready_now`, the phase should either materialize that track or explicitly downgrade it with a reason.
+
+## Phase Done Criteria
+
+This phase is done when:
+
+- all `ready_now` repair tracks are materialized or explicitly downgraded with a reason
+- materialized `outputs/` contain no unsubstituted placeholders
+- matched pairs and controls satisfy the structural-match rule for the intended target variable
+- a behavioral smoke report exists on a small augmented slice and is non-empty
+- the manifest, augmentation report, and benchmark sidecar state the true phase status and residual confounds honestly
 
 ## References
 
