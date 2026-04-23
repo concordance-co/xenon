@@ -134,17 +134,17 @@ Use the shared principles doc for:
 
 At minimum, leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/04-intervention-plan.md`
+- `projects/<BENCHMARK_PROJECT>/phase_04/docs/04-intervention-plan.md`
   the main human-readable intervention plan, including:
   - intervention target behavior
   - success metrics
   - interpretation caveats
   - likely next mechanism-focused analyses
-- `docs/mech-interp/benchmarks/<benchmark>/04-site-hypothesis.md`
+- `projects/<BENCHMARK_PROJECT>/phase_04/docs/04-site-hypothesis.md`
   why these intervention sites are plausible
-- `docs/mech-interp/benchmarks/<benchmark>/04-pairing-and-controls.md`
+- `projects/<BENCHMARK_PROJECT>/phase_04/docs/04-pairing-and-controls.md`
   donor-target design, same-label controls, and failure criteria
-- `docs/mech-interp/benchmarks/<benchmark>/04-intervention-summary.json`
+- `projects/<BENCHMARK_PROJECT>/phase_04/docs/04-intervention-summary.json`
   compact structured summary of intervention target, sites, controls, and next actions
 
 Use simple frontmatter on markdown artifacts:

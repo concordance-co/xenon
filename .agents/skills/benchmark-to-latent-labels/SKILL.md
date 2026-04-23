@@ -180,27 +180,27 @@ Explicitly note what the benchmark still cannot support without augmentation.
 
 At minimum, leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/01-latent-label-spec.md`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-latent-label-spec.md`
   canonical human-readable spec for the benchmark's refined ontology
-- `docs/mech-interp/benchmarks/<benchmark>/01-label-inventory.csv` or `.parquet`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-label-inventory.csv` or `.parquet`
   native labels, their types, and latent-usefulness ratings
-- `docs/mech-interp/benchmarks/<benchmark>/01-labeling-functions.md`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-labeling-functions.md`
   extracted mechanistic questions, surviving labels, and how each is assigned and validated
-- `docs/mech-interp/benchmarks/<benchmark>/01-confound-audit.md`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-confound-audit.md`
   target-vs-nuisance concerns and planned controls
-- `docs/mech-interp/benchmarks/<benchmark>/01-frozen-label-set.csv` or `.parquet`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-frozen-label-set.csv` or `.parquet`
   row-level first-pass labels with version/freeze metadata
   - partial frozen label sets are allowed when some labels are still blocked
   - blocked labels must carry explicit status / blocker metadata, not disappear from the artifact
-- `docs/mech-interp/benchmarks/<benchmark>/01-gap-list.md`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-gap-list.md`
   what must be repaired or augmented before deeper work
-- `docs/mech-interp/benchmarks/<benchmark>/01-latent-label-summary.json`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-latent-label-summary.json`
   compact structured summary of the refined ontology, labels, and next action
 
 Optional but useful:
 
-- `docs/mech-interp/benchmarks/<benchmark>/01-derivability-report.md`
-- `docs/mech-interp/benchmarks/<benchmark>/01-baseline-report.md`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-derivability-report.md`
+- `projects/<BENCHMARK_PROJECT>/phase_01/docs/01-baseline-report.md`
 
 Use simple frontmatter on markdown artifacts:
 

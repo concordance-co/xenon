@@ -53,7 +53,7 @@ If the task is not behaviorally sane for the target model, stop and repair it fi
 
 The preferred canonical input artifact for this gate is:
 
-- `docs/mech-interp/benchmarks/<benchmark>/02-behavioral-smoke-report.md`
+- `projects/<BENCHMARK_PROJECT>/phase_02/docs/02-behavioral-smoke-report.md`
 
 If an equivalent artifact is used instead, name it explicitly and explain why.
 
@@ -224,43 +224,43 @@ Use `constructing-llm-probes` for probe implementation details.
 
 At minimum, leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/03-analysis-plan.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-analysis-plan.md`
   the main human-readable analysis plan, including:
   - methodology choices by label family
   - evidence ladder
   - behavioral-sanity gate status
   - expected artifacts
   - key risks
-- `docs/mech-interp/benchmarks/<benchmark>/03-feature-hypotheses.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-feature-hypotheses.md`
   label-family -> candidate representation/control-state hypotheses
-- `docs/mech-interp/benchmarks/<benchmark>/03-experiment-specs.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-experiment-specs.md`
   2-5 concrete first experiments with method, split, and success criteria
-- `docs/mech-interp/benchmarks/<benchmark>/03-controls-and-splits.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-controls-and-splits.md`
   the control plan carried into actual experiments
-- `docs/mech-interp/benchmarks/<benchmark>/03-analysis-summary.json`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-analysis-summary.json`
   compact structured summary of chosen label families, methods, and next steps
-- `docs/mech-interp/benchmarks/<benchmark>/03-result-triage-log.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-result-triage-log.md`
   one entry per executed experiment, including verdict and routing
 
 Also leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/03-execution-targets.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-execution-targets.md`
   execution-facing model and inference config artifact, including:
   - primary execution model
   - any secondary comparison models if planned
   - which model currently satisfies the behavioral gate
   - exact inference config and system prompt
-- `docs/mech-interp/benchmarks/<benchmark>/03-phase-04-entry-criteria.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-phase-04-entry-criteria.md`
   explicit gate for promotion from phase 03 readout/localization work to phase 04 causal follow-up
 
 If any phase-03 experiment depends on response-side labels from fresh generations, also leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/03-response-label-pilot.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-response-label-pilot.md`
   generation -> annotate -> validate -> freeze plan for the response-side labels
 
 If a label family is blocked on gold-slice validation, leave behind a concrete prerequisite artifact such as:
 
-- `docs/mech-interp/benchmarks/<benchmark>/03-<label>-gold-slice-spec.md`
+- `projects/<BENCHMARK_PROJECT>/phase_03/docs/03-<label>-gold-slice-spec.md`
   including sample size, labeler identity or procedure, and the validation threshold required before probing
 
 Use simple frontmatter on markdown artifacts:

@@ -59,13 +59,13 @@ state.
 The pulled `origin/main` additions are directly useful. Most important files:
 
 - `docs/mech-interp/benchmark-to-latent-labels.md`
-- `docs/mech-interp/benchmarks/morebench/01-latent-label-spec.md`
-- `docs/mech-interp/benchmarks/morebench/01-confound-audit.md`
-- `docs/mech-interp/benchmarks/morebench/02-augmentation-report.md`
-- `projects/MECH_INTERP/morebench/phase_02/outputs/theory_prompt_augmentation_examples.jsonl`
-- `projects/MECH_INTERP/morebench/phase_02/outputs/theory_control_augmentation_examples.jsonl`
-- `projects/MECH_INTERP/morebench/phase_02/outputs/theory_wording_variant_examples.jsonl`
-- `projects/MECH_INTERP/morebench/phase_02/outputs/action_locus_rewrite_pairs.jsonl`
+- `projects/MOREBENCH/phase_01/docs/01-latent-label-spec.md`
+- `projects/MOREBENCH/phase_01/docs/01-confound-audit.md`
+- `projects/MOREBENCH/phase_02/docs/02-augmentation-report.md`
+- `projects/MOREBENCH/phase_02/outputs/theory_prompt_augmentation_examples.jsonl`
+- `projects/MOREBENCH/phase_02/outputs/theory_control_augmentation_examples.jsonl`
+- `projects/MOREBENCH/phase_02/outputs/theory_wording_variant_examples.jsonl`
+- `projects/MOREBENCH/phase_02/outputs/action_locus_rewrite_pairs.jsonl`
 
 Those changes support the same conclusion as the run: do not treat native rubric
 dimensions as final mech-interp labels. Translate benchmark labels into latent

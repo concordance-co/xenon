@@ -131,7 +131,7 @@ If the confounds are severe, note whether they look repairable or fundamental.
 
 At minimum, leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/00-validation-memo.md`
+- `projects/<BENCHMARK_PROJECT>/phase_00/docs/00-validation-memo.md`
   the human-readable decision memo with:
   - benchmark identity and links
   - access / usability status
@@ -143,9 +143,9 @@ At minimum, leave behind:
     - proceed to `benchmark-to-latent-labels`
     - proceed only with augmentation
     - defer / reject
-- `docs/mech-interp/benchmarks/<benchmark>/00-validation-summary.json`
+- `projects/<BENCHMARK_PROJECT>/phase_00/docs/00-validation-summary.json`
   compact structured summary of the memo
-- `docs/mech-interp/benchmarks/<benchmark>/00-validation-notes.md`
+- `projects/<BENCHMARK_PROJECT>/phase_00/docs/00-validation-notes.md`
   optional working notes, edge cases, and unresolved concerns
 
 Use simple frontmatter on markdown artifacts:

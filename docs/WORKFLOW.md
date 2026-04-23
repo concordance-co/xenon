@@ -86,12 +86,14 @@ Operational notes:
 The executable source of truth is the checked-in Python workflow file:
 
 ```text
+projects/<project>/<phase>/specs/workflow.py
 projects/<project>/<subproject>/<phase>/specs/workflow.py
 ```
 
 Optional checked-in snapshots can live alongside it:
 
 ```text
+projects/<project>/<phase>/specs/workflow.json
 projects/<project>/<subproject>/<phase>/specs/workflow.json
 ```
 

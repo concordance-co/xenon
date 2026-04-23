@@ -1,0 +1,84 @@
+{
+  "benchmark": "morebench",
+  "phase": "03",
+  "status": "partial_execution_complete",
+  "execution_readiness": {
+    "overall": "execution_blocked_on_response_label_freeze",
+    "prompt_side": "alias_only_diagnostic_family_materialized_but_prompt_side_retry_gate_still_closed",
+    "response_side": "execution_blocked_on_response_label_freeze",
+    "multi_model_policy": "new execution models must record exact config in 03-execution-targets.md and satisfy the same labelability gate before response-side probing"
+  },
+  "behavioral_gate": {
+    "artifact": "projects/MOREBENCH/phase_02/docs/02-behavioral-smoke-report.md",
+    "status": "substantive_labelability_pass_on_gate_model",
+    "gate_model": "/models/Qwen/Qwen3-30B-A3B",
+    "follow_up_required": "apply the same content-inspection standard to any newly added execution model before response-side probing"
+  },
+  "priority_label_families": [
+    "theory_conditioned_generation_persistence",
+    "tradeoff_engagement",
+    "commitment_style",
+    "helpfulness_invoked",
+    "harm_avoidance_invoked"
+  ],
+  "secondary_label_families": [
+    "theory_identity",
+    "stakeholder_tradeoff_density",
+    "action_locus"
+  ],
+  "first_methods": {
+    "theory_identity": [
+      "linear probe",
+      "difference-in-means direction",
+      "held-out alias-bank transfer",
+      "prompt-side localization sweep",
+      "strongest held-out text-baseline comparison"
+    ],
+    "theory_conditioned_generation_persistence": [
+      "paired-generation comparison",
+      "generation-time probe",
+      "generated-text baseline comparison",
+      "same-dilemma prime-swap analysis"
+    ],
+    "tradeoff_engagement": [
+      "response-label pilot",
+      "generation-time probe",
+      "position-window comparison"
+    ],
+    "commitment_style": [
+      "response-label pilot",
+      "generation-time probe",
+      "late-window transition analysis"
+    ],
+    "helpfulness_invoked": [
+      "response-label pilot",
+      "separate response-side probe",
+      "residualized comparison vs harm_avoidance_invoked"
+    ],
+    "harm_avoidance_invoked": [
+      "response-label pilot",
+      "separate response-side probe",
+      "residualized comparison vs helpfulness_invoked"
+    ],
+    "stakeholder_tradeoff_density": [
+      "gold-slice validation",
+      "prompt-side probe"
+    ]
+  },
+  "claim_ceiling_now": {
+    "target": "localized_representational",
+    "not_yet_target": [
+      "causal",
+      "mechanistic"
+    ]
+  },
+  "biggest_risks": [
+    "prompt-side theory_identity remains a diagnostic-only track until an alias family beats the stronger held-out text baselines",
+    "generation-time theory work could still collapse into explicit theory-copying unless generated-text controls are enforced",
+    "response-side experiments require a generate-annotate-validate-freeze gate",
+    "stakeholder_tradeoff_density still needs gold-slice validation",
+    "action_locus remains only partially repaired",
+    "some prompt confound families are still unmaterialized"
+  ],
+  "next_step": "continue the alias-only prompt-side diagnostic loop while using description-only as the theory-priming family for the shared response-side generation and freeze workflow"
+}

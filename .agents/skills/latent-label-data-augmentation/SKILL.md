@@ -224,20 +224,20 @@ Produce:
 
 At minimum, leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/02-augmentation-plan.md`
+- `projects/<BENCHMARK_PROJECT>/phase_02/docs/02-augmentation-plan.md`
   what is being repaired and why
-- `docs/mech-interp/benchmarks/<benchmark>/02-gap-list-resolution.md`
+- `projects/<BENCHMARK_PROJECT>/phase_02/docs/02-gap-list-resolution.md`
   direct mapping from each gap-list item to the chosen repair move
-- `docs/mech-interp/benchmarks/<benchmark>/02-augmented-data-manifest.json`
+- `projects/<BENCHMARK_PROJECT>/phase_02/docs/02-augmented-data-manifest.json`
   where rewritten, paired, generated, or counterbalanced data now lives
-- `docs/mech-interp/benchmarks/<benchmark>/02-augmentation-report.md`
+- `projects/<BENCHMARK_PROJECT>/phase_02/docs/02-augmentation-report.md`
   what was changed, what improved, and what residual confounds remain
-- `docs/mech-interp/benchmarks/<benchmark>/02-behavioral-smoke-report.md`
+- `projects/<BENCHMARK_PROJECT>/phase_02/docs/02-behavioral-smoke-report.md`
   small-slice behavioral sanity check on the augmented data before phase 03
 
 If a phase materializes prompts or responses, also leave behind:
 
-- `docs/mech-interp/benchmarks/<benchmark>/02-generation-protocol.md`
+- `projects/<BENCHMARK_PROJECT>/phase_02/docs/02-generation-protocol.md`
   prompt / rewrite / generation rules used for the materialized data
 
 If new rows or slices were created, also leave behind:

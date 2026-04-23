@@ -16,9 +16,16 @@ def build_runner_specs() -> dict[str, RunnerSpec]: ...  # optional but recommend
 Typical checked-in locations:
 
 ```text
+projects/<project>/<phase>/specs/workflow.py
+projects/<project>/<phase>/specs/workflow.json
 projects/<project>/<subproject>/<phase>/specs/workflow.py
 projects/<project>/<subproject>/<phase>/specs/workflow.json
 ```
+
+Both layouts are valid:
+
+- use `projects/<project>/<phase>/...` when the phase is part of the main project flow
+- use `projects/<project>/<subproject>/<phase>/...` when the phase belongs to a true nested subproject
 
 Where:
 

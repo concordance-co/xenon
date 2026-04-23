@@ -6,7 +6,7 @@
 Canonical shared rules live in:
 - [mech-interp-principles.md](/Users/trentelmore/Projects/concordance/xenon/docs/mech-interp/mech-interp-principles.md)
 
-Use this template for benchmark-specific sidecars such as `morebench-context.md`.
+Use this template for benchmark-specific sidecars such as `projects/MOREBENCH/benchmark_context.md`.
 
 ## Purpose
 

@@ -14,7 +14,7 @@ description: Use when evaluating a benchmark as a substrate for mechanistic inte
 >
 > Keep this file as an archival/reference artifact while the new flow settles.
 > Benchmark-specific worked examples should move into benchmark sidecars such as:
-> - [morebench-context.md](../../../docs/mech-interp/morebench-context.md)
+> - [benchmark_context.md](../../../projects/MOREBENCH/benchmark_context.md)
 
 # Benchmark Mech Interp
 
