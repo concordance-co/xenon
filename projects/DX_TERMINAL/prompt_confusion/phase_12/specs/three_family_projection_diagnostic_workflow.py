@@ -10,7 +10,6 @@ import numpy as np
 from pipelines_v2.api import (
     LocalArtifactStore,
     LocalRunnerSpec,
-    NullCatalog,
     ReportSpec,
     StepRef,
     TransformBuilder,
@@ -20,6 +19,7 @@ from pipelines_v2.api import (
     WorkflowStep,
 )
 from pipelines_v2.operations.execution.common import feature_matrices, ordered_values
+from projects.DX_TERMINAL.prompt_confusion.catalogs import build_prompt_confusion_catalog
 
 from projects.DX_TERMINAL.prompt_confusion.phase_12.specs.three_family_geometry_workflow import (
     CAPTURED_LAYERS,
@@ -282,7 +282,7 @@ def build_runner_specs_for_workflow() -> dict[str, object]:
     runners = _build_base_runner_specs()
     runners["report_local"] = LocalRunnerSpec(
         artifacts=LocalArtifactStore(Path("artifacts") / "prompt_confusion_three_family_projection_diagnostic"),
-        catalog=NullCatalog(),
+        catalog=build_prompt_confusion_catalog(__file__),
     )
     return runners
 
