@@ -52,3 +52,43 @@ uv run python -m pipelines_v2.cli workflow run --file projects/DX_TERMINAL/promp
 uv run python -m pipelines_v2.cli workflow runs --file projects/DX_TERMINAL/prompt_confusion/phase_09/specs/workflow.py
 uv run python -m pipelines_v2.cli workflow show --run-id wr_...
 ```
+
+## Operator Notes
+
+Path handling for the newer DX Terminal scripts is centralized in:
+
+- `projects/DX_TERMINAL/prompt_confusion/paths.py`
+- `projects/DX_TERMINAL/prompt_confusion/neon.py`
+
+Use those helpers instead of hardcoding:
+
+- repo-local `projects/DX_TERMINAL/...` paths
+- `~/.xenon/pipelines_v2/catalog`
+- `~/.xenon/pipelines_v2/cache`
+
+The real complaint export now has a repeatable uploader at:
+
+- `projects/DX_TERMINAL/prompt_confusion/phase_12/scripts/upload_complaint_dataset_to_neon.py`
+
+Default Neon destination table:
+
+- `dx_terminal_complaint_dataset_enriched_v1`
+
+Current status:
+
+- the complaint export has been uploaded to Neon with `1090` rows
+
+Typical upload command:
+
+```bash
+uv run python projects/DX_TERMINAL/prompt_confusion/phase_12/scripts/upload_complaint_dataset_to_neon.py \
+  --input /tmp/complaint_dataset_enriched.parquet \
+  --dest-table dx_terminal_complaint_dataset_enriched_v1 \
+  --mode modal
+```
+
+Notes:
+
+- `--mode local` expects `XENON_NEON_DATABASE_URL` in the local environment
+- `--mode modal` uses the Modal secret `xenon-neon`
+- the uploader will create or replace the destination table unless `--if-exists append` is passed
