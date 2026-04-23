@@ -28,11 +28,16 @@ input_artifacts:
 
 ## Behavioral Smoke
 
-- not yet run
+- provisional smoke model: `/models/Qwen/Qwen3-30B-A3B`
+- sampled prompts: `20`
+- nonempty response rate: `1.0`
+- recommendation-present rate: `1.0`
+- manual review pass rate: `1.0`
+- smoke decision: `pass`
 
 ## Residual Confounds
 
 - the action_locus repair is still only a starter batch, not a full source-balanced rewrite set
 - structure, length, and person-grammar controls are still unmaterialized
 - response-side labels still require fresh generations under the intended protocol
-- no behavioral smoke run has been completed on the augmented slice
+- the smoke run used a provisional model/protocol and produced only a caution result, so this slice is not yet ready to green-light phase 03 on behavior grounds

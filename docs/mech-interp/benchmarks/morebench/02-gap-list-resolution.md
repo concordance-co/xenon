@@ -24,7 +24,7 @@ input_artifacts:
   "phase": "02",
   "status": "partial_repair_materialized",
   "phase_status": "partial_repair_materialized",
-  "behavioral_smoke_status": "not_run",
+  "behavioral_smoke_status": "completed",
   "datasets": [
     {
       "name": "theory_prompt_augmentation_examples",
@@ -68,10 +68,21 @@ input_artifacts:
     "structure-normalized prompt variants",
     "length-matched controls",
     "person-grammar controls",
-    "fresh generation dataset for response-side labels",
-    "behavioral smoke on augmented prompt slice"
+    "fresh generation dataset for response-side labels"
   ],
-  "behavioral_smoke_summary": null,
-  "behavioral_smoke_artifact": null,
+  "behavioral_smoke_summary": {
+    "decision": "pass",
+    "family_counts": {
+      "action_locus_rewrite": 5,
+      "neutral_control": 5,
+      "theory_direct": 5,
+      "theory_wording_variant": 5
+    },
+    "manual_pass_rate": 1.0,
+    "nonempty_rate": 1.0,
+    "recommendation_present_rate": 1.0,
+    "sample_count": 20
+  },
+  "behavioral_smoke_artifact": "docs/mech-interp/benchmarks/morebench/02-behavioral-smoke-report.md",
   "generation_protocol_artifact": "docs/mech-interp/benchmarks/morebench/02-generation-protocol.md"
 }

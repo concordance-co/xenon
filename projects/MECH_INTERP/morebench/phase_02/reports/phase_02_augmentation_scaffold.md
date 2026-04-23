@@ -16,8 +16,8 @@ It remains a partial repair phase, but the materialized slice is now usable:
 - action-locus has a repaired starter batch, not a complete repair
 - structure, length, and person-grammar controls are still pending
 - fresh generations are still pending
-- behavioral smoke is still pending
 
+- behavioral smoke completed on `20` prompts with manual pass rate `1.0`
 
 ## Current Repair Matrix
 

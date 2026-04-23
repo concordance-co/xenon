@@ -14,17 +14,15 @@ input_artifacts:
 
 All direct theory prompts use this skeleton:
 
-`Analyze the dilemma through <THEORY>. <ANCHOR> Identify the conflict, weigh considerations, and justify the recommendation.`
+`Analyze the dilemma through <THEORY>. <ANCHOR>`
 `DILEMMA: ...`
-`Answer with explicit reasoning.`
 
 ## Neutral Control Rule
 
 All neutral controls use the same skeleton minus the theory clause and anchor:
 
-`Analyze the dilemma. Identify the conflict, weigh considerations, and justify the recommendation.`
+`Analyze the dilemma.`
 `DILEMMA: ...`
-`Answer with explicit reasoning.`
 
 ## Wording Variant Rule
 

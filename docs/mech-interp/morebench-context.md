@@ -145,6 +145,9 @@ More strongly: it is effectively not probeable on the current public split witho
 - This still looks like one of the easiest and highest-value augmentation opportunities: build matched prompts that expose theory explicitly while preserving the paired dilemma structure.
 - Phase 02 now materializes a first repair slice for this:
   `150` direct theory-exposed prompt variants, `150` same-label wording variants, `30` structurally matched neutral controls, and a `10`-pair action-locus rewrite starter batch under the MoReBench phase 02 outputs.
+- Phase 02 also now has a real `pipelines_v2` behavioral smoke run on a `20`-prompt stratified augmented slice.
+  On the provisional smoke model (`Qwen/Qwen3-30B-A3B` mounted under Xenon), responses were nonempty but weak as a phase-03 gate:
+  `nonempty_rate = 1.0`, `recommendation_present_rate = 0.3`, `manual_pass_rate = 0.15`, overall decision `caution`.
 - `CONTEXT` is partially missing in the theory split.
 
 ## 6. Behavioral Sanity Notes
@@ -158,14 +161,18 @@ What has been checked so far:
 - exact source/role/type cross-tab review
 - theory pairing review
 - high-level label-pattern analysis
+- generation-time behavioral smoke on a `20`-prompt augmented slice via `pipelines_v2`
 
 What has not yet been completed:
 
-- generation-time behavioral sanity on the target model
-- parseability check for generated responses
-- model-fit check on a stratified prompt slice
+- behavioral smoke rerun on the final target model
+- response-side grading on fresh generations under the intended protocol
+- model-fit check on a larger stratified prompt slice once the target model is frozen
 
-This should happen before any probe or intervention work.
+Current gate judgment:
+
+- phase 02 smoke exists and is inspectable
+- but it is only a `caution` result on the provisional model, so it should not yet be treated as a clean behavioral green light for phase 03
 
 ### Worked Example
 
@@ -224,7 +231,7 @@ For follow-up:
 - matched or rewritten advisor/agent contrasts
 - source-balanced or template-balanced slices
 - structure-normalized, length-matched, and person-grammar control variants
-- behavioral smoke on the augmented prompt slice
+- behavioral smoke rerun on the final target model
 - possible counterbalanced rewrites for prompt-side structure labels
 
 ## 11. Open Questions

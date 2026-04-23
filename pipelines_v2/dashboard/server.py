@@ -1317,8 +1317,24 @@ def _report_artifact_ids_by_step(run_detail: RunDetail) -> dict[str, str]:
 
 
 def _mount_static(app: "FastAPI", static_dir: Path) -> None:
+    from starlette.exceptions import HTTPException as StarletteHTTPException
     from fastapi.staticfiles import StaticFiles
+
+    class _SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):  # type: ignore[override]
+            method = scope.get("method", "GET")
+            try:
+                response = await super().get_response(path, scope)
+            except StarletteHTTPException as exc:
+                if exc.status_code != 404:
+                    raise
+                if method not in {"GET", "HEAD"}:
+                    raise
+                return await super().get_response("index.html", scope)
+            if response.status_code == 404 and method in {"GET", "HEAD"}:
+                return await super().get_response("index.html", scope)
+            return response
 
     if not static_dir.exists():
         return
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="dashboard")
+    app.mount("/", _SPAStaticFiles(directory=static_dir, html=True), name="dashboard")
