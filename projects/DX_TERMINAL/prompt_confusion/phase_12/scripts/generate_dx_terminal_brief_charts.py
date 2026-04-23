@@ -5,8 +5,9 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from projects.DX_TERMINAL.prompt_confusion.paths import prompt_confusion_root
 
-ROOT = Path("/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion")
+ROOT = prompt_confusion_root(__file__)
 OUT_DIR = ROOT / "phase_12" / "reports" / "dx_terminal_brief_assets"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

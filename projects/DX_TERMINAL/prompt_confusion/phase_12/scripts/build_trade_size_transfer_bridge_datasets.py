@@ -7,11 +7,12 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from projects.DX_TERMINAL.prompt_confusion.paths import phase_outputs_dir, phase_root
 
-ROOT = Path("/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_12")
-REAL_DATASET = ROOT / "outputs" / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
-PHASE_09_DATASET = ROOT.parent / "phase_09" / "outputs" / "phase_09_dataset" / "phase_09_dataset.jsonl"
-OUTPUT_DIR = ROOT / "outputs" / "transfer_bridge"
+PHASE_12_ROOT = phase_root("phase_12", __file__)
+REAL_DATASET = phase_outputs_dir("phase_12", __file__) / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
+PHASE_09_DATASET = phase_outputs_dir("phase_09", __file__) / "phase_09_dataset" / "phase_09_dataset.jsonl"
+OUTPUT_DIR = PHASE_12_ROOT / "outputs" / "transfer_bridge"
 
 STRICT_OUTPUT = OUTPUT_DIR / "trade_size_stage1b_adapter_strict.jsonl"
 STRICT_SUMMARY = OUTPUT_DIR / "trade_size_stage1b_adapter_strict_summary.json"

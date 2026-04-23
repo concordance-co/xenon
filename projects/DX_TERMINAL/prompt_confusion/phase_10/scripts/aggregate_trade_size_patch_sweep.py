@@ -6,8 +6,9 @@ from pathlib import Path
 from pipelines_v2.storage.artifacts import ArtifactManifest, OperationArtifact
 from pipelines_v2.storage.modal import ModalVolumeStore
 
+from projects.DX_TERMINAL.prompt_confusion.paths import pipelines_catalog_root
 
-CATALOG_ROOT = Path("/Users/trentelmore/.xenon/pipelines_v2/catalog")
+CATALOG_ROOT = pipelines_catalog_root()
 RUN_ID = "wr_b05b536729e5_8587a67e"
 WORKFLOW_STEP_ROOT = CATALOG_ROOT / "workflow_steps" / RUN_ID
 ARTIFACT_ROOT = "/data/artifacts/prompt_confusion_trade_size_activation_patch_layer_sweep"

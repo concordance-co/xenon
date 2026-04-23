@@ -5,8 +5,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from projects.DX_TERMINAL.prompt_confusion.paths import phase_root
 
-ROOT = Path("/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_12")
+ROOT = phase_root("phase_12", __file__)
 REAL_DATASET = ROOT / "outputs" / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
 SOURCE_DATASET = ROOT / "outputs" / "transfer_bridge" / "trade_size_stage1b_adapter_strict.jsonl"
 OUTPUT_DATASET = ROOT / "outputs" / "transfer_bridge" / "trade_size_stage1b_adapter_strict_buy_only.jsonl"

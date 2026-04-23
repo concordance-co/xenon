@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pipelines.db import connect_neon, ensure_schema
+from projects.DX_TERMINAL.prompt_confusion.neon import connect_neon, ensure_schema
 
 
 DEFAULT_INPUT = Path("projects/DX_TERMINAL/prompt_confusion/phase_09/outputs/phase_09_dataset/phase_09_dataset.jsonl")

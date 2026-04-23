@@ -4,16 +4,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from projects.DX_TERMINAL.prompt_confusion.paths import phase_outputs_dir, phase_root
 
-PHASE_09_DATASET = Path(
-    "/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_09/outputs/phase_09_dataset/phase_09_dataset.jsonl"
-)
-REAL_DATASET = Path(
-    "/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_12/outputs/real_complaint_transfer/real_complaint_transfer_dataset.jsonl"
-)
-OUTPUT_DIR = Path(
-    "/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_12/outputs/transfer_bridge"
-)
+PHASE_09_DATASET = phase_outputs_dir("phase_09", __file__) / "phase_09_dataset" / "phase_09_dataset.jsonl"
+REAL_DATASET = phase_outputs_dir("phase_12", __file__) / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
+OUTPUT_DIR = phase_root("phase_12", __file__) / "outputs" / "transfer_bridge"
 OUTPUT_JSONL = OUTPUT_DIR / "trade_size_stage1a_template_control.jsonl"
 OUTPUT_SUMMARY = OUTPUT_DIR / "trade_size_stage1a_template_control_summary.json"
 

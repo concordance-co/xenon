@@ -8,8 +8,8 @@ from typing import Any
 import numpy as np
 from safetensors import safe_open
 
-
-ROOT = Path("/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_12")
+from projects.DX_TERMINAL.prompt_confusion.paths import phase_root
+ROOT = phase_root("phase_12", __file__)
 FEATURE_CACHE = ROOT / "outputs" / "real_complaint_transfer_feature_cache"
 REAL_DATASET = ROOT / "outputs" / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
 SCORE_DIR = ROOT / "outputs" / "real_complaint_transfer_scores"

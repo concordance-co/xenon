@@ -9,14 +9,15 @@ from typing import Any
 import numpy as np
 from safetensors import safe_open
 
+from projects.DX_TERMINAL.prompt_confusion.paths import phase_outputs_dir, phase_root
 
-ROOT = Path("/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_12")
+ROOT = phase_root("phase_12", __file__)
 FEATURE_CACHE = ROOT / "outputs" / "real_complaint_transfer_feature_cache"
 REAL_DATASET = ROOT / "outputs" / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
 OUTPUT_DIR = ROOT / "outputs" / "real_complaint_transfer_scores"
 
-PHASE_09_DATASET = ROOT.parent / "phase_09" / "outputs" / "phase_09_dataset" / "phase_09_dataset.jsonl"
-PHASE_10_DATASET = ROOT.parent / "phase_10" / "outputs" / "phase_10_dataset" / "phase_10_dataset.jsonl"
+PHASE_09_DATASET = phase_outputs_dir("phase_09", __file__) / "phase_09_dataset" / "phase_09_dataset.jsonl"
+PHASE_10_DATASET = phase_outputs_dir("phase_10", __file__) / "phase_10_dataset" / "phase_10_dataset.jsonl"
 
 CAPTURED_LAYERS = (0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44)
 REAL_SITES = (

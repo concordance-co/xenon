@@ -7,13 +7,11 @@ from typing import Any
 
 import pyarrow.parquet as pq
 
+from projects.DX_TERMINAL.prompt_confusion.paths import dataset_exports_root, phase_root
 
-SOURCE_PATH = Path(
-    "/Users/trentelmore/Projects/concordance/xenon/projects/DX_TERMINAL/dataset_exports/complaint_dataset_enriched.parquet"
-)
-OUTPUT_DIR = Path(
-    "/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_12/outputs/real_complaint_transfer"
-)
+PHASE_ROOT = phase_root("phase_12", __file__)
+SOURCE_PATH = dataset_exports_root(__file__) / "complaint_dataset_enriched.parquet"
+OUTPUT_DIR = PHASE_ROOT / "outputs" / "real_complaint_transfer"
 OUTPUT_JSONL = OUTPUT_DIR / "real_complaint_transfer_dataset.jsonl"
 OUTPUT_SUMMARY = OUTPUT_DIR / "summary.json"
 
