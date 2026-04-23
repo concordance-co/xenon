@@ -28,7 +28,7 @@ not whole-cloth synthesis.
 
 ## Core rule
 
-`Augment to repair the experiment, not to make the dataset bigger.`
+`Augment to break surface-label leakage so the experiment can become real.`
 
 The job is to produce data that makes the latent-label question cleaner:
 
@@ -37,6 +37,9 @@ The job is to produce data that makes the latent-label question cleaner:
 - better controls
 - better slice balance
 - cleaner response-side supervision
+
+Use the gap list to identify which leaks matter most.
+Do not treat augmentation as a last-resort cleanup step after phase 03; imported benchmark labels should be assumed leaky until phase 02 has tried to break the most plausible shortcut channels.
 
 ## Start from the gap list
 
@@ -55,6 +58,24 @@ Typical gaps:
 - a good label exists only in a tiny subset
 
 ## Preferred repair moves
+
+### 0. Shortcut stress test by default
+
+Every target label should get at least one explicit anti-shortcut repair design.
+
+Do not wait until a probe fails in phase 03 to ask how the label might leak through:
+
+- explicit name tokens
+- fixed anchor sentences
+- stable descriptive clauses
+- source-family wrappers
+- label-specific keywords
+- carrier or template artifacts
+
+The default phase-02 question is:
+
+- what is the cheapest plausible shortcut for this label?
+- what repair family would break that shortcut while preserving the semantic content?
 
 ### 1. Rewrite before inventing
 
@@ -113,6 +134,29 @@ Simplify toward the core computation, not toward convenience.
 
 The augmented data should still force the intended reasoning problem.
 
+### 5. Add shortcut-stress-test families for explicit cues
+
+If the target label is exposed through:
+
+- explicit names
+- fixed anchor sentences
+- lexically stable descriptions
+- template-locked wrapper clauses
+
+then phase 02 should materialize a `shortcut_stress_test` repair family before calling that track clean.
+
+Useful repair patterns include:
+
+- name-only vs description-only vs name-plus-description factorials
+- held-out aliases
+- paraphrase banks
+- shared-vocabulary descriptions
+- position-counterbalanced cue placement
+- decoy or mismatch controls
+
+The goal is not just "more variants."
+The goal is to break one-to-one surface recoverability.
+
 ## Confound-focused design checklist
 
 Always consider:
@@ -133,6 +177,18 @@ If possible, construct data that lets these be:
 - stratified
 - held out
 - explicitly contrasted
+
+For targets vulnerable to lexical or semantic leakage, phase 02 should also run a prompt-side preflight against cheap baselines before handing the family to phase 03.
+
+Typical preflight baselines:
+
+- bag-of-words on the full prompt
+- bag-of-words on the cue clause only
+- name-token-only or alias-token-only baselines
+- rare-word / keyword baselines
+- clause-position-only baseline when cue placement varies
+
+If these baselines still solve the target family cleanly, phase 02 is not done for that track.
 
 ## Output hygiene rules
 
@@ -189,6 +245,13 @@ If new rows or slices were created, also leave behind:
 - dataset location(s)
 - pairing or rewrite rules used
 
+If the smoke artifact is used to justify downstream response-side labeling or probing, it should also make explicit:
+
+- which proposed downstream labels were checked for labelability
+- whether the smoke result reflects only tripwire checks, substantive content inspection, or both
+- at least a few concrete generated responses from the checked slice
+- the actual failure categories used during inspection
+
 Use simple frontmatter on markdown artifacts:
 
 - `benchmark`
@@ -211,6 +274,8 @@ At minimum, each materialized dataset entry should record:
 - `controls_structurally_matched_to_target` when applicable
 - `known_bugs`
 
+If a materialized family is later shown to be shortcut-dominated, keep it in the manifest and record that explicitly in `known_bugs` rather than silently treating it as clean.
+
 If a confound-repair matrix marks a track as `ready_now`, the phase should either materialize that track or explicitly downgrade it with a reason.
 
 ## Phase Done Criteria
@@ -221,7 +286,19 @@ This phase is done when:
 - materialized `outputs/` contain no unsubstituted placeholders
 - matched pairs and controls satisfy the structural-match rule for the intended target variable
 - a behavioral smoke report exists on a small augmented slice and is non-empty
+- the materialized data beats the mandatory cheap-baseline preflight for the active target family, or the phase is explicitly marked not done for that family
 - the manifest, augmentation report, and benchmark sidecar state the true phase status and residual confounds honestly
+- any explicit-cue track either beats its cheap prompt-side preflight baselines or is explicitly marked shortcut-dominated and kept out of phase-03-ready status
+
+The behavioral smoke report should distinguish:
+
+- `tripwire checks`
+  examples: nonempty output, parseability, no truncation, no refusal, recommendation cue present
+- `substantive labelability checks`
+  examples: whether the generated responses can actually support the proposed downstream labels
+
+If the smoke is intended to support response-side label work, a pure tripwire pass is not enough by itself.
+The report should include at least one explicit content-inspection section tied to the proposed labels.
 
 ## References
 

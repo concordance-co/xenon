@@ -20,6 +20,25 @@ For mechanistic workflows, treat representation analysis as one part of a broade
 4. causal intervention
 5. mechanism follow-up
 
+## Common result gotchas
+
+Treat these as reasons to slow down and stress test the result, not as interesting stories by default.
+
+- `Suspiciously perfect metrics`
+  If AUROC or accuracy is effectively perfect, first rule out leakage, duplicated pairs, tiny-cell artifacts, and obvious label tokens.
+- `Isolated layer spikes`
+  A single sharp layer spike without nearby-layer continuity is suspicious until reruns and controls confirm it.
+- `Label-bearing token shortcuts`
+  If readout only works on obvious label tokens or the explicit instruction span, suspect shortcutting rather than a broader representation.
+- `Cheap baseline match is not a win`
+  If a bag-of-words, keyword, template, or positional baseline matches the neural probe closely, treat the result as shortcut-dominated until the experiment is repaired.
+- `Perfect strength across every layer is suspicious`
+  If balanced accuracy is effectively perfect from very early layers through late layers, first ask whether the task is trivially surface-decodable before interpreting any layer profile.
+- `Late-only strength is not automatically process`
+  If the signal appears only in late or conclusion windows, do not call it a transition or deliberative process signal without stronger earlier-window evidence.
+- `One-family success is not abstraction`
+  If the result works on one prompt family or one split only, cap the claim and test transfer before promoting it. See the shared principle on transfer.
+
 ## PCA on activations
 
 Visualize how representations are organized by projecting to 2D/3D:

@@ -164,6 +164,13 @@ If available, also report:
 
 These are especially useful when the downstream use case is monitoring rather than raw classification.
 
+Always report both:
+
+- thresholded metrics:
+  accuracy / balanced accuracy / F1 as appropriate
+- threshold-free metrics:
+  AUROC and AUPRC when applicable
+
 ### Mandatory baselines
 
 1. **Majority class**: always predict the most common label
@@ -193,6 +200,8 @@ print(f"Selectivity: {selectivity:.4f}")
 - Cross-validate. Don't report single train/test split results
 - If the benchmark uses an explicit split, do not replace it with CV unless you are very clear that you are changing the claim
 - Consider **MDL probes** (minimum description length) as an alternative to accuracy — they measure how compressible the labels are given the representations
+- Always compare against cheap baselines:
+  majority, shuffled labels, and any benchmark-specific surface baseline already identified in the control plan
 
 ## Span-local probes
 

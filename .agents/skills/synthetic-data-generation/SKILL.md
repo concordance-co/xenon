@@ -15,6 +15,8 @@ Use this skill when the user wants to:
 
 This skill is for **experiment design**, not just text generation. The goal is to create data that the model can solve for the *right reasons*, and that later analysis can interpret cleanly.
 
+For benchmark-first mechanistic interpretability, this skill is also the main craft library for breaking shortcut channels in imported benchmarks.
+
 ## Core rule
 
 `Behavioral sanity comes before interpretability.`
@@ -33,6 +35,101 @@ Synthetic data should be:
 - controllable along the dimensions you care about
 - hard to solve with trivial lexical shortcuts
 - easy to analyze later
+
+## Primary benchmark-repair use case
+
+Imported benchmarks leak by construction.
+If a benchmark was designed so humans or graders could apply labels reliably, those labels are usually recoverable from surface semantics too.
+
+One of the main jobs of synthetic-data-generation is therefore:
+
+- break surface-label correlation
+- preserve the semantic content a good human reader would still recover
+- leave behind data where later probes must solve something more interesting than a keyword lookup
+
+This is not downstream cleanup.
+It is one of the primary crafts of benchmark-to-mech-interp work.
+
+## Anti-shortcut craft menu
+
+When a target family is shortcut-satisfiable, prefer repairs like these:
+
+### 1. Paraphrased-content variants
+
+Keep the semantic content fixed while varying the surface form.
+
+### 2. Held-out alias generalization
+
+Train on one surface realization of a concept and test on another:
+
+- canonical name vs descriptive alias
+- short alias vs long-form alias
+
+### 3. Cross-label hard negatives
+
+Create examples where easy surface cues pull one way while the intended semantic label pulls another.
+
+### 4. Factorial surface designs
+
+For labels with multiple possible surface carriers, vary them independently:
+
+- name x anchor x position
+- wrapper x content x role framing
+
+### 5. Shared-vocabulary anchors
+
+Use overlapping vocabulary across labels so a small keyword list cannot solve the task.
+
+### 6. Content-removed or name-removed variants
+
+Redact one shortcut channel while preserving the rest of the prompt:
+
+- name removed, anchor preserved
+- anchor removed, name preserved
+
+These are good repairs only if a careful human could still recover the intended label.
+
+## Worked examples
+
+### MoReBench theory labels
+
+Weak anti-shortcut control:
+
+- remove the theory name but keep a theory-specific anchor sentence that still identifies the framework perfectly
+
+Stronger anti-shortcut design:
+
+- factorial family with:
+  - name + anchor
+  - anchor only
+  - name only
+  - alias-based paraphrases
+  - held-out aliases or masked-name evaluation
+
+`Anchor only` is useful here only as one cell in a larger factorial decomposition.
+By itself it is not a credible anti-shortcut test if the anchor sentence still identifies the framework cleanly.
+
+### Counseling-style empathy labels
+
+Weak anti-shortcut setup:
+
+- positive class contains obvious crisis or reassurance vocabulary
+
+Stronger anti-shortcut design:
+
+- paraphrase the emotional language
+- create same-topic hard negatives
+- hold out obvious empathy phrases at test time
+- preserve the counseling situation while weakening direct lexical markers
+
+### General rule
+
+The craft target is not "remove all easy words."
+It is:
+
+- keep the semantic distinction
+- break the cheapest shortcut
+- verify that a careful human could still recover the intended label
 
 ## Workflow
 

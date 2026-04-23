@@ -207,3 +207,17 @@ It may need:
 - synthetic or semi-synthetic augmentation
 
 But augmentation should repair the experiment, not just enlarge the dataset.
+
+## 10. Benchmarks Leak By Construction
+
+Imported benchmarks are usually designed so humans, graders, or evaluators can apply labels from surface semantics.
+Treat imported labels as surface-recoverable by default until the pipeline has actively broken the most plausible shortcut channels.
+
+The goal is not to remove every easy feature blindly.
+It is to break surface-label correlation while preserving the semantic content that a careful human reader would still recover.
+
+## 11. One-Split Success Is Not Transfer
+
+A result that survives only one narrow slice should not be promoted as abstraction, transfer, or mechanism.
+
+If a result looks unusually strong, clean, or easy, stress test it against the strongest plausible shortcut explanation before promoting it up the evidence ladder.
