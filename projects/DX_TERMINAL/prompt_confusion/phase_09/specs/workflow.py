@@ -28,8 +28,8 @@ from pipelines_v2.api import (
     VLLMEngine,
     WorkflowSpec,
     WorkflowStep,
-    NullCatalog,
 )
+from projects.DX_TERMINAL.prompt_confusion.catalogs import build_prompt_confusion_catalog
 
 
 MODEL_VOLUME_NAME = "xenon-models"
@@ -122,7 +122,7 @@ def build_runner_specs() -> dict[str, object]:
                 volumes=(ModalVolumeMount(name=MODEL_VOLUME_NAME, mount_path=MODEL_VOLUME_PATH),),
             ),
             artifacts=artifact_store,
-            catalog=NullCatalog(),
+            catalog=build_prompt_confusion_catalog(__file__),
         ),
         "analysis_cpu": ModalRunnerSpec(
             resources=ModalResources(
@@ -130,11 +130,11 @@ def build_runner_specs() -> dict[str, object]:
                 memory_mb=24 * 1024,
             ),
             artifacts=artifact_store,
-            catalog=NullCatalog(),
+            catalog=build_prompt_confusion_catalog(__file__),
         ),
         "report_local": LocalRunnerSpec(
             artifacts=LocalArtifactStore(Path("artifacts") / "prompt_confusion_phase_09"),
-            catalog=NullCatalog(),
+            catalog=build_prompt_confusion_catalog(__file__),
         ),
     }
 

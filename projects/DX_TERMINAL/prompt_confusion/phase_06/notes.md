@@ -152,8 +152,9 @@ baseline was an afterthought.
 - Implication: confounding from the non-held-out axis existed but was
   small (about 2pt drop). The detection signal is not a lexical
   artifact even under strict both-axes holdout.
-- Reference: the underlying probe artifact lived on the xenon-data volume; the
-  local materialization was archived out of the live repo.
+- Reference: probe artifact
+  `/artifacts/prompt_confusion/phase_06/probe_conflict_combined_holdout_...`
+  on xenon-data volume; full results in final report.
 
 ### 2026-04-15 -- v4 dataset design flaws surfaced by behavioral audit
 
@@ -218,8 +219,8 @@ Implications for analyses on this dataset:
 - Resolution analyses on this data would be heavily contaminated by
   the sys-prompt pre-resolution, the refuse escape hatch, and the
   pressure x wording interaction.
-- A later generator redesign was needed before additional mechanistic work on
-  this axis. That follow-on work is no longer kept in this live repo.
+- Phase 07 / v5 generator redesign is needed before additional
+  mechanistic work on this axis.
 
 Rough shape for v5:
 
@@ -233,8 +234,9 @@ Rough shape for v5:
   MARKET contexts unambiguously tradeable on aligned rows.
 
 Reference: run `wr_60e5e0058e21_5a0025c8` (initial) and
-`wr_cc10418ff064_f8b538db` (with combined-holdout probe). The corresponding
-generation artifacts were archived out of the live repo.
+`wr_cc10418ff064_f8b538db` (with combined-holdout probe).
+Generations at `/artifacts/prompt_confusion/phase_06/capture_1_d5683901/generations.json`
+on the xenon-data volume.
 
 ### 2026-04-15 -- Reuse hazard: adding a label column invalidates capture reuse
 
@@ -278,9 +280,11 @@ generation artifacts were archived out of the live repo.
   conflict-detection claim from Phase 05 is now on solid footing.
   Resolution (side-followed) and threshold-shift characterization are
   the next live threads.
-- Reference: Modal capture app `ap-...` (run_id above). The corresponding
-  local report and artifact materializations were archived out of the live
-  repo during the v1/v2 split.
+- Reference: local report under
+  `projects/DX_TERMINAL/prompt_confusion/phase_06/outputs/report/report_ecb1ab5493eb_c08f082e/`.
+  Modal capture app `ap-...` (run_id above); probe + baseline artifacts
+  under `/data/artifacts/prompt_confusion/phase_06/` on the xenon-data
+  volume.
 
 ### 2026-04-15 -- Phase 06 v4 generator: lexical-leakage gate PASSED
 
@@ -298,8 +302,8 @@ generation artifacts were archived out of the live repo.
   floor; section order perfectly balanced.
 - Implication: the generator does not leak `conflict_present` lexically.
   This is the primary pre-capture QA gate. Capture can proceed.
-- Reference: Neon table `conflict_probe_examples_v4`. The old QA artifact
-  materializations were archived out of the live repo.
+- Reference: Neon table `conflict_probe_examples_v4`, QA artifacts under
+  `projects/DX_TERMINAL/prompt_confusion/phase_06/outputs/qa_artifacts/`.
 
 ### 2026-04-15 -- Phase 05 readout view drops 21 conflict rows, correlated with family + direction
 

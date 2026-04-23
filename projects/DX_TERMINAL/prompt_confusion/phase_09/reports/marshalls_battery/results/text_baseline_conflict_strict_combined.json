@@ -1,0 +1,45 @@
+{
+  "class_names": [
+    "False",
+    "True"
+  ],
+  "kind": "text_baseline_result",
+  "label_name": "conflict_present",
+  "mode": "split_holdout",
+  "model": "countvectorizer_logreg",
+  "results": {
+    "class_names": [
+      "False",
+      "True"
+    ],
+    "split_results": {
+      "combined": {
+        "auroc": 0.5536,
+        "balanced_accuracy": 0.5365,
+        "example_count": 768,
+        "false_negative_count": 57,
+        "false_negative_rate": 0.5938,
+        "false_positive_count": 32,
+        "false_positive_rate": 0.3333,
+        "split_mode": "fixed",
+        "true_negative_count": 64,
+        "true_negative_rate": 0.6667,
+        "true_positive_count": 39,
+        "true_positive_rate": 0.4062
+      }
+    }
+  },
+  "summary": {
+    "class_count": 2,
+    "cohort_count": 0,
+    "example_count": 768,
+    "mode": "split_holdout",
+    "regularization": [
+      1.0
+    ],
+    "split_names": [
+      "combined"
+    ]
+  },
+  "text_name": "user_text"
+}

@@ -147,7 +147,7 @@ of the phase.
 
 - Per-example activations in `residual_stream/` and `router_logits/` are
   the source of truth. Compact per-layer files in `compact/` are a
-  derived summary produced by the old compact-analysis path.
+  derived summary produced by `pipelines.interp.analysis.run_compact`.
 - Compact files carry whatever row set was used when compaction was run.
   Phase 04's router compact files were produced as part of the
   conflict-readout arbitration analysis (123 conflict-only rows), and

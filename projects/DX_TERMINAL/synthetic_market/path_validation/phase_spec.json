@@ -1,0 +1,13 @@
+{
+  "id": "path_validation",
+  "name": "Path Validation",
+  "description": "Lesion-and-rescue path validation for synthetic-market signals.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Test whether downstream rescue sites recover behavior after an earlier lesion on the same synthetic-market signal.",
+  "workflow_specs": [],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/synthetic_market/path_validation/reports",
+    "notes": "Store path-validation reports and artifacts here."
+  }
+}

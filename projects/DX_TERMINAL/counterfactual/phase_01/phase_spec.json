@@ -1,0 +1,13 @@
+{
+  "id": "counterfactual",
+  "name": "Counterfactual",
+  "description": "Counterfactual prompt editing and representation analysis phase.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Study how settings and downstream policy edits reshape captured representations while holding the underlying market fixed.",
+  "workflow_specs": [],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/counterfactual/phase_01/reports",
+    "notes": "Holds counterfactual-specific captures, analyses, and reports."
+  }
+}

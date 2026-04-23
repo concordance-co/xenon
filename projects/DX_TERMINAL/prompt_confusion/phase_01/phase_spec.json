@@ -1,0 +1,15 @@
+{
+  "id": "prompt_confusion",
+  "name": "Prompt Confusion",
+  "description": "Conflict-probe phase focused on prompt-level disagreement and latent conflict signals.",
+  "project_id": "DX_TERMINAL",
+  "inherits": "projects/DX_TERMINAL/project_spec.json",
+  "goal": "Measure whether hidden states encode conflict between strategy text and slider settings before action selection.",
+  "workflow_specs": [
+    "projects/DX_TERMINAL/prompt_confusion/phase_01/specs/workflow.json"
+  ],
+  "outputs": {
+    "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_01/reports",
+    "notes": "Stores probe outputs, workflow reports, and prompt-confusion notes."
+  }
+}
