@@ -45,24 +45,31 @@ class WorkflowStep:
     runner: str
     spec: Any
     depends_on: tuple[str, ...] = field(default_factory=tuple)
+    description: str | None = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise SpecValidationError("WorkflowStep name cannot be empty")
         if not self.runner.strip():
             raise SpecValidationError(f"WorkflowStep {self.name!r} requires a runner")
+        if self.description is not None:
+            description = str(self.description).strip()
+            object.__setattr__(self, "description", description or None)
 
     def resolved_depends_on(self) -> tuple[str, ...]:
         """Return explicit plus inferred dependencies for this step."""
         return tuple(sorted(set(self.depends_on) | _step_dependencies_in_value(self.spec)))
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "name": self.name,
             "runner": self.runner,
             "spec": self.spec.to_dict(),
             "depends_on": list(self.depends_on),
         }
+        if self.description is not None:
+            payload["description"] = self.description
+        return payload
 
     def semantic_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +91,7 @@ class WorkflowStep:
             runner=str(payload["runner"]),
             spec=operation_spec_from_dict(dict(payload["spec"])),
             depends_on=tuple(str(item) for item in payload.get("depends_on", ())),
+            description=str(payload["description"]) if payload.get("description") is not None else None,
         )
 
 
@@ -94,6 +102,7 @@ class WorkflowStepPlan:
     runner: str
     depends_on: tuple[str, ...]
     execution: ExecutionPlan
+    description: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

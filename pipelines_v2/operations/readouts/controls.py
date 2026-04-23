@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, ClassVar, Sequence
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret
 from pipelines_v2.operations.common._shared import (
     analysis_runtime_spec,
+    merge_string_tuples,
     row_selector_from_dict,
+    runtime_pip_packages_from_refs,
     runtime_secrets_from_refs,
     spec_value_from_dict,
 )
@@ -40,7 +42,17 @@ class ResidualizedProbeSpec(OperationSpec):
         )
 
     def runtime_spec(self) -> Any | None:
-        return analysis_runtime_spec()
+        runtime_spec = analysis_runtime_spec()
+        packages = runtime_pip_packages_from_refs(
+            self.feature,
+            self.rows,
+            self.labels,
+            self.residualize_against,
+            self.group_by,
+        )
+        if not packages:
+            return runtime_spec
+        return replace(runtime_spec, pip_packages=merge_string_tuples(runtime_spec.pip_packages, packages))
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ResidualizedProbeSpec":

@@ -6,7 +6,13 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar, Mapping
 
 from pipelines_v2.core.types import OperationSpec, SpecValidationError
-from pipelines_v2.operations.common._shared import analysis_runtime_spec, merge_string_tuples, runtime_secrets_from_refs, spec_value_from_dict
+from pipelines_v2.operations.common._shared import (
+    analysis_runtime_spec,
+    merge_string_tuples,
+    runtime_pip_packages_from_refs,
+    runtime_secrets_from_refs,
+    spec_value_from_dict,
+)
 from pipelines_v2.operations.common.builders import TransformBuilder
 
 
@@ -40,7 +46,10 @@ class TransformSpec(OperationSpec):
             return runtime_spec
         return PythonRuntimeSpec(
             python_version=runtime_spec.python_version,
-            pip_packages=runtime_spec.pip_packages,
+            pip_packages=merge_string_tuples(
+                runtime_spec.pip_packages,
+                runtime_pip_packages_from_refs(self.inputs),
+            ),
             env=dict(runtime_spec.env),
             secrets=runtime_spec.secrets,
             local_python_sources=merge_string_tuples(

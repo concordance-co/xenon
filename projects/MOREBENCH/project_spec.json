@@ -1,0 +1,15 @@
+{
+  "id": "MOREBENCH",
+  "name": "MoReBench Mechanistic Interpretability",
+  "description": "Benchmark-first mechanistic interpretability work on MoReBench procedural moral-reasoning labels, role stance, and theory conditioning.",
+  "version": 1,
+  "goal": "Turn MoReBench's rubric and theory structure into reusable probes, concept directions, transfer checks, and causal intervention artifacts.",
+  "subprojects": [
+    "procedural_probe"
+  ],
+  "defaults": {
+    "capture_execution": "modal",
+    "analysis_execution": "modal",
+    "report_execution": "local"
+  }
+}

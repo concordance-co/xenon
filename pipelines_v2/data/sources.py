@@ -67,6 +67,64 @@ class InMemorySource:
 
 
 @dataclass(frozen=True, slots=True)
+class ArtifactDatasetSource:
+    """Deferred source that materializes a Dataset stored in an artifact result."""
+
+    kind: str = "artifact_dataset"
+    defer_to_runtime: bool = True
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "ArtifactDatasetSource":
+        del payload
+        return cls()
+
+    def identity(self) -> dict[str, Any]:
+        return {"kind": self.kind}
+
+    def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
+        return ()
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        return ()
+
+    def fetch_dataset(
+        self,
+        *,
+        artifact: Any,
+        result_key: str = "dataset",
+        provides_token_sections: bool = False,
+        id: str | None = None,
+        name: str | None = None,
+    ) -> Dataset:
+        """Load a serialized ``Dataset`` payload from an operation artifact result."""
+        artifact_obj = _artifact_from_value(artifact)
+        if not hasattr(artifact_obj, "result"):
+            raise TypeError("ArtifactDatasetSource.fetch_dataset requires an artifact with result()")
+        result = artifact_obj.result()
+        if not isinstance(result, Mapping):
+            raise TypeError("ArtifactDatasetSource artifact result must be a mapping")
+        dataset_payload = _path_get(result, result_key)
+        if not isinstance(dataset_payload, Mapping):
+            raise TypeError(
+                f"ArtifactDatasetSource result key {result_key!r} must resolve to a serialized Dataset mapping"
+            )
+        dataset = Dataset.from_dict(dataset_payload)
+        resolved = dataset.resolve() if dataset.is_deferred else dataset
+        if provides_token_sections and not all(_example_has_token_sections(example) for example in resolved.examples):
+            raise ValueError(
+                "ArtifactDatasetSource was declared with provides_token_sections=True, "
+                "but not every materialized example has metadata['token_sections']."
+            )
+        if id is None and name is None:
+            return resolved
+        return Dataset.from_examples(
+            resolved.examples,
+            id=id or resolved.id,
+            name=name or resolved.name,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class PostgresSource:
     """Postgres-backed source for examples, labels, cases, and metadata."""
 
@@ -196,6 +254,144 @@ class PostgresSource:
         return value
 
 
+@dataclass(frozen=True, slots=True)
+class HuggingFaceSource:
+    """Deferred source that delegates loading to ``datasets.load_dataset``."""
+
+    path: str
+    name: str | None = None
+    revision: str | None = None
+    data_files: Any | None = None
+    token_env_var: str | None = None
+    trust_remote_code: bool = False
+    kind: str = "huggingface"
+    defer_to_runtime: bool = True
+
+    def __post_init__(self) -> None:
+        if not str(self.path).strip():
+            raise ValueError("HuggingFaceSource path cannot be empty")
+        object.__setattr__(self, "path", str(self.path))
+        if self.name is not None:
+            object.__setattr__(self, "name", str(self.name))
+        if self.revision is not None:
+            object.__setattr__(self, "revision", str(self.revision))
+        if self.token_env_var is not None:
+            object.__setattr__(self, "token_env_var", str(self.token_env_var))
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "HuggingFaceSource":
+        return cls(
+            path=str(payload["path"]),
+            name=str(payload["name"]) if payload.get("name") is not None else None,
+            revision=str(payload["revision"]) if payload.get("revision") is not None else None,
+            data_files=payload.get("data_files"),
+            token_env_var=str(payload["token_env_var"]) if payload.get("token_env_var") is not None else None,
+            trust_remote_code=bool(payload.get("trust_remote_code", False)),
+        )
+
+    def identity(self) -> dict[str, Any]:
+        """Serialize the source without exposing resolved token values."""
+        payload: dict[str, Any] = {
+            "kind": self.kind,
+            "path": self.path,
+        }
+        if self.name is not None:
+            payload["name"] = self.name
+        if self.revision is not None:
+            payload["revision"] = self.revision
+        if self.data_files is not None:
+            payload["data_files"] = self.data_files
+        if self.token_env_var is not None:
+            payload["token_env_var"] = self.token_env_var
+        if self.trust_remote_code:
+            payload["trust_remote_code"] = True
+        return payload
+
+    def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
+        if self.token_env_var is None:
+            return ()
+        return (RuntimeSecret(env_var=self.token_env_var),)
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        return ("datasets",)
+
+    def fetch_dataset(
+        self,
+        *,
+        split: str | None = None,
+        prompt_column: str,
+        prompt_template: Any | None = None,
+        example_key_column: str,
+        prompt_hash_column: str | None = None,
+        label_columns: Sequence[str] = (),
+        case_columns: Sequence[str] = (),
+        case_key_column: str | None = None,
+        metadata_columns: Sequence[str] = (),
+        index_column: str | None = None,
+        index_prefix: str | None = None,
+        hash_columns: Mapping[str, str | Sequence[str]] | None = None,
+        nested_record_column: str | None = None,
+        nested_record_index_column: str | None = None,
+        nested_record_field_paths: Mapping[str, str | Sequence[str]] | None = None,
+        limit: int | None = None,
+        name: str | None = None,
+        id: str | None = None,
+    ) -> Dataset:
+        """Load with Hugging Face ``datasets`` and map the result into v2 examples."""
+        from datasets import load_dataset
+
+        kwargs: dict[str, Any] = {}
+        if split is not None:
+            kwargs["split"] = split
+        if self.revision is not None:
+            kwargs["revision"] = self.revision
+        if self.data_files is not None:
+            kwargs["data_files"] = self.data_files
+        if self.trust_remote_code:
+            kwargs["trust_remote_code"] = True
+        if self.token_env_var is not None:
+            token = os.environ.get(self.token_env_var)
+            if not token:
+                raise RuntimeError(f"Missing required environment variable: {self.token_env_var}")
+            kwargs["token"] = token
+
+        if self.name is None:
+            loaded = load_dataset(self.path, **kwargs)
+        else:
+            loaded = load_dataset(self.path, self.name, **kwargs)
+        if isinstance(loaded, Mapping):
+            available = ", ".join(sorted(str(key) for key in loaded.keys()))
+            raise ValueError(
+                "HuggingFaceSource.fetch_dataset requires a split when load_dataset returns "
+                f"a DatasetDict; available splits: {available}"
+            )
+
+        if limit is not None:
+            count = int(limit)
+            if hasattr(loaded, "__len__"):
+                count = min(count, len(loaded))
+            loaded = loaded.select(range(count))
+        return Dataset.from_hf_dataset(
+            loaded,
+            prompt_column=prompt_column,
+            prompt_template=prompt_template,
+            example_key_column=example_key_column,
+            prompt_hash_column=prompt_hash_column,
+            label_columns=label_columns,
+            case_columns=case_columns,
+            case_key_column=case_key_column,
+            metadata_columns=metadata_columns,
+            index_column=index_column,
+            index_prefix=index_prefix or str(split or self.name or self.path).replace("/", "_"),
+            hash_columns=hash_columns,
+            nested_record_column=nested_record_column,
+            nested_record_index_column=nested_record_index_column,
+            nested_record_field_paths=nested_record_field_paths,
+            id=id,
+            name=name or self.name or self.path,
+        )
+
+
 def _quote_identifier(value: str) -> str:
     if not _IDENTIFIER_RE.fullmatch(value):
         raise ValueError(f"Invalid SQL identifier: {value!r}")
@@ -222,6 +418,37 @@ def source_from_dict(payload: Mapping[str, Any]) -> Source:
     kind = str(payload["kind"])
     if kind == "memory":
         return InMemorySource.from_dict(payload)
+    if kind == "artifact_dataset":
+        return ArtifactDatasetSource.from_dict(payload)
     if kind == "postgres":
         return PostgresSource.from_dict(payload)
+    if kind == "huggingface":
+        return HuggingFaceSource.from_dict(payload)
     raise ValueError(f"Unsupported source kind: {kind}")
+
+
+def _artifact_from_value(value: Any) -> Any:
+    if hasattr(value, "result"):
+        return value
+    if isinstance(value, Mapping):
+        from pipelines_v2.storage.artifacts import artifact_from_dict
+
+        return artifact_from_dict(value)
+    raise TypeError(f"Unsupported artifact value: {type(value).__name__}")
+
+
+def _path_get(payload: Mapping[str, Any], path: str) -> Any:
+    current: Any = payload
+    for part in str(path).split("."):
+        if not part:
+            continue
+        if not isinstance(current, Mapping):
+            raise TypeError(f"Cannot resolve path {path!r}; {part!r} parent is not a mapping")
+        current = current.get(part)
+    return current
+
+
+def _example_has_token_sections(example: Any) -> bool:
+    metadata = getattr(example, "metadata", None)
+    token_sections = metadata.get("token_sections") if isinstance(metadata, Mapping) else None
+    return isinstance(token_sections, Mapping) and bool(token_sections)

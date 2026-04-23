@@ -19,7 +19,7 @@ from pipelines_v2.core.config import WorkspaceConfig, load_workspace_config
 from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
 from pipelines_v2.storage.artifacts import InlineOperationArtifact, artifact_from_manifest
-from pipelines_v2.storage.composite import iter_catalogs_depth_first, preferred_workflow_metadata_catalog
+from pipelines_v2.storage.composite import iter_catalogs_depth_first
 from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
 from pipelines_v2.api import (
     CompositeCatalog,
@@ -108,6 +108,7 @@ def _workflow_plan(ns: argparse.Namespace) -> int:
             {
                 "name": step.name,
                 "runner": step.runner,
+                "description": step.description,
                 "depends_on": list(step.depends_on),
                 "spec_kind": step.execution.spec_kind,
                 "artifact_kinds": list(step.execution.artifact_kinds),
@@ -265,6 +266,7 @@ def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) ->
     )
     if source_run_id is None:
         raise RuntimeError("Could not resolve a completed workflow run id for rerun")
+    _mirror_workflow_run_lineage(workflow_catalog, source_run_id)
     runners = _build_runners(ns, runner_specs)
     subworkflow = _workflow_slice_for_step(
         workflow,
@@ -288,6 +290,28 @@ def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) ->
     )
     print(json.dumps(_workflow_result_payload(subworkflow.name, result), indent=2, sort_keys=True))
     return 0
+
+
+def _mirror_workflow_run_lineage(catalog: Any, run_id: str, *, _seen: set[str] | None = None) -> None:
+    """Mirror a source run and its ancestors through composite catalogs before reruns.
+
+    Rerun commands can start from older runs that exist only in the local registry.
+    When the active runner catalog also writes to Postgres, the child run's
+    parent_run_id FK requires that source run to be present there too.
+    """
+
+    if getattr(catalog, "kind", None) != "composite":
+        return
+    seen = _seen if _seen is not None else set()
+    if run_id in seen:
+        return
+    seen.add(run_id)
+    record = catalog.load_workflow_run(run_id)
+    if record is None:
+        return
+    if record.parent_run_id:
+        _mirror_workflow_run_lineage(catalog, record.parent_run_id, _seen=seen)
+    catalog.record_workflow_run(record)
 
 
 def _build_runners(
@@ -390,7 +414,7 @@ def _registry_catalog(
     if runner_specs is not None:
         runners = _build_runners(ns, runner_specs)
         catalogs = [
-            preferred_workflow_metadata_catalog(runner.catalog)
+            runner.catalog
             for runner in runners.values()
             if getattr(getattr(runner, "catalog", None), "kind", "none") != "none"
         ]
@@ -526,6 +550,8 @@ def _modal_resources_with_workspace_defaults(*, resources: ModalResources, modal
         cpu=resources.cpu,
         memory_mb=resources.memory_mb,
         timeout_seconds=resources.timeout_seconds,
+        max_containers=resources.max_containers,
+        shard_count=resources.shard_count,
         env=env,
         secrets=resources.secrets,
         volumes=tuple(volumes),

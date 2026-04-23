@@ -147,6 +147,16 @@ def runtime_secrets_from_refs(*values: Any) -> tuple[RuntimeSecret, ...]:
     return tuple(secrets[key] for key in sorted(secrets))
 
 
+def runtime_pip_packages_from_refs(*values: Any) -> tuple[str, ...]:
+    packages: list[str] = []
+    for value in values:
+        for package in iter_runtime_pip_packages(value):
+            normalized = str(package)
+            if normalized not in packages:
+                packages.append(normalized)
+    return tuple(packages)
+
+
 def iter_runtime_secrets(value: Any) -> tuple[RuntimeSecret, ...]:
     if value is None:
         return ()
@@ -162,6 +172,24 @@ def iter_runtime_secrets(value: Any) -> tuple[RuntimeSecret, ...]:
         for item in value.values():
             secrets.extend(iter_runtime_secrets(item))
         return tuple(secrets)
+    return ()
+
+
+def iter_runtime_pip_packages(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if hasattr(value, "runtime_pip_packages"):
+        return tuple(value.runtime_pip_packages())
+    if isinstance(value, tuple | list):
+        packages: list[str] = []
+        for item in value:
+            packages.extend(iter_runtime_pip_packages(item))
+        return tuple(packages)
+    if isinstance(value, dict):
+        packages = []
+        for item in value.values():
+            packages.extend(iter_runtime_pip_packages(item))
+        return tuple(packages)
     return ()
 
 
@@ -209,6 +237,9 @@ def spec_value_from_dict(value: Any) -> Any:
     if not isinstance(value, dict):
         return value
 
+    if _looks_like_dataset_payload(value):
+        return Dataset.from_dict(value)
+
     kind = value.get("kind")
     if kind == LabelSet.kind:
         return LabelSet.from_dict(value)
@@ -249,6 +280,12 @@ def spec_value_from_dict(value: Any) -> Any:
     if kind == StepLabelRef.kind:
         return StepLabelRef.from_dict(value)
     return {str(key): spec_value_from_dict(item) for key, item in value.items()}
+
+
+def _looks_like_dataset_payload(value: Mapping[str, Any]) -> bool:
+    if "examples" in value:
+        return True
+    return "source" in value and "fetch" in value and "selection" in value
 
 
 def row_selector_from_dict(value: Any) -> Any:

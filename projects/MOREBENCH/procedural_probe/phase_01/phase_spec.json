@@ -1,0 +1,128 @@
+{
+  "id": "phase_01_morebench_rubric_validation",
+  "name": "MoReBench Rubric Profile Validation",
+  "description": "Rubric-set validation workflow for MoReBench. This phase treats all rubric annotations for one query as one structured profile and drops criterion-title classification as a target.",
+  "project_id": "MOREBENCH",
+  "inherits": "projects/MOREBENCH/project_spec.json",
+  "goal": "Validate what can be learned from the query text about the full expert rubric profile before moving to response fulfillment and activation captures.",
+  "workflow_specs": [
+    "projects/MOREBENCH/procedural_probe/phase_01/specs/workflow.py"
+  ],
+  "paper_grounding": {
+    "paper": "https://arxiv.org/abs/2510.16380",
+    "dataset": "https://huggingface.co/datasets/morebench/morebench",
+    "rubric_structure": {
+      "unit": "one dilemma/query with a set of expert-written rubric criteria",
+      "criterion_fields": [
+        "title",
+        "annotations.rubric_dimension",
+        "weight"
+      ],
+      "dimensions": [
+        "Identifying",
+        "Clear Process",
+        "Logical Process",
+        "Helpful Outcome",
+        "Harmless Outcome"
+      ],
+      "notes": "Criteria are multiple annotations for one query. Phase 1 should validate aggregate rubric-profile structure, not classify criterion titles into their own rubric labels."
+    }
+  },
+  "research_questions": [
+    "What is the rubric profile attached to each query: dominant weighted dimension, harmlessness penalties, helpful-vs-harmless tension, complexity, and high-weight focus?",
+    "Can query text alone predict the dominant weighted rubric dimension?",
+    "Can query text alone predict whether the rubric includes negative harmless-outcome penalties?",
+    "Can query text alone predict helpful-vs-harmless tension in the rubric profile?",
+    "Can query text alone predict rubric complexity?",
+    "Which profile attributes are mostly topic-readable and which require explicit rubric-set context?"
+  ],
+  "workflow_steps": [
+    {
+      "name": "build_rubric_profiles",
+      "question": "Collapse all criteria for a query into one scenario-level rubric profile.",
+      "interpretation": "This is the central validation artifact for Phase 1. It preserves the fact that MoReBench provides multiple annotations per query."
+    },
+    {
+      "name": "dilemma_text_to_dominant_dimension_baseline",
+      "question": "Can query text predict the dominant weighted rubric dimension for the whole rubric set?",
+      "interpretation": "High metrics mean rubric profile shape is topic-readable. Low metrics mean later probes need explicit rubric context."
+    },
+    {
+      "name": "dilemma_text_to_harmless_penalty_baseline",
+      "question": "Can query text predict whether any negative harmless-outcome penalty is present?",
+      "interpretation": "High metrics mean safety-penalty requirements are mostly scenario-topic shortcuts. Low metrics mean the penalty comes from expert rubric structure."
+    },
+    {
+      "name": "dilemma_text_to_helpful_harmless_tension_baseline",
+      "question": "Can query text predict whether the rubric has both helpful-outcome reward mass and harmless-outcome penalty mass?",
+      "interpretation": "High metrics mean helpful-vs-harmless tension is visible in the query alone. Low metrics mean the tension must be represented through the rubric set."
+    },
+    {
+      "name": "dilemma_text_to_rubric_complexity_baseline",
+      "question": "Can query text predict whether the expert rubric is low, medium, or high complexity?",
+      "interpretation": "High metrics mean complexity is topic-readable. Low metrics mean complexity is additional expert structure."
+    }
+  ],
+  "dropped_questions": [
+    "criterion_text_to_rubric_dimension_baseline",
+    "criterion_text_to_signed_weight_baseline",
+    "role_domain",
+    "dilemma_source",
+    "dilemma_type",
+    "context"
+  ],
+  "next_experiments": [
+    {
+      "name": "response_fulfillment_labels",
+      "description": "Generate model answers and judge criterion fulfillment per rubric item. Aggregate signed weighted scores by dimension and total score."
+    },
+    {
+      "name": "rubric_conditioned_capture",
+      "description": "Capture residual activations for prompts containing the query plus the rubric set or selected criteria, without exposing profile labels. Probe profile attributes and criterion fulfillment."
+    },
+    {
+      "name": "helpful_harmless_tradeoff_geometry",
+      "description": "Use profile labels and fulfillment labels to build helpful-vs-harmless directions, geometry views, and causal steering/patching tests."
+    }
+  ],
+  "controls": [
+    "The validation unit is base_dilemma_id, not individual criterion title.",
+    "Do not treat criterion-title to rubric-dimension classification as a scientific result.",
+    "Use text-only query baselines as leakage checks for profile attributes before activation probes.",
+    "Keep criterion text, query text, and generated response text as separable fields.",
+    "Do not include profile labels in model prompts used for activation captures."
+  ],
+  "implementation_notes": {
+    "dataset": {
+      "source": "Hugging Face datasets",
+      "repo": "morebench/morebench",
+      "config": "morebench_public",
+      "split": "test",
+      "loader": "Deferred HuggingFaceSource with nested RUBRIC expansion at runtime"
+    },
+    "analysis": {
+      "first_steps": [
+        "build_rubric_profiles",
+        "dilemma_text_to_dominant_dimension_baseline",
+        "dilemma_text_to_harmless_penalty_baseline",
+        "dilemma_text_to_helpful_harmless_tension_baseline",
+        "dilemma_text_to_rubric_complexity_baseline"
+      ],
+      "metrics": [
+        "accuracy",
+        "balanced_accuracy",
+        "auroc"
+      ]
+    },
+    "capture": {
+      "status": "planned after rubric-profile validation and response-fulfillment label design"
+    },
+    "report": {
+      "execution": "local"
+    }
+  },
+  "outputs": {
+    "output_dir": "projects/MOREBENCH/procedural_probe/phase_01/reports",
+    "notes": "The report should describe the rubric profile distribution and query-text predictability for each profile attribute."
+  }
+}

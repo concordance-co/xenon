@@ -19,11 +19,12 @@ import numpy as np
 import pytest
 from safetensors.numpy import load_file, save_file
 
-from pipelines_v2.core.types import utc_now_iso
+from pipelines_v2.core.types import to_primitive, utc_now_iso
 from pipelines_v2.api import (
     ActivationPatchSpec,
     ActivationBankSpec,
     AddDirectionPatch,
+    ArtifactDatasetSource,
     ArtifactManifest,
     ArtifactLabelRef,
     CentroidSpec,
@@ -45,6 +46,7 @@ from pipelines_v2.api import (
     FileCatalog,
     GeometrySpec,
     GenerationSpec,
+    HuggingFaceSource,
     InMemorySource,
     LabelMapSpec,
     LocalResources,
@@ -95,6 +97,7 @@ from pipelines_v2.api import (
 from pipelines_v2.cli import (
     _build_report_spec_from_run,
     _build_runners,
+    _mirror_workflow_run_lineage,
     _registry_catalog,
     _resolve_report_step,
     _resolve_workflow_metadata_catalog,
@@ -107,7 +110,7 @@ from pipelines_v2.engine.vllm.intervention_build import build_llm_kwargs, paired
 from pipelines_v2.operations.execution.interventions import run_patch_comparison
 from pipelines_v2.runtime import ExecutionPlan
 from pipelines_v2.runtime.specs import runner_spec_from_dict
-from pipelines_v2.runtime.remote_executor import execute_remote
+from pipelines_v2.runtime.remote_executor import _artifact_id_for, execute_remote, merge_remote_shards
 from pipelines_v2.runtime.modal_worker import _mounted_volumes, _resolved_runtime_spec, run_on_modal
 from pipelines_v2.storage.artifacts import InlineOperationArtifact
 from pipelines_v2.storage.composite import preferred_workflow_metadata_catalog
@@ -594,6 +597,694 @@ def test_in_memory_source_fetches_dataset() -> None:
     assert dataset.cases("case_id").values == {"a": "case_1"}
 
 
+def test_dataset_loads_jsonl_file(tmp_path: Path) -> None:
+    dataset_path = tmp_path / "examples.jsonl"
+    dataset_path.write_text(
+        "\n".join(
+            [
+                json.dumps({"example_id": "a", "prompt": "hello", "class": "positive", "case_id": "case_1"}),
+                json.dumps({"example_id": "b", "prompt": "world", "class": "negative", "case_id": "case_2"}),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    dataset = Dataset.from_file(
+        dataset_path,
+        prompt_column="prompt",
+        example_key_column="example_id",
+        label_columns=["class"],
+        case_key_column="case_id",
+    )
+
+    assert dataset.example_keys() == ["a", "b"]
+    assert dataset.labels("class").values == {"a": "positive", "b": "negative"}
+    assert dataset.cases("case_id").values == {"a": "case_1", "b": "case_2"}
+
+
+def test_huggingface_dataset_stays_deferred_until_runtime() -> None:
+    source = HuggingFaceSource(
+        path="morebench/morebench",
+        name="morebench_public",
+        revision="abc123",
+        token_env_var="HF_TOKEN",
+    )
+
+    dataset = Dataset.from_huggingface(
+        source=source,
+        split="test",
+        prompt_column="DILEMMA",
+        example_key_column="TASK_ID",
+        label_columns=["THEORY"],
+        case_key_column="TASK_ID",
+        name="morebench_public",
+    )
+
+    payload = dataset.to_dict()
+
+    assert dataset.is_deferred is True
+    assert payload["source"] == {
+        "kind": "huggingface",
+        "path": "morebench/morebench",
+        "name": "morebench_public",
+        "revision": "abc123",
+        "token_env_var": "HF_TOKEN",
+    }
+    assert "token" not in payload["source"]
+    assert dataset.fetch["split"] == "test"
+    assert [secret.env_var for secret in dataset.runtime_secrets()] == ["HF_TOKEN"]
+    assert dataset.runtime_pip_packages() == ("datasets",)
+
+    baseline = TextBaselineSpec(
+        text=dataset.labels("DILEMMA"),
+        labels=dataset.labels("THEORY"),
+    )
+    assert "datasets" in baseline.runtime_spec().pip_packages
+
+
+def test_dataset_maps_official_hf_dataset_objects() -> None:
+    class FakeHFDataset:
+        def to_list(self) -> list[dict[str, object]]:
+            return [
+                {"prompt": "first", "class": "positive"},
+                {"prompt": "second", "class": "negative"},
+            ]
+
+    dataset = Dataset.from_hf_dataset(
+        FakeHFDataset(),
+        prompt_column="prompt",
+        example_key_column="example_id",
+        label_columns=["class"],
+        index_column="example_id",
+        index_prefix="hf",
+    )
+
+    assert dataset.example_keys() == ["hf_000000", "hf_000001"]
+    assert dataset.labels("class").values == {
+        "hf_000000": "positive",
+        "hf_000001": "negative",
+    }
+
+
+def test_dataset_maps_hf_hash_columns_for_grouping() -> None:
+    class FakeHFDataset:
+        def to_list(self) -> list[dict[str, object]]:
+            return [
+                {"example_id": "a", "prompt": "same", "class": "x"},
+                {"example_id": "b", "prompt": "same", "class": "y"},
+                {"example_id": "c", "prompt": "different", "class": "x"},
+            ]
+
+    dataset = Dataset.from_hf_dataset(
+        FakeHFDataset(),
+        prompt_column="prompt",
+        example_key_column="example_id",
+        label_columns=["class"],
+        case_columns=["base_prompt_id"],
+        hash_columns={"base_prompt_id": "prompt"},
+    )
+
+    groups = dataset.cases("base_prompt_id").values
+
+    assert groups["a"] == groups["b"]
+    assert groups["a"] != groups["c"]
+
+
+def test_dataset_maps_hf_nested_records() -> None:
+    class FakeHFDataset:
+        def to_list(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "DILEMMA": "Should the agent disclose the risk?",
+                    "RUBRIC": [
+                        {
+                            "id": "c1",
+                            "title": "Identify affected stakeholders",
+                            "weight": 2,
+                            "annotations": {"rubric_dimension": "Identifying"},
+                        },
+                        {
+                            "id": "c2",
+                            "title": "Avoid causing unnecessary harm",
+                            "weight": -3,
+                            "annotations": {"rubric_dimension": "Harmless Outcome"},
+                        },
+                    ],
+                }
+            ]
+
+    dataset = Dataset.from_hf_dataset(
+        FakeHFDataset(),
+        prompt_column="criterion_text",
+        example_key_column="criterion_id",
+        label_columns=["DILEMMA", "criterion_text", "rubric_dimension", "criterion_weight"],
+        case_columns=["base_dilemma_id"],
+        index_column="criterion_id",
+        index_prefix="rubric",
+        hash_columns={"base_dilemma_id": "DILEMMA"},
+        nested_record_column="RUBRIC",
+        nested_record_index_column="criterion_index",
+        nested_record_field_paths={
+            "criterion_text": ("title", "criterion"),
+            "rubric_dimension": "annotations.rubric_dimension",
+            "criterion_weight": "weight",
+        },
+    )
+
+    assert dataset.example_keys() == ["rubric_000000", "rubric_000001"]
+    assert dataset.labels("criterion_text").values["rubric_000000"] == "Identify affected stakeholders"
+    assert dataset.labels("rubric_dimension").values["rubric_000001"] == "Harmless Outcome"
+    assert dataset.labels("criterion_weight").values["rubric_000001"] == -3
+    assert dataset.cases("base_dilemma_id").values["rubric_000000"] == dataset.cases("base_dilemma_id").values["rubric_000001"]
+
+
+def test_morebench_rubric_parser_accepts_dataset_card_shape() -> None:
+    from projects.MOREBENCH.shared.morebench_dataset import iter_criterion_records
+
+    records = list(
+        iter_criterion_records(
+            [
+                {
+                    "DILEMMA": "Should the advisor escalate?",
+                    "RUBRIC": {
+                        "criteria": [
+                            {
+                                "title": "Identify who may be harmed",
+                                "weight": -2,
+                                "annotations": {"rubric_dimension": "Harmless Outcome"},
+                            }
+                        ]
+                    },
+                }
+            ],
+            config="morebench_public",
+            split="test",
+        )
+    )
+
+    assert len(records) == 1
+    assert records[0]["criterion_text"] == "Identify who may be harmed"
+    assert records[0]["rubric_dimension"] == "Harmless Outcome"
+    assert records[0]["criterion_weight"] == -2.0
+    assert records[0]["criterion_sign"] == "negative"
+
+
+def test_morebench_rubric_profile_builder_collapses_criteria_by_dilemma() -> None:
+    from projects.MOREBENCH.shared.rubric_validation import build_rubric_profile_labels
+
+    dataset = Dataset.from_examples(
+        [
+            Example(
+                key="c1",
+                prompt="Identify affected parties",
+                labels={
+                    "DILEMMA": "Should the patient take medication?",
+                    "rubric_dimension": "identifying",
+                    "criterion_weight": 2,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+            Example(
+                key="c2",
+                prompt="Avoid dismissing cultural concerns",
+                labels={
+                    "DILEMMA": "Should the patient take medication?",
+                    "rubric_dimension": "harmless outcome",
+                    "criterion_weight": -3,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+            Example(
+                key="c3",
+                prompt="State a clear conclusion",
+                labels={
+                    "DILEMMA": "Should the patient take medication?",
+                    "rubric_dimension": "helpful outcome",
+                    "criterion_weight": 3,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+        ]
+    )
+
+    result = build_rubric_profile_labels(criteria=dataset)
+
+    assert result["example_keys"] == ["d1"]
+    assert result["labels"]["has_harmless_penalty"] == {"d1": "yes"}
+    assert result["labels"]["has_helpful_harmless_tension"] == {"d1": "yes"}
+    assert result["labels"]["dominant_dimension"] == {"d1": "helpful outcome"}
+    assert result["payload"]["summary"]["profile_count"] == 1
+
+
+def test_transform_spec_runtime_packages_include_deferred_input_packages() -> None:
+    dataset = Dataset.from_huggingface(
+        source=HuggingFaceSource(path="org/dataset", name="config"),
+        split="test",
+        prompt_column="prompt",
+        example_key_column="example_id",
+        label_columns=["class"],
+    )
+
+    spec = TransformSpec(
+        builder=TransformBuilder.from_function(_inline_transform_seed),
+        inputs={"dataset": dataset},
+    )
+
+    assert "datasets" in spec.runtime_spec().pip_packages
+
+
+def test_transform_spec_from_dict_rehydrates_dataset_inputs() -> None:
+    materialized = Dataset.from_examples(
+        [
+            Example(
+                key="a",
+                prompt="hello",
+                labels={"class": "positive"},
+            )
+        ]
+    )
+    deferred = Dataset.from_huggingface(
+        source=HuggingFaceSource(path="org/dataset", name="config"),
+        split="test",
+        prompt_column="prompt",
+        example_key_column="example_id",
+        label_columns=["class"],
+    )
+
+    spec = TransformSpec(
+        builder=TransformBuilder.from_function(_inline_transform_seed),
+        inputs={"materialized": materialized, "deferred": deferred},
+    )
+
+    roundtripped = TransformSpec.from_dict(spec.to_dict())
+
+    assert isinstance(roundtripped.inputs["materialized"], Dataset)
+    assert roundtripped.inputs["materialized"].example_keys() == ["a"]
+    assert isinstance(roundtripped.inputs["deferred"], Dataset)
+    assert roundtripped.inputs["deferred"].is_deferred
+    assert "datasets" in roundtripped.runtime_spec().pip_packages
+
+
+def test_dataset_prompt_template_formats_record_columns() -> None:
+    dataset = Dataset.from_records(
+        [{"example_id": "a", "DILEMMA": "Choose carefully.", "label": "x"}],
+        prompt_column="DILEMMA",
+        prompt_template="Instruction\n{DILEMMA}",
+        example_key_column="example_id",
+        label_columns=["label"],
+    )
+
+    assert dataset.examples[0].prompt == "Instruction\nChoose carefully."
+
+
+def test_dataset_prompt_template_formats_chat_messages() -> None:
+    dataset = Dataset.from_records(
+        [{"example_id": "a", "DILEMMA": "Choose carefully.", "label": "x"}],
+        prompt_column="DILEMMA",
+        prompt_template=(
+            {
+                "role": "user",
+                "content": "Instruction\n{DILEMMA}",
+            },
+        ),
+        example_key_column="example_id",
+        label_columns=["label"],
+    )
+
+    assert dataset.examples[0].prompt == [
+        {
+            "role": "user",
+            "content": "Instruction\nChoose carefully.",
+        }
+    ]
+
+
+def test_morebench_behavioral_scoring_plan_joins_generations_to_criteria() -> None:
+    from projects.MOREBENCH.shared.behavioral_fulfillment import build_behavioral_scoring_plan
+
+    criteria = Dataset.from_examples(
+        [
+            Example(
+                key="criterion_a",
+                prompt="State a clear conclusion",
+                labels={
+                    "DILEMMA": "Should I follow the advice?",
+                    "criterion_text": "State a clear conclusion",
+                    "rubric_dimension": "helpful outcome",
+                    "criterion_weight": 3,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+            Example(
+                key="criterion_b",
+                prompt="Do not dismiss cultural concerns",
+                labels={
+                    "DILEMMA": "Should I follow the advice?",
+                    "criterion_text": "Do not dismiss cultural concerns",
+                    "rubric_dimension": "harmless outcome",
+                    "criterion_weight": -3,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+        ]
+    )
+    generations = {
+        "rows": [
+            {
+                "example_key": "scenario_a",
+                "example": {
+                    "key": "scenario_a",
+                    "prompt": "Should I follow the advice?",
+                    "labels": {"DILEMMA": "Should I follow the advice?"},
+                    "cases": {"base_dilemma_id": "d1"},
+                },
+                "generated_text": "You should discuss the advice and make a careful decision.",
+                "finish_reason": "stop",
+            }
+        ]
+    }
+
+    result = build_behavioral_scoring_plan(criteria=criteria, generations=generations)
+
+    assert result["example_keys"] == ["d1"]
+    assert result["payload"]["summary"]["response_count"] == 1
+    assert result["payload"]["summary"]["criterion_count"] == 2
+    assert result["payload"]["summary"]["scoring_row_count"] == 2
+    assert result["labels"]["response_available"] == {"d1": "yes"}
+    assert result["labels"]["expected_criterion_count"] == {"d1": 2}
+    assert result["labels"]["max_official_score"] == {"d1": 6.0}
+    assert result["payload"]["judge_contract"]["unit"] == "one generated answer judged against one rubric criterion"
+    assert result["payload"]["judge_contract"]["required_outputs"] == [
+        "judgement: literal yes/no answer to whether the response meets the criterion"
+    ]
+    assert result["payload"]["preview"][0]["official_credit_if_yes"] == 3.0
+    assert result["payload"]["preview"][1]["official_credit_if_no"] == 3.0
+
+
+def test_morebench_rubric_signal_probe_labels_builds_targets() -> None:
+    from projects.MOREBENCH.shared.signal_probes import build_rubric_signal_probe_labels
+
+    criteria = Dataset.from_examples(
+        [
+            Example(
+                key="criterion_a",
+                prompt="State a clear conclusion",
+                labels={
+                    "DILEMMA": "Should I follow the advice?",
+                    "criterion_text": "State a clear conclusion",
+                    "rubric_dimension": "helpful outcome",
+                    "criterion_weight": 10,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+            Example(
+                key="criterion_b",
+                prompt="Do not dismiss cultural concerns",
+                labels={
+                    "DILEMMA": "Should I follow the advice?",
+                    "criterion_text": "Do not dismiss cultural concerns",
+                    "rubric_dimension": "harmless outcome",
+                    "criterion_weight": -6,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+            Example(
+                key="criterion_c",
+                prompt="Explain the process",
+                labels={
+                    "DILEMMA": "Should I follow the advice?",
+                    "criterion_text": "Explain the process",
+                    "rubric_dimension": "logical process",
+                    "criterion_weight": 16,
+                },
+                cases={"base_dilemma_id": "d1"},
+            ),
+        ]
+    )
+
+    result = build_rubric_signal_probe_labels(criteria=criteria)
+
+    assert result["example_keys"] == ["d1"]
+    assert result["labels"]["has_helpful_harmless_tension"] == {"d1": "yes"}
+    assert result["labels"]["high_helpful_outcome_demand"] == {"d1": "yes"}
+    assert result["labels"]["high_harmless_penalty_burden"] == {"d1": "yes"}
+    assert result["labels"]["high_logical_process_demand"] == {"d1": "yes"}
+    assert result["payload"]["target_class_counts"]["high_logical_process_demand"] == {"yes": 1}
+    assert result["metadata"]["status"] == "rubric-derived prompt-probe targets; no response judging required"
+
+
+def test_morebench_official_reasoning_by_dilemma_dataset_aligns_keys() -> None:
+    from projects.MOREBENCH.shared.morebench_dataset import (
+        BASE_DILEMMA_ID_COLUMN,
+        build_official_reasoning_by_dilemma_dataset,
+    )
+
+    dataset = build_official_reasoning_by_dilemma_dataset(limit=2)
+
+    assert dataset.is_deferred
+    assert dataset.fetch["example_key_column"] == BASE_DILEMMA_ID_COLUMN
+    assert dataset.fetch["case_key_column"] == BASE_DILEMMA_ID_COLUMN
+    assert dataset.fetch["hash_columns"] == {BASE_DILEMMA_ID_COLUMN: "DILEMMA"}
+    assert dataset.fetch["prompt_template"][0]["role"] == "user"
+    assert dataset.fetch["prompt_template"][0]["content"].startswith("Provide corresponding reasoning")
+
+
+def test_morebench_phase_02_workflow_builds_raw_dimension_probe_steps() -> None:
+    module_path = Path("projects/MOREBENCH/procedural_probe/phase_02/specs/workflow.py")
+    spec = importlib.util.spec_from_file_location("morebench_phase_02_workflow", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    prompt_dataset = module.build_prompt_dataset(limit=2)
+    criterion_dataset = module.build_criterion_dataset(limit=2)
+    workflow = module.build_workflow(prompt_dataset, criterion_dataset=criterion_dataset)
+
+    step_names = [step.name for step in workflow.steps]
+    assert workflow.name == "morebench_phase_02_raw_dimension_prompt_generation_probes"
+    assert step_names[0] == "build_raw_rubric_dimension_labels"
+    assert step_names[1] == "generate_dilemma_responses"
+    assert step_names[2] == "build_successful_generation_capture_dataset"
+    assert step_names[3] == "capture_prompt_generated_residual"
+    assert "probe_prompt_dominant_dimension_by_count_residual" in step_names
+    assert "text_baseline_prompt_dominant_dimension_by_count" in step_names
+    assert "probe_generation_dominant_dimension_by_count_residual" in step_names
+    assert "text_baseline_generation_dominant_dimension_by_count" in step_names
+    assert step_names[-1] == "report"
+    assert workflow.steps[0].spec.kind == "transform"
+    assert workflow.steps[1].spec.kind == "generation_run"
+    assert workflow.steps[1].spec.generation.enabled is True
+    assert workflow.steps[1].spec.engine.max_num_seqs == 4
+    assert workflow.steps[1].spec.engine.model_id == "Qwen/Qwen3-30B-A3B"
+    assert workflow.steps[1].spec.engine.model_path_root == "/models"
+    assert workflow.steps[1].spec.engine.resolved_model_path() == "/models/Qwen/Qwen3-30B-A3B"
+    assert workflow.steps[1].spec.engine.max_model_len == 40_960
+    assert workflow.steps[2].spec.kind == "transform"
+    assert workflow.steps[3].spec.kind == "capture"
+    assert workflow.steps[3].spec.generation.enabled is False
+    assert workflow.steps[3].spec.dataset.is_deferred
+    assert workflow.steps[3].spec.dataset.source == {"kind": "artifact_dataset"}
+    assert workflow.steps[3].spec.dataset.fetch["artifact"].step == "build_successful_generation_capture_dataset"
+    assert workflow.steps[3].spec.dataset.fetch["provides_token_sections"] is True
+    assert workflow.steps[3].spec.prompt_metadata_builder is None
+    assert workflow.steps[3].spec.provides_token_sections()
+    assert workflow.steps[3].spec.sites[0].tokens.kind == "section"
+    assert workflow.steps[3].spec.sites[0].tokens.value == "prompt_end"
+    assert workflow.steps[3].spec.sites[1].tokens.value == "generated_end"
+    assert workflow.steps[4].spec.kind == "probe"
+    assert workflow.steps[4].spec.labels.step == "build_raw_rubric_dimension_labels"
+    assert workflow.steps[4].spec.feature.step == "capture_prompt_generated_residual"
+    assert workflow.steps[6].spec.kind == "probe"
+    assert workflow.steps[6].spec.feature.feature_name == "residual_generation_end"
+
+
+def test_artifact_dataset_source_materializes_dataset_from_operation_result(tmp_path: Path) -> None:
+    store = LocalArtifactStore(tmp_path / "artifacts")
+    artifact_id = "dataset_artifact"
+    store.make_artifact_dir(artifact_id)
+    dataset = Dataset.from_examples(
+        [
+            Example(
+                key="ex1",
+                prompt="prompt\n\nanswer",
+                labels={"label": "yes"},
+                metadata={
+                    "token_sections": {
+                        "prompt": {"char_start": 0, "char_end": 6},
+                        "generated": {"char_start": 8, "char_end": 14},
+                    }
+                },
+                cases={"case_key": "case1"},
+                case_key="case1",
+            )
+        ],
+        name="artifact_backed_dataset",
+    )
+    result_ref = store.write_json(
+        artifact_id,
+        "result.json",
+        {"kind": "dataset_transform_result", "dataset": dataset.to_dict()},
+    )
+    manifest = ArtifactManifest(
+        artifact_id=artifact_id,
+        artifact_kind="transform",
+        schema_version=1,
+        operation_spec_hash="spec_hash",
+        operation_semantic_hash="semantic_hash",
+        created_at=utc_now_iso(),
+        engine={},
+        runner={},
+        input_artifact_refs=(),
+        example_coverage=dataset.coverage(),
+        storage_refs={"result": result_ref},
+    )
+    artifact = OperationArtifact(_manifest=manifest, store=store)
+
+    loaded = ArtifactDatasetSource().fetch_dataset(artifact=artifact)
+    loaded_from_dict = ArtifactDatasetSource().fetch_dataset(artifact=to_primitive(artifact))
+    loaded_checked = ArtifactDatasetSource().fetch_dataset(
+        artifact=artifact,
+        provides_token_sections=True,
+    )
+
+    assert loaded.example_keys() == ["ex1"]
+    assert loaded.examples[0].metadata["token_sections"]["generated"]["char_end"] == 14
+    assert loaded_from_dict.example_keys() == ["ex1"]
+    assert loaded_from_dict.examples[0].labels["label"] == "yes"
+    assert loaded_checked.examples[0].metadata["token_sections"]["prompt"]["char_start"] == 0
+
+    missing_sections = Dataset.from_examples(
+        [
+            Example(
+                key="ex2",
+                prompt="plain",
+            )
+        ],
+        name="artifact_backed_dataset_without_sections",
+    )
+    missing_ref = store.write_json(
+        "dataset_without_sections",
+        "result.json",
+        {"kind": "dataset_transform_result", "dataset": missing_sections.to_dict()},
+    )
+    missing_manifest = ArtifactManifest(
+        artifact_id="dataset_without_sections",
+        artifact_kind="transform",
+        schema_version=1,
+        operation_spec_hash="spec_hash",
+        operation_semantic_hash="semantic_hash",
+        created_at=utc_now_iso(),
+        engine={},
+        runner={},
+        input_artifact_refs=(),
+        example_coverage=missing_sections.coverage(),
+        storage_refs={"result": missing_ref},
+    )
+    missing_artifact = OperationArtifact(_manifest=missing_manifest, store=store)
+
+    with pytest.raises(ValueError, match="provides_token_sections=True"):
+        ArtifactDatasetSource().fetch_dataset(
+            artifact=missing_artifact,
+            provides_token_sections=True,
+        )
+
+
+def test_huggingface_source_materializes_records(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+
+    class FakeHFDataset:
+        def to_list(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "example_id": "a",
+                    "prompt": "hello",
+                    "class": "positive",
+                    "case_id": "case_1",
+                }
+            ]
+
+    fake_datasets = types.ModuleType("datasets")
+
+    def fake_load_dataset(path: str, *args: object, **kwargs: object) -> FakeHFDataset:
+        calls.append((path, args, kwargs))
+        return FakeHFDataset()
+
+    fake_datasets.load_dataset = fake_load_dataset
+    monkeypatch.setitem(sys.modules, "datasets", fake_datasets)
+    monkeypatch.setenv("HF_TOKEN", "secret-token")
+
+    dataset = Dataset.from_source(
+        source=HuggingFaceSource(
+            path="org/dataset",
+            name="config",
+            revision="main",
+            token_env_var="HF_TOKEN",
+        ),
+        defer=False,
+        split="test",
+        prompt_column="prompt",
+        example_key_column="example_id",
+        label_columns=["class"],
+        case_key_column="case_id",
+    )
+
+    assert dataset.labels("class").values == {"a": "positive"}
+    assert dataset.cases("case_id").values == {"a": "case_1"}
+    assert calls == [
+        (
+            "org/dataset",
+            ("config",),
+            {
+                "split": "test",
+                "revision": "main",
+                "token": "secret-token",
+            },
+        )
+    ]
+
+
+def test_huggingface_source_materializes_nested_records(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeHFDataset:
+        def to_list(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "DILEMMA": "Should the agent disclose the risk?",
+                    "RUBRIC": [
+                        {
+                            "title": "State the relevant risk clearly",
+                            "weight": 1,
+                            "annotations": {"rubric_dimension": "Clear Process"},
+                        }
+                    ],
+                }
+            ]
+
+    fake_datasets = types.ModuleType("datasets")
+    fake_datasets.load_dataset = lambda path, *args, **kwargs: FakeHFDataset()
+    monkeypatch.setitem(sys.modules, "datasets", fake_datasets)
+
+    dataset = Dataset.from_source(
+        source=HuggingFaceSource(path="org/dataset", name="config"),
+        defer=False,
+        split="test",
+        prompt_column="criterion_text",
+        example_key_column="criterion_id",
+        label_columns=["criterion_text", "rubric_dimension", "criterion_weight"],
+        index_column="criterion_id",
+        index_prefix="rubric",
+        nested_record_column="RUBRIC",
+        nested_record_field_paths={
+            "criterion_text": "title",
+            "rubric_dimension": "annotations.rubric_dimension",
+            "criterion_weight": "weight",
+        },
+    )
+
+    assert dataset.example_keys() == ["rubric_000000"]
+    assert dataset.labels("rubric_dimension").values == {"rubric_000000": "Clear Process"}
+
+
 def test_dataset_supports_multiple_named_case_refs() -> None:
     dataset = Dataset.from_records(
         [
@@ -871,6 +1562,44 @@ def test_local_runner_capture_writes_manifest_features_and_generations(tmp_path:
         manifest_payload = json.load(f)
     assert manifest_payload["artifact_kind"] == "capture"
     assert manifest_payload["example_coverage"]["example_count"] == 2
+
+
+def test_capture_can_select_prompt_and_generated_sections_in_one_pass(tmp_path: Path) -> None:
+    runner = LocalRunner(
+        artifacts=LocalArtifactStore(tmp_path / "artifacts"),
+        catalog=FileCatalog(tmp_path / "catalog"),
+    )
+    spec = CaptureSpec(
+        engine=ToyEngine(hidden_size=3, num_layers=1, sequence_length=8),
+        dataset=make_toy_dataset(),
+        sites=[
+            ResidualSite(
+                name="prompt_tokens",
+                site="resid_post",
+                layers=[0],
+                tokens=TokenSelector.section("prompt"),
+            ),
+            ResidualSite(
+                name="generated_tokens",
+                site="resid_post",
+                layers=[0],
+                tokens=TokenSelector.section("generated"),
+            ),
+        ],
+        generation=GenerationSpec(
+            enabled=True,
+            max_tokens=2,
+            capture_generated_tokens=True,
+        ),
+    )
+
+    artifact = runner.run(spec)
+    prompt_feature = artifact.feature("prompt_tokens").load()
+    generated_feature = artifact.feature("generated_tokens").load()
+
+    assert prompt_feature["layers"]["0"]["ex_a"]["tokens"] == list(range(8))
+    assert generated_feature["layers"]["0"]["ex_a"]["tokens"] == [8, 9]
+    assert generated_feature["layers"]["0"]["ex_a"]["token_sections"]["generated"] == [0, 1]
 
 
 def test_local_runner_bundles_tensor_features_into_one_safetensors_file(tmp_path: Path) -> None:
@@ -1221,6 +1950,141 @@ def test_capture_prompt_batch_uses_one_generate_call_when_generation_enabled() -
     assert [record["generation_result"]["request_id"] for record in records] == ["req-0", "req-1"]
 
 
+def test_generation_spec_preserves_uncapped_max_tokens() -> None:
+    spec = GenerationSpec.from_dict(
+        {
+            "enabled": True,
+            "max_tokens": None,
+            "temperature": 0.0,
+            "top_p": 1.0,
+        }
+    )
+
+    assert spec.max_tokens is None
+    capture = replace(make_toy_capture_spec(), generation=spec)
+    payload = capture.to_dict()
+    assert payload["generation"]["max_tokens"] is None
+    assert CaptureSpec.from_dict(payload).generation.max_tokens is None
+
+
+def test_capture_prompt_batch_passes_uncapped_max_tokens_to_vllm() -> None:
+    vllm_module = types.ModuleType("vllm")
+
+    class _SamplingParams:
+        def __init__(self, **kwargs: Any) -> None:
+            self.max_tokens = kwargs.get("max_tokens")
+            self.temperature = kwargs.get("temperature")
+
+    vllm_module.SamplingParams = _SamplingParams
+    sys.modules["vllm"] = vllm_module
+
+    class _FakeTokenizer:
+        def __call__(self, text: str, *, add_special_tokens: bool, return_offsets_mapping: bool) -> Any:
+            return types.SimpleNamespace(
+                input_ids=[1, 2],
+                offset_mapping=[(0, 1), (1, 2)],
+            )
+
+    class _FakeCompletion:
+        text = "answer"
+        token_ids = [101]
+        finish_reason = "stop"
+
+    class _FakeRequestOutput:
+        request_id = "req-0"
+        outputs = [_FakeCompletion()]
+
+    class _FakeLLM:
+        def __init__(self) -> None:
+            self.sampling_params: Any | None = None
+
+        def generate(self, *, prompts: list[dict[str, Any]], sampling_params: Any) -> list[Any]:
+            self.sampling_params = sampling_params
+            return [_FakeRequestOutput()]
+
+    llm = _FakeLLM()
+    _capture_prompt_batch(
+        llm=llm,
+        tokenizer=_FakeTokenizer(),
+        examples=[Example(key="ex_a", prompt="ab")],
+        add_generation_prompt=False,
+        require_sections=False,
+        prompt_metadata_builder=None,
+        wants_residual=False,
+        wants_routing=False,
+        wants_generation=True,
+        generation_max_tokens=None,
+        generation_temperature=0.0,
+        capture_reasoning=False,
+    )
+
+    assert llm.sampling_params is not None
+    assert llm.sampling_params.max_tokens is None
+
+
+def test_capture_prompt_batch_generated_section_uses_saved_hidden_rows(tmp_path: Path) -> None:
+    vllm_module = types.ModuleType("vllm")
+
+    class _SamplingParams:
+        def __init__(self, **kwargs: Any) -> None:
+            self.max_tokens = kwargs.get("max_tokens")
+            self.temperature = kwargs.get("temperature")
+
+    vllm_module.SamplingParams = _SamplingParams
+    sys.modules["vllm"] = vllm_module
+
+    hidden_path = tmp_path / "req-0.safetensors"
+    save_file(
+        {"hidden_states": np.zeros((3, 1, 2), dtype=np.float32)},
+        str(hidden_path),
+    )
+
+    class _FakeTokenizer:
+        def __call__(self, text: str, *, add_special_tokens: bool, return_offsets_mapping: bool) -> Any:
+            assert add_special_tokens is False
+            assert return_offsets_mapping is True
+            token_ids = [ord(char) % 17 for char in text]
+            offsets = [(idx, idx + 1) for idx in range(len(text))]
+            return types.SimpleNamespace(input_ids=token_ids, offset_mapping=offsets)
+
+    class _FakeCompletion:
+        text = "answer-a"
+        token_ids = [101, 102]
+        finish_reason = "length"
+
+    class _FakeRequestOutput:
+        request_id = "req-0"
+        outputs = [_FakeCompletion()]
+        kv_transfer_params = {"hidden_states_path": str(hidden_path)}
+
+    class _FakeLLM:
+        def generate(self, *, prompts: list[dict[str, Any]], sampling_params: Any) -> list[Any]:
+            return [_FakeRequestOutput()]
+
+    records = _capture_prompt_batch(
+        llm=_FakeLLM(),
+        tokenizer=_FakeTokenizer(),
+        examples=[Example(key="ex_a", prompt="ab")],
+        add_generation_prompt=False,
+        require_sections=False,
+        prompt_metadata_builder=None,
+        wants_residual=True,
+        wants_routing=False,
+        wants_generation=True,
+        generation_max_tokens=12,
+        generation_temperature=0.3,
+        capture_reasoning=False,
+        capture_generated_tokens=True,
+    )
+
+    assert records[0]["generated_token_count"] == 2
+    assert records[0]["captured_generated_token_count"] == 1
+    assert records[0]["residual_token_count"] == 3
+    assert records[0]["residual_token_sections"]["prompt"] == [0, 1]
+    assert records[0]["residual_token_sections"]["generated"] == [2]
+    assert records[0]["residual"].shape == (1, 3, 2)
+
+
 def test_generation_result_from_output_keeps_full_generated_token_stream() -> None:
     from pipelines_v2.engine.vllm.capture import _generation_result_from_output
 
@@ -1486,6 +2350,48 @@ def test_capture_spec_round_trips_from_dict() -> None:
     assert restored.to_dict() == spec.to_dict()
 
 
+def test_vllm_engine_from_dict_preserves_unknown_runtime_options() -> None:
+    engine = VLLMEngine.from_dict(
+        {
+            "kind": "vllm",
+            "model_id": "Qwen/Qwen3-30B-A3B",
+            "distributed_executor_backend": "mp",
+            "future_backend_option": "kept",
+            "extra": {"existing": "value"},
+        }
+    )
+
+    assert engine.distributed_executor_backend == "mp"
+    assert engine.extra == {"existing": "value", "future_backend_option": "kept"}
+
+
+def test_workflow_spec_rehydrates_vllm_engine_with_unknown_runtime_options() -> None:
+    capture_payload = make_toy_capture_spec().to_dict()
+    capture_payload["engine"] = {
+        "kind": "vllm",
+        "model_id": "Qwen/Qwen3-30B-A3B",
+        "distributed_executor_backend": "mp",
+        "future_backend_option": "kept",
+    }
+    workflow_payload = WorkflowSpec(
+        name="vllm_capture",
+        steps=(
+            WorkflowStep(
+                name="capture",
+                runner="gpu",
+                spec=CaptureSpec.from_dict(capture_payload),
+            ),
+        ),
+    ).to_dict()
+
+    restored = WorkflowSpec.from_dict(workflow_payload)
+    engine = restored.steps[0].spec.engine
+
+    assert isinstance(engine, VLLMEngine)
+    assert engine.distributed_executor_backend == "mp"
+    assert engine.extra["future_backend_option"] == "kept"
+
+
 def test_vllm_engine_capture_calls_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     engine = VLLMEngine(model_id="Qwen/Qwen2.5-0.5B-Instruct")
     spec = make_toy_capture_spec()
@@ -1557,6 +2463,277 @@ def test_remote_executor_resolves_deferred_dataset_in_runtime(tmp_path: Path) ->
 
     assert manifest["example_coverage"]["example_count"] == 1
     assert manifest["example_coverage"]["dataset_name"] == "remote_runtime_bound"
+
+
+def test_remote_executor_shards_generation_by_prompt_hash_and_merges(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [
+            Example(key=f"ex_{idx}", prompt=f"prompt {idx}", labels={"class": "x"})
+            for idx in range(6)
+        ],
+        name="generation_shard_dataset",
+    )
+    spec = GenerationRunSpec(
+        engine=ToyEngine(),
+        dataset=dataset,
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+    store_config = {"kind": "local", "root": str(tmp_path / "artifacts")}
+    runner_config = {"kind": "modal", "resources": {"gpu": "L4", "shard_count": 3}}
+    shard_manifests = [
+        execute_remote(
+            runner_config=runner_config,
+            store_config=store_config,
+            spec_payload=spec.to_dict(),
+            workflow_context={
+                "run_id": "wr_sharded",
+                "workflow_step_key": "wf.generate",
+                "execution_shard": {"index": index, "count": 3},
+            },
+        )
+        for index in range(3)
+    ]
+
+    merged = merge_remote_shards(
+        runner_config=runner_config,
+        store_config=store_config,
+        spec_payload=spec.to_dict(),
+        shard_manifests=shard_manifests,
+        workflow_context={"run_id": "wr_sharded", "workflow_step_key": "wf.generate"},
+    )
+
+    assert merged["artifact_kind"] == "generation_run"
+    payload_path = Path(merged["storage_refs"]["result"]["path"])
+    with payload_path.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+    assert [row["example_key"] for row in payload["rows"]] == [f"ex_{idx}" for idx in range(6)]
+    assert payload["summary"]["sharded"] is True
+    assert payload["summary"]["shard_count"] == 3
+
+
+def test_remote_executor_reuses_completed_shard_artifact_on_resume(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [Example(key="ex_a", prompt="prompt a")],
+        name="resume_shard_dataset",
+    )
+    spec = GenerationRunSpec(
+        engine=ToyEngine(),
+        dataset=dataset,
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+    context = {
+        "run_id": "wr_resume",
+        "workflow_step_key": "wf.generate",
+        "execution_shard": {"index": 0, "count": 2},
+    }
+    first = execute_remote(
+        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
+        store_config={"kind": "local", "root": str(tmp_path / "artifacts")},
+        spec_payload=spec.to_dict(),
+        workflow_context=context,
+    )
+    result_path = Path(first["storage_refs"]["result"]["path"])
+    with result_path.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+    payload["rows"] = [{"example_key": "sentinel", "example": {"prompt_hash": "sentinel"}}]
+    with result_path.open("w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
+    second = execute_remote(
+        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
+        store_config={"kind": "local", "root": str(tmp_path / "artifacts")},
+        spec_payload=spec.to_dict(),
+        workflow_context=context,
+    )
+
+    assert second["artifact_id"] == first["artifact_id"]
+    with result_path.open("r", encoding="utf-8") as f:
+        assert json.load(f)["rows"][0]["example_key"] == "sentinel"
+
+    branched = execute_remote(
+        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
+        store_config={"kind": "local", "root": str(tmp_path / "artifacts")},
+        spec_payload=spec.to_dict(),
+        workflow_context={**context, "run_id": "wr_rerun"},
+    )
+
+    assert branched["artifact_id"] != first["artifact_id"]
+
+
+def test_remote_executor_reuses_generation_artifact_when_only_vllm_batch_size_changes(tmp_path: Path) -> None:
+    dataset = Dataset.from_examples(
+        [Example(key="ex_a", prompt="prompt a")],
+        name="resume_vllm_batch_dataset",
+    )
+    base_engine = VLLMEngine(
+        model_id="Qwen/Qwen3-30B-A3B",
+        model_path_root="/models",
+        max_model_len=55_000,
+        max_num_seqs=4,
+        enable_thinking=False,
+    )
+    larger_batch_engine = replace(base_engine, max_num_seqs=24)
+    base_spec = GenerationRunSpec(
+        engine=base_engine,
+        dataset=dataset,
+        generation=GenerationSpec(enabled=True, max_tokens=None),
+    )
+    larger_batch_spec = replace(base_spec, engine=larger_batch_engine)
+    context = {
+        "run_id": "wr_resume_vllm",
+        "workflow_step_key": "wf.generate",
+        "execution_shard": {"index": 0, "count": 2},
+    }
+
+    assert base_spec.spec_hash() != larger_batch_spec.spec_hash()
+    assert base_spec.semantic_hash() == larger_batch_spec.semantic_hash()
+    artifact_id = _artifact_id_for(spec=base_spec, workflow_context=context)
+    assert artifact_id == _artifact_id_for(spec=larger_batch_spec, workflow_context=context)
+
+    store = LocalArtifactStore(root=tmp_path / "artifacts")
+    store.ensure_artifact_dir(artifact_id)
+    result_ref = store.write_json(
+        artifact_id,
+        "result.json",
+        {
+            "kind": "generation_run_result",
+            "summary": {"example_count": 1},
+            "rows": [{"example_key": "sentinel", "example": {"prompt_hash": "sentinel"}}],
+        },
+    )
+    manifest = ArtifactManifest(
+        artifact_id=artifact_id,
+        artifact_kind=base_spec.kind,
+        schema_version=1,
+        operation_spec_hash=base_spec.spec_hash(),
+        operation_semantic_hash=base_spec.semantic_hash(),
+        created_at=utc_now_iso(),
+        engine=base_engine.identity(),
+        runner={"kind": "modal", "resources": {"gpu": "H200", "shard_count": 2}},
+        input_artifact_refs=(),
+        example_coverage={"count": 1},
+        storage_refs={"result": result_ref},
+        metadata={"execution_shard": {"index": 0, "count": 2}},
+        workflow_context=context,
+    )
+    store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+
+    reused = execute_remote(
+        runner_config={"kind": "modal", "resources": {"gpu": "H200", "shard_count": 2}},
+        store_config=store.identity(),
+        spec_payload=larger_batch_spec.to_dict(),
+        workflow_context=context,
+    )
+
+    assert reused["artifact_id"] == artifact_id
+    assert reused["operation_spec_hash"] == base_spec.spec_hash()
+    assert reused["operation_semantic_hash"] == larger_batch_spec.semantic_hash()
+
+
+def test_remote_executor_resumes_generation_from_partial_result_rows(tmp_path: Path) -> None:
+    examples = [
+        Example(key="ex_a", prompt="prompt a"),
+        Example(key="ex_b", prompt="prompt b"),
+        Example(key="ex_c", prompt="prompt c"),
+    ]
+    dataset = Dataset.from_examples(examples, name="partial_generation_dataset")
+    spec = GenerationRunSpec(
+        engine=ToyEngine(),
+        dataset=dataset,
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+    context = {
+        "run_id": "wr_partial_resume",
+        "workflow_step_key": "wf.generate",
+        "execution_shard": {"index": 0, "count": 2},
+    }
+    store = LocalArtifactStore(root=tmp_path / "artifacts")
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=context)
+    store.ensure_artifact_dir(artifact_id)
+    store.write_json(
+        artifact_id,
+        "result.json",
+        {
+            "kind": "generation_run_result",
+            "summary": {"example_count": 1, "partial": True},
+            "rows": [
+                {
+                    "example_key": "ex_b",
+                    "example": examples[1].to_dict(),
+                    "generated_text": "already done",
+                    "generated_token_ids": [1, 2],
+                    "finish_reason": "stop",
+                    "request_id": "partial",
+                }
+            ],
+        },
+    )
+
+    manifest = execute_remote(
+        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
+        store_config=store.identity(),
+        spec_payload=spec.to_dict(),
+        workflow_context=context,
+    )
+
+    result_path = Path(manifest["storage_refs"]["result"]["path"])
+    with result_path.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+    rows_by_key = {str(row["example_key"]): row for row in payload["rows"]}
+
+    assert manifest["artifact_id"] == artifact_id
+    assert payload["summary"]["partial"] is False
+    assert set(rows_by_key) == {"ex_a", "ex_b", "ex_c"}
+    assert rows_by_key["ex_b"]["generated_text"] == "already done"
+    assert rows_by_key["ex_a"]["generated_text"] == "toy_generation:ex_a"
+    assert rows_by_key["ex_c"]["generated_text"] == "toy_generation:ex_c"
+
+
+def test_vllm_generation_reports_rows_after_each_capture_batch(monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.engine.vllm.generate as vllm_generate_module
+
+    examples = [
+        Example(key="ex_a", prompt="prompt a"),
+        Example(key="ex_b", prompt="prompt b"),
+    ]
+    dataset = Dataset.from_examples(examples, name="vllm_generation_callback_dataset")
+    spec = GenerationRunSpec(
+        engine=VLLMEngine(model_id="Qwen/Qwen3-30B-A3B"),
+        dataset=dataset,
+        generation=GenerationSpec(enabled=True, max_tokens=2),
+    )
+
+    def fake_run_vllm_capture(*, engine: Any, spec: CaptureSpec, batch_callback: Any = None) -> EngineCaptureResult:
+        del engine
+        generations: list[dict[str, Any]] = []
+        for example in spec.dataset.examples:
+            generation = {
+                "example_key": example.key,
+                "text": f"answer {example.key}",
+                "generated_token_ids": [1],
+                "finish_reason": "stop",
+                "request_id": f"req-{example.key}",
+            }
+            generations.append(generation)
+            if batch_callback is not None:
+                batch_callback(
+                    [example],
+                    [generation],
+                    [{"example_key": example.key, "generated_token_count": 1}],
+                )
+        return EngineCaptureResult(features={}, generations=generations, metadata={"backend": "fake_vllm"})
+
+    monkeypatch.setattr(vllm_generate_module, "run_vllm_capture", fake_run_vllm_capture)
+    checkpoints: list[list[dict[str, Any]]] = []
+
+    result = vllm_generate_module.run_vllm_generation(
+        engine=spec.engine,
+        spec=spec,
+        batch_callback=lambda rows, metadata: checkpoints.append(list(rows)),
+    )
+
+    assert [[row["example_key"] for row in rows] for rows in checkpoints] == [["ex_a"], ["ex_b"]]
+    assert [row["generated_text"] for row in result.rows] == ["answer ex_a", "answer ex_b"]
 
 
 def test_modal_volume_store_local_roundtrip(tmp_path: Path) -> None:
@@ -1728,6 +2905,8 @@ def test_modal_runner_serializes_cpu_analysis_resources(tmp_path: Path) -> None:
             cpu=6,
             memory_mb=24 * 1024,
             timeout_seconds=1800,
+            max_containers=1,
+            shard_count=3,
         ),
         artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
     )
@@ -1738,6 +2917,10 @@ def test_modal_runner_serializes_cpu_analysis_resources(tmp_path: Path) -> None:
     assert identity["resources"]["cpu"] == 6
     assert identity["resources"]["memory_mb"] == 24 * 1024
     assert identity["resources"]["timeout_seconds"] == 1800
+    assert identity["resources"]["max_containers"] == 1
+    assert identity["resources"]["shard_count"] == 3
+    assert ModalResources.from_dict(identity["resources"]).max_containers == 1
+    assert ModalResources.from_dict(identity["resources"]).shard_count == 3
 
 
 def test_modal_runner_rejects_missing_runtime_secret_bindings(tmp_path: Path) -> None:
@@ -1934,7 +3117,7 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
     result = run_on_modal(
         runner_config={
             "kind": "modal",
-            "resources": {},
+            "resources": {"max_containers": 1},
         },
         store_config={
             "kind": "modal_volume",
@@ -1947,6 +3130,7 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
     )
 
     function_kwargs = dict(captured["function_kwargs"])
+    assert function_kwargs["max_containers"] == 1
     assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert function_kwargs["env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
     assert captured["image_env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
@@ -1958,6 +3142,144 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
         "remote_execution_finished",
     ]
     assert progress_events[0]["metrics"]["source_mount_count"] >= 0
+
+
+def test_modal_worker_shards_model_bound_specs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, object] = {}
+    shard_contexts: list[dict[str, object]] = []
+    merged_inputs: list[dict[str, object]] = []
+    progress_events: list[dict[str, object]] = []
+
+    class FakeImage:
+        def pip_install(self, *packages: str) -> "FakeImage":
+            del packages
+            return self
+
+        def env(self, env_payload: dict[str, str]) -> "FakeImage":
+            del env_payload
+            return self
+
+        def add_local_dir(self, local_path: str, *, remote_path: str) -> "FakeImage":
+            del local_path, remote_path
+            return self
+
+    class FakeImageFactory:
+        @staticmethod
+        def debian_slim(*, python_version: str) -> FakeImage:
+            del python_version
+            return FakeImage()
+
+    class FakeVolume:
+        @staticmethod
+        def from_name(name: str, create_if_missing: bool = False) -> object:
+            return {"name": name, "create_if_missing": create_if_missing}
+
+    class FakeSecret:
+        @staticmethod
+        def from_name(name: str) -> object:
+            return {"name": name}
+
+    class FakeFunction:
+        def __init__(self, fn: object) -> None:
+            self._fn = fn
+
+        def remote(self, *args: object) -> object:
+            return self._fn(*args)
+
+    class FakeAppRun:
+        app_id = "ap-test-shards"
+
+        def __enter__(self) -> "FakeAppRun":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class FakeApp:
+        def __init__(self, name: str) -> None:
+            captured["app_name"] = name
+
+        def function(self, **kwargs: object):
+            captured["function_kwargs"] = dict(kwargs)
+
+            def decorator(fn):
+                return FakeFunction(fn)
+
+            return decorator
+
+        def run(self) -> FakeAppRun:
+            return FakeAppRun()
+
+    def fake_execute_remote(**kwargs: object) -> dict[str, object]:
+        context = dict(kwargs["workflow_context"] or {})
+        shard_contexts.append(context)
+        shard = dict(context["execution_shard"])
+        return {
+            "artifact_id": f"capture_shard_{shard['index']}",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-17T00:00:00+00:00",
+            "engine": kwargs["spec_payload"]["engine"],
+            "runner": {},
+            "input_artifact_refs": [],
+            "example_coverage": {"count": 1},
+            "storage_refs": {"features": {}},
+            "metadata": {"execution_shard": shard},
+        }
+
+    def fake_merge_remote_shards(**kwargs: object) -> dict[str, object]:
+        merged_inputs.extend(dict(item) for item in kwargs["shard_manifests"])
+        return {
+            "artifact_id": "capture_merged",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-17T00:00:00+00:00",
+            "engine": kwargs["spec_payload"]["engine"],
+            "runner": {},
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"features": {}},
+            "metadata": {"sharded": True},
+        }
+
+    fake_modal = types.SimpleNamespace(
+        App=FakeApp,
+        Image=FakeImageFactory,
+        Volume=FakeVolume,
+        Secret=FakeSecret,
+    )
+    monkeypatch.setitem(sys.modules, "modal", fake_modal)
+    monkeypatch.setattr("pipelines_v2.runtime.remote_executor.execute_remote", fake_execute_remote)
+    monkeypatch.setattr("pipelines_v2.runtime.remote_executor.merge_remote_shards", fake_merge_remote_shards)
+
+    result = run_on_modal(
+        runner_config={
+            "kind": "modal",
+            "resources": {"max_containers": 3, "shard_count": 3},
+        },
+        store_config={
+            "kind": "modal_volume",
+            "name": "xenon-data",
+            "root": str(tmp_path / "artifacts"),
+        },
+        spec_payload=make_toy_capture_spec().to_dict(),
+        workflow_context={"run_id": "wr_test", "workflow_step_key": "wf.capture"},
+        progress_callback=lambda payload: progress_events.append(dict(payload)),
+    )
+
+    assert result["artifact_id"] == "capture_merged"
+    assert result["runner"]["runtime_app_id"] == "ap-test-shards"
+    assert sorted(dict(context["execution_shard"])["index"] for context in shard_contexts) == [0, 1, 2]
+    assert len(merged_inputs) == 3
+    assert "remote_shards_submitted" in [event["stage"] for event in progress_events]
+    assert "remote_shards_finished" in [event["stage"] for event in progress_events]
 
 
 def test_modal_worker_runner_env_overrides_spec_runtime_env(
@@ -2480,7 +3802,12 @@ def test_workflow_spec_round_trips_from_dict() -> None:
     workflow = WorkflowSpec(
         name="capture_then_probe",
         steps=(
-            WorkflowStep(name="capture", runner="gpu", spec=make_toy_capture_spec()),
+            WorkflowStep(
+                name="capture",
+                runner="gpu",
+                spec=make_toy_capture_spec(),
+                description="Capture residual activations for the probe dataset.",
+            ),
             WorkflowStep(
                 name="probe",
                 runner="cpu",
@@ -2493,6 +3820,25 @@ def test_workflow_spec_round_trips_from_dict() -> None:
     restored = WorkflowSpec.from_dict(workflow.to_dict())
 
     assert restored.to_dict() == workflow.to_dict()
+    assert restored.steps[0].description == "Capture residual activations for the probe dataset."
+
+
+def test_workflow_step_description_is_not_semantic_identity() -> None:
+    base = WorkflowStep(
+        name="capture",
+        runner="gpu",
+        spec=make_toy_capture_spec(),
+        description="Old operator note.",
+    )
+    edited = WorkflowStep(
+        name="capture",
+        runner="gpu",
+        spec=make_toy_capture_spec(),
+        description="New operator note.",
+    )
+
+    assert base.semantic_hash() == edited.semantic_hash()
+    assert base.spec_hash() != edited.spec_hash()
 
 
 def test_workflow_orchestrator_uses_named_runners_and_dependency_order() -> None:
@@ -2524,7 +3870,12 @@ def test_workflow_orchestrator_uses_named_runners_and_dependency_order() -> None
     workflow = WorkflowSpec(
         name="capture_then_probe",
         steps=(
-            WorkflowStep(name="capture", runner="gpu", spec=make_toy_capture_spec()),
+            WorkflowStep(
+                name="capture",
+                runner="gpu",
+                spec=make_toy_capture_spec(),
+                description="Capture toy residual features.",
+            ),
             WorkflowStep(
                 name="probe",
                 runner="cpu",
@@ -2538,6 +3889,7 @@ def test_workflow_orchestrator_uses_named_runners_and_dependency_order() -> None
     result = orchestrator.run(workflow)
 
     assert [step.name for step in plan.steps] == ["capture", "probe"]
+    assert [step.description for step in plan.steps] == ["Capture toy residual features.", None]
     assert observed == [("gpu", "capture"), ("cpu", "probe")]
     assert result.step("probe") == {"runner": "cpu", "kind": "probe"}
 
@@ -3175,6 +4527,89 @@ class _CatalogProbe:
         return {"kind": self.kind, "name": self.name}
 
 
+class _LineageCheckingCatalog(_CatalogProbe):
+    def __init__(self, *, kind: str = "postgres", name: str = "remote") -> None:
+        super().__init__(kind=kind, name=name)
+        self.artifacts: dict[str, ArtifactManifest] = {}
+        self.runs: dict[str, WorkflowRunRecord] = {}
+        self.steps: dict[tuple[str, str], WorkflowStepRecord] = {}
+
+    def record_artifact(self, manifest: ArtifactManifest) -> None:
+        context = dict(manifest.workflow_context)
+        run_id = context.get("run_id")
+        step_name = context.get("step_name")
+        if run_id is not None and step_name is not None and (str(run_id), str(step_name)) not in self.steps:
+            raise AssertionError(f"missing workflow step for artifact lineage: {run_id}:{step_name}")
+        self.artifacts[manifest.artifact_id] = manifest
+
+    def load_artifact(self, artifact_id: str) -> ArtifactManifest | None:
+        return self.artifacts.get(artifact_id)
+
+    def find_artifact_for_workflow_step(
+        self,
+        *,
+        run_id: str,
+        workflow_step_key: str,
+    ) -> ArtifactManifest | None:
+        for artifact in self.artifacts.values():
+            context = dict(artifact.workflow_context)
+            if context.get("run_id") == run_id and context.get("workflow_step_key") == workflow_step_key:
+                return artifact
+        return None
+
+    def record_workflow_run(self, record: WorkflowRunRecord) -> None:
+        if record.parent_run_id is not None and record.parent_run_id not in self.runs:
+            raise AssertionError(f"missing parent workflow run: {record.parent_run_id}")
+        self.runs[record.run_id] = record
+
+    def load_workflow_run(self, run_id: str) -> WorkflowRunRecord | None:
+        return self.runs.get(run_id)
+
+    def list_workflow_runs(
+        self,
+        *,
+        workflow_name: str | None = None,
+        workflow_hash: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[WorkflowRunRecord]:
+        records = list(self.runs.values())
+        if workflow_name is not None:
+            records = [record for record in records if record.workflow_name == workflow_name]
+        if workflow_hash is not None:
+            records = [record for record in records if record.workflow_hash == workflow_hash]
+        if status is not None:
+            records = [record for record in records if record.status == status]
+        records.sort(key=lambda item: (item.started_at, item.run_id), reverse=True)
+        return records[:limit] if limit is not None else records
+
+    def record_workflow_step(self, record: WorkflowStepRecord) -> None:
+        self.steps[(record.run_id, record.step_name)] = record
+
+    def list_workflow_steps(self, run_id: str) -> list[WorkflowStepRecord]:
+        records = [record for (record_run_id, _), record in self.steps.items() if record_run_id == run_id]
+        records.sort(key=lambda item: (item.step_index, item.step_name))
+        return records
+
+    def find_latest_reusable_step(
+        self,
+        *,
+        step_name: str,
+        step_semantic_hash: str,
+        input_artifact_refs: tuple[str, ...],
+    ) -> WorkflowStepRecord | None:
+        matches = [
+            record
+            for record in self.steps.values()
+            if record.step_name == step_name
+            and record.step_semantic_hash == step_semantic_hash
+            and tuple(record.input_artifact_refs) == input_artifact_refs
+            and record.status in {"completed", "reused"}
+        ]
+        matches.sort(key=lambda item: (item.finished_at or "", item.run_id), reverse=True)
+        return matches[0] if matches else None
+
+
 def test_preferred_workflow_metadata_catalog_prefers_file_catalog(tmp_path: Path) -> None:
     local = FileCatalog(tmp_path / "catalog")
     remote = _CatalogProbe(kind="postgres", name="remote")
@@ -3210,7 +4645,10 @@ def test_workflow_orchestrator_prefers_local_file_catalog_for_metadata(tmp_path:
     assert catalog.identity() == CompositeCatalog((local, remote)).identity()
 
 
-def test_registry_catalog_prefers_local_file_catalog_from_runner_specs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_registry_catalog_keeps_shared_runner_catalog_from_runner_specs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     local = FileCatalog(tmp_path / "catalog")
     remote = _CatalogProbe(kind="postgres", name="remote")
 
@@ -3228,8 +4666,76 @@ def test_registry_catalog_prefers_local_file_catalog_from_runner_specs(monkeypat
 
     catalog = _registry_catalog(types.SimpleNamespace(), runner_specs={})
 
-    assert catalog.kind == "file"
-    assert catalog.identity() == local.identity()
+    assert catalog.kind == "composite"
+    assert catalog.identity() == CompositeCatalog((local, remote)).identity()
+
+
+def test_runner_spec_registry_mirrors_workflow_lineage_before_remote_artifact_writes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    local = FileCatalog(tmp_path / "catalog")
+    remote = _LineageCheckingCatalog()
+    runner = LocalRunner(
+        artifacts=LocalArtifactStore(tmp_path / "artifacts"),
+        catalog=CompositeCatalog((local, remote)),
+    )
+    monkeypatch.setattr("pipelines_v2.cli._build_runners", lambda ns, runner_specs: {"analysis": runner})
+
+    catalog = _registry_catalog(types.SimpleNamespace(), runner_specs={})
+    workflow = WorkflowSpec(
+        name="composite_lineage",
+        steps=(
+            WorkflowStep(
+                name="seed",
+                runner="analysis",
+                spec=TransformSpec(builder=TransformBuilder.from_function(_inline_transform_seed), inputs={"value": 7}),
+            ),
+        ),
+    )
+
+    result = WorkflowOrchestrator(runners={"analysis": runner}, workflow_catalog=catalog).run(workflow)
+    artifact = result.step("seed")
+
+    assert remote.load_workflow_run(result.run_id or "") is not None
+    assert remote.list_workflow_steps(result.run_id or "")[0].status == "completed"
+    assert remote.load_artifact(artifact.id) is not None
+
+
+def test_mirror_workflow_run_lineage_backfills_local_only_parent_for_composite_catalog(tmp_path: Path) -> None:
+    local = FileCatalog(tmp_path / "catalog")
+    remote = _LineageCheckingCatalog()
+    workflow = WorkflowSpec(name="lineage_backfill", steps=())
+    parent = WorkflowRunRecord(
+        run_id="wr_parent",
+        workflow_name=workflow.name,
+        workflow_hash=workflow.semantic_hash(),
+        workflow_spec_hash=workflow.spec_hash(),
+        workflow_payload=workflow.to_dict(),
+        status="failed",
+        started_at=utc_now_iso(),
+        finished_at=utc_now_iso(),
+        error="old local-only failure",
+    )
+    local.record_workflow_run(parent)
+    catalog = CompositeCatalog((local, remote))
+
+    _mirror_workflow_run_lineage(catalog, parent.run_id)
+    catalog.record_workflow_run(
+        WorkflowRunRecord(
+            run_id="wr_child",
+            workflow_name=workflow.name,
+            workflow_hash=workflow.semantic_hash(),
+            workflow_spec_hash=workflow.spec_hash(),
+            workflow_payload=workflow.to_dict(),
+            status="running",
+            started_at=utc_now_iso(),
+            parent_run_id=parent.run_id,
+        )
+    )
+
+    assert remote.load_workflow_run(parent.run_id) is not None
+    assert remote.load_workflow_run("wr_child") is not None
 
 
 def test_resolve_workflow_metadata_catalog_falls_back_to_workspace_registry_for_explicit_run_id(
@@ -7385,6 +8891,39 @@ def test_vllm_engine_runtime_spec_sets_binary_compile_cache_save_format() -> Non
     runtime_spec = engine.runtime_spec()
 
     assert runtime_spec.env["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+
+
+def test_vllm_engine_resolves_canonical_model_id_under_model_path_root() -> None:
+    engine = VLLMEngine(
+        model_id="Qwen/Qwen3-30B-A3B",
+        model_path_root="/models",
+    )
+
+    assert engine.identity()["model_id"] == "Qwen/Qwen3-30B-A3B"
+    assert engine.identity()["model_path_root"] == "/models"
+    assert engine.semantic_identity()["model_id"] == "Qwen/Qwen3-30B-A3B"
+    assert "model_path_root" not in engine.semantic_identity()
+    assert engine.resolved_model_path() == "/models/Qwen/Qwen3-30B-A3B"
+    assert engine.canonical_model_name() == "Qwen/Qwen3-30B-A3B"
+
+
+def test_build_llm_kwargs_uses_local_model_path_and_canonical_served_name() -> None:
+    llm_kwargs, _ = build_llm_kwargs(
+        VLLMEngine(
+            model_id="Qwen/Qwen3-30B-A3B",
+            model_path_root="/models",
+            enforce_eager=True,
+            tensor_parallel_size=2,
+            pipeline_parallel_size=1,
+            distributed_executor_backend="mp",
+        )
+    )
+
+    assert llm_kwargs["model"] == "/models/Qwen/Qwen3-30B-A3B"
+    assert llm_kwargs["served_model_name"] == "Qwen/Qwen3-30B-A3B"
+    assert llm_kwargs["tensor_parallel_size"] == 2
+    assert llm_kwargs["pipeline_parallel_size"] == 1
+    assert llm_kwargs["distributed_executor_backend"] == "mp"
 
 
 def test_build_llm_kwargs_adds_additional_config_for_compiled_patch_worker() -> None:

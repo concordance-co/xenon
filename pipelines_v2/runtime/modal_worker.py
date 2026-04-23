@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -90,6 +91,8 @@ def run_on_modal(
         function_kwargs["cpu"] = resources.get("cpu")
     if resources.get("memory_mb") is not None:
         function_kwargs["memory"] = int(resources["memory_mb"])
+    if resources.get("max_containers") is not None:
+        function_kwargs["max_containers"] = int(resources["max_containers"])
 
     @app.function(**function_kwargs)
     def _remote_execute(
@@ -104,6 +107,28 @@ def run_on_modal(
             runner_config=remote_runner_config,
             store_config=remote_store_config,
             spec_payload=remote_spec_payload,
+            workflow_context=remote_workflow_context,
+        )
+        warnings = _commit_mounted_volumes(mounted_volumes)
+        if warnings:
+            result.setdefault("metadata", {})["volume_commit_warnings"] = warnings
+        return result
+
+    @app.function(**function_kwargs)
+    def _remote_merge_shards(
+        remote_runner_config: dict[str, Any],
+        remote_store_config: dict[str, Any],
+        remote_spec_payload: dict[str, Any],
+        remote_shard_manifests: list[dict[str, Any]],
+        remote_workflow_context: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        from pipelines_v2.runtime.remote_executor import merge_remote_shards
+
+        result = merge_remote_shards(
+            runner_config=remote_runner_config,
+            store_config=remote_store_config,
+            spec_payload=remote_spec_payload,
+            shard_manifests=remote_shard_manifests,
             workflow_context=remote_workflow_context,
         )
         warnings = _commit_mounted_volumes(mounted_volumes)
@@ -150,7 +175,55 @@ def run_on_modal(
             runtime_app_id,
         )
         try:
-            result = _remote_execute.remote(runner_config, store_config, spec_payload, workflow_context)
+            shard_count = _modal_shard_count(resources=resources, spec_payload=spec_payload)
+            if shard_count > 1:
+                if progress_callback is not None:
+                    progress_callback(
+                        {
+                            "status": "running",
+                            "stage": "remote_shards_submitted",
+                            "runtime_kind": "modal",
+                            "runtime_app_id": runtime_app_id,
+                            "message": f"Submitted {shard_count} remote execution shards",
+                            "metrics": {"shard_count": shard_count},
+                        }
+                    )
+                shard_contexts = [
+                    _workflow_context_with_shard(workflow_context, index=index, count=shard_count)
+                    for index in range(shard_count)
+                ]
+                with ThreadPoolExecutor(max_workers=shard_count) as executor:
+                    futures = [
+                        executor.submit(
+                            _remote_execute.remote,
+                            runner_config,
+                            store_config,
+                            spec_payload,
+                            shard_context,
+                        )
+                        for shard_context in shard_contexts
+                    ]
+                    shard_results = [future.result() for future in futures]
+                if progress_callback is not None:
+                    progress_callback(
+                        {
+                            "status": "running",
+                            "stage": "remote_shards_finished",
+                            "runtime_kind": "modal",
+                            "runtime_app_id": runtime_app_id,
+                            "message": f"Finished {shard_count} remote execution shards",
+                            "metrics": {"shard_count": shard_count},
+                        }
+                    )
+                result = _remote_merge_shards.remote(
+                    runner_config,
+                    store_config,
+                    spec_payload,
+                    shard_results,
+                    workflow_context,
+                )
+            else:
+                result = _remote_execute.remote(runner_config, store_config, spec_payload, workflow_context)
         except Exception as exc:
             if runtime_app_id is not None:
                 try:
@@ -173,6 +246,29 @@ def run_on_modal(
                 }
             )
         return result
+
+
+def _modal_shard_count(*, resources: dict[str, Any], spec_payload: dict[str, Any]) -> int:
+    count = int(resources.get("shard_count") or 1)
+    if count < 1:
+        raise ValueError("ModalResources shard_count must be >= 1")
+    if count == 1:
+        return 1
+    kind = str(spec_payload.get("kind") or "")
+    if kind not in {"capture", "generation_run"}:
+        raise ValueError(f"ModalResources shard_count is not supported for {kind!r} specs")
+    return count
+
+
+def _workflow_context_with_shard(
+    workflow_context: dict[str, Any] | None,
+    *,
+    index: int,
+    count: int,
+) -> dict[str, Any]:
+    context = dict(workflow_context or {})
+    context["execution_shard"] = {"index": int(index), "count": int(count)}
+    return context
 
 
 def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any]) -> tuple[MountedVolume, ...]:

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
+from pathlib import PurePosixPath
 from typing import Any
 
 from pipelines_v2.core.types import EngineCapability
@@ -22,8 +23,11 @@ class VLLMEngine:
     """vLLM engine configuration and execution surface."""
 
     model_id: str
+    model_path_root: str | None = None
     max_model_len: int | None = None
     tensor_parallel_size: int = 1
+    pipeline_parallel_size: int = 1
+    distributed_executor_backend: str | None = None
     gpu_memory_utilization: float = 0.90
     enforce_eager: bool = True
     max_num_seqs: int = 1
@@ -40,7 +44,14 @@ class VLLMEngine:
     def from_dict(cls, payload: dict[str, Any]) -> "VLLMEngine":
         data = dict(payload)
         data.pop("kind", None)
-        return cls(**data)
+        field_names = {f.name for f in fields(cls)}
+        known = {key: value for key, value in data.items() if key in field_names}
+        unknown = {key: value for key, value in data.items() if key not in field_names}
+        if unknown:
+            extra = dict(known.get("extra") or {})
+            extra.update(unknown)
+            known["extra"] = extra
+        return cls(**known)
 
     @classmethod
     def from_file(cls, path: str) -> "VLLMEngine":
@@ -55,8 +66,11 @@ class VLLMEngine:
         return {
             "kind": "vllm",
             "model_id": self.model_id,
+            "model_path_root": self.model_path_root,
             "max_model_len": self.max_model_len,
             "tensor_parallel_size": self.tensor_parallel_size,
+            "pipeline_parallel_size": self.pipeline_parallel_size,
+            "distributed_executor_backend": self.distributed_executor_backend,
             "gpu_memory_utilization": self.gpu_memory_utilization,
             "enforce_eager": self.enforce_eager,
             "max_num_seqs": self.max_num_seqs,
@@ -75,11 +89,25 @@ class VLLMEngine:
             "kind": "vllm",
             "model_id": self.model_id,
             "max_model_len": self.max_model_len,
+            "tensor_parallel_size": self.tensor_parallel_size,
+            "pipeline_parallel_size": self.pipeline_parallel_size,
             "add_generation_prompt": self.add_generation_prompt,
             "reasoning_parser": self.reasoning_parser,
             "enable_thinking": self.enable_thinking,
             "extra": self.extra,
         }
+
+    def resolved_model_path(self) -> str:
+        """Return the concrete model path/name vLLM should load."""
+        model_id = str(self.model_id)
+        root = str(self.model_path_root or "").strip()
+        if not root or model_id.startswith(("/", ".")):
+            return model_id
+        return str(PurePosixPath(root) / model_id)
+
+    def canonical_model_name(self) -> str:
+        """Return the semantic model id to expose in serving/logging metadata."""
+        return str(self.model_id)
 
     def capabilities(self) -> set[EngineCapability]:
         return {
@@ -139,6 +167,11 @@ class VLLMEngine:
         from .generate import run_vllm_generation
 
         return run_vllm_generation(engine=self, spec=spec)
+
+    def generate_incremental(self, spec: GenerationRunSpec, *, batch_callback: Any) -> EngineGenerationResult:
+        from .generate import run_vllm_generation
+
+        return run_vllm_generation(engine=self, spec=spec, batch_callback=batch_callback)
 
     def intervene(self, spec: PatchedGenerationSpec) -> EngineInterventionResult:
         from .intervene import run_vllm_intervention

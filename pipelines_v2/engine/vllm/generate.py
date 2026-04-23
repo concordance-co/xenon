@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
 from pipelines_v2.data.datasets import Dataset
 from pipelines_v2.engine.base import EngineGenerationResult
@@ -17,7 +17,12 @@ if TYPE_CHECKING:
     from pipelines_v2.operations.interventions import GenerationRunSpec
 
 
-def run_vllm_generation(*, engine: "VLLMEngine", spec: "GenerationRunSpec") -> EngineGenerationResult:
+def run_vllm_generation(
+    *,
+    engine: "VLLMEngine",
+    spec: "GenerationRunSpec",
+    batch_callback: Callable[[list[dict[str, Any]], dict[str, Any]], None] | None = None,
+) -> EngineGenerationResult:
     selected_examples = resolve_generation_examples(spec)
     capture_spec = CaptureSpec(
         engine=engine,
@@ -29,8 +34,42 @@ def run_vllm_generation(*, engine: "VLLMEngine", spec: "GenerationRunSpec") -> E
         sites=(),
         generation=replace(spec.generation, enabled=True),
     )
-    capture_result = run_vllm_capture(engine=engine, spec=capture_spec)
-    rows = [
+
+    def _on_capture_batch(
+        batch_examples: list[Any],
+        batch_generations: list[dict[str, Any]],
+        batch_metadata: list[dict[str, Any]],
+    ) -> None:
+        if batch_callback is None:
+            return
+        batch_rows = _generation_rows_from_outputs(batch_examples, batch_generations)
+        batch_callback(
+            batch_rows,
+            {
+                "backend": "vllm",
+                "example_metadata": list(batch_metadata),
+                "batch_example_count": len(batch_examples),
+                "batch_row_count": len(batch_rows),
+            },
+        )
+
+    capture_result = run_vllm_capture(
+        engine=engine,
+        spec=capture_spec,
+        batch_callback=_on_capture_batch if batch_callback is not None else None,
+    )
+    rows = _generation_rows_from_outputs(selected_examples, capture_result.generations)
+    return EngineGenerationResult(
+        rows=rows,
+        metadata=dict(capture_result.metadata),
+    )
+
+
+def _generation_rows_from_outputs(
+    examples: list[Any],
+    generations: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
         {
             "example_key": example.key,
             "example": example.to_dict(),
@@ -49,9 +88,5 @@ def run_vllm_generation(*, engine: "VLLMEngine", spec: "GenerationRunSpec") -> E
                 else {}
             ),
         }
-        for example, item in zip(selected_examples, capture_result.generations, strict=False)
+        for example, item in zip(examples, generations, strict=False)
     ]
-    return EngineGenerationResult(
-        rows=rows,
-        metadata=dict(capture_result.metadata),
-    )

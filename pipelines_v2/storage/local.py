@@ -52,6 +52,11 @@ class LocalArtifactStore:
         path.mkdir(parents=True, exist_ok=False)
         return path
 
+    def ensure_artifact_dir(self, artifact_id: str) -> Path:
+        path = Path(self.root) / artifact_id
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def has_local_artifact(self, artifact_id: str) -> bool:
         return (Path(self.root) / artifact_id).exists()
 

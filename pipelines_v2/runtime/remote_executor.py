@@ -5,9 +5,12 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
-from pipelines_v2.core.types import OperationSpec, utc_now_iso
+from pipelines_v2.core.types import OperationSpec, stable_hash, utc_now_iso
+from pipelines_v2.data.datasets import Dataset
 from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.operations.specs import (
     ActivationBankSpec,
@@ -25,6 +28,8 @@ from pipelines_v2.operations.specs import (
     PatchedGenerationSpec,
     ProbeSpec,
     ReportSpec,
+    MoERoutingSite,
+    ResidualSite,
     ResidualizedProbeSpec,
     SubspaceSpec,
     TextBaselineSpec,
@@ -33,7 +38,7 @@ from pipelines_v2.operations.specs import (
 )
 from pipelines_v2.storage import ArtifactManifest, artifact_store_from_dict
 from pipelines_v2.storage.artifacts import ArtifactLabelRef, CaptureArtifact, FeatureLayerRef, FeatureRef, OperationArtifact
-from pipelines_v2.storage.features import write_capture_features
+from pipelines_v2.storage.features import load_feature_payload, write_capture_features
 from pipelines_v2.operations.interventions.runtime import rows_example_coverage
 
 _PROGRESS_LOG = logging.getLogger("pipelines_v2.remote_progress")
@@ -88,6 +93,37 @@ def execute_remote(
     raise NotImplementedError(f"Remote executor cannot run {spec.kind!r} specs yet")
 
 
+def merge_remote_shards(
+    *,
+    runner_config: dict[str, Any],
+    store_config: dict[str, Any],
+    spec_payload: dict[str, Any],
+    shard_manifests: list[dict[str, Any]],
+    workflow_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Merge per-shard remote artifacts into the step's final artifact."""
+    spec = operation_spec_from_dict(spec_payload)
+    store = artifact_store_from_dict(store_config)
+    manifests = [ArtifactManifest.from_dict(payload) for payload in shard_manifests]
+    if isinstance(spec, GenerationRunSpec):
+        return _merge_generation_shards(
+            runner_config=runner_config,
+            store=store,
+            spec=spec,
+            shard_manifests=manifests,
+            workflow_context=workflow_context,
+        )
+    if isinstance(spec, CaptureSpec):
+        return _merge_capture_shards(
+            runner_config=runner_config,
+            store=store,
+            spec=spec,
+            shard_manifests=manifests,
+            workflow_context=workflow_context,
+        )
+    raise NotImplementedError(f"Remote executor cannot merge sharded {spec.kind!r} specs yet")
+
+
 def _emit_remote_progress(
     *,
     workflow_context: dict[str, Any] | None,
@@ -123,17 +159,29 @@ def _execute_capture(
     if engine is None:
         raise RuntimeError("CaptureSpec is missing a bound engine")
     resolved_spec = spec.resolve_dataset()
-    artifact_id = f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
-    store.make_artifact_dir(artifact_id)
-    result = engine.capture(resolved_spec)
+    resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    if existing is not None:
+        return existing.to_dict()
+    _ensure_artifact_dir(store, artifact_id)
+    if not resolved_spec.dataset.examples:
+        result_features = _empty_capture_features(resolved_spec)
+        result_generations: list[dict[str, Any]] = []
+        result_metadata: dict[str, Any] = {"empty_shard": True}
+    else:
+        result = engine.capture(resolved_spec)
+        result_features = result.features
+        result_generations = result.generations
+        result_metadata = dict(result.metadata)
 
-    storage_refs: dict[str, Any] = {"features": write_capture_features(store, artifact_id, result.features)}
+    storage_refs: dict[str, Any] = {"features": write_capture_features(store, artifact_id, result_features)}
 
-    if result.generations:
+    if result_generations:
         storage_refs["generations"] = store.write_json(
             artifact_id,
             "generations.json",
-            result.generations,
+            result_generations,
         )
 
     manifest = ArtifactManifest(
@@ -148,7 +196,7 @@ def _execute_capture(
         input_artifact_refs=(),
         example_coverage=resolved_spec.dataset.coverage(),
         storage_refs=storage_refs,
-        metadata=result.metadata,
+        metadata=_with_execution_shard_metadata(result_metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
     )
     storage_refs["manifest"] = store.write_json(
@@ -266,17 +314,97 @@ def _execute_generation(
     if engine is None:
         raise RuntimeError("GenerationRunSpec is missing a bound engine")
     resolved_spec = spec.resolve_dataset()
-    artifact_id = f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
-    store.make_artifact_dir(artifact_id)
-    result = engine.generate(resolved_spec)
+    resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    if existing is not None:
+        return existing.to_dict()
+    _ensure_artifact_dir(store, artifact_id)
+    partial_rows = _load_partial_generation_rows(store=store, artifact_id=artifact_id)
+    result_rows = _merge_generation_rows(dataset=resolved_spec.dataset, rows=partial_rows)
+    completed_keys = _generation_resume_keys(result_rows)
+    remaining_examples = [
+        example
+        for example in resolved_spec.dataset.examples
+        if str(example.prompt_hash or "") not in completed_keys and str(example.key) not in completed_keys
+    ]
+    if not resolved_spec.dataset.examples:
+        result_rows: list[dict[str, Any]] = []
+        result_metadata: dict[str, Any] = {"empty_shard": True}
+    elif not remaining_examples:
+        result_metadata = {
+            "backend": "resume",
+            "resumed_from_partial": bool(partial_rows),
+            "partial_row_count": len(partial_rows),
+            "completed_from_partial": True,
+        }
+    else:
+        generation_spec = replace(
+            resolved_spec,
+            dataset=Dataset.from_examples(
+                remaining_examples,
+                id=resolved_spec.dataset.id,
+                name=f"{resolved_spec.dataset.name or 'dataset'}_remaining",
+            ),
+        )
 
-    payload = {
-        "kind": "generation_run_result",
-        "summary": {"example_count": len(result.rows)},
-        "rows": list(result.rows),
-    }
+        def _record_generation_checkpoint(batch_rows: list[dict[str, Any]], batch_metadata: dict[str, Any]) -> None:
+            nonlocal result_rows
+            if not batch_rows:
+                return
+            result_rows = _merge_generation_rows(
+                dataset=resolved_spec.dataset,
+                rows=[*result_rows, *batch_rows],
+            )
+            _write_generation_result_payload(
+                store=store,
+                artifact_id=artifact_id,
+                rows=result_rows,
+                total_example_count=len(resolved_spec.dataset.examples),
+                partial=True,
+                metadata={
+                    "checkpoint_metadata": dict(batch_metadata),
+                    "resumed_from_partial": bool(partial_rows),
+                    "partial_row_count": len(partial_rows),
+                },
+            )
+            _emit_remote_progress(
+                workflow_context=workflow_context,
+                status="running",
+                stage="generation_checkpoint",
+                spec_kind=spec.kind,
+                message="generation checkpoint written",
+                metrics={
+                    "completed_examples": len(result_rows),
+                    "remaining_examples": max(0, len(resolved_spec.dataset.examples) - len(result_rows)),
+                    "total_examples": len(resolved_spec.dataset.examples),
+                },
+            )
+
+        incremental_generate = getattr(engine, "generate_incremental", None)
+        if callable(incremental_generate):
+            result = incremental_generate(generation_spec, batch_callback=_record_generation_checkpoint)
+        else:
+            result = engine.generate(generation_spec)
+            _record_generation_checkpoint(list(result.rows), dict(result.metadata))
+        result_rows = _merge_generation_rows(
+            dataset=resolved_spec.dataset,
+            rows=[*result_rows, *list(result.rows)],
+        )
+        result_metadata = dict(result.metadata)
+        if partial_rows:
+            result_metadata["resumed_from_partial"] = True
+            result_metadata["partial_row_count"] = len(partial_rows)
+
     storage_refs: dict[str, Any] = {
-        "result": store.write_json(artifact_id, "result.json", payload),
+        "result": _write_generation_result_payload(
+            store=store,
+            artifact_id=artifact_id,
+            rows=result_rows,
+            total_example_count=len(resolved_spec.dataset.examples),
+            partial=False,
+            metadata=result_metadata,
+        ),
     }
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
@@ -288,9 +416,9 @@ def _execute_generation(
         engine=engine.identity(),
         runner=runner_config,
         input_artifact_refs=tuple(_input_artifact_ids(spec)),
-        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
+        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result_rows),
         storage_refs=storage_refs,
-        metadata=dict(result.metadata),
+        metadata=_with_execution_shard_metadata(result_metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
     )
     storage_refs["manifest"] = store.write_json(
@@ -299,6 +427,380 @@ def _execute_generation(
         manifest.to_dict(),
     )
     return manifest.to_dict()
+
+
+def _merge_generation_shards(
+    *,
+    runner_config: dict[str, Any],
+    store: Any,
+    spec: GenerationRunSpec,
+    shard_manifests: list[ArtifactManifest],
+    workflow_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    resolved_spec = spec.resolve_dataset()
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    if existing is not None:
+        return existing.to_dict()
+    _ensure_artifact_dir(store, artifact_id)
+
+    rows: list[dict[str, Any]] = []
+    seen_prompt_hashes: set[str] = set()
+    for shard in _ordered_shard_manifests(shard_manifests):
+        ref = shard.storage_refs.get("result")
+        if not isinstance(ref, dict):
+            continue
+        payload = store.read_json_ref(ref)
+        for row in payload.get("rows", []) if isinstance(payload, dict) else []:
+            if not isinstance(row, dict):
+                continue
+            row_key = _row_prompt_hash(row) or str(row.get("example_key") or "")
+            if row_key in seen_prompt_hashes:
+                continue
+            seen_prompt_hashes.add(row_key)
+            rows.append(dict(row))
+
+    order = {example.key: index for index, example in enumerate(resolved_spec.dataset.examples)}
+    rows.sort(key=lambda row: order.get(str(row.get("example_key") or ""), len(order)))
+    payload = {
+        "kind": "generation_run_result",
+        "summary": {
+            "example_count": len(rows),
+            "sharded": True,
+            "shard_count": len(shard_manifests),
+        },
+        "rows": rows,
+    }
+    storage_refs: dict[str, Any] = {
+        "result": store.write_json(artifact_id, "result.json", payload),
+    }
+    manifest = ArtifactManifest(
+        artifact_id=artifact_id,
+        artifact_kind=spec.kind,
+        schema_version=1,
+        operation_spec_hash=spec.spec_hash(),
+        operation_semantic_hash=spec.semantic_hash(),
+        created_at=utc_now_iso(),
+        engine=spec.engine.identity() if spec.engine is not None else {},
+        runner=runner_config,
+        input_artifact_refs=tuple(_input_artifact_ids(spec)),
+        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=rows),
+        storage_refs=storage_refs,
+        metadata={
+            "sharded": True,
+            "shards": [_shard_manifest_summary(shard) for shard in _ordered_shard_manifests(shard_manifests)],
+        },
+        workflow_context=dict(workflow_context or {}),
+    )
+    storage_refs["manifest"] = store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+    return manifest.to_dict()
+
+
+def _merge_capture_shards(
+    *,
+    runner_config: dict[str, Any],
+    store: Any,
+    spec: CaptureSpec,
+    shard_manifests: list[ArtifactManifest],
+    workflow_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    resolved_spec = spec.resolve_dataset()
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    if existing is not None:
+        return existing.to_dict()
+    _ensure_artifact_dir(store, artifact_id)
+
+    features = _empty_capture_features(resolved_spec)
+    generations: list[dict[str, Any]] = []
+    example_metadata: list[dict[str, Any]] = []
+    for shard in _ordered_shard_manifests(shard_manifests):
+        for name, ref in dict(shard.storage_refs.get("features", {})).items():
+            if not isinstance(ref, dict):
+                continue
+            payload = load_feature_payload(store, ref)
+            _merge_feature_payload(features, str(name), payload)
+        ref = shard.storage_refs.get("generations")
+        if isinstance(ref, dict):
+            payload = store.read_json_ref(ref)
+            if isinstance(payload, list):
+                generations.extend(dict(row) for row in payload if isinstance(row, dict))
+        metadata = dict(shard.metadata)
+        shard_example_metadata = metadata.get("example_metadata")
+        if isinstance(shard_example_metadata, list):
+            example_metadata.extend(dict(item) for item in shard_example_metadata if isinstance(item, dict))
+
+    storage_refs: dict[str, Any] = {
+        "features": write_capture_features(store, artifact_id, features),
+    }
+    if generations:
+        storage_refs["generations"] = store.write_json(artifact_id, "generations.json", generations)
+    manifest = ArtifactManifest(
+        artifact_id=artifact_id,
+        artifact_kind=spec.kind,
+        schema_version=1,
+        operation_spec_hash=spec.spec_hash(),
+        operation_semantic_hash=spec.semantic_hash(),
+        created_at=utc_now_iso(),
+        engine=spec.engine.identity() if spec.engine is not None else {},
+        runner=runner_config,
+        input_artifact_refs=(),
+        example_coverage=resolved_spec.dataset.coverage(),
+        storage_refs=storage_refs,
+        metadata={
+            "sharded": True,
+            "example_metadata": sorted(example_metadata, key=lambda item: str(item.get("example_key") or "")),
+            "shards": [_shard_manifest_summary(shard) for shard in _ordered_shard_manifests(shard_manifests)],
+        },
+        workflow_context=dict(workflow_context or {}),
+    )
+    storage_refs["manifest"] = store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+    return manifest.to_dict()
+
+
+def _artifact_id_for(*, spec: OperationSpec, workflow_context: dict[str, Any] | None) -> str:
+    context = dict(workflow_context or {})
+    step_key = str(context.get("workflow_step_key") or "").strip()
+    run_id = str(context.get("run_id") or "").strip()
+    if not step_key or not run_id:
+        return f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
+    shard = _execution_shard(context)
+    suffix_payload: list[Any] = [run_id, step_key, spec.semantic_hash()]
+    suffix = stable_hash(suffix_payload)[:12]
+    artifact_id = f"{spec.kind}_{spec.schema_version}_{suffix}"
+    if shard is None:
+        return artifact_id
+    return f"{artifact_id}_shard_{shard['index']:05d}_of_{shard['count']:05d}"
+
+
+def _apply_execution_shard(*, spec: Any, workflow_context: dict[str, Any] | None) -> Any:
+    shard = _execution_shard(workflow_context)
+    if shard is None:
+        return spec
+    dataset = spec.dataset
+    selected = [
+        example
+        for example in dataset.examples
+        if _prompt_hash_shard(example.prompt_hash, int(shard["count"])) == int(shard["index"])
+    ]
+    return replace(
+        spec,
+        dataset=Dataset.from_examples(
+            selected,
+            id=dataset.id,
+            name=f"{dataset.name}_shard_{int(shard['index'])}_of_{int(shard['count'])}",
+        ),
+    )
+
+
+def _execution_shard(workflow_context: dict[str, Any] | None) -> dict[str, int] | None:
+    if not isinstance(workflow_context, dict):
+        return None
+    raw = workflow_context.get("execution_shard")
+    if not isinstance(raw, dict):
+        return None
+    count = int(raw.get("count") or 1)
+    index = int(raw.get("index") or 0)
+    if count <= 1:
+        return None
+    if index < 0 or index >= count:
+        raise ValueError(f"Invalid execution shard index {index} for shard count {count}")
+    return {"index": index, "count": count}
+
+
+def _prompt_hash_shard(prompt_hash: str, count: int) -> int:
+    prompt_hash_text = str(prompt_hash)
+    try:
+        value = int(prompt_hash_text[:16], 16)
+    except ValueError:
+        value = int(stable_hash(prompt_hash_text)[:16], 16)
+    return value % int(count)
+
+
+def _with_execution_shard_metadata(
+    metadata: dict[str, Any],
+    *,
+    workflow_context: dict[str, Any] | None,
+) -> dict[str, Any]:
+    shard = _execution_shard(workflow_context)
+    if shard is None:
+        return metadata
+    return {**metadata, "execution_shard": shard}
+
+
+def _load_existing_manifest(*, store: Any, artifact_id: str, spec: OperationSpec) -> ArtifactManifest | None:
+    root = getattr(store, "root", None)
+    if root is None:
+        return None
+    ref = {
+        "store": getattr(store, "kind", ""),
+        "name": getattr(store, "name", None),
+        "path": str(Path(str(root)) / artifact_id / "manifest.json"),
+        "format": "json",
+    }
+    try:
+        payload = store.read_json_ref(ref)
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    manifest = ArtifactManifest.from_dict(payload)
+    if manifest.artifact_kind != spec.kind:
+        return None
+    if manifest.operation_semantic_hash != spec.semantic_hash():
+        return None
+    return manifest
+
+
+def _load_partial_generation_rows(*, store: Any, artifact_id: str) -> list[dict[str, Any]]:
+    root = getattr(store, "root", None)
+    if root is None:
+        return []
+    ref = {
+        "store": getattr(store, "kind", ""),
+        "name": getattr(store, "name", None),
+        "path": str(Path(str(root)) / artifact_id / "result.json"),
+        "format": "json",
+    }
+    try:
+        payload = store.read_json_ref(ref)
+    except Exception:
+        return []
+    if not isinstance(payload, dict):
+        return []
+    rows = payload.get("rows")
+    if not isinstance(rows, list):
+        return []
+    return [dict(row) for row in rows if isinstance(row, dict)]
+
+
+def _write_generation_result_payload(
+    *,
+    store: Any,
+    artifact_id: str,
+    rows: list[dict[str, Any]],
+    total_example_count: int,
+    partial: bool,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "kind": "generation_run_result",
+        "summary": {
+            "example_count": len(rows),
+            "completed_example_count": len(rows),
+            "total_example_count": int(total_example_count),
+            "partial": bool(partial),
+        },
+        "rows": rows,
+    }
+    if metadata:
+        payload["metadata"] = dict(metadata)
+    return store.write_json(artifact_id, "result.json", payload)
+
+
+def _merge_generation_rows(*, dataset: Dataset, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    row_by_key: dict[str, dict[str, Any]] = {}
+    fallback_order: dict[str, int] = {}
+    for row in rows:
+        key = _generation_row_key(row)
+        if not key:
+            key = f"row_{len(fallback_order):08d}"
+        if key not in fallback_order:
+            fallback_order[key] = len(fallback_order)
+        row_by_key[key] = dict(row)
+
+    dataset_order: dict[str, int] = {}
+    for index, example in enumerate(dataset.examples):
+        if example.prompt_hash:
+            dataset_order[str(example.prompt_hash)] = index
+        dataset_order[str(example.key)] = index
+
+    def _sort_key(row: dict[str, Any]) -> tuple[int, int, str]:
+        key = _generation_row_key(row)
+        return (
+            dataset_order.get(key, len(dataset_order)),
+            fallback_order.get(key, len(fallback_order)),
+            key,
+        )
+
+    return sorted(row_by_key.values(), key=_sort_key)
+
+
+def _generation_row_key(row: dict[str, Any]) -> str:
+    return _row_prompt_hash(row) or str(row.get("example_key") or "")
+
+
+def _generation_resume_keys(rows: list[dict[str, Any]]) -> set[str]:
+    keys: set[str] = set()
+    for row in rows:
+        prompt_hash = _row_prompt_hash(row)
+        if prompt_hash:
+            keys.add(prompt_hash)
+        example_key = str(row.get("example_key") or "")
+        if example_key:
+            keys.add(example_key)
+    return keys
+
+
+def _ensure_artifact_dir(store: Any, artifact_id: str) -> None:
+    ensure = getattr(store, "ensure_artifact_dir", None)
+    if callable(ensure):
+        ensure(artifact_id)
+    else:
+        store.make_artifact_dir(artifact_id)
+
+
+def _empty_capture_features(spec: CaptureSpec) -> dict[str, dict[str, Any]]:
+    features: dict[str, dict[str, Any]] = {}
+    for site in spec.sites:
+        if isinstance(site, ResidualSite):
+            features[site.name] = {
+                "kind": "residual",
+                "site": site.site,
+                "storage": {"dtype": site.storage.dtype, "format": site.storage.format},
+                "layers": {str(layer): {} for layer in site.layers},
+            }
+        elif isinstance(site, MoERoutingSite):
+            features[site.name] = {
+                "kind": "moe_routing",
+                "routing_policy": {
+                    "source": "vllm_gate_logits",
+                    "observed_routing_decisions": True,
+                },
+                "layers": {str(layer): {} for layer in site.layers},
+            }
+    return features
+
+
+def _merge_feature_payload(features: dict[str, dict[str, Any]], name: str, payload: dict[str, Any]) -> None:
+    if name not in features:
+        features[name] = dict(payload)
+        return
+    target = features[name]
+    for layer, records in dict(payload.get("layers", {})).items():
+        target.setdefault("layers", {}).setdefault(str(layer), {}).update(dict(records))
+
+
+def _ordered_shard_manifests(shard_manifests: list[ArtifactManifest]) -> list[ArtifactManifest]:
+    return sorted(
+        shard_manifests,
+        key=lambda manifest: int(dict(manifest.metadata).get("execution_shard", {}).get("index", 0)),
+    )
+
+
+def _shard_manifest_summary(manifest: ArtifactManifest) -> dict[str, Any]:
+    return {
+        "artifact_id": manifest.artifact_id,
+        "example_coverage": dict(manifest.example_coverage),
+        "execution_shard": dict(manifest.metadata).get("execution_shard"),
+    }
+
+
+def _row_prompt_hash(row: dict[str, Any]) -> str:
+    example = row.get("example")
+    if isinstance(example, dict):
+        return str(example.get("prompt_hash") or "")
+    return ""
 
 
 def _input_artifact_ids(spec: OperationSpec) -> list[str]:

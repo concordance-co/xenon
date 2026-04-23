@@ -13,7 +13,7 @@ from .core.types import (
     TransferPolicyError,
 )
 from .data.datasets import CaseSet, Dataset, Example, LabelPredicate, LabelSet
-from .data.sources import InMemorySource, PostgresSource, Source
+from .data.sources import ArtifactDatasetSource, HuggingFaceSource, InMemorySource, PostgresSource, Source
 from .engine import (
     Engine,
     EngineCaptureResult,
@@ -95,6 +95,7 @@ __all__ = [
     "AddDirectionPatch",
     "ArtifactManifest",
     "ArtifactLabelRef",
+    "ArtifactDatasetSource",
     "ArtifactStore",
     "BasisSpec",
     "CapabilityError",
@@ -121,6 +122,7 @@ __all__ = [
     "GenerationSpec",
     "GenerationRunSpec",
     "GeometrySpec",
+    "HuggingFaceSource",
     "InMemorySource",
     "LabelFieldsSpec",
     "LabelPredicate",

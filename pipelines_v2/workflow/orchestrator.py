@@ -83,6 +83,7 @@ class WorkflowOrchestrator:
                     runner=step.runner,
                     depends_on=step.resolved_depends_on(),
                     execution=execution,
+                    description=step.description,
                 )
             )
         return WorkflowPlan(name=workflow.name, steps=tuple(step_plans))

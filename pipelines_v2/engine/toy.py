@@ -543,7 +543,17 @@ class ToyEngine:
             layer_payload: dict[str, Any] = {}
             for example in spec.dataset.examples:
                 token_sections = _toy_token_sections(example, spec.prompt_metadata_builder)
-                positions = site.tokens.resolve(self.sequence_length, token_sections=token_sections)
+                token_count = self.sequence_length
+                if spec.generation.capture_generated_tokens:
+                    generated_count = int(spec.generation.max_tokens or 0) if spec.generation.enabled else 0
+                    token_count = self.sequence_length + generated_count
+                    token_sections = {
+                        **token_sections,
+                        "prompt": list(range(self.sequence_length)),
+                        "generated": list(range(self.sequence_length, token_count)),
+                        "full": list(range(token_count)),
+                    }
+                positions = site.tokens.resolve(token_count, token_sections=token_sections)
                 values = np.stack(
                     [self._activation_vector(example, layer, pos) for pos in positions],
                     axis=0,

@@ -27,28 +27,34 @@ class GenerationSpec:
     """Generation and chat-template settings attached to a model-bound run."""
 
     enabled: bool = False
-    max_tokens: int = 0
+    max_tokens: int | None = 0
     temperature: float = 0.0
     top_p: float = 1.0
     top_k: int = -1
     capture_reasoning: bool = False
+    capture_generated_tokens: bool = False
     chat_tools: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     tool_choice: str | dict[str, Any] | None = None
     structured_output: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "enabled", bool(self.enabled))
-        object.__setattr__(self, "max_tokens", int(self.max_tokens))
+        object.__setattr__(
+            self,
+            "max_tokens",
+            None if self.max_tokens is None else int(self.max_tokens),
+        )
         object.__setattr__(self, "temperature", float(self.temperature))
         object.__setattr__(self, "top_p", float(self.top_p))
         object.__setattr__(self, "top_k", int(self.top_k))
         object.__setattr__(self, "capture_reasoning", bool(self.capture_reasoning))
+        object.__setattr__(self, "capture_generated_tokens", bool(self.capture_generated_tokens))
         object.__setattr__(
             self,
             "chat_tools",
             tuple(dict(tool) for tool in (self.chat_tools or ())),
         )
-        if int(self.max_tokens) < 0:
+        if self.max_tokens is not None and int(self.max_tokens) < 0:
             raise SpecValidationError("GenerationSpec max_tokens must be >= 0")
         if float(self.top_p) <= 0.0:
             raise SpecValidationError("GenerationSpec top_p must be > 0")
@@ -57,11 +63,16 @@ class GenerationSpec:
     def from_dict(cls, payload: Mapping[str, Any]) -> "GenerationSpec":
         return cls(
             enabled=bool(payload.get("enabled", False)),
-            max_tokens=int(payload.get("max_tokens", 0)),
+            max_tokens=(
+                None
+                if payload.get("max_tokens", 0) is None
+                else int(payload.get("max_tokens", 0))
+            ),
             temperature=float(payload.get("temperature", 0.0)),
             top_p=float(payload.get("top_p", 1.0)),
             top_k=int(payload.get("top_k", -1)),
             capture_reasoning=bool(payload.get("capture_reasoning", False)),
+            capture_generated_tokens=bool(payload.get("capture_generated_tokens", False)),
             chat_tools=tuple(dict(tool) for tool in payload.get("chat_tools", ()) or ()),
             tool_choice=payload.get("tool_choice"),
             structured_output=payload.get("structured_output"),
@@ -164,7 +175,17 @@ class CaptureSpec(OperationSpec):
     def provides_token_sections(self) -> bool:
         if self.prompt_metadata_builder is not None:
             return True
+        if self.generation.capture_generated_tokens and all(
+            _is_builtin_generation_section_selector(site.tokens)
+            for site in self.sites
+            if contains_section_token_selector(site.tokens)
+        ):
+            return True
         if self.dataset.is_deferred:
+            source = dict(self.dataset.source or {})
+            fetch = dict(self.dataset.fetch or {})
+            if source.get("kind") == "artifact_dataset" and bool(fetch.get("provides_token_sections")):
+                return True
             return False
         return all(example_has_explicit_token_sections(example) for example in self.dataset.examples)
 
@@ -212,3 +233,10 @@ __all__ = [
     "GenerationSpec",
     "capture_site_from_dict",
 ]
+
+
+def _is_builtin_generation_section_selector(value: Any) -> bool:
+    return bool(
+        getattr(value, "kind", None) == "section"
+        and str(getattr(value, "value", "")) in {"prompt", "generated", "full"}
+    )

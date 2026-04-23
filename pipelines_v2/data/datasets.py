@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -110,6 +111,11 @@ class LabelPredicate:
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.label_set.runtime_secrets()
 
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        if hasattr(self.label_set, "runtime_pip_packages"):
+            return tuple(self.label_set.runtime_pip_packages())
+        return ()
+
     def semantic_dict(self) -> dict[str, Any]:
         return {
             "kind": self.kind,
@@ -177,6 +183,9 @@ class LabelSet:
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.dataset.runtime_secrets()
 
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        return self.dataset.runtime_pip_packages()
+
     def semantic_dict(self) -> dict[str, Any]:
         return {
             "kind": self.kind,
@@ -224,6 +233,9 @@ class CaseSet:
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return self.dataset.runtime_secrets()
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        return self.dataset.runtime_pip_packages()
 
     def semantic_dict(self) -> dict[str, Any]:
         return {
@@ -295,6 +307,7 @@ class Dataset:
         records: Iterable[Mapping[str, Any]],
         *,
         prompt_column: str = "prompt",
+        prompt_template: Any | None = None,
         example_key_column: str = "example_id",
         prompt_hash_column: str | None = None,
         label_columns: Sequence[str] = (),
@@ -307,7 +320,7 @@ class Dataset:
         """Build a dataset by mapping record columns into examples, labels, and cases."""
         examples: list[Example] = []
         for record in records:
-            prompt = _coerce_prompt(record[prompt_column])
+            prompt = _coerce_prompt(_format_record_prompt(record, prompt_column, prompt_template))
             labels = {column: record.get(column) for column in label_columns}
             metadata = {column: record.get(column) for column in metadata_columns}
             case_names = list(dict.fromkeys([*case_columns, *([case_key_column] if case_key_column else [])]))
@@ -334,6 +347,66 @@ class Dataset:
         return cls.from_examples(examples, id=id, name=name)
 
     @classmethod
+    def from_hf_dataset(
+        cls,
+        hf_dataset: Any,
+        *,
+        prompt_column: str = "prompt",
+        prompt_template: Any | None = None,
+        example_key_column: str = "example_id",
+        prompt_hash_column: str | None = None,
+        label_columns: Sequence[str] = (),
+        case_columns: Sequence[str] = (),
+        case_key_column: str | None = None,
+        metadata_columns: Sequence[str] = (),
+        index_column: str | None = None,
+        index_prefix: str = "row",
+        hash_columns: Mapping[str, str | Sequence[str]] | None = None,
+        nested_record_column: str | None = None,
+        nested_record_index_column: str | None = None,
+        nested_record_field_paths: Mapping[str, str | Sequence[str]] | None = None,
+        id: str | None = None,
+        name: str | None = None,
+    ) -> "Dataset":
+        """Map an official ``datasets.Dataset`` object into v2 examples."""
+        raw_records = hf_dataset.to_list() if hasattr(hf_dataset, "to_list") else [dict(row) for row in hf_dataset]
+        if nested_record_column is not None:
+            raw_records = _expand_nested_records(
+                raw_records,
+                nested_record_column=nested_record_column,
+                nested_record_index_column=nested_record_index_column,
+                nested_record_field_paths=nested_record_field_paths or {},
+            )
+        hash_specs = {
+            str(output_column): _normalize_hash_source_columns(source_columns)
+            for output_column, source_columns in dict(hash_columns or {}).items()
+        }
+        records = []
+        for index, record in enumerate(raw_records):
+            normalized = dict(record)
+            if index_column is not None and normalized.get(index_column) is None:
+                normalized[index_column] = f"{index_prefix}_{index:06d}"
+            for output_column, source_columns in hash_specs.items():
+                missing = [column for column in source_columns if column not in normalized]
+                if missing:
+                    raise KeyError(f"Cannot derive hash column {output_column!r}; missing source columns: {missing}")
+                normalized[output_column] = stable_hash({column: normalized[column] for column in source_columns})[:24]
+            records.append(normalized)
+        return cls.from_records(
+            records,
+            prompt_column=prompt_column,
+            prompt_template=prompt_template,
+            example_key_column=example_key_column,
+            prompt_hash_column=prompt_hash_column,
+            label_columns=label_columns,
+            case_columns=case_columns,
+            case_key_column=case_key_column,
+            metadata_columns=metadata_columns,
+            id=id,
+            name=name,
+        )
+
+    @classmethod
     def from_json(
         cls,
         path: str | Path,
@@ -354,6 +427,45 @@ class Dataset:
         records = payload["examples"] if isinstance(payload, dict) and "examples" in payload else payload
         if not isinstance(records, list):
             raise ValueError("Dataset JSON must be a list or an object with an 'examples' list")
+        return cls.from_records(
+            records,
+            prompt_column=prompt_column,
+            example_key_column=example_key_column,
+            prompt_hash_column=prompt_hash_column,
+            label_columns=label_columns,
+            case_columns=case_columns,
+            case_key_column=case_key_column,
+            metadata_columns=metadata_columns,
+            id=id,
+            name=name,
+        )
+
+    @classmethod
+    def from_jsonl(
+        cls,
+        path: str | Path,
+        *,
+        prompt_column: str = "prompt",
+        example_key_column: str = "example_id",
+        prompt_hash_column: str | None = None,
+        label_columns: Sequence[str] = (),
+        case_columns: Sequence[str] = (),
+        case_key_column: str | None = None,
+        metadata_columns: Sequence[str] = (),
+        id: str | None = None,
+        name: str | None = None,
+    ) -> "Dataset":
+        """Load newline-delimited JSON records and map them into examples."""
+        records: list[Mapping[str, Any]] = []
+        with Path(path).open("r", encoding="utf-8") as f:
+            for line_number, line in enumerate(f, start=1):
+                text = line.strip()
+                if not text:
+                    continue
+                payload = json.loads(text)
+                if not isinstance(payload, Mapping):
+                    raise ValueError(f"Dataset JSONL line {line_number} must be an object")
+                records.append(payload)
         return cls.from_records(
             records,
             prompt_column=prompt_column,
@@ -449,11 +561,20 @@ class Dataset:
         return cls.from_source(source=source, defer=True, **kwargs)
 
     @classmethod
+    def from_huggingface(cls, *, source: Any, **kwargs: Any) -> "Dataset":
+        """Build a deferred Hugging Face dataset from a dataset repo/config."""
+        if getattr(source, "kind", None) != "huggingface":
+            raise TypeError("Dataset.from_huggingface requires a HuggingFaceSource")
+        return cls.from_source(source=source, defer=True, **kwargs)
+
+    @classmethod
     def from_file(cls, path: str | Path, **kwargs: Any) -> "Dataset":
         """Load a dataset from a supported local file format."""
         suffix = Path(path).suffix.lower()
         if suffix == ".json":
             return cls.from_json(path, **kwargs)
+        if suffix == ".jsonl":
+            return cls.from_jsonl(path, **kwargs)
         if suffix == ".parquet":
             return cls.from_parquet(path, **kwargs)
         raise ValueError(f"Unsupported dataset file suffix: {suffix}")
@@ -646,6 +767,134 @@ def _coerce_prompt(value: Any) -> Prompt:
     if isinstance(value, list):
         return value
     raise TypeError(f"Unsupported prompt value type: {type(value).__name__}")
+
+
+def _format_record_prompt(record: Mapping[str, Any], prompt_column: str, prompt_template: Any | None) -> Any:
+    raw_prompt = record[prompt_column]
+    if prompt_template is None:
+        return raw_prompt
+    values = {str(key): value for key, value in record.items()}
+    values.setdefault("prompt", raw_prompt)
+    return _format_prompt_template(prompt_template, values)
+
+
+def _format_prompt_template(template: Any, values: Mapping[str, Any]) -> Any:
+    if isinstance(template, str):
+        return template.format_map(_MissingFormatValues(values))
+    if isinstance(template, list):
+        return [_format_prompt_template(item, values) for item in template]
+    if isinstance(template, tuple):
+        return [_format_prompt_template(item, values) for item in template]
+    if isinstance(template, Mapping):
+        return {
+            str(key): _format_prompt_template(value, values)
+            for key, value in template.items()
+        }
+    return template
+
+
+class _MissingFormatValues(dict[str, Any]):
+    def __missing__(self, key: str) -> str:
+        raise KeyError(f"Prompt template references missing record column {key!r}") from None
+
+
+def _normalize_hash_source_columns(value: str | Sequence[str]) -> tuple[str, ...]:
+    if isinstance(value, str):
+        columns = (value,)
+    else:
+        columns = tuple(str(column) for column in value)
+    if not columns or any(not column.strip() for column in columns):
+        raise ValueError("Hash source columns cannot be empty")
+    return columns
+
+
+def _expand_nested_records(
+    raw_records: Sequence[Mapping[str, Any]],
+    *,
+    nested_record_column: str,
+    nested_record_index_column: str | None,
+    nested_record_field_paths: Mapping[str, str | Sequence[str]],
+) -> list[dict[str, Any]]:
+    expanded: list[dict[str, Any]] = []
+    field_paths = {
+        str(output_column): _normalize_field_path_options(paths)
+        for output_column, paths in dict(nested_record_field_paths).items()
+    }
+    for parent_index, record in enumerate(raw_records):
+        parent = dict(record)
+        nested_items = _parse_nested_record_items(parent.get(nested_record_column))
+        for item_index, item in enumerate(nested_items):
+            normalized = dict(parent)
+            if nested_record_index_column is not None:
+                normalized[nested_record_index_column] = item_index
+            for output_column, path_options in field_paths.items():
+                normalized[output_column] = _first_path_value(item, path_options)
+            normalized.setdefault("_parent_row_index", parent_index)
+            expanded.append(normalized)
+    return expanded
+
+
+def _parse_nested_record_items(value: Any) -> list[Mapping[str, Any]]:
+    if value is None:
+        return []
+    parsed = value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            parsed = ast.literal_eval(text)
+    if isinstance(parsed, Mapping):
+        for key in ("criteria", "criterion", "rubric", "items", "annotations"):
+            candidate = parsed.get(key)
+            if isinstance(candidate, Sequence) and not isinstance(candidate, (str, bytes, bytearray)):
+                parsed = candidate
+                break
+        else:
+            values = list(parsed.values())
+            if values and all(isinstance(item, Mapping) for item in values):
+                parsed = values
+    if not isinstance(parsed, Sequence) or isinstance(parsed, (str, bytes, bytearray)):
+        raise ValueError(f"Nested record value must parse to a sequence of objects, got {type(parsed).__name__}")
+    records: list[Mapping[str, Any]] = []
+    for item in parsed:
+        if not isinstance(item, Mapping):
+            raise ValueError(f"Nested record item must be an object, got {type(item).__name__}")
+        records.append(dict(item))
+    return records
+
+
+def _normalize_field_path_options(value: str | Sequence[str]) -> tuple[tuple[str, ...], ...]:
+    raw_options = (value,) if isinstance(value, str) else tuple(str(item) for item in value)
+    if not raw_options:
+        raise ValueError("Nested record field paths cannot be empty")
+    return tuple(tuple(part for part in option.split(".") if part) for option in raw_options)
+
+
+def _first_path_value(record: Mapping[str, Any], path_options: Sequence[Sequence[str]]) -> Any:
+    for path in path_options:
+        value = _path_value(record, path)
+        if value is not None:
+            return value
+    return None
+
+
+def _path_value(record: Mapping[str, Any], path: Sequence[str]) -> Any:
+    current: Any = record
+    for part in path:
+        if not isinstance(current, Mapping):
+            return None
+        if part in current:
+            current = current[part]
+            continue
+        lower = {str(key).lower(): key for key in current}
+        actual = lower.get(part.lower())
+        if actual is None:
+            return None
+        current = current[actual]
+    return current
 
 
 def _label_values_from_dataset(dataset: Dataset, name: str) -> Mapping[str, Any]:

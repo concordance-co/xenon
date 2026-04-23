@@ -30,16 +30,22 @@ def build_llm_kwargs(
     *,
     compiled_operator_hint: str | None = None,
 ) -> tuple[dict[str, Any], str]:
+    model_path = engine.resolved_model_path()
     llm_kwargs: dict[str, Any] = {
-        "model": engine.model_id,
+        "model": model_path,
         "enforce_eager": bool(engine.enforce_eager),
         "max_num_seqs": int(engine.max_num_seqs or 1),
         "enable_chunked_prefill": bool(engine.enable_chunked_prefill),
         "enable_prefix_caching": bool(engine.enable_prefix_caching),
         "tensor_parallel_size": int(engine.tensor_parallel_size or 1),
+        "pipeline_parallel_size": int(engine.pipeline_parallel_size or 1),
         "gpu_memory_utilization": float(engine.gpu_memory_utilization or 0.90),
         "worker_cls": _PATCH_WORKER_CLS,
     }
+    if engine.distributed_executor_backend:
+        llm_kwargs["distributed_executor_backend"] = str(engine.distributed_executor_backend)
+    if model_path != engine.canonical_model_name():
+        llm_kwargs["served_model_name"] = engine.canonical_model_name()
     if not bool(engine.enforce_eager):
         llm_kwargs["compilation_config"] = {
             "custom_ops": ["none", "+activation_patch_hidden_states"],
@@ -300,7 +306,7 @@ def request_path_edges(
 
 def patched_sampling_params(
     *,
-    max_tokens: int,
+    max_tokens: int | None,
     temperature: float,
     top_p: float,
     top_k: int,
@@ -310,7 +316,7 @@ def patched_sampling_params(
     from vllm import SamplingParams
 
     sampling_params = SamplingParams(
-        max_tokens=int(max_tokens),
+        max_tokens=None if max_tokens is None else int(max_tokens),
         temperature=float(temperature),
         top_p=float(top_p),
         top_k=int(top_k),

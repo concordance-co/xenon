@@ -59,7 +59,7 @@ def run_vllm_intervention(*, engine: "VLLMEngine", spec: PatchedGenerationSpec) 
     from transformers import AutoTokenizer
     from vllm import LLM
 
-    tokenizer = AutoTokenizer.from_pretrained(engine.model_id, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(engine.resolved_model_path(), trust_remote_code=True)
     compiled_operator_hint = None
     if spec.patch.operator in {"project_out", "add_direction", "swap_mean", "swap_components", "random_control"}:
         compiled_operator_hint = "subspace"
@@ -214,7 +214,7 @@ def _run_paired(
             patched_prompts.append({"prompt_token_ids": tokenized["token_ids"]})
             patched_params.append(
                 patched_sampling_params(
-                    max_tokens=int(spec.generation.max_tokens),
+                    max_tokens=spec.generation.max_tokens,
                     temperature=float(spec.generation.temperature or 0.0),
                     top_p=float(spec.generation.top_p),
                     top_k=int(spec.generation.top_k),
@@ -370,7 +370,7 @@ def _run_unpaired(
             patched_prompts.append({"prompt_token_ids": tokenized["token_ids"]})
             patched_params.append(
                 patched_sampling_params(
-                    max_tokens=int(spec.generation.max_tokens),
+                    max_tokens=spec.generation.max_tokens,
                     temperature=float(spec.generation.temperature or 0.0),
                     top_p=float(spec.generation.top_p),
                     top_k=int(spec.generation.top_k),

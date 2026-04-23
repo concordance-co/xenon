@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from pipelines_v2.data.datasets import Example
 from pipelines_v2.engine.base import EngineCaptureResult
@@ -16,7 +16,12 @@ if TYPE_CHECKING:
     from pipelines_v2.engine.vllm.engine import VLLMEngine
 
 
-def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureResult:
+def run_vllm_capture(
+    *,
+    engine: VLLMEngine,
+    spec: CaptureSpec,
+    batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
+) -> EngineCaptureResult:
     """Run a capture spec with vLLM in the current process."""
 
     import torch
@@ -31,23 +36,38 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
     wants_residual = bool(residual_sites)
     wants_routing = bool(routing_sites)
     wants_generation = bool(spec.generation.enabled)
+    capture_generated_tokens = bool(spec.generation.capture_generated_tokens)
     batch_size = max(1, int(engine.max_num_seqs or 1))
-    wants_sections = any(getattr(site.tokens, "kind", None) == "section" for site in spec.sites)
+    section_names = [
+        str(getattr(site.tokens, "value", ""))
+        for site in spec.sites
+        if getattr(site.tokens, "kind", None) == "section"
+    ]
+    wants_sections = bool(section_names)
+    requires_prompt_metadata_sections = wants_sections and not (
+        capture_generated_tokens and all(name in {"prompt", "generated", "full"} for name in section_names)
+    )
 
     if wants_routing and bool(engine.enable_prefix_caching):
         raise ValueError(
             "MoE routing capture currently requires enable_prefix_caching=False in the current vLLM implementation"
         )
 
+    model_path = engine.resolved_model_path()
     llm_kwargs: dict[str, Any] = {
-        "model": engine.model_id,
+        "model": model_path,
         "enforce_eager": bool(engine.enforce_eager),
         "max_num_seqs": int(engine.max_num_seqs or 1),
         "enable_chunked_prefill": bool(engine.enable_chunked_prefill),
         "enable_prefix_caching": bool(engine.enable_prefix_caching),
         "tensor_parallel_size": int(engine.tensor_parallel_size or 1),
+        "pipeline_parallel_size": int(engine.pipeline_parallel_size or 1),
         "gpu_memory_utilization": float(engine.gpu_memory_utilization or 0.90),
     }
+    if engine.distributed_executor_backend:
+        llm_kwargs["distributed_executor_backend"] = str(engine.distributed_executor_backend)
+    if model_path != engine.canonical_model_name():
+        llm_kwargs["served_model_name"] = engine.canonical_model_name()
     if engine.max_model_len:
         llm_kwargs["max_model_len"] = int(engine.max_model_len)
     reasoning_parser = (engine.reasoning_parser or "").strip()
@@ -70,14 +90,22 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                 },
             }
             llm_kwargs["kv_transfer_config"] = {
-                "kv_connector": "ExampleHiddenStatesConnector",
+                "kv_connector": (
+                    "PipelinesV2HiddenStatesConnector"
+                    if capture_generated_tokens
+                    else "ExampleHiddenStatesConnector"
+                ),
                 "kv_role": "kv_producer",
                 "kv_connector_extra_config": {
                     "shared_storage_path": str(connector_dir),
                 },
             }
+            if capture_generated_tokens:
+                llm_kwargs["kv_transfer_config"]["kv_connector_module_path"] = (
+                    "pipelines_v2.engine.vllm.hidden_states_connector"
+                )
 
-        tokenizer = AutoTokenizer.from_pretrained(engine.model_id, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         llm = LLM(**llm_kwargs)
         reasoning_parser = _build_reasoning_parser(
             tokenizer=tokenizer,
@@ -109,12 +137,12 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                 reasoning_parser=reasoning_parser,
                 examples=batch,
                 add_generation_prompt=bool(engine.add_generation_prompt),
-                require_sections=wants_sections,
+                require_sections=requires_prompt_metadata_sections,
                 prompt_metadata_builder=spec.prompt_metadata_builder,
                 wants_residual=wants_residual,
                 wants_routing=wants_routing,
                 wants_generation=wants_generation,
-                generation_max_tokens=int(spec.generation.max_tokens or 1),
+                generation_max_tokens=spec.generation.max_tokens,
                 generation_temperature=float(spec.generation.temperature or 0.0),
                 generation_top_p=float(spec.generation.top_p),
                 generation_top_k=int(spec.generation.top_k),
@@ -122,13 +150,18 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                 generation_tool_choice=spec.generation.tool_choice,
                 generation_structured_output=spec.generation.structured_output,
                 capture_reasoning=bool(spec.generation.capture_reasoning),
+                capture_generated_tokens=capture_generated_tokens,
                 enable_thinking=engine.enable_thinking,
                 chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
             )
+            batch_generations: list[dict[str, Any]] = []
+            batch_example_metadata: list[dict[str, Any]] = []
             for record in batch_records:
                 example = record["example"]
                 prompt_token_ids = record["prompt_token_ids"]
-                token_sections = record["token_sections"]
+                prompt_token_sections = record["prompt_token_sections"]
+                residual_token_count = record["residual_token_count"]
+                residual_token_sections = record["residual_token_sections"]
                 residual = record["residual"]
                 router_data = record["router_data"]
                 actual_router_layers = record["actual_router_layers"]
@@ -140,8 +173,8 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                     residual_layers=residual_layers,
                     residual=residual,
                     example=example,
-                    token_count=len(prompt_token_ids),
-                    token_sections=token_sections,
+                    token_count=residual_token_count,
+                    token_sections=residual_token_sections,
                 )
                 _fill_router_features(
                     feature_payloads=feature_payloads,
@@ -149,22 +182,35 @@ def run_vllm_capture(*, engine: VLLMEngine, spec: CaptureSpec) -> EngineCaptureR
                     router_data=router_data,
                     example=example,
                     token_count=len(prompt_token_ids),
-                    token_sections=token_sections,
+                    token_sections=prompt_token_sections,
                     discovered_router_layers=discovered_router_layers,
                 )
 
                 if generation_result is not None:
-                    generations.append({"example_key": example.key, **generation_result})
+                    generation_row = {"example_key": example.key, **generation_result}
+                    generations.append(generation_row)
+                    batch_generations.append(generation_row)
 
-                example_metadata.append(
-                    {
-                        "example_key": example.key,
-                        "prompt_hash": example.prompt_hash,
-                        "token_count": len(prompt_token_ids),
-                        "generated": generation_result is not None,
-                        "capture_mode": "batched_prompt_capture" if len(batch) > 1 else "single_request",
-                        "actual_router_layers": actual_router_layers,
-                    }
+                metadata_row = {
+                    "example_key": example.key,
+                    "prompt_hash": example.prompt_hash,
+                    "token_count": residual_token_count,
+                    "prompt_token_count": len(prompt_token_ids),
+                    "generated_token_count": int(record["generated_token_count"]),
+                    "captured_generated_token_count": int(record["captured_generated_token_count"]),
+                    "generated": generation_result is not None,
+                    "capture_generated_tokens": capture_generated_tokens,
+                    "capture_mode": "batched_prompt_capture" if len(batch) > 1 else "single_request",
+                    "actual_router_layers": actual_router_layers,
+                }
+                example_metadata.append(metadata_row)
+                batch_example_metadata.append(metadata_row)
+
+            if batch_callback is not None:
+                batch_callback(
+                    list(batch),
+                    list(batch_generations),
+                    list(batch_example_metadata),
                 )
 
     return EngineCaptureResult(
@@ -318,7 +364,7 @@ def _tokenize_prompt(
         token_ids = tokenizer.apply_chat_template(prompt, **kwargs)
         return _normalize_token_ids(token_ids)
     if isinstance(prompt, str):
-        encoding = tokenizer(prompt, add_special_tokens=False)
+        encoding = tokenizer(prompt, add_special_tokens=False, return_offsets_mapping=True)
         return _normalize_token_ids(encoding)
     raise TypeError(f"Unsupported prompt type: {type(prompt).__name__}")
 def _remap_token_sections(
@@ -460,7 +506,7 @@ def _capture_prompt_batch(
     wants_residual: bool,
     wants_routing: bool,
     wants_generation: bool,
-    generation_max_tokens: int,
+    generation_max_tokens: int | None,
     generation_temperature: float,
     capture_reasoning: bool = False,
     generation_top_p: float = 1.0,
@@ -470,6 +516,7 @@ def _capture_prompt_batch(
     generation_structured_output: dict[str, Any] | None = None,
     reasoning_parser: Any | None = None,
     enable_thinking: bool | None = None,
+    capture_generated_tokens: bool = False,
     chat_template_kwargs: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     import torch
@@ -498,7 +545,7 @@ def _capture_prompt_batch(
         _apply_to_model(llm, _reset_router_buffers_on_model)
 
     sampling_params = SamplingParams(
-        max_tokens=int(generation_max_tokens if wants_generation else 1),
+        max_tokens=generation_max_tokens if wants_generation else 1,
         temperature=float(generation_temperature if wants_generation else 0.0),
         top_p=float(generation_top_p if wants_generation else 1.0),
         top_k=int(generation_top_k if wants_generation else -1),
@@ -526,6 +573,26 @@ def _capture_prompt_batch(
     for example, request_output in zip(examples, outputs, strict=False):
         tokenized_prompt = tokenized_by_key[example.key]
         prompt_token_ids = tokenized_prompt["token_ids"]
+        generation_result = (
+            _generation_result_from_output(
+                request_output,
+                capture_reasoning=capture_reasoning,
+                reasoning_parser=reasoning_parser,
+            )
+            if wants_generation
+            else None
+        )
+        generated_token_ids = (
+            list(generation_result.get("generated_token_ids") or ())
+            if isinstance(generation_result, dict)
+            else []
+        )
+        generated_token_count = len(generated_token_ids)
+        residual_token_count = len(prompt_token_ids)
+        captured_generated_token_count = 0
+        residual_token_sections = dict(tokenized_prompt["token_sections"])
+        if capture_generated_tokens and not wants_generation:
+            raise RuntimeError("capture_generated_tokens=True requires generation.enabled=True")
         residual = None
         if wants_residual:
             hidden_states_path = _hidden_states_path(request_output)
@@ -540,22 +607,35 @@ def _capture_prompt_batch(
             hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
             if hs.dim() == 3:
                 hs = hs.permute(1, 0, 2)
-            residual = hs[:, : len(prompt_token_ids), :].detach().cpu().to(torch.float32).numpy()
+            available_token_count = int(hs.shape[1])
+            if available_token_count < len(prompt_token_ids):
+                raise RuntimeError(
+                    "vLLM returned fewer hidden-state rows than prompt tokens "
+                    f"for example {example.key!r}: got {available_token_count}, "
+                    f"expected at least {len(prompt_token_ids)}."
+                )
+            if capture_generated_tokens:
+                residual_token_count = min(
+                    available_token_count,
+                    len(prompt_token_ids) + generated_token_count,
+                )
+                captured_generated_token_count = max(0, residual_token_count - len(prompt_token_ids))
+                residual_token_sections = _with_generation_token_sections(
+                    token_sections=residual_token_sections,
+                    prompt_token_count=len(prompt_token_ids),
+                    captured_generated_token_count=captured_generated_token_count,
+                )
+            residual = hs[:, :residual_token_count, :].detach().cpu().to(torch.float32).numpy()
             connector_file.unlink(missing_ok=True)
-        generation_result = (
-            _generation_result_from_output(
-                request_output,
-                capture_reasoning=capture_reasoning,
-                reasoning_parser=reasoning_parser,
-            )
-            if wants_generation
-            else None
-        )
         results.append(
             {
                 "example": example,
                 "prompt_token_ids": prompt_token_ids,
-                "token_sections": tokenized_prompt["token_sections"],
+                "prompt_token_sections": tokenized_prompt["token_sections"],
+                "residual_token_count": residual_token_count,
+                "residual_token_sections": residual_token_sections,
+                "generated_token_count": generated_token_count,
+                "captured_generated_token_count": captured_generated_token_count,
                 "residual": residual,
                 "router_data": router_by_example.get(example.key, {}),
                 "actual_router_layers": actual_router_layers,
@@ -563,6 +643,20 @@ def _capture_prompt_batch(
             }
         )
     return results
+
+
+def _with_generation_token_sections(
+    *,
+    token_sections: dict[str, list[int]],
+    prompt_token_count: int,
+    captured_generated_token_count: int,
+) -> dict[str, list[int]]:
+    token_count = int(prompt_token_count) + int(captured_generated_token_count)
+    sections = {str(name): [int(position) for position in positions] for name, positions in token_sections.items()}
+    sections["prompt"] = list(range(int(prompt_token_count)))
+    sections["generated"] = list(range(int(prompt_token_count), token_count))
+    sections["full"] = list(range(token_count))
+    return sections
 
 
 def _split_router_capture_batch(

@@ -37,9 +37,11 @@ class GenerationRunSpec(OperationSpec):
     def __post_init__(self) -> None:
         if self.engine is None:
             raise SpecValidationError("GenerationRunSpec requires an engine")
-        if not self.generation.enabled or int(self.generation.max_tokens or 0) <= 0:
+        if not self.generation.enabled or (
+            self.generation.max_tokens is not None and int(self.generation.max_tokens or 0) <= 0
+        ):
             raise SpecValidationError(
-                "GenerationRunSpec requires generation.enabled=True and generation.max_tokens > 0"
+                "GenerationRunSpec requires generation.enabled=True and generation.max_tokens > 0 or None"
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -122,9 +124,11 @@ class PatchedGenerationSpec(OperationSpec):
             raise SpecValidationError("PatchedGenerationSpec requires an engine")
         if self.patch is None:
             raise SpecValidationError("PatchedGenerationSpec requires patch")
-        if not self.generation.enabled or int(self.generation.max_tokens or 0) <= 0:
+        if not self.generation.enabled or (
+            self.generation.max_tokens is not None and int(self.generation.max_tokens or 0) <= 0
+        ):
             raise SpecValidationError(
-                "PatchedGenerationSpec requires generation.enabled=True and generation.max_tokens > 0"
+                "PatchedGenerationSpec requires generation.enabled=True and generation.max_tokens > 0 or None"
             )
         patch = self.patch
         if patch.requires_pairing():

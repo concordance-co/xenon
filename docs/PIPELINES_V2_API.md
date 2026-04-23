@@ -140,6 +140,11 @@ Constructors:
   - use for hardcoded examples in Python
 - `Dataset.from_records(records, *, prompt_column=..., example_key_column=..., ...)`
   - convert row dicts into examples
+  - accepts `prompt_template="..."` to format prompts from record columns, using
+    `{prompt}` for the raw `prompt_column` value plus any explicit column name
+  - `prompt_template` may also be a JSON-like list/dict, e.g. chat messages;
+    every string leaf is formatted against the record and the resulting prompt
+    stays structured
 - `Dataset.from_json(path, **kwargs)`
 - `Dataset.from_parquet(path, **kwargs)`
 - `Dataset.from_source(source=..., **kwargs)`
@@ -147,6 +152,12 @@ Constructors:
 - `Dataset.from_postgres(source=..., table=... | sql=..., **kwargs)`
   - Postgres-specific deferred dataset constructor
   - requires exactly one of `table` or `sql`
+- `Dataset.from_huggingface(source=..., split=..., **kwargs)`
+  - Hugging Face-specific deferred dataset constructor
+  - resolved with the official `datasets.load_dataset(...)` package inside the runtime
+  - forwards `prompt_template` so prompt wrapping can still be deferred to the runtime
+  - supports optional nested-record expansion with `nested_record_column`,
+    `nested_record_index_column`, and `nested_record_field_paths`
 
 Common methods:
 - `dataset.select(limit=..., keys=...)`
@@ -252,6 +263,27 @@ Constructors/methods:
 - `connection_url()`
   - resolves the actual runtime connection string
 
+#### `HuggingFaceSource`
+
+Use when:
+- examples live in a Hugging Face dataset repo
+
+Constructors/methods:
+- `HuggingFaceSource(path="org/dataset", name="config", revision=None, token_env_var=None)`
+- `identity()`
+  - serializes repo/config/revision without resolving or exposing tokens
+- `runtime_secrets()`
+- `runtime_pip_packages()`
+  - includes `datasets`
+- `fetch_dataset(...)`
+  - calls official `datasets.load_dataset(...)`
+  - maps rows through `Dataset.from_hf_dataset(...)`
+  - supports `prompt_template` for formatting the runtime prompt from row columns
+  - supports nested-record expansion for fields such as a JSON/list rubric:
+    - `nested_record_column="RUBRIC"`
+    - `nested_record_index_column="criterion_index"`
+    - `nested_record_field_paths={"criterion_text": "title", "rubric_dimension": "annotations.rubric_dimension"}`
+
 ## Engine Layer
 
 ### `RuntimeSecret`
@@ -299,8 +331,17 @@ What it is:
 
 Important fields:
 - `model_id`
+  - canonical model id, e.g. `Qwen/Qwen3-30B-A3B`
+- `model_path_root`
+  - optional local model root used at runtime; when set to `/models`, vLLM loads from `/models/{model_id}` while retaining `model_id` as the canonical served model name
 - `max_model_len`
 - `tensor_parallel_size`
+- `pipeline_parallel_size`
+- `distributed_executor_backend`
+  - optional pass-through for vLLM intra-engine distributed execution. Use
+    tensor/pipeline parallelism when one model is sharded across multiple GPUs
+    inside a single container. Use `ModalResources.shard_count` when you want
+    replicated data-parallel containers processing disjoint prompt shards.
 - `gpu_memory_utilization`
 - `enforce_eager`
 - `max_num_seqs`
@@ -342,6 +383,9 @@ Notes:
 - `section(name)` requires explicit `token_sections` metadata
 - there is no automatic section inference anymore
 - for remote/deferred datasets, the usual pattern is to attach a `PromptMetadataBuilder` to the capture spec
+- for deferred artifact-backed datasets that already contain explicit
+  per-example `metadata["token_sections"]`, pass
+  `provides_token_sections=True` on the `Dataset.from_source(...)` fetch args
 - capture stores the selected token states
 - analysis specs can further select and pool from the stored token axis
 
@@ -417,7 +461,23 @@ Fields:
 - `max_tokens`
 - `temperature`
 - `capture_reasoning`
+- `capture_generated_tokens`
 - `structured_output`
+
+Notes:
+- `capture_generated_tokens=False` preserves the historical capture behavior:
+  residual features are truncated to prompt tokens even when generation is
+  enabled.
+- `max_tokens=None` passes `None` through to vLLM, leaving generation uncapped
+  except for normal stop/context limits.
+- `capture_generated_tokens=True` keeps computed generated-token hidden states
+  in the residual feature axis for generation-enabled vLLM captures. Built-in
+  token sections `prompt`, `generated`, and `full` become available to
+  `TokenSelector.section`.
+- vLLM samples a generated token from the previous token's hidden state, so the
+  final sampled output token may not itself have a hidden-state row unless a
+  later decode step consumes it. The `generated` section contains generated
+  context tokens that were actually fed back through the model.
 
 ### `ResidualSite`
 
@@ -1009,6 +1069,12 @@ Fields:
 - `cpu`
 - `memory_mb`
 - `timeout_seconds`
+- `max_containers`
+- `shard_count`
+  - number of deterministic prompt-hash shards to run for supported
+    model-bound specs (`CaptureSpec` and `GenerationRunSpec`). Each shard is a
+    separate Modal invocation and may run on a separate container up to
+    `max_containers`; completed shard artifacts are reused on resume.
 - `secrets`
 - `volumes`
 
@@ -1249,6 +1315,8 @@ Fields:
 - `runner`
 - `spec`
 - `depends_on`
+- `description`
+  Optional human-facing note describing what the step is or why it exists. It is serialized with the workflow spec and shown in workflow plans, but it is not part of semantic step identity.
 
 Methods:
 - `resolved_depends_on()`
@@ -1521,6 +1589,7 @@ workflow = WorkflowSpec(
         WorkflowStep(
             name="capture",
             runner="gpu",
+            description="Capture prompt-end residual activations for the probe dataset.",
             spec=CaptureSpec(...),
         ),
         WorkflowStep(

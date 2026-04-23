@@ -18,6 +18,10 @@ class ArtifactStore(Protocol):
         """Create storage for one artifact and return its root path."""
         ...
 
+    def ensure_artifact_dir(self, artifact_id: str) -> Path:
+        """Create storage for one artifact if missing and return its root path."""
+        ...
+
     def has_local_artifact(self, artifact_id: str) -> bool:
         """Return whether the full artifact is already available locally."""
         ...

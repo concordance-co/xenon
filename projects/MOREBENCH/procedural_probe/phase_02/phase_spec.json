@@ -1,0 +1,73 @@
+{
+  "id": "phase_02_morebench_raw_dimension_prompt_generation_probes",
+  "name": "MoReBench Raw Dimension Prompt vs Generation Probes",
+  "description": "Generate official MoReBench answers and compare raw rubric-dimension readouts at prompt end versus generated-answer context.",
+  "project_id": "MOREBENCH",
+  "inherits": "projects/MOREBENCH/project_spec.json",
+  "goal": "Replace aggregate prompt-only rubric-weight probes with a cleaner baseline over raw rubric dimensions, comparing prompt comprehension against generated-answer state without adding MoReBench-specific abstractions to pipelines_v2.",
+  "workflow_specs": [
+    "projects/MOREBENCH/procedural_probe/phase_02/specs/workflow.py"
+  ],
+  "research_questions": [
+    "Ignoring criterion weights, can residual probes classify the dominant raw rubric dimension for a dilemma?",
+    "Do prompt-end activations or generated-answer context activations contain more raw rubric-dimension signal?",
+    "Do activation probes beat matching text baselines over dilemma text and generated answer text?",
+    "Are the sparse one-vs-rest dimension labels usable, or do they require intermediate relabeling before deeper mech interp?",
+    "Does single-pass generated-context capture produce cleaner signal than prompt-end capture?"
+  ],
+  "workflow_steps": [
+    {
+      "name": "build_raw_rubric_dimension_labels",
+      "question": "Collapse expert criteria into raw rubric-dimension labels while ignoring weights.",
+      "interpretation": "This tests a smaller label family than sparse criterion titles, but it is still a rubric-structure label rather than an official answer score."
+    },
+    {
+      "name": "capture_prompt_and_generation_residual",
+      "question": "Generate deterministic answers and capture prompt-end plus generated-context residual activations in one vLLM pass.",
+      "interpretation": "This asks what raw rubric-dimension structure is inferable before the model answers versus from generated tokens that have actually been fed back through the model. Generated text is stored in the artifact volume."
+    },
+    {
+      "name": "build_generation_text_labels",
+      "question": "Expose generated answer text from the capture artifact for generated-text baselines.",
+      "interpretation": "This keeps generated text in artifact storage rather than materializing it to Postgres."
+    },
+    {
+      "name": "probe_prompt_*_residual",
+      "question": "Train layer-swept linear probes on prompt-end activations.",
+      "interpretation": "Balanced accuracy/AUROC near 0.5 means little prompt-side signal. Values above prompt-text baselines and shuffled/selectivity controls indicate decodability."
+    },
+    {
+      "name": "probe_generation_*_residual",
+      "question": "Train layer-swept linear probes on generated-context activations.",
+      "interpretation": "A lift over prompt-end probes suggests the generated answer surface carries more rubric-dimension information than the dilemma alone."
+    },
+    {
+      "name": "text_baseline_prompt_* and text_baseline_generation_*",
+      "question": "Measure lexical and answer-style leakage.",
+      "interpretation": "High text metrics mean the label is recoverable from surface text, so activation readouts should be interpreted conservatively."
+    },
+    {
+      "name": "report",
+      "question": "Summarize label support, prompt-vs-generation probe metrics, text baselines, and next implementation gaps.",
+      "interpretation": "The report should decide whether to pursue intermediate labels, judge-scored criteria, or deeper generated-context capture next."
+    }
+  ],
+  "controls": [
+    "Use raw rubric dimensions and ignore criterion weights for target construction.",
+    "Compare prompt-end activations against generated-context activations for the same labels.",
+    "Use dilemma text as the prompt-side lexical baseline.",
+    "Use generated answer text as the generation-side lexical baseline.",
+    "Use shuffled-label/selectivity controls before treating a probe result as meaningful.",
+    "Keep LLM-as-judge scoring project-local and out of this phase until the abstraction is clearer."
+  ],
+  "missing_implementation_pieces": [
+    "Criterion-fulfillment judging for generated answers in a later project-local phase.",
+    "Intermediate criterion clusters inside each rubric dimension.",
+    "Fine-grained domain labels for daily dilemma and AI-risk settings.",
+    "Token-section capture for scenario body, generated reasoning, and final decision."
+  ],
+  "outputs": {
+    "output_dir": "projects/MOREBENCH/procedural_probe/phase_02/reports",
+    "notes": "Initial report should focus on prompt-vs-generation deltas, text-baseline gaps, class support, and whether raw dimensions are usable as probe targets."
+  }
+}
