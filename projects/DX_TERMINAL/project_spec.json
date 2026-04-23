@@ -1,16 +1,11 @@
 {
   "id": "DX_TERMINAL",
   "name": "DX_TERMINAL",
-  "description": "Umbrella project for Terminal Markets interpretability work, including prompt confusion, counterfactuals, decision structure, reruns, and synthetic market studies.",
+  "description": "Umbrella project for the active Terminal Markets prompt-confusion interpretability work that remains in xenon.",
   "version": 1,
-  "goal": "Organize the Terminal Markets mech-interp program under one parent project while keeping executable workflow specs phase-local and Neon-backed.",
+  "goal": "Keep the active Terminal Markets prompt-confusion work organized under one parent project while preserving phase-local executable workflow specs.",
   "subprojects": [
-    "prompt_confusion",
-    "counterfactual",
-    "decision_structure",
-    "research_kickoff",
-    "research_rerun",
-    "synthetic_market"
+    "prompt_confusion"
   ],
   "defaults": {
     "capture_execution": "modal",

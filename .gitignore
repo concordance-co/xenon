@@ -39,6 +39,3 @@ dashboard/dist/
 dashboard/.vite/
 dashboard/tsconfig.tsbuildinfo
 dashboard/src/**/*.js
-
-# Oversized local DX Terminal export; keep parquet instead
-projects/DX_TERMINAL/dataset_exports/complaint_dataset_enriched.jsonl

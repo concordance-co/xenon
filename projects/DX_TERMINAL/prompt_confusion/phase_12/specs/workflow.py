@@ -16,6 +16,7 @@ from pipelines_v2.api import (
     ModalRunnerSpec,
     ModalVolumeMount,
     ModalVolumeStore,
+    NullCatalog,
     ProbeSpec,
     ReportSpec,
     ResidualSite,
@@ -28,7 +29,6 @@ from pipelines_v2.api import (
     WorkflowSpec,
     WorkflowStep,
 )
-from projects.DX_TERMINAL.prompt_confusion.catalogs import build_prompt_confusion_catalog
 
 
 MODEL_VOLUME_NAME = "xenon-models"
@@ -119,16 +119,16 @@ def build_runner_specs() -> dict[str, object]:
                 volumes=(ModalVolumeMount(name=MODEL_VOLUME_NAME, mount_path=MODEL_VOLUME_PATH),),
             ),
             artifacts=artifact_store,
-            catalog=build_prompt_confusion_catalog(__file__),
+            catalog=NullCatalog(),
         ),
         "analysis_cpu": ModalRunnerSpec(
             resources=ModalResources(cpu=6, memory_mb=24 * 1024),
             artifacts=artifact_store,
-            catalog=build_prompt_confusion_catalog(__file__),
+            catalog=NullCatalog(),
         ),
         "report_local": LocalRunnerSpec(
             artifacts=LocalArtifactStore(Path("artifacts") / "prompt_confusion_phase_12"),
-            catalog=build_prompt_confusion_catalog(__file__),
+            catalog=NullCatalog(),
         ),
     }
 
