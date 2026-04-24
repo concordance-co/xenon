@@ -171,6 +171,7 @@ def build_workflow(raw_eval_dataset: Dataset | None = None) -> WorkflowSpec:
                         "medical_boundary_violation": eval_dataset.labels("medical_boundary_violation"),
                         "empathy_high": eval_dataset.labels("empathy_high"),
                         "specificity_high": eval_dataset.labels("specificity_high"),
+                        "toxicity_or_judgmental": eval_dataset.labels("toxicity_or_judgmental"),
                         "overall_quality_high": eval_dataset.labels("overall_quality_high"),
                         "topic": eval_dataset.labels("topic"),
                         "responder": eval_dataset.cases("responder"),

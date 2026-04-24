@@ -64,6 +64,7 @@ EVAL_READOUT_LABELS: tuple[str, ...] = (
     "medical_boundary_violation",
     "empathy_high",
     "specificity_high",
+    "toxicity_or_judgmental",
     "overall_quality_high",
 )
 
@@ -458,15 +459,30 @@ def summarize_generated_label_support(*, dataset: Any) -> dict[str, Any]:
         split: len({label for label in counts if label != "<missing>"})
         for split, counts in split_boundary_counts.items()
     }
+    min_overall_class_count = min(
+        (boundary_counts[label] for label in non_missing_classes),
+        default=0,
+    )
+    min_split_class_count = min(
+        (
+            counts[label]
+            for split, counts in split_boundary_counts.items()
+            if split in {"train", "test"}
+            for label in non_missing_classes
+        ),
+        default=0,
+    )
     readout_ready = (
         len(non_missing_classes) >= 2
         and split_class_counts.get("train", 0) >= 2
         and split_class_counts.get("test", 0) >= 2
+        and min_overall_class_count >= 20
+        and min_split_class_count >= 5
     )
     recommendation = (
         "generated_boundary_probe_ready"
         if readout_ready
-        else "skip_generated_boundary_probe_until_two_classes_per_grouped_split"
+        else "skip_generated_boundary_probe_until_min_class_support"
     )
 
     summary = {
@@ -483,6 +499,8 @@ def summarize_generated_label_support(*, dataset: Any) -> dict[str, Any]:
         "response_length_bucket_counts": dict(
             sorted(Counter(_clean_text(example.labels.get("response_length_bucket")) for example in examples).items())
         ),
+        "min_overall_class_count": min_overall_class_count,
+        "min_split_class_count": min_split_class_count,
         "generated_boundary_readout_ready": readout_ready,
         "recommendation": recommendation,
     }
@@ -492,7 +510,8 @@ def summarize_generated_label_support(*, dataset: Any) -> dict[str, Any]:
             "summary": summary,
             "gate_rule": (
                 "Trainable response-side baselines/probes require at least two non-missing "
-                "medical_boundary_violation classes in both grouped train and test splits. "
+                "medical_boundary_violation classes, at least 20 examples per class overall, "
+                "and at least 5 examples per class in both grouped train and test splits. "
                 "PCA geometry may still run as an unlabeled/posture diagnostic."
             ),
         },
@@ -860,6 +879,28 @@ def run_eval_gated_readouts(
     label_results: dict[str, Any] = {}
     direction_payloads: dict[str, Any] = {}
 
+    def residualized_control(label: str, nuisance: str) -> dict[str, Any]:
+        try:
+            return run_residualized_probe(
+                ResidualizedProbeSpec(
+                    feature=feature,
+                    labels=resolved.labels(label),
+                    residualize_against=resolved.labels(nuisance),
+                    group_by=resolved.cases("questionID"),
+                    tokens=TokenSelector.full_sequence(),
+                    pooling=TokenPooling.last(),
+                    metrics=("accuracy", "balanced_accuracy", "auroc"),
+                )
+            ).payload
+        except SpecValidationError as exc:
+            return {
+                "kind": "residualized_probe_skipped",
+                "label": label,
+                "residualize_against": nuisance,
+                "reason": "runtime_validation_failed",
+                "error": str(exc),
+            }
+
     for label in EVAL_READOUT_LABELS:
         support = _eval_label_support(rows, label)
         if not support["probe_ready"]:
@@ -908,19 +949,11 @@ def run_eval_gated_readouts(
                 )
             ).payload
             direction_payloads[label] = direction_payload
-            residualized_payload = None
+            residualized_topic_payload = None
+            residualized_responder_payload = residualized_control(label, "responder")
+            residualized_length_payload = residualized_control(label, "response_length_bucket")
             if label == "medical_boundary_violation":
-                residualized_payload = run_residualized_probe(
-                    ResidualizedProbeSpec(
-                        feature=feature,
-                        labels=resolved.labels(label),
-                        residualize_against=resolved.labels("topic"),
-                        group_by=resolved.cases("questionID"),
-                        tokens=TokenSelector.full_sequence(),
-                        pooling=TokenPooling.last(),
-                        metrics=("accuracy", "balanced_accuracy", "auroc"),
-                    )
-                ).payload
+                residualized_topic_payload = residualized_control(label, "topic")
         except SpecValidationError as exc:
             label_results[label] = {
                 "status": "skipped",
@@ -949,7 +982,27 @@ def run_eval_gated_readouts(
             "text_baseline": text_payload,
             "probe": probe_payload,
             "direction": direction_payload,
-            "residualized_topic": residualized_payload,
+            "residualized_responder_best_balanced_accuracy": _best_residualized_balanced_accuracy(
+                residualized_responder_payload
+            ),
+            "residualized_responder_nuisance_null_best_accuracy": _best_residualized_nuisance_null_accuracy(
+                residualized_responder_payload
+            ),
+            "residualized_response_length_bucket_best_balanced_accuracy": _best_residualized_balanced_accuracy(
+                residualized_length_payload
+            ),
+            "residualized_response_length_bucket_nuisance_null_best_accuracy": _best_residualized_nuisance_null_accuracy(
+                residualized_length_payload
+            ),
+            "residualized_topic_best_balanced_accuracy": _best_residualized_balanced_accuracy(
+                residualized_topic_payload
+            ),
+            "residualized_topic_nuisance_null_best_accuracy": _best_residualized_nuisance_null_accuracy(
+                residualized_topic_payload
+            ),
+            "residualized_responder": residualized_responder_payload,
+            "residualized_response_length_bucket": residualized_length_payload,
+            "residualized_topic": residualized_topic_payload,
         }
 
     direction_overlaps = _direction_overlap_payload(direction_payloads)
@@ -1279,6 +1332,36 @@ def _best_balanced_accuracy(payload: Mapping[str, Any]) -> float | None:
     return None
 
 
+def _best_residualized_balanced_accuracy(payload: Mapping[str, Any] | None) -> float | None:
+    if not payload or payload.get("kind") == "residualized_probe_skipped":
+        return None
+    layers = payload.get("layers")
+    if not isinstance(layers, list):
+        return None
+    values: list[float] = []
+    for layer in layers:
+        if not isinstance(layer, Mapping):
+            continue
+        residualized = layer.get("residualized_probe")
+        if isinstance(residualized, Mapping) and residualized.get("balanced_accuracy") is not None:
+            values.append(float(residualized["balanced_accuracy"]))
+    return round(max(values), 4) if values else None
+
+
+def _best_residualized_nuisance_null_accuracy(payload: Mapping[str, Any] | None) -> float | None:
+    if not payload or payload.get("kind") == "residualized_probe_skipped":
+        return None
+    layers = payload.get("layers")
+    if not isinstance(layers, list):
+        return None
+    values = [
+        float(layer["nuisance_accuracy_on_null_training_fit"])
+        for layer in layers
+        if isinstance(layer, Mapping) and layer.get("nuisance_accuracy_on_null_training_fit") is not None
+    ]
+    return round(max(values), 4) if values else None
+
+
 def _majority_lookup_baseline(
     rows: Sequence[Mapping[str, Any]],
     *,
@@ -1454,12 +1537,12 @@ def _direction_vectors_by_layer(value: Any) -> dict[int, list[float]]:
 
 
 def _direction_overlap_payload(direction_payloads: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
-    if "medical_boundary_violation" not in direction_payloads:
+    if len(direction_payloads) < 2:
         return {
             "summary": {
                 "direction_labels": sorted(direction_payloads),
                 "comparison_count": 0,
-                "reason": "medical_boundary_direction_missing",
+                "reason": "fewer_than_two_directions",
             },
             "comparisons": {},
         }
@@ -1467,21 +1550,22 @@ def _direction_overlap_payload(direction_payloads: Mapping[str, Mapping[str, Any
         label: _direction_vectors_by_layer(payload)
         for label, payload in direction_payloads.items()
     }
-    target = directions["medical_boundary_violation"]
     comparisons: dict[str, dict[str, Any]] = {}
-    for label, vectors in directions.items():
-        if label == "medical_boundary_violation":
-            continue
-        common_layers = sorted(set(target) & set(vectors))
-        per_layer = {
-            str(layer): _cosine(target[layer], vectors[layer])
-            for layer in common_layers
-        }
-        cosine_values = [abs(value) for value in per_layer.values() if value is not None]
-        comparisons[f"medical_boundary_violation_vs_{label}"] = {
-            "layers": per_layer,
-            "mean_abs_cosine": _safe_mean(cosine_values),
-        }
+    labels = sorted(directions)
+    for left_index, left_label in enumerate(labels):
+        for right_label in labels[left_index + 1 :]:
+            left_vectors = directions[left_label]
+            right_vectors = directions[right_label]
+            common_layers = sorted(set(left_vectors) & set(right_vectors))
+            per_layer = {
+                str(layer): _cosine(left_vectors[layer], right_vectors[layer])
+                for layer in common_layers
+            }
+            cosine_values = [abs(value) for value in per_layer.values() if value is not None]
+            comparisons[f"{left_label}_vs_{right_label}"] = {
+                "layers": per_layer,
+                "mean_abs_cosine": _safe_mean(cosine_values),
+            }
     return {
         "summary": {
             "direction_labels": sorted(directions),

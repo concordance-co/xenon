@@ -234,7 +234,7 @@ def test_counselbench_generated_label_support_gates_one_class_readouts() -> None
 
     assert summary["medical_boundary_violation_counts"] == {"no": 4}
     assert summary["generated_boundary_readout_ready"] is False
-    assert summary["recommendation"] == "skip_generated_boundary_probe_until_two_classes_per_grouped_split"
+    assert summary["recommendation"] == "skip_generated_boundary_probe_until_min_class_support"
 
 
 def test_eval_gated_readouts_skip_unsupported_labels() -> None:
@@ -256,6 +256,7 @@ def test_eval_gated_readouts_skip_unsupported_labels() -> None:
                 "medical_boundary_violation": "no",
                 "empathy_high": "no",
                 "specificity_high": "no",
+                "toxicity_or_judgmental": "no",
                 "overall_quality_high": "no",
                 "topic": "general_counseling",
             },
@@ -275,6 +276,7 @@ def test_eval_gated_readouts_skip_unsupported_labels() -> None:
         "medical_boundary_violation",
         "empathy_high",
         "specificity_high",
+        "toxicity_or_judgmental",
         "overall_quality_high",
     }
     assert result["payload"]["labels"]["medical_boundary_violation"]["reason"] == "label_support_gate_failed"

@@ -362,6 +362,19 @@ def run_residualized_probe(spec: ResidualizedProbeSpec) -> OperationExecutionRes
             }
         )
 
+    def _best_metric(section: str, metric: str) -> float | None:
+        values = [
+            float(layer[section][metric])
+            for layer in layers
+            if isinstance(layer.get(section), dict) and layer[section].get(metric) is not None
+        ]
+        return round(max(values), 4) if values else None
+
+    nuisance_null_values = [
+        float(layer["nuisance_accuracy_on_null_training_fit"])
+        for layer in layers
+        if layer.get("nuisance_accuracy_on_null_training_fit") is not None
+    ]
     payload = {
         "kind": "residualized_probe_result",
         "feature": feature_name(spec.feature),
@@ -371,6 +384,23 @@ def run_residualized_probe(spec: ResidualizedProbeSpec) -> OperationExecutionRes
         "summary": {
             "layer_count": len(layers),
             "example_count": len(example_keys),
+            "best_raw_balanced_accuracy": _best_metric("raw_probe", "balanced_accuracy"),
+            "best_residualized_balanced_accuracy": _best_metric("residualized_probe", "balanced_accuracy"),
+            "best_raw_auroc": _best_metric("raw_probe", "auroc"),
+            "best_residualized_auroc": _best_metric("residualized_probe", "auroc"),
+            "min_nuisance_accuracy_on_null_training_fit": (
+                round(min(nuisance_null_values), 4) if nuisance_null_values else None
+            ),
+            "max_nuisance_accuracy_on_null_training_fit": (
+                round(max(nuisance_null_values), 4) if nuisance_null_values else None
+            ),
+            "residualization_diagnostic": (
+                "nuisance_still_decodable"
+                if nuisance_null_values and max(nuisance_null_values) >= 0.75
+                else "nuisance_reduced"
+                if nuisance_null_values
+                else "nuisance_not_measured"
+            ),
         },
     }
     return OperationExecutionResult(
