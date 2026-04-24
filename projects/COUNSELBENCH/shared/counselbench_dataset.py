@@ -1239,6 +1239,124 @@ def run_eval_responder_transfer_readouts(
     }
 
 
+def run_eval_within_question_contrast_readouts(
+    *,
+    dataset: Any,
+    capture: Any,
+) -> dict[str, Any]:
+    """Evaluate response-quality directions on positive/negative pairs for the same question."""
+    import numpy as np
+
+    from pipelines_v2.api import TokenPooling, TokenSelector
+    from pipelines_v2.operations.execution.common import align_example_keys_to_rows, feature_matrices, filter_matrix_by_keys
+
+    resolved = dataset.resolve() if getattr(dataset, "is_deferred", False) else dataset
+    if not isinstance(resolved, Dataset):
+        raise TypeError("run_eval_within_question_contrast_readouts expects a Dataset")
+    if not hasattr(capture, "feature"):
+        raise TypeError("run_eval_within_question_contrast_readouts expects a capture artifact with feature(...)")
+
+    feature = capture.feature("residual_response_end")
+    matrices, feature_example_keys = feature_matrices(
+        feature,
+        token_selector=TokenSelector.full_sequence(),
+        token_pooling=TokenPooling.last(),
+    )
+    example_keys = align_example_keys_to_rows(feature_example_keys, None, label="EvalWithinQuestionContrast")
+    matrices = {
+        layer: filter_matrix_by_keys(matrix, feature_example_keys, example_keys)
+        for layer, matrix in matrices.items()
+    }
+    key_to_index = {key: index for index, key in enumerate(example_keys)}
+    row_by_key = {example.key: dict(example.labels) for example in resolved.examples}
+    labels: dict[str, Any] = {}
+
+    for label in EVAL_READOUT_LABELS:
+        pairs = _within_question_label_pairs(resolved.examples, label=label)
+        train_pairs = [pair for pair in pairs if pair["split"] == "train" and pair["positive_key"] in key_to_index and pair["negative_key"] in key_to_index]
+        test_pairs = [pair for pair in pairs if pair["split"] == "test" and pair["positive_key"] in key_to_index and pair["negative_key"] in key_to_index]
+        if len(train_pairs) < 20 or len(test_pairs) < 10:
+            labels[label] = {
+                "status": "skipped",
+                "reason": "within_question_pair_support_gate_failed",
+                "pair_count": len(pairs),
+                "train_pair_count": len(train_pairs),
+                "test_pair_count": len(test_pairs),
+            }
+            continue
+
+        length_baseline = _pair_length_delta_accuracy(test_pairs, row_by_key)
+        layer_results: list[dict[str, Any]] = []
+        for layer, matrix in matrices.items():
+            train_delta = _pair_delta_matrix(matrix, key_to_index, train_pairs)
+            test_delta = _pair_delta_matrix(matrix, key_to_index, test_pairs)
+            direction = _mean_direction(train_delta)
+            pair_accuracy = _direction_pair_accuracy(test_delta, direction)
+            shuffled_values = []
+            for seed in range(10):
+                shuffled_direction = _mean_direction(
+                    _flip_pair_deltas(train_delta, train_pairs, seed=seed)
+                )
+                shuffled_values.append(_direction_pair_accuracy(test_delta, shuffled_direction))
+            layer_results.append(
+                {
+                    "layer": int(layer),
+                    "pair_accuracy": pair_accuracy,
+                    "shuffle_mean_pair_accuracy": round(mean(shuffled_values), 4),
+                    "shuffle_max_pair_accuracy": round(max(shuffled_values), 4),
+                    "margin_over_shuffle_mean": None if pair_accuracy is None else round(pair_accuracy - mean(shuffled_values), 4),
+                }
+            )
+
+        best = max(
+            (item for item in layer_results if item.get("pair_accuracy") is not None),
+            key=lambda item: float(item["pair_accuracy"]),
+            default=None,
+        )
+        best_pair_accuracy = None if best is None else float(best["pair_accuracy"])
+        margin_over_length = None if best_pair_accuracy is None or length_baseline is None else round(best_pair_accuracy - length_baseline, 4)
+        labels[label] = {
+            "status": "completed",
+            "pair_count": len(pairs),
+            "train_pair_count": len(train_pairs),
+            "test_pair_count": len(test_pairs),
+            "question_count": len({pair["questionID"] for pair in pairs}),
+            "test_question_count": len({pair["questionID"] for pair in test_pairs}),
+            "length_delta_pair_accuracy": length_baseline,
+            "best_layer": None if best is None else best.get("layer"),
+            "best_pair_accuracy": None if best_pair_accuracy is None else round(best_pair_accuracy, 4),
+            "best_margin_over_shuffle_mean": None if best is None else best.get("margin_over_shuffle_mean"),
+            "margin_over_length_delta": margin_over_length,
+            "control_pass": best_pair_accuracy is not None and margin_over_length is not None and margin_over_length >= 0.10,
+            "layers": layer_results,
+        }
+
+    passed = [
+        label
+        for label, result in labels.items()
+        if result.get("status") == "completed" and result.get("control_pass")
+    ]
+    completed = [label for label, result in labels.items() if result.get("status") == "completed"]
+    return {
+        "payload": {
+            "kind": "counselbench_eval_within_question_contrast_readouts",
+            "summary": {
+                "completed_labels": completed,
+                "skipped_labels": [label for label in EVAL_READOUT_LABELS if label not in completed],
+                "passed_labels": passed,
+                "decision": "WITHIN_QUESTION_CONTRAST_CANDIDATE" if passed else "WITHIN_QUESTION_CONTRAST_INSUFFICIENT",
+            },
+            "labels": labels,
+            "gate_rule": (
+                "Within-question contrast claims require held-out question pairs and at least 0.10 "
+                "pair-accuracy margin over the response-length delta baseline."
+            ),
+        },
+        "metadata": {"status": "Eval within-question contrast readouts complete"},
+        "example_keys": [example.key for example in resolved.examples],
+    }
+
+
 def build_phase4_pairing_candidates(*, dataset: Any) -> dict[str, Any]:
     """Build matched candidate pairs for later intervention workflows."""
     resolved = dataset.resolve() if getattr(dataset, "is_deferred", False) else dataset
@@ -1485,6 +1603,89 @@ def _cohort_label_support(
             "low_support_warning": bool(yes and no and min(yes, no) < 5),
         }
     return summaries
+
+
+def _within_question_label_pairs(examples: Sequence[Example], *, label: str) -> list[dict[str, str]]:
+    by_question: dict[str, list[Example]] = defaultdict(list)
+    for example in examples:
+        question_id = _clean_text(example.labels.get("questionID")) or _clean_text(example.case_key) or "<missing>"
+        by_question[question_id].append(example)
+    pairs: list[dict[str, str]] = []
+    for question_id, question_examples in sorted(by_question.items()):
+        positives = [example for example in question_examples if _clean_text(example.labels.get(label)) == "yes"]
+        negatives = [example for example in question_examples if _clean_text(example.labels.get(label)) == "no"]
+        for positive in positives:
+            for negative in negatives:
+                pairs.append(
+                    {
+                        "questionID": question_id,
+                        "positive_key": positive.key,
+                        "negative_key": negative.key,
+                        "positive_responder": _clean_text(positive.labels.get("responder")),
+                        "negative_responder": _clean_text(negative.labels.get("responder")),
+                        "split": _clean_text(positive.labels.get("split")) or _clean_text(negative.labels.get("split")),
+                    }
+                )
+    return pairs
+
+
+def _pair_delta_matrix(matrix: Any, key_to_index: Mapping[str, int], pairs: Sequence[Mapping[str, str]]) -> Any:
+    import numpy as np
+
+    deltas = [
+        matrix[key_to_index[pair["positive_key"]]] - matrix[key_to_index[pair["negative_key"]]]
+        for pair in pairs
+    ]
+    return np.asarray(deltas, dtype=np.float32)
+
+
+def _mean_direction(deltas: Any) -> Any:
+    import numpy as np
+
+    if len(deltas) == 0:
+        return None
+    direction = np.asarray(deltas, dtype=np.float32).mean(axis=0)
+    norm = float(np.linalg.norm(direction))
+    if not math.isfinite(norm) or norm <= 0.0:
+        return None
+    return direction / norm
+
+
+def _direction_pair_accuracy(deltas: Any, direction: Any) -> float | None:
+    import numpy as np
+
+    if direction is None or len(deltas) == 0:
+        return None
+    scores = np.asarray(deltas, dtype=np.float32) @ np.asarray(direction, dtype=np.float32)
+    wins = (scores > 0).astype(np.float32)
+    ties = (scores == 0).astype(np.float32) * 0.5
+    return round(float((wins + ties).mean()), 4)
+
+
+def _flip_pair_deltas(deltas: Any, pairs: Sequence[Mapping[str, str]], *, seed: int) -> Any:
+    import numpy as np
+
+    signs = [
+        1.0 if int(stable_hash({"seed": seed, "pair": pair})[:8], 16) % 2 == 0 else -1.0
+        for pair in pairs
+    ]
+    return np.asarray(deltas, dtype=np.float32) * np.asarray(signs, dtype=np.float32)[:, None]
+
+
+def _pair_length_delta_accuracy(pairs: Sequence[Mapping[str, str]], row_by_key: Mapping[str, Mapping[str, Any]]) -> float | None:
+    scores: list[float] = []
+    for pair in pairs:
+        positive = row_by_key.get(pair["positive_key"], {})
+        negative = row_by_key.get(pair["negative_key"], {})
+        positive_length = len(_clean_text(positive.get("response_text")).split())
+        negative_length = len(_clean_text(negative.get("response_text")).split())
+        if positive_length > negative_length:
+            scores.append(1.0)
+        elif positive_length == negative_length:
+            scores.append(0.5)
+        else:
+            scores.append(0.0)
+    return round(mean(scores), 4) if scores else None
 
 
 def _source_row_id(record: Mapping[str, Any], row_index: int) -> str:

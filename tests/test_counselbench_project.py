@@ -28,6 +28,7 @@ from projects.COUNSELBENCH.shared.counselbench_dataset import (
     summarize_eval_label_support,
     summarize_geometry_metrics,
     summarize_generated_label_support,
+    _within_question_label_pairs,
 )
 
 
@@ -359,6 +360,52 @@ def test_counselbench_eval_confound_inventory_tracks_responder_and_question_cont
     assert payload["contrast_by_question"]["specificity_high"]["contrast_question_count"] == 0
 
 
+def test_counselbench_eval_within_question_pairs_use_same_question_opposites() -> None:
+    examples = [
+        Example(
+            key="q1_yes",
+            prompt="",
+            labels={"questionID": "q1", "empathy_high": "yes", "split": "train", "responder": "a"},
+        ),
+        Example(
+            key="q1_no_a",
+            prompt="",
+            labels={"questionID": "q1", "empathy_high": "no", "split": "train", "responder": "b"},
+        ),
+        Example(
+            key="q1_no_b",
+            prompt="",
+            labels={"questionID": "q1", "empathy_high": "no", "split": "train", "responder": "c"},
+        ),
+        Example(
+            key="q2_yes",
+            prompt="",
+            labels={"questionID": "q2", "empathy_high": "yes", "split": "test", "responder": "a"},
+        ),
+    ]
+
+    pairs = _within_question_label_pairs(examples, label="empathy_high")
+
+    assert pairs == [
+        {
+            "questionID": "q1",
+            "positive_key": "q1_yes",
+            "negative_key": "q1_no_a",
+            "positive_responder": "a",
+            "negative_responder": "b",
+            "split": "train",
+        },
+        {
+            "questionID": "q1",
+            "positive_key": "q1_yes",
+            "negative_key": "q1_no_b",
+            "positive_responder": "a",
+            "negative_responder": "c",
+            "split": "train",
+        },
+    ]
+
+
 def test_counselbench_geometry_metrics_summarize_label_and_confound_separation() -> None:
     geometry = _FakeArtifact(
         {
@@ -442,6 +489,7 @@ def test_counselbench_followup_workflows_encode_controls_eval_and_phase4_gates()
     assert "summarize_eval_confound_inventory" in eval_steps
     assert "run_eval_gated_readouts" in eval_steps
     assert "run_eval_responder_transfer_readouts" in eval_steps
+    assert "run_eval_within_question_contrast_readouts" in eval_steps
     assert "probe_medical_boundary_response_end" not in eval_steps
     assert "triage_eval_phase03_readouts" not in eval_steps
     assert "summarize_geometry_eval_quality" in eval_steps
