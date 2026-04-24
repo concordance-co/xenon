@@ -853,6 +853,88 @@ def summarize_eval_cheap_baselines(*, dataset: Any) -> dict[str, Any]:
     }
 
 
+def summarize_eval_confound_inventory(*, dataset: Any) -> dict[str, Any]:
+    """Quantify Eval label imbalance by responder and within-question contrast support."""
+    resolved = dataset.resolve() if getattr(dataset, "is_deferred", False) else dataset
+    if not isinstance(resolved, Dataset):
+        raise TypeError("summarize_eval_confound_inventory expects a Dataset")
+    rows = [dict(example.labels) for example in resolved.examples]
+    label_by_responder: dict[str, Any] = {}
+    contrast_by_question: dict[str, Any] = {}
+    responder_counts = Counter(_clean_text(row.get("responder")) or "<missing>" for row in rows)
+    rows_by_question: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for row in rows:
+        rows_by_question[_clean_text(row.get("questionID")) or "<missing>"].append(row)
+
+    for label in EVAL_RESPONSE_LABELS:
+        by_responder: dict[str, Any] = {}
+        for responder in sorted(responder_counts):
+            subset = [row for row in rows if (_clean_text(row.get("responder")) or "<missing>") == responder]
+            counts = Counter(_clean_text(row.get(label)) or "<missing>" for row in subset)
+            total = sum(counts.values())
+            yes = counts.get("yes", 0)
+            no = counts.get("no", 0)
+            by_responder[responder] = {
+                "counts": dict(sorted(counts.items())),
+                "positive_rate": round(yes / total, 4) if total else None,
+                "two_class": yes > 0 and no > 0,
+                "min_class_count": min(yes, no) if yes and no else 0,
+            }
+        rates = [
+            item["positive_rate"]
+            for item in by_responder.values()
+            if item.get("positive_rate") is not None
+        ]
+        label_by_responder[label] = {
+            "responders": by_responder,
+            "positive_rate_range": round(max(rates) - min(rates), 4) if rates else None,
+            "transfer_min_class_count": min(
+                (int(item["min_class_count"]) for item in by_responder.values()),
+                default=0,
+            ),
+            "all_responders_two_class": all(bool(item["two_class"]) for item in by_responder.values()),
+        }
+
+        contrast_questions = 0
+        positive_negative_pairs = 0
+        one_class_questions = 0
+        for question_rows in rows_by_question.values():
+            values = [_clean_text(row.get(label)) for row in question_rows]
+            yes_count = sum(1 for value in values if value == "yes")
+            no_count = sum(1 for value in values if value == "no")
+            if yes_count and no_count:
+                contrast_questions += 1
+                positive_negative_pairs += yes_count * no_count
+            else:
+                one_class_questions += 1
+        contrast_by_question[label] = {
+            "contrast_question_count": contrast_questions,
+            "one_class_question_count": one_class_questions,
+            "positive_negative_pair_count": positive_negative_pairs,
+            "contrast_viable": contrast_questions >= 20 and positive_negative_pairs >= 40,
+        }
+
+    return {
+        "payload": {
+            "kind": "counselbench_eval_confound_inventory",
+            "summary": {
+                "example_count": len(rows),
+                "question_count": len(rows_by_question),
+                "responder_counts": dict(sorted(responder_counts.items())),
+                "labels": EVAL_RESPONSE_LABELS,
+            },
+            "label_by_responder": label_by_responder,
+            "contrast_by_question": contrast_by_question,
+            "gate_rule": (
+                "Responder transfer is strongest when each responder has both label classes; "
+                "within-question contrasts are strongest when many questions contain positive and negative responses."
+            ),
+        },
+        "metadata": {"status": "Eval responder confounds and question contrasts summarized"},
+        "example_keys": [example.key for example in resolved.examples],
+    }
+
+
 def run_eval_gated_readouts(
     *,
     dataset: Any,
@@ -1033,6 +1115,126 @@ def run_eval_gated_readouts(
             ),
         },
         "metadata": {"status": "gated Eval readouts complete"},
+        "example_keys": [example.key for example in resolved.examples],
+    }
+
+
+def run_eval_responder_transfer_readouts(
+    *,
+    dataset: Any,
+    capture: Any,
+) -> dict[str, Any]:
+    """Train on one responder family and test transfer to the others."""
+    from pipelines_v2.api import TextBaselineSpec, TokenPooling, TokenSelector, TransferProbeSpec
+    from pipelines_v2.core.types import SpecValidationError
+    from pipelines_v2.operations.execution.readouts import run_text_baseline, run_transfer_probe
+
+    resolved = dataset.resolve() if getattr(dataset, "is_deferred", False) else dataset
+    if not isinstance(resolved, Dataset):
+        raise TypeError("run_eval_responder_transfer_readouts expects a Dataset")
+    if not hasattr(capture, "feature"):
+        raise TypeError("run_eval_responder_transfer_readouts expects a capture artifact with feature(...)")
+
+    rows = [dict(example.labels) for example in resolved.examples]
+    responder_values = sorted({_clean_text(row.get("responder")) for row in rows if _clean_text(row.get("responder"))})
+    feature = capture.feature("residual_response_end")
+    labels: dict[str, Any] = {}
+
+    for label in EVAL_READOUT_LABELS:
+        support = _eval_label_support(rows, label)
+        cohort_support = _cohort_label_support(rows, label=label, cohort="responder")
+        transfer_ready = support["probe_ready"] and all(
+            summary["two_class"] for summary in cohort_support.values()
+        )
+        if not transfer_ready:
+            labels[label] = {
+                "status": "skipped",
+                "reason": "responder_transfer_support_gate_failed",
+                "support": support,
+                "cohort_support": cohort_support,
+            }
+            continue
+
+        try:
+            text_payload = run_text_baseline(
+                TextBaselineSpec(
+                    text=resolved.labels("response_text"),
+                    labels=resolved.labels(label),
+                    group_by=resolved.cases("questionID"),
+                    cohort_by=resolved.labels("responder"),
+                    cohort_values=tuple(responder_values),
+                    model="countvectorizer_logreg",
+                    metrics=("accuracy", "balanced_accuracy", "auroc"),
+                )
+            ).payload
+            probe_payload = run_transfer_probe(
+                TransferProbeSpec(
+                    feature=feature,
+                    labels=resolved.labels(label),
+                    group_by=resolved.cases("questionID"),
+                    cohort_by=resolved.labels("responder"),
+                    cohort_values=tuple(responder_values),
+                    tokens=TokenSelector.full_sequence(),
+                    pooling=TokenPooling.last(),
+                    metrics=("accuracy", "balanced_accuracy", "auroc"),
+                )
+            ).payload
+        except SpecValidationError as exc:
+            labels[label] = {
+                "status": "skipped",
+                "reason": "runtime_validation_failed",
+                "error": str(exc),
+                "support": support,
+                "cohort_support": cohort_support,
+            }
+            continue
+
+        probe_summary = _summarize_transfer_probe_payload(probe_payload)
+        text_results = text_payload.get("results", {})
+        text_transfer = text_results.get("cross_cohort_transfer") if isinstance(text_results, Mapping) else {}
+        text_summary = _summarize_transfer_payload(text_transfer)
+        margin = None
+        if probe_summary.get("best_mean_cross_balanced_accuracy") is not None and text_summary.get("mean_cross_balanced_accuracy") is not None:
+            margin = round(
+                float(probe_summary["best_mean_cross_balanced_accuracy"])
+                - float(text_summary["mean_cross_balanced_accuracy"]),
+                4,
+            )
+        labels[label] = {
+            "status": "completed",
+            "support": support,
+            "cohort_support": cohort_support,
+            "probe_transfer": probe_summary,
+            "text_transfer": text_summary,
+            "margin_over_text_mean_cross_balanced_accuracy": margin,
+            "control_pass": margin is not None and margin >= 0.05,
+            "probe": probe_payload,
+            "text_baseline": text_payload,
+        }
+
+    passed = [
+        label
+        for label, result in labels.items()
+        if result.get("status") == "completed" and result.get("control_pass")
+    ]
+    completed = [label for label, result in labels.items() if result.get("status") == "completed"]
+    return {
+        "payload": {
+            "kind": "counselbench_eval_responder_transfer_readouts",
+            "summary": {
+                "responder_values": responder_values,
+                "completed_labels": completed,
+                "skipped_labels": [label for label in EVAL_READOUT_LABELS if label not in completed],
+                "passed_labels": passed,
+                "decision": "RESPONDER_TRANSFER_CANDIDATE" if passed else "RESPONDER_TRANSFER_INSUFFICIENT",
+            },
+            "labels": labels,
+            "gate_rule": (
+                "Eval responder-transfer claims require every responder cohort to contain both classes "
+                "and activation transfer to beat response-text transfer."
+            ),
+        },
+        "metadata": {"status": "Eval responder-transfer readouts complete"},
         "example_keys": [example.key for example in resolved.examples],
     }
 
@@ -1261,6 +1463,30 @@ def _eval_label_support(rows: Sequence[Mapping[str, Any]], label: str) -> dict[s
     }
 
 
+def _cohort_label_support(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    label: str,
+    cohort: str,
+) -> dict[str, dict[str, Any]]:
+    by_cohort: dict[str, Counter[str]] = defaultdict(Counter)
+    for row in rows:
+        cohort_value = _clean_text(row.get(cohort)) or "<missing>"
+        label_value = _clean_text(row.get(label)) or "<missing>"
+        by_cohort[cohort_value][label_value] += 1
+    summaries: dict[str, dict[str, Any]] = {}
+    for cohort_value, counts in sorted(by_cohort.items()):
+        yes = counts.get("yes", 0)
+        no = counts.get("no", 0)
+        summaries[cohort_value] = {
+            "counts": dict(sorted(counts.items())),
+            "two_class": yes > 0 and no > 0,
+            "min_class_count": min(yes, no) if yes and no else 0,
+            "low_support_warning": bool(yes and no and min(yes, no) < 5),
+        }
+    return summaries
+
+
 def _source_row_id(record: Mapping[str, Any], row_index: int) -> str:
     return _clean_text(record.get("source_row_id") or record.get("row_id") or f"adv_row_{row_index:06d}")
 
@@ -1330,6 +1556,96 @@ def _best_balanced_accuracy(payload: Mapping[str, Any]) -> float | None:
                         values.append(float(nested["balanced_accuracy"]))
         return round(max(values), 4) if values else None
     return None
+
+
+def _summarize_transfer_probe_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    layers = payload.get("layers")
+    if not isinstance(layers, list):
+        return {"best_layer": None, "best_mean_cross_balanced_accuracy": None}
+    layer_summaries: list[dict[str, Any]] = []
+    for layer in layers:
+        if not isinstance(layer, Mapping):
+            continue
+        transfer_summary = _summarize_transfer_payload(layer.get("cross_cohort_transfer"))
+        within_summary = _summarize_within_cohort_payload(layer.get("within_cohort_baseline"))
+        layer_summaries.append(
+            {
+                "layer": layer.get("layer"),
+                **transfer_summary,
+                "mean_within_balanced_accuracy": within_summary.get("mean_within_balanced_accuracy"),
+                "mean_transfer_delta_vs_test_within": transfer_summary.get("mean_transfer_delta_vs_test_within"),
+            }
+        )
+    best = max(
+        (
+            item
+            for item in layer_summaries
+            if item.get("mean_cross_balanced_accuracy") is not None
+        ),
+        key=lambda item: float(item["mean_cross_balanced_accuracy"]),
+        default=None,
+    )
+    return {
+        "best_layer": None if best is None else best.get("layer"),
+        "best_mean_cross_balanced_accuracy": None if best is None else round(float(best["mean_cross_balanced_accuracy"]), 4),
+        "best_min_cross_balanced_accuracy": None if best is None or best.get("min_cross_balanced_accuracy") is None else round(float(best["min_cross_balanced_accuracy"]), 4),
+        "best_mean_within_balanced_accuracy": None if best is None or best.get("mean_within_balanced_accuracy") is None else round(float(best["mean_within_balanced_accuracy"]), 4),
+        "layers": layer_summaries,
+    }
+
+
+def _summarize_transfer_payload(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        return {
+            "transfer_count": 0,
+            "mean_cross_balanced_accuracy": None,
+            "min_cross_balanced_accuracy": None,
+            "max_cross_balanced_accuracy": None,
+            "mean_transfer_delta_vs_test_within": None,
+            "by_target_cohort": {},
+        }
+    values: list[float] = []
+    deltas: list[float] = []
+    by_target: dict[str, list[float]] = defaultdict(list)
+    for key, result in payload.items():
+        if not isinstance(result, Mapping):
+            continue
+        metric = result.get("balanced_accuracy")
+        if metric is None:
+            continue
+        value = float(metric)
+        values.append(value)
+        if result.get("transfer_delta_vs_test_within") is not None:
+            deltas.append(float(result["transfer_delta_vs_test_within"]))
+        key_text = str(key)
+        if "_to_" in key_text:
+            by_target[key_text.rsplit("_to_", 1)[1]].append(value)
+    return {
+        "transfer_count": len(values),
+        "mean_cross_balanced_accuracy": round(mean(values), 4) if values else None,
+        "min_cross_balanced_accuracy": round(min(values), 4) if values else None,
+        "max_cross_balanced_accuracy": round(max(values), 4) if values else None,
+        "mean_transfer_delta_vs_test_within": round(mean(deltas), 4) if deltas else None,
+        "by_target_cohort": {
+            cohort: {
+                "mean_balanced_accuracy": round(mean(cohort_values), 4),
+                "min_balanced_accuracy": round(min(cohort_values), 4),
+                "transfer_count": len(cohort_values),
+            }
+            for cohort, cohort_values in sorted(by_target.items())
+        },
+    }
+
+
+def _summarize_within_cohort_payload(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        return {"mean_within_balanced_accuracy": None}
+    values = [
+        float(result["balanced_accuracy"])
+        for result in payload.values()
+        if isinstance(result, Mapping) and result.get("balanced_accuracy") is not None
+    ]
+    return {"mean_within_balanced_accuracy": round(mean(values), 4) if values else None}
 
 
 def _best_residualized_balanced_accuracy(payload: Mapping[str, Any] | None) -> float | None:

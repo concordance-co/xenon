@@ -33,8 +33,10 @@ from projects.COUNSELBENCH.shared.counselbench_dataset import (
     build_eval_aggregated_dataset,
     build_raw_eval_source_dataset,
     eval_chat_prompt_sections,
+    run_eval_responder_transfer_readouts,
     run_eval_gated_readouts,
     summarize_eval_cheap_baselines,
+    summarize_eval_confound_inventory,
     summarize_eval_label_support,
     summarize_geometry_metrics,
 )
@@ -142,6 +144,18 @@ def build_workflow(raw_eval_dataset: Dataset | None = None) -> WorkflowSpec:
                 ),
             ),
             WorkflowStep(
+                name="summarize_eval_confound_inventory",
+                runner="analysis_cpu",
+                description="Quantify Eval label imbalance by responder and within-question contrast support.",
+                spec=TransformSpec(
+                    builder=TransformBuilder.from_function(
+                        summarize_eval_confound_inventory,
+                        local_python_sources=("projects/COUNSELBENCH",),
+                    ),
+                    inputs={"dataset": eval_dataset},
+                ),
+            ),
+            WorkflowStep(
                 name="capture_eval_response_context_residual",
                 runner="capture_gpu",
                 description="Capture response-end residuals over Eval question-response chat contexts.",
@@ -211,6 +225,21 @@ def build_workflow(raw_eval_dataset: Dataset | None = None) -> WorkflowSpec:
                 ),
             ),
             WorkflowStep(
+                name="run_eval_responder_transfer_readouts",
+                runner="analysis_cpu",
+                description="Test whether Eval quality readouts transfer across responder families.",
+                spec=TransformSpec(
+                    builder=TransformBuilder.from_function(
+                        run_eval_responder_transfer_readouts,
+                        local_python_sources=("projects/COUNSELBENCH",),
+                    ),
+                    inputs={
+                        "dataset": eval_dataset,
+                        "capture": StepRef("capture_eval_response_context_residual"),
+                    },
+                ),
+            ),
+            WorkflowStep(
                 name="report",
                 runner="report_local",
                 description="Package Eval expert-label support, readouts, controls, and geometry.",
@@ -219,9 +248,11 @@ def build_workflow(raw_eval_dataset: Dataset | None = None) -> WorkflowSpec:
                         StepRef("build_eval_aggregated_dataset"),
                         StepRef("summarize_eval_label_support"),
                         StepRef("summarize_eval_cheap_baselines"),
+                        StepRef("summarize_eval_confound_inventory"),
                         StepRef("geometry_eval_quality_pca"),
                         StepRef("summarize_geometry_eval_quality"),
                         StepRef("run_eval_gated_readouts"),
+                        StepRef("run_eval_responder_transfer_readouts"),
                     ),
                     template="default",
                     output_dir=REPORT_OUTPUT_DIR,

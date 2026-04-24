@@ -24,6 +24,7 @@ from projects.COUNSELBENCH.shared.counselbench_dataset import (
     question_response_key,
     run_eval_gated_readouts,
     summarize_eval_cheap_baselines,
+    summarize_eval_confound_inventory,
     summarize_eval_label_support,
     summarize_geometry_metrics,
     summarize_generated_label_support,
@@ -323,6 +324,41 @@ def test_counselbench_eval_label_support_and_phase4_pairing_candidates() -> None
     assert pairs["payload"]["summary"]["phase4_ready"] is False
 
 
+def test_counselbench_eval_confound_inventory_tracks_responder_and_question_contrasts() -> None:
+    examples = [
+        Example(
+            key=f"eval_{index}",
+            prompt=[{"role": "user", "content": "Question"}, {"role": "assistant", "content": "Response"}],
+            labels={
+                "questionID": f"q{index // 4}",
+                "topic": "relationship_family",
+                "responder": "human" if index % 2 == 0 else "gpt4",
+                "split": "train",
+                "empathy_high": "yes" if index in {0, 1, 4, 5} else "no",
+                "specificity_high": "yes",
+                "overall_quality_high": "yes" if index in {0, 1, 4, 5} else "no",
+                "medical_boundary_violation": "no",
+                "factuality_low": "no",
+                "toxicity_or_judgmental": "no",
+                "response_length_bucket": "short",
+                "lexical_trigger_family": "none",
+            },
+            cases={"questionID": f"q{index // 4}", "responder": "human" if index % 2 == 0 else "gpt4"},
+        )
+        for index in range(8)
+    ]
+
+    result = summarize_eval_confound_inventory(dataset=Dataset.from_examples(examples))
+    payload = result["payload"]
+
+    assert payload["summary"]["responder_counts"] == {"gpt4": 4, "human": 4}
+    assert payload["label_by_responder"]["empathy_high"]["all_responders_two_class"] is True
+    assert payload["label_by_responder"]["empathy_high"]["responders"]["human"]["positive_rate"] == 0.5
+    assert payload["contrast_by_question"]["empathy_high"]["contrast_question_count"] == 2
+    assert payload["contrast_by_question"]["empathy_high"]["positive_negative_pair_count"] == 8
+    assert payload["contrast_by_question"]["specificity_high"]["contrast_question_count"] == 0
+
+
 def test_counselbench_geometry_metrics_summarize_label_and_confound_separation() -> None:
     geometry = _FakeArtifact(
         {
@@ -403,7 +439,9 @@ def test_counselbench_followup_workflows_encode_controls_eval_and_phase4_gates()
     assert "triage_adv_03b_controls" in adv_steps
     assert "capture_eval_response_context_residual" in eval_steps
     assert "summarize_eval_cheap_baselines" in eval_steps
+    assert "summarize_eval_confound_inventory" in eval_steps
     assert "run_eval_gated_readouts" in eval_steps
+    assert "run_eval_responder_transfer_readouts" in eval_steps
     assert "probe_medical_boundary_response_end" not in eval_steps
     assert "triage_eval_phase03_readouts" not in eval_steps
     assert "summarize_geometry_eval_quality" in eval_steps
