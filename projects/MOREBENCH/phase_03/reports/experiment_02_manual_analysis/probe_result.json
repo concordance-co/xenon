@@ -1,0 +1,111 @@
+{
+  "class_names": [
+    "contractarianism",
+    "contractualism",
+    "deontology",
+    "generic_ethics_control",
+    "utilitarian",
+    "virtue_ethics"
+  ],
+  "feature": "generated_sequence_residual",
+  "kind": "probe_result",
+  "label_name": "prime_condition",
+  "layers": [
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.25,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 0,
+      "selectivity": 0.75,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.4167,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 4,
+      "selectivity": 0.5833,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.5,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 8,
+      "selectivity": 0.5,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.4167,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 16,
+      "selectivity": 0.5833,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.25,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 24,
+      "selectivity": 0.75,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 0.9167,
+      "balanced_accuracy": 0.9333,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.1667,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 32,
+      "selectivity": 0.75,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.3333,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 40,
+      "selectivity": 0.6667,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.3333,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 44,
+      "selectivity": 0.6667,
+      "split_mode": "fixed"
+    }
+  ],
+  "summary": {
+    "best_layer": 0,
+    "best_metric": "balanced_accuracy",
+    "best_value": 1.0,
+    "example_count": 134,
+    "group_count": 30,
+    "split_mode": "fixed"
+  }
+}

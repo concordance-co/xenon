@@ -1,0 +1,45 @@
+{
+  "class_names": [
+    "contractarianism",
+    "contractualism",
+    "deontology",
+    "generic_ethics_control",
+    "utilitarian",
+    "virtue_ethics"
+  ],
+  "kind": "text_baseline_result",
+  "label_name": "prime_condition",
+  "mode": "split_holdout",
+  "model": "countvectorizer_logreg",
+  "results": {
+    "class_names": [
+      "contractarianism",
+      "contractualism",
+      "deontology",
+      "generic_ethics_control",
+      "utilitarian",
+      "virtue_ethics"
+    ],
+    "split_results": {
+      "split": {
+        "accuracy": 0.5714,
+        "balanced_accuracy": 0.6,
+        "example_count": 23,
+        "split_mode": "fixed"
+      }
+    }
+  },
+  "summary": {
+    "class_count": 6,
+    "cohort_count": 0,
+    "example_count": 23,
+    "mode": "split_holdout",
+    "regularization": [
+      1.0
+    ],
+    "split_names": [
+      "split"
+    ]
+  },
+  "text_name": "generated_text"
+}

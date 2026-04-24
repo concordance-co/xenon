@@ -1,7 +1,7 @@
 ---
 benchmark: morebench
 phase: 03
-version: v2
+version: v3
 frozen_date: 2026-04-23
 input_artifacts:
   - projects/MOREBENCH/phase_01/docs/01-latent-label-spec.md
@@ -42,6 +42,8 @@ input_artifacts:
   `theory_conditioned_generation_persistence`
 - execution target:
   same declared model and generation batch as the response-label pilot
+- target tier:
+  `main`
 - data:
   fresh generations for matched dilemmas under `description_only` primes plus generic-ethics controls
 - label-freeze prerequisite:
@@ -49,15 +51,17 @@ input_artifacts:
 - method:
   paired-generation comparison plus generation-time probes on generated tokens only
 - capture regime:
-  generated reasoning tokens and recommendation spans, with prompt tokens excluded from the main readout
+  broad matched generation batch over all prime-swap groups with prompt tokens excluded from the main readout; the first full run stores one generated-token residual stream site across layers `0, 4, 8, 16, 24, 32, 40, 44` for the entire batch
 - primary shortcut risk:
   the readout succeeds only because generated text explicitly repeats theory names or near-verbatim prime language
 - required controls:
-  same-dilemma prime swaps, generated-text lexical baselines, explicit theory-copying flags, and generic-ethics control generations
+  same-dilemma prime swaps, same-prime different-dilemma comparisons, generated-text lexical baselines, explicit theory-copying flags, response-length baseline, and generic-ethics control generations
+- behavioral-divergence pre-check:
+  before probing, verify on the generation batch that matched dilemmas produce nontrivially distinct responses across prime conditions rather than a mostly invariant answer template
 - success criteria:
-  generated-token readout distinguishes theory-conditioned responses on matched dilemmas, survives generated-text lexical baselines, and is not reducible to direct theory copying
+  generated-token readout distinguishes theory-conditioned responses on matched dilemmas, survives generated-text lexical baselines and response-length controls, and is not reducible to direct theory copying
 - failure criteria:
-  signal collapses after controlling for generated-text lexical cues or is driven mainly by direct prime copying
+  signal collapses after controlling for generated-text lexical cues or response length, behavioral divergence is effectively null, or the result is driven mainly by direct prime copying
 - claim ceiling if successful:
   localized representational
 

@@ -29,6 +29,7 @@ This phase therefore reopens theory work as an anti-shortcut repair problem rath
 
 - `theory_not_prompt_exposed`: Inject explicit theory instructions with framework-specific anchors into matched dilemma groups. (`materialized`)
 - `theory_lexical_shortcuts`: Materialize name-only, alias-only, description-only, and name-plus-description theory families plus cheap-baseline preflight. (`materialized`)
+- `theory_training_distribution_variation`: Materialize style-diverse held-out variant banks for description-only theory prompts so prompt-side theory work can be tested under cross-variant transfer rather than a single fixed cue bank. (`materialized_for_review`)
 - `source_role_aliasing`: Materialize starter batch of 10 matched advisor/agent rewrite pairs. (`partially_materialized`)
 - `prompt_wrapper_imbalance`: Use a structurally matched neutral control with the same prompt skeleton minus the theory clause. (`materialized`)
 - `source_type_aliasing`: Rewrite prompts into matched canonical formats across long-case and expert-case structure. (`not_started`)
@@ -39,3 +40,9 @@ This phase therefore reopens theory work as an anti-shortcut repair problem rath
 ## Principle
 
 Augment to repair the experiment, not to make the dataset bigger.
+
+Current theory repair interpretation:
+
+- the earlier repair families were good anti-shortcut diagnostics
+- this new variant-sweep family is the first explicit attempt to push on the training-distribution-variation leg of the confound-reduction stack
+- it should be treated as a methodological experiment in lexical-confound reduction, not as a default new generation family

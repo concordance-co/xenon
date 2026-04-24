@@ -221,3 +221,24 @@ It is to break surface-label correlation while preserving the semantic content t
 A result that survives only one narrow slice should not be promoted as abstraction, transfer, or mechanism.
 
 If a result looks unusually strong, clean, or easy, stress test it against the strongest plausible shortcut explanation before promoting it up the evidence ladder.
+
+## 12. Response-Side Probing Requires Active Confound Reduction
+
+Instruction-following models produce label-adjacent vocabulary when primed with label-adjacent instructions.
+This is not a bug; it is the defining property of the models being probed.
+Any response-side label on an instruction-following benchmark will carry a lexical confound unless the experiment actively works against it.
+
+Four complementary confound-reduction technique categories exist, and they stack:
+
+- `viewport reduction`
+  probe only a portion of the response where the instruction-acknowledgment leakage is absent (tail window, conclusion span, non-header content)
+- `training distribution variation`
+  train the probe across prompt formats, paraphrases, or prime variants so the learned direction must be format-invariant
+- `lexical subspace subtraction`
+  residualize probe features against text-baseline predictions, or erase text-aligned subspaces, before probing
+- `target reformulation`
+  shift from categorical identity to binary collapse, relational contrast, or behavioral extraction
+
+No single technique reliably pushes text baselines off ceiling.
+Combinations are the norm, not the exception.
+Plan response-side probe work by pairing techniques from at least two categories before accepting any representational claim.

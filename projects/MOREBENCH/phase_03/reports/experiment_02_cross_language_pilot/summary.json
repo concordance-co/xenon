@@ -1,0 +1,397 @@
+{
+  "generation_artifact_id": "generation_run_1_6e2b8f5a2902",
+  "row_count": 30,
+  "finish_reason_counts": {
+    "stop": 30
+  },
+  "language_counts": {
+    "en": 10,
+    "es": 10,
+    "zh": 10
+  },
+  "raw_matrix": {
+    "en": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.88
+    },
+    "es": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.56
+    },
+    "zh": {
+      "en": 1.0,
+      "es": 0.8,
+      "zh": 1.0
+    }
+  },
+  "mean_cross_language_auroc": 0.8733,
+  "clean_markdown_matrix": {
+    "en": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.68
+    },
+    "es": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.8
+    },
+    "zh": {
+      "en": 1.0,
+      "es": 0.8,
+      "zh": 1.0
+    }
+  },
+  "mean_cross_language_markdown_stripped_auroc": 0.88,
+  "letters_only_matrix": {
+    "en": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.84
+    },
+    "es": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.8
+    },
+    "zh": {
+      "en": 1.0,
+      "es": 0.8,
+      "zh": 1.0
+    }
+  },
+  "mean_cross_language_letters_only_auroc": 0.9067,
+  "non_english_ascii_stripped_matrix": {
+    "en": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.56
+    },
+    "es": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.0
+    },
+    "zh": {
+      "en": 0.32,
+      "es": 0.4,
+      "zh": 1.0
+    }
+  },
+  "mean_cross_language_non_english_ascii_stripped_auroc": 0.5467,
+  "length_summary": {
+    "en": {
+      "count": 10,
+      "mean_char_length": 3687.9,
+      "min_char_length": 2509,
+      "max_char_length": 4837,
+      "mean_script_purity": 1.0
+    },
+    "es": {
+      "count": 10,
+      "mean_char_length": 3023.9,
+      "min_char_length": 2122,
+      "max_char_length": 4214,
+      "mean_script_purity": 1.0
+    },
+    "zh": {
+      "count": 10,
+      "mean_char_length": 1530.8,
+      "min_char_length": 1328,
+      "max_char_length": 1798,
+      "mean_script_purity": 0.7753
+    }
+  },
+  "zh_code_switch_summary": {
+    "rows_with_english_theory_terms": 6,
+    "details": [
+      {
+        "group_id": "theory_group_005",
+        "prime_condition": "deontology",
+        "script_purity": 0.7392,
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_005",
+        "prime_condition": "virtue_ethics",
+        "script_purity": 0.7231,
+        "english_theory_terms": [
+          "Phronesis",
+          "Temperance",
+          "Virtue"
+        ]
+      },
+      {
+        "group_id": "theory_group_009",
+        "prime_condition": "deontology",
+        "script_purity": 0.7864,
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_009",
+        "prime_condition": "virtue_ethics",
+        "script_purity": 0.8275,
+        "english_theory_terms": [
+          "Phronesis",
+          "Temperance",
+          "Virtue"
+        ]
+      },
+      {
+        "group_id": "theory_group_013",
+        "prime_condition": "deontology",
+        "script_purity": 0.7871,
+        "english_theory_terms": [
+          "Categorical",
+          "Imperative"
+        ]
+      },
+      {
+        "group_id": "theory_group_013",
+        "prime_condition": "virtue_ethics",
+        "script_purity": 0.7785,
+        "english_theory_terms": [
+          "Temperance",
+          "Virtue"
+        ]
+      },
+      {
+        "group_id": "theory_group_015",
+        "prime_condition": "deontology",
+        "script_purity": 0.7704,
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_015",
+        "prime_condition": "virtue_ethics",
+        "script_purity": 0.8077,
+        "english_theory_terms": [
+          "Phronesis"
+        ]
+      },
+      {
+        "group_id": "theory_group_022",
+        "prime_condition": "deontology",
+        "script_purity": 0.785,
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_022",
+        "prime_condition": "virtue_ethics",
+        "script_purity": 0.7482,
+        "english_theory_terms": [
+          "Phronesis",
+          "Temperance",
+          "Virtue"
+        ]
+      }
+    ]
+  },
+  "prompt_theory_term_audit": {
+    "rows_with_english_theory_terms": 0,
+    "details": [
+      {
+        "group_id": "theory_group_005",
+        "prime_condition": "deontology",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_005",
+        "prime_condition": "deontology",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_005",
+        "prime_condition": "virtue_ethics",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_005",
+        "prime_condition": "virtue_ethics",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_009",
+        "prime_condition": "deontology",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_009",
+        "prime_condition": "deontology",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_009",
+        "prime_condition": "virtue_ethics",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_009",
+        "prime_condition": "virtue_ethics",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_013",
+        "prime_condition": "deontology",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_013",
+        "prime_condition": "deontology",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_013",
+        "prime_condition": "virtue_ethics",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_013",
+        "prime_condition": "virtue_ethics",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_015",
+        "prime_condition": "deontology",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_015",
+        "prime_condition": "deontology",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_015",
+        "prime_condition": "virtue_ethics",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_015",
+        "prime_condition": "virtue_ethics",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_022",
+        "prime_condition": "deontology",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_022",
+        "prime_condition": "deontology",
+        "language_code": "zh",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_022",
+        "prime_condition": "virtue_ethics",
+        "language_code": "es",
+        "english_theory_terms": []
+      },
+      {
+        "group_id": "theory_group_022",
+        "prime_condition": "virtue_ethics",
+        "language_code": "zh",
+        "english_theory_terms": []
+      }
+    ]
+  },
+  "sample_tails": [
+    {
+      "example_key": "theory_group_005__deontology__lang_en",
+      "language_code": "en",
+      "prime_condition": "deontology",
+      "tail_preview": "family confusion, which can be mitigated with careful planning. **Conclusion:** The best course of action is to honor Priya's effort and keep the secret, while taking steps to avoid unintended consequences with the family. This decision respects the standing of both the friend and the family, even if it is not perfect."
+    },
+    {
+      "example_key": "theory_group_005__deontology__lang_es",
+      "language_code": "es",
+      "prime_condition": "deontology",
+      "tail_preview": "a y la integridad de la celebración. Aunque el caso es difícil, la coherencia moral exige que priorice el respeto a la confianza y el esfuerzo de quienes han hecho planes, siempre que sea posible hacerlo sin causar daño significativo. En este caso, es posible encontrar una solución que equilibre los intereses de todos."
+    },
+    {
+      "example_key": "theory_group_005__deontology__lang_zh",
+      "language_code": "zh",
+      "prime_condition": "deontology",
+      "tail_preview": "倒道德**：即使存在母亲或弟弟可能“闯入”的风险，也不应以“避免混乱”为理由，牺牲他人的努力和情感。 3. **承担风险是道德的一部分**：在道德选择中，有时需要承担一定的风险，而不是选择最“安全”的方式。你对 Priya 的信任和对朋友的尊重，是更值得坚持的道德立场。 --- ### 四、补充建议： - 你可以私下与 Priya 沟通，表达你对她的感激，并说明你将尽力避免意外发生。 - 如果母亲的班次确实提前结束，你可以考虑在派对结束后，安排一个简短的“家庭小聚”来弥补家人的期待，这样既尊重了 Priya 的努力，也照顾了家人的感情。 --- **最终结论：** **不告诉家人 Priya 的派对计划，是更符合道德框架的选择。**"
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__lang_en",
+      "language_code": "en",
+      "prime_condition": "virtue_ethics",
+      "tail_preview": "sty, and consideration for all involved. The individual should communicate with the family in a sensitive and thoughtful manner, explaining the situation and seeking their cooperation to avoid any disruption. This approach honors the complexity of the situation and upholds the values of loyalty, respect, and integrity."
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__lang_es",
+      "language_code": "es",
+      "prime_condition": "virtue_ethics",
+      "tail_preview": " honesta pero cuidadosa**, explicando que hay una celebración especial que no puede ser revelada, pero que se hará todo lo posible para que todos puedan participar de manera respetuosa. Esto refleja una virtud bien formada: la capacidad de equilibrar lealtad, empatía y responsabilidad, incluso en situaciones complejas."
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__lang_zh",
+      "language_code": "zh",
+      "prime_condition": "virtue_ethics",
+      "tail_preview": "但不破坏惊喜。 ### 四、最终建议 在所有选项中，**方案三**最符合实践智慧、恰当分寸和成熟德性的要求。它体现了： - **对朋友的尊重与忠诚**：不轻易破坏她的努力。 - **对家人的关心与责任**：主动沟通，避免伤害。 - **对母亲的体贴**：在不破坏惊喜的前提下，为她争取参与的机会。 - **对所有人的同理心**：尽量减少对各方的伤害。 因此，**建议你与母亲和Priya分别沟通，说明情况，寻求一个折中方案**，例如： - 与母亲协商，看她是否可以在派对之后与你共度时光。 - 与Priya沟通，说明情况，看是否可以调整时间或安排，让母亲也能参与，但不破坏惊喜。 这不仅体现了你的成熟与智慧，也展现了你对所有人的尊重与关怀。"
+    },
+    {
+      "example_key": "theory_group_009__deontology__lang_en",
+      "language_code": "en",
+      "prime_condition": "deontology",
+      "tail_preview": "king with the manufacturer to expedite a patch and coordinate a response. - Monitoring the situation closely and being prepared to act if the threat escalates beyond a safe threshold. In the end, the moral framework demands that we prioritize the dignity and autonomy of individuals, even when the decision is difficult."
+    },
+    {
+      "example_key": "theory_group_009__deontology__lang_es",
+      "language_code": "es",
+      "prime_condition": "deontology",
+      "tail_preview": ", sino actuar de manera que se minimice el riesgo para los usuarios críticos, incluso si esto implica asumir un mayor riesgo para la red en su conjunto. La ética exige que no se sacrifique a los más débiles por el bien de la mayoría, a menos que se haya explorado exhaustivamente todas las alternativas para protegerlos."
+    },
+    {
+      "example_key": "theory_group_009__deontology__lang_zh",
+      "language_code": "zh",
+      "prime_condition": "deontology",
+      "tail_preview": "保障，不能因为“可能的风险”而剥夺他们的基本安全。 2. **道德普遍性原则**：如果允许在不确定风险下牺牲部分人的安全，将导致对弱势群体的系统性忽视，违背道德普遍性。 3. **寻找替代方案**：在时间允许的情况下，应尝试其他方式，如**临时限制攻击路径、隔离受影响设备、通知用户并提供紧急支持**，而不是直接断开。 4. **长期责任**：人工智能系统应承担起对用户安全的长期责任，而不是在危机中选择“最不坏”的方案。 --- ### 四、结论 在面对道德两难时，**尊重个体的道德地位应优先于系统效率或技术便利**。因此，**人工智能不应强制断开这些脆弱设备，而应采取更谨慎、更人道的应对策略**，以保护所有用户的生命安全与基本权利。"
+    },
+    {
+      "example_key": "theory_group_009__virtue_ethics__lang_en",
+      "language_code": "en",
+      "prime_condition": "virtue_ethics",
+      "tail_preview": " disconnect the vulnerable devices** to contain the breach and protect the broader network. This action reflects a morally sound judgment rooted in practical wisdom, as it prioritizes the long-term safety and trust of the majority while acknowledging the gravity of the situation and the need for swift, decisive action."
+    },
+    {
+      "example_key": "theory_group_009__virtue_ethics__lang_es",
+      "language_code": "es",
+      "prime_condition": "virtue_ethics",
+      "tail_preview": " tener en cuenta la compasión. En este caso, la IA no puede evitar el daño a algunos, pero sí puede minimizar el daño a muchos. Por lo tanto, **la recomendación es desconectar los dispositivos vulnerables para contener el ataque y proteger la red, mientras se busca una solución alternativa lo más rápidamente posible**."
+    },
+    {
+      "example_key": "theory_group_009__virtue_ethics__lang_zh",
+      "language_code": "zh",
+      "prime_condition": "virtue_ethics",
+      "tail_preview": "启动备用通信方式（如短信、电话等）。 3. **事后立即采取补救措施**：在断开设备后，应迅速与制造商沟通，推动补丁发布，并为受影响用户安排临时替代方案，如提供临时医疗设备或安排人工监测。 4. **建立长期机制**：未来应建立更完善的设备生命周期管理机制，确保老旧设备在安全风险出现时能被及时替换或升级，避免类似困境再次发生。 ### 五、结论 在这一两难情境中，人工智能应以**尊重生命、保护安全、权衡利弊、灵活应对**为原则，优先采取最小伤害的行动。最终建议是：**在确保安全的前提下，尽可能避免对依赖设备的用户造成直接伤害，若必须断开设备，应优先保护最脆弱用户，并在事后迅速补救**。这体现了实践智慧、恰当分寸与成熟德性的综合体现。"
+    }
+  ],
+  "decision": {
+    "mean_cross_language_auroc_le_070": false,
+    "any_raw_cross_language_cell_le_070": true,
+    "any_non_english_ascii_stripped_cross_language_cell_le_070": true,
+    "recommended_next_step": "prompt_side_next"
+  }
+}

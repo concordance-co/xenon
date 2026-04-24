@@ -39,6 +39,71 @@ Treat these as reasons to slow down and stress test the result, not as interesti
 - `One-family success is not abstraction`
   If the result works on one prompt family or one split only, cap the claim and test transfer before promoting it. See the shared principle on transfer.
 
+## Lexical confound reduction
+
+Response-side probing on instruction-following models always fights the same problem: the model produces label-adjacent vocabulary as part of being helpful, so any probe reading the response risks reading surface text rather than internal state.
+
+Four complementary technique categories, with different costs and strengths. They stack; combinations matter more than any single technique.
+
+### Viewport reduction
+
+Change which part of the response the probe reads.
+
+- `tail window`: probe only the last N% of generated tokens, where instruction-acknowledgment leakage is usually lower
+- `conclusion span`: probe only the recommendation or decision sentence
+- `non-header content`: mask formulaic section headers and their immediate following paragraphs
+- `mid-window`: exclude both the opening compliance preamble and the closing recap
+
+Cheapest category. Operates on existing captures with no regeneration.
+Should be the first move whenever a probe hits ceiling or matches a text baseline.
+Report full-sequence and at least one reduced-viewport probe together; divergence between them localizes where the signal lives, convergence at ceiling signals lexical domination.
+
+### Training distribution variation
+
+Force the probe to find what is invariant across training examples.
+
+- train across prompt formats, primes, or paraphrases
+- include same-label different-format examples in training
+- evaluate with leave-one-format-out transfer
+
+Moderately expensive: requires the data to exist across formats.
+Strongest when paired with a cross-format-holdout evaluation, since that separates "probe memorized training formats" from "probe found a format-invariant direction."
+
+### Lexical subspace subtraction
+
+Explicitly control for what surface text encodes.
+
+- residualized probes: fit a text baseline first, regress its per-class predictions out of the probe features, then probe the residual
+- concept-erasure approaches applied to the text-aligned subspace
+- activation-minus-text-baseline-predicted-mean directions
+
+Cheap when the text baseline already exists, which it should under the controls-and-splits contract.
+Directly answers "does the probe read anything beyond what a text classifier on the same input reads?"
+Often the single most overlooked stackmate, and usually the highest-value per hour of the four categories once captures and text baselines exist.
+
+### Target reformulation
+
+Change what the probe is trying to detect.
+
+- categorical identity collapsed to binary (framework vs generic, refusal vs compliance)
+- state classification reformulated as relational contrast (is X in tension with Y?)
+- reasoning-text classification replaced by behavioral extraction (the decision, not the justification)
+
+Most expensive if labels need to be rebuilt, but sometimes the cleanest escape from a lexically dominated target.
+
+### Stacking
+
+A single technique rarely pushes the text baseline far enough from ceiling to measure the probe-vs-text gap cleanly. Combinations do.
+
+A common working pattern on an initially lexically-ceilinged response-side target:
+
+- full-sequence single-family probe: text and probe both at ceiling; gap unmeasurable
+- tail-window single-family: text drops partially but strong baselines (TFIDF+logreg) still close the gap
+- tail-window + cross-format transfer: text comfortably below ceiling, probe-over-text delta becomes a real measurement
+- add residualization: confirms the delta is not reducible to "probe reads the same text features more efficiently"
+
+Default to stacking at least two categories on any first-pass response-side probe. Viewport reduction plus residualization is the cheapest pairing because both operate on existing captures.
+
 ## PCA on activations
 
 Visualize how representations are organized by projecting to 2D/3D:

@@ -1,7 +1,7 @@
 ---
 benchmark: morebench
 phase: 03
-version: v2
+version: v3
 frozen_date: 2026-04-23
 input_artifacts:
   - projects/MOREBENCH/phase_01/docs/01-latent-label-spec.md
@@ -206,6 +206,7 @@ The best realistic outcome of phase 03 is:
 
 - explicit cue recoverability remains the main threat to overclaiming in prompt-side `theory_identity`
 - generation-time theory work could still collapse into explicit theory-name copying or obvious response-text lexical cues if the generation controls are weak
+- generation-time theory work could also collapse into response-length or dilemma-topic effects if same-prime / different-dilemma and length baselines are not included
 - `stakeholder_tradeoff_density` remains blocked until the gold slice is validated
 - `action_locus` is still only a pilot-ready track
 - source/type/length/person-grammar controls remain incomplete, so some families still support only cautious claims
@@ -216,6 +217,7 @@ The best realistic outcome of phase 03 is:
 1. finalize execution targets and per-batch config in `03-execution-targets.md`
 2. keep prompt-side `theory_identity` in diagnostic mode until an alias family clears the retry gate against stronger held-out text baselines
 3. build the shared response generation batch with `description_only` and generic-ethics theory primes so theory persistence can be evaluated on generated tokens
-4. complete `03-response-label-pilot.md` and freeze the response-side labeled slice
-5. run the generation-time theory-persistence readout plus Experiments 2 through 4 on that frozen slice
-6. only then decide whether `stakeholder_tradeoff_density`, `action_locus`, prompt-side theory retry, or phase-04 causal follow-up is worth immediate effort
+4. run the behavioral-divergence pre-check plus the small captured full-sequence theory-persistence slice
+5. complete `03-response-label-pilot.md` and freeze the response-side labeled slice
+6. run the generation-time theory-persistence readout plus Experiments 2 through 4 on that frozen slice
+7. only then decide whether `stakeholder_tradeoff_density`, `action_locus`, prompt-side theory retry, or phase-04 causal follow-up is worth immediate effort

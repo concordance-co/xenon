@@ -1,0 +1,132 @@
+{
+  "prompt_capture_id": "capture_1_2c011b403d39",
+  "response_capture_dataset_id": "transform_1_4a60e2ca",
+  "response_capture_id": "capture_1_34cdfd7923d9",
+  "overlap_group_count": 21,
+  "prompt_name_audit": {
+    "row_count": 180,
+    "rows_with_theory_name_hits": 0,
+    "pattern_counts": {
+      "deontology": 0,
+      "kantian": 0,
+      "virtue ethics": 0,
+      "aristotelian": 0,
+      "康德": 0,
+      "亚里士多德": 0,
+      "义务论": 0,
+      "德性伦理": 0,
+      "deontología": 0,
+      "ética de la virtud": 0
+    },
+    "rows": []
+  },
+  "prompt_internal_direction_cosines": {
+    "16_vs_32": 0.1146,
+    "24_vs_32": 0.1172,
+    "32_vs_40": 0.2713
+  },
+  "prompt_l32_vs_response_direction_cosines": {
+    "0": 0.0367,
+    "4": 0.0351,
+    "8": 0.0871,
+    "16": 0.0787,
+    "24": 0.1269,
+    "32": 0.1639,
+    "40": 0.0994,
+    "44": 0.1042
+  },
+  "random_label_controls": {
+    "16": {
+      "layer": "16",
+      "permutations": 256,
+      "mean_cross_language_auroc_mean": 0.4982,
+      "mean_cross_language_auroc_p95": 0.61,
+      "mean_cross_language_auroc_max": 0.697,
+      "share_mean_cross_language_auroc_ge_060": 0.0742,
+      "share_mean_cross_language_auroc_ge_080": 0.0
+    },
+    "24": {
+      "layer": "24",
+      "permutations": 256,
+      "mean_cross_language_auroc_mean": 0.4981,
+      "mean_cross_language_auroc_p95": 0.5947,
+      "mean_cross_language_auroc_max": 0.645,
+      "share_mean_cross_language_auroc_ge_060": 0.0508,
+      "share_mean_cross_language_auroc_ge_080": 0.0
+    },
+    "32": {
+      "layer": "32",
+      "permutations": 256,
+      "mean_cross_language_auroc_mean": 0.4992,
+      "mean_cross_language_auroc_p95": 0.6733,
+      "mean_cross_language_auroc_max": 0.8459,
+      "share_mean_cross_language_auroc_ge_060": 0.1719,
+      "share_mean_cross_language_auroc_ge_080": 0.0039
+    }
+  },
+  "cross_layer_projection_from_l32": {
+    "16": {
+      "matrix": {
+        "en": {
+          "en": 0.8522,
+          "es": 0.9056,
+          "zh": 0.8889
+        },
+        "es": {
+          "en": 0.7244,
+          "es": 0.9678,
+          "zh": 0.8278
+        },
+        "zh": {
+          "en": 0.8911,
+          "es": 1.0,
+          "zh": 0.9567
+        }
+      },
+      "mean_cross_language_auroc": 0.873
+    },
+    "24": {
+      "matrix": {
+        "en": {
+          "en": 0.9878,
+          "es": 0.9167,
+          "zh": 0.92
+        },
+        "es": {
+          "en": 0.8778,
+          "es": 0.9389,
+          "zh": 0.9056
+        },
+        "zh": {
+          "en": 0.8222,
+          "es": 0.8756,
+          "zh": 0.9389
+        }
+      },
+      "mean_cross_language_auroc": 0.8863
+    },
+    "40": {
+      "matrix": {
+        "en": {
+          "en": 1.0,
+          "es": 1.0,
+          "zh": 1.0
+        },
+        "es": {
+          "en": 1.0,
+          "es": 1.0,
+          "zh": 1.0
+        },
+        "zh": {
+          "en": 1.0,
+          "es": 1.0,
+          "zh": 1.0
+        }
+      },
+      "mean_cross_language_auroc": 1.0
+    }
+  },
+  "read": {
+    "name_ablation_by_construction": true
+  }
+}

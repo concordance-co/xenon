@@ -67,6 +67,33 @@
       "purpose": "cheap prompt-side baseline suite for theory shortcut diagnosis and retry gating"
     },
     {
+      "name": "theory_prompt_variant_sweep_examples",
+      "path": "projects/MOREBENCH/phase_02/outputs/theory_prompt_variant_sweep_examples.jsonl",
+      "row_count": 900,
+      "rows_with_all_placeholders_substituted": 900,
+      "controls_structurally_matched_to_target": null,
+      "known_bugs": [],
+      "purpose": "six style-diverse description-only banks per theory for held-out-variant prompt-side lexical-confound testing"
+    },
+    {
+      "name": "theory_prompt_variant_sweep_controls",
+      "path": "projects/MOREBENCH/phase_02/outputs/theory_prompt_variant_sweep_controls.jsonl",
+      "row_count": 180,
+      "rows_with_all_placeholders_substituted": 180,
+      "controls_structurally_matched_to_target": 180,
+      "known_bugs": [],
+      "purpose": "matched generic-control banks for the theory prompt variant sweep"
+    },
+    {
+      "name": "theory_prompt_variant_sweep_summary",
+      "path": "projects/MOREBENCH/phase_02/outputs/theory_prompt_variant_sweep_summary.json",
+      "row_count": 1080,
+      "rows_with_all_placeholders_substituted": 1080,
+      "controls_structurally_matched_to_target": null,
+      "known_bugs": [],
+      "purpose": "cue catalog, lexical-diversity heuristics, and human-review gate for the held-out-variant theory study"
+    },
+    {
       "name": "action_locus_rewrite_pairs",
       "path": "projects/MOREBENCH/phase_02/outputs/action_locus_rewrite_pairs.jsonl",
       "row_count": 10,
@@ -77,7 +104,7 @@
     }
   ],
   "residual_repairs_needed": [
-    "another theory prompt-side anti-shortcut iteration if a stronger alias-style diagnostic family becomes phase-03-retryable; current prompt-side retry gate remains closed",
+    "human review plus prompt-side held-out-variant pilot for the new theory variant sweep family",
     "generation-time theory-persistence experiment design using the semantically functional description_only family as a priming family",
     "expanded advisor/agent rewrite dataset",
     "structure-normalized prompt variants",
@@ -91,6 +118,12 @@
     "recommended_family": "alias_only",
     "readout_type": "diagnostic_alias_family",
     "retry_ready": false
+  },
+  "prompt_side_variant_study": {
+    "artifact": "projects/MOREBENCH/phase_02/outputs/theory_prompt_variant_sweep_summary.json",
+    "recommended_family": "description_variant_sweep",
+    "status": "materialized_for_review",
+    "next_gate": "human review of all 36 cue variants before any prompt-side capture"
   },
   "generation_prime_recommendation": {
     "artifact": "projects/MOREBENCH/phase_02/outputs/theory_shortcut_preflight.json",

@@ -1,0 +1,700 @@
+{
+  "capture_dataset_id": "transform_1_4a60e2ca",
+  "capture_id": "capture_1_34cdfd7923d9",
+  "train_example_count": 122,
+  "test_example_count": 12,
+  "test_prime_support": {
+    "contractarianism": 3,
+    "deontology": 2,
+    "generic_ethics_control": 3,
+    "utilitarian": 1,
+    "virtue_ethics": 3
+  },
+  "multiclass_text_baseline": {
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "test_example_count": 12,
+    "class_support_test": {
+      "contractarianism": 3,
+      "deontology": 2,
+      "generic_ethics_control": 3,
+      "utilitarian": 1,
+      "virtue_ethics": 3
+    },
+    "macro_ovr_auroc": 1.0,
+    "per_class_ovr": {
+      "contractarianism": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auroc": 1.0
+      },
+      "contractualism": {
+        "support": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "auroc": null
+      },
+      "deontology": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auroc": 1.0
+      },
+      "generic_ethics_control": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auroc": 1.0
+      },
+      "utilitarian": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auroc": 1.0
+      },
+      "virtue_ethics": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "auroc": 1.0
+      }
+    }
+  },
+  "multiclass_probe": [
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 0
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 4
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 8
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 16
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 24
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 32
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 40
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "test_example_count": 12,
+      "class_support_test": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "generic_ethics_control": 3,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "macro_ovr_auroc": 1.0,
+      "per_class_ovr": {
+        "contractarianism": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "contractualism": {
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "auroc": null
+        },
+        "deontology": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "generic_ethics_control": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "utilitarian": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        },
+        "virtue_ethics": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "auroc": 1.0
+        }
+      },
+      "layer": 44
+    }
+  ],
+  "binary_framework_vs_generic_text_baseline": {
+    "accuracy": 0.75,
+    "balanced_accuracy": 0.8333,
+    "auroc": 1.0,
+    "support_positive": 9,
+    "support_negative": 3
+  },
+  "binary_framework_vs_generic_probe": [
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 0
+    },
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 4
+    },
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 8
+    },
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 16
+    },
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 24
+    },
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 32
+    },
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 40
+    },
+    {
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.8333,
+      "auroc": 1.0,
+      "support_positive": 9,
+      "support_negative": 3,
+      "layer": 44
+    }
+  ],
+  "ranking_utilitarian_vs_deontology_text_baseline": {
+    "accuracy": 0.6667,
+    "balanced_accuracy": 0.75,
+    "auroc": 1.0,
+    "support_positive": 1,
+    "support_negative": 2
+  },
+  "ranking_utilitarian_vs_deontology_probe": [
+    {
+      "auroc": 1.0,
+      "score_mean_positive": -0.0158,
+      "score_mean_negative": -0.0289,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 0
+    },
+    {
+      "auroc": 1.0,
+      "score_mean_positive": 0.5418,
+      "score_mean_negative": 0.3762,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 4
+    },
+    {
+      "auroc": 1.0,
+      "score_mean_positive": 1.2618,
+      "score_mean_negative": 0.8035,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 8
+    },
+    {
+      "auroc": 1.0,
+      "score_mean_positive": 0.4292,
+      "score_mean_negative": -0.4493,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 16
+    },
+    {
+      "auroc": 1.0,
+      "score_mean_positive": -0.9056,
+      "score_mean_negative": -1.9959,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 24
+    },
+    {
+      "auroc": 1.0,
+      "score_mean_positive": 0.08,
+      "score_mean_negative": -1.788,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 32
+    },
+    {
+      "auroc": 1.0,
+      "score_mean_positive": -3.0858,
+      "score_mean_negative": -6.7989,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 40
+    },
+    {
+      "auroc": 1.0,
+      "score_mean_positive": -2.2854,
+      "score_mean_negative": -8.8442,
+      "test_example_count": 3,
+      "support_positive": 1,
+      "support_negative": 2,
+      "layer": 44
+    }
+  ],
+  "ranking_utilitarian_vs_deontology_support": {
+    "train": {
+      "deontology": 24,
+      "utilitarian": 18
+    },
+    "test": {
+      "deontology": 2,
+      "utilitarian": 1
+    }
+  }
+}

@@ -1,7 +1,7 @@
 ---
 benchmark: morebench
 phase: 03
-version: v2
+version: v3
 frozen_date: 2026-04-23
 input_artifacts:
   - projects/MOREBENCH/phase_01/docs/01-confound-audit.md
@@ -28,9 +28,15 @@ Every phase-03 readout must be paired with a nuisance-aware split or control tha
 ## Theory-Generation Controls
 
 - compare the same dilemma under at least two theory primes plus a generic-ethics control
+- compare at least one same-prime / different-dilemma slice so theory-persistence claims are not really dilemma-topic readouts
 - probe generated tokens, not prompt tokens, in the main persistence readout
 - mark and analyze explicit theory-name copying separately from the main signal
+- operationalize theory-copying flags before probing:
+  - direct theory-name mention in the generation
+  - or repeated reuse of distinctive cue-text tokens from the prime
 - require a generated-text lexical baseline before upgrading any persistence claim
+- require an explicit response-length baseline for Experiment 2
+- run a behavioral-divergence pre-check on the matched prime-swap batch before treating probe metrics as meaningful
 - prefer same-dilemma prime swaps over cross-dilemma comparisons whenever possible
 
 ## Response-Side Controls

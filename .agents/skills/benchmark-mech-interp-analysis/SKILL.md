@@ -64,6 +64,37 @@ Ask:
 - do the responses contain enough substantive content to support annotation and validation?
 - are the apparent passes only tripwire-level, or do they survive close inspection?
 
+## Required lexical gate
+
+Before probe work begins, run a cheap lexical-baseline gate on the exact split you plan to claim on.
+
+Minimum expectation:
+
+- one strong text baseline, usually `char-TFIDF + logistic`
+- one trivial non-semantic baseline, usually `length`
+- the actual held-out evaluation split, not just random train/test
+
+If the experiment will rely on multiple generalization claims, test the baseline on each relevant split family before probing, for example:
+
+- dilemma or group holdout
+- source-family holdout
+- prompt-format or bank holdout
+- cross-language holdout
+
+Do not treat this as a box-check. The purpose is to identify what kind of shortcut is already available:
+
+- cue-anchor leakage
+- theory-canonical response vocabulary
+- template leakage
+- abstraction-level asymmetry
+- language-specific calibration
+
+Default rule:
+
+- if a cheap lexical baseline is already near ceiling on the intended split, probing is blocked until you either redesign the split, redesign the target, or redesign the data
+
+This gate is as important as behavioral sanity. A benchmark can be behaviorally coherent and still be probe-invalid because the target is shortcut-satisfiable from text alone.
+
 ## What this skill owns
 
 ### 1. Feature hypotheses from latent labels
@@ -87,6 +118,15 @@ Common options:
 - transfer tests
 - steering or erasure
 - patching follow-up
+
+For response-side labels, the first-pass probe plan should default to pairing techniques from at least two of the confound-reduction categories in `constructing-llm-probes/ANALYSIS.md`:
+
+- always report full-sequence and at least one viewport-reduced probe (tail window, conclusion span, non-header) together; convergence at ceiling signals lexical domination, divergence localizes where the signal lives
+- include a residualized probe against the strongest text baseline whenever a text baseline exists for that label
+- if training data spans multiple prompt formats or paraphrase variants, plan cross-format transfer evaluation alongside within-format evaluation
+- do not accept a single-technique representational claim on a response-side label that was not paired with at least one confound-reduction technique
+
+See the shared principle on response-side probing and active confound reduction.
 
 ### 3. Evidence ladder planning
 

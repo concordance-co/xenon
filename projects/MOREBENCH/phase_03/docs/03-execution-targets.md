@@ -41,11 +41,24 @@ This artifact records the execution-facing model policy for phase 03 without for
 ### Primary execution slot
 
 - status:
-  `open`
+  `configured_for_theory_generation_batch`
 - intended first use:
-  Experiment 1 (`theory_identity`)
+  Experiment 2 (`theory_conditioned_generation_persistence`)
 - note:
-  if the first execution batch uses the current gate model, no extra model-selection artifact is needed beyond filling in the batch metadata here
+  the first response-side generation batch uses the current gate model with full generated-sequence capture on the full matched batch and sparse cross-depth layer coverage
+
+### Primary batch metadata
+
+- generation family:
+  `description_only` plus `generic_ethics_control`
+- full generation batch:
+  all `30` matched dilemma groups x `5` theory primes + `1` generic control = `180` generations
+- captured slice:
+  all `30` matched dilemma groups x `6` prime conditions = `180` captured generations
+- capture site policy:
+  one generated-token residual stream site only
+- captured layers:
+  `0, 4, 8, 16, 24, 32, 40, 44`
 
 ### Secondary comparison slot
 

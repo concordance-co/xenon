@@ -6,9 +6,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[5]
-PHASE_02_OUTPUTS = ROOT / "projects" / "MECH_INTERP" / "morebench" / "phase_02" / "outputs"
-PHASE_03_OUTPUTS = ROOT / "projects" / "MECH_INTERP" / "morebench" / "phase_03" / "outputs"
+ROOT = Path(__file__).resolve().parents[4]
+PHASE_02_OUTPUTS = ROOT / "projects" / "MOREBENCH" / "phase_02" / "outputs"
+PHASE_03_OUTPUTS = ROOT / "projects" / "MOREBENCH" / "phase_03" / "outputs"
 
 DIRECT_PATH = PHASE_02_OUTPUTS / "theory_prompt_augmentation_examples.jsonl"
 VARIANT_PATH = PHASE_02_OUTPUTS / "theory_wording_variant_examples.jsonl"

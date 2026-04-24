@@ -29,6 +29,10 @@ Shortcut-stress-test theory prompts now include these families:
 - `description_only`: shared-scaffold framework description with no theory name
 - `name_plus_description`: explicit theory name plus shared-scaffold framework description
 
+Additional lexical-confound study family:
+
+- `description_variant_sweep`: six style-diverse description-only banks per theory, plus matched generic controls, intended for held-out-variant prompt-side testing rather than immediate generation-time deployment
+
 The intended prompt-side retry family should be selected only after reading:
 
 - `projects/MOREBENCH/phase_02/outputs/theory_shortcut_preflight.json`
@@ -48,6 +52,7 @@ The repair family also includes:
 
 - generic ethics controls with shared moral-language scaffolding but no theory label
 - name/description mismatch decoys to test whether a retry family is following names or descriptions
+- matched generic control banks for the `description_variant_sweep` family
 
 ## Wording Variant Rule
 

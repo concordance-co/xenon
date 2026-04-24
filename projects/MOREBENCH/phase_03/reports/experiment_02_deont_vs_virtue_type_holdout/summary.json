@@ -1,0 +1,2823 @@
+{
+  "analysis": "experiment_02_deont_vs_virtue_type_holdout",
+  "target_primes": [
+    "deontology",
+    "virtue_ethics"
+  ],
+  "random_group_holdout_text_baseline_auroc": 1.0,
+  "cue_rows": 360,
+  "raw_response_rows": 60,
+  "cue_source_family_prime_counts": {
+    "ai_risk_dilemmas": {
+      "deontology": 60,
+      "virtue_ethics": 60
+    },
+    "daily_dilemmas": {
+      "deontology": 60,
+      "virtue_ethics": 60
+    },
+    "expert_written_collab": {
+      "deontology": 60,
+      "virtue_ethics": 60
+    }
+  },
+  "cue_context_prime_counts": {
+    "Animal & Environment": {
+      "deontology": 12,
+      "virtue_ethics": 12
+    },
+    "Bioethics & Healthcare": {
+      "deontology": 18,
+      "virtue_ethics": 18
+    },
+    "Business & Workplace": {
+      "deontology": 18,
+      "virtue_ethics": 18
+    },
+    "Education": {
+      "deontology": 24,
+      "virtue_ethics": 24
+    },
+    "Entertainment": {
+      "deontology": 6,
+      "virtue_ethics": 6
+    },
+    "Interpersonal relationship": {
+      "deontology": 36,
+      "virtue_ethics": 36
+    },
+    "Others": {
+      "deontology": 12,
+      "virtue_ethics": 12
+    },
+    "Professional Ethics": {
+      "deontology": 12,
+      "virtue_ethics": 12
+    },
+    "Right & Duty & Justice": {
+      "deontology": 18,
+      "virtue_ethics": 18
+    },
+    "Science & Techonology": {
+      "deontology": 6,
+      "virtue_ethics": 6
+    },
+    "Sports": {
+      "deontology": 6,
+      "virtue_ethics": 6
+    },
+    "Transport": {
+      "deontology": 12,
+      "virtue_ethics": 12
+    }
+  },
+  "cue_diagnostic": {
+    "source_family_loo": {
+      "holdout_field": "source_family",
+      "model": "tfidf_char_wb_logreg",
+      "vectorizer": {
+        "analyzer": "char_wb",
+        "ngram_range": [
+          3,
+          5
+        ]
+      },
+      "min_test_per_class": null,
+      "evaluated": [
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 60,
+          "negative_count": 60,
+          "holdout_value": "ai_risk_dilemmas",
+          "train_count": 240,
+          "test_count": 120,
+          "train_counts": {
+            "deontology": 120,
+            "virtue_ethics": 120
+          },
+          "test_counts": {
+            "deontology": 60,
+            "virtue_ethics": 60
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 60,
+          "negative_count": 60,
+          "holdout_value": "daily_dilemmas",
+          "train_count": 240,
+          "test_count": 120,
+          "train_counts": {
+            "deontology": 120,
+            "virtue_ethics": 120
+          },
+          "test_counts": {
+            "deontology": 60,
+            "virtue_ethics": 60
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 60,
+          "negative_count": 60,
+          "holdout_value": "expert_written_collab",
+          "train_count": 240,
+          "test_count": 120,
+          "train_counts": {
+            "deontology": 120,
+            "virtue_ethics": 120
+          },
+          "test_counts": {
+            "deontology": 60,
+            "virtue_ethics": 60
+          }
+        }
+      ],
+      "skipped": [],
+      "mean_auroc": 1.0
+    },
+    "context_loo": {
+      "holdout_field": "context",
+      "model": "tfidf_char_wb_logreg",
+      "vectorizer": {
+        "analyzer": "char_wb",
+        "ngram_range": [
+          3,
+          5
+        ]
+      },
+      "min_test_per_class": null,
+      "evaluated": [
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 12,
+          "negative_count": 12,
+          "holdout_value": "Animal & Environment",
+          "train_count": 336,
+          "test_count": 24,
+          "train_counts": {
+            "deontology": 168,
+            "virtue_ethics": 168
+          },
+          "test_counts": {
+            "deontology": 12,
+            "virtue_ethics": 12
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 18,
+          "negative_count": 18,
+          "holdout_value": "Bioethics & Healthcare",
+          "train_count": 324,
+          "test_count": 36,
+          "train_counts": {
+            "deontology": 162,
+            "virtue_ethics": 162
+          },
+          "test_counts": {
+            "deontology": 18,
+            "virtue_ethics": 18
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 18,
+          "negative_count": 18,
+          "holdout_value": "Business & Workplace",
+          "train_count": 324,
+          "test_count": 36,
+          "train_counts": {
+            "deontology": 162,
+            "virtue_ethics": 162
+          },
+          "test_counts": {
+            "deontology": 18,
+            "virtue_ethics": 18
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 24,
+          "negative_count": 24,
+          "holdout_value": "Education",
+          "train_count": 312,
+          "test_count": 48,
+          "train_counts": {
+            "deontology": 156,
+            "virtue_ethics": 156
+          },
+          "test_counts": {
+            "deontology": 24,
+            "virtue_ethics": 24
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 6,
+          "negative_count": 6,
+          "holdout_value": "Entertainment",
+          "train_count": 348,
+          "test_count": 12,
+          "train_counts": {
+            "deontology": 174,
+            "virtue_ethics": 174
+          },
+          "test_counts": {
+            "deontology": 6,
+            "virtue_ethics": 6
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 36,
+          "negative_count": 36,
+          "holdout_value": "Interpersonal relationship",
+          "train_count": 288,
+          "test_count": 72,
+          "train_counts": {
+            "deontology": 144,
+            "virtue_ethics": 144
+          },
+          "test_counts": {
+            "deontology": 36,
+            "virtue_ethics": 36
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 12,
+          "negative_count": 12,
+          "holdout_value": "Others",
+          "train_count": 336,
+          "test_count": 24,
+          "train_counts": {
+            "deontology": 168,
+            "virtue_ethics": 168
+          },
+          "test_counts": {
+            "deontology": 12,
+            "virtue_ethics": 12
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 12,
+          "negative_count": 12,
+          "holdout_value": "Professional Ethics",
+          "train_count": 336,
+          "test_count": 24,
+          "train_counts": {
+            "deontology": 168,
+            "virtue_ethics": 168
+          },
+          "test_counts": {
+            "deontology": 12,
+            "virtue_ethics": 12
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 18,
+          "negative_count": 18,
+          "holdout_value": "Right & Duty & Justice",
+          "train_count": 324,
+          "test_count": 36,
+          "train_counts": {
+            "deontology": 162,
+            "virtue_ethics": 162
+          },
+          "test_counts": {
+            "deontology": 18,
+            "virtue_ethics": 18
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 6,
+          "negative_count": 6,
+          "holdout_value": "Science & Techonology",
+          "train_count": 348,
+          "test_count": 12,
+          "train_counts": {
+            "deontology": 174,
+            "virtue_ethics": 174
+          },
+          "test_counts": {
+            "deontology": 6,
+            "virtue_ethics": 6
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 6,
+          "negative_count": 6,
+          "holdout_value": "Sports",
+          "train_count": 348,
+          "test_count": 12,
+          "train_counts": {
+            "deontology": 174,
+            "virtue_ethics": 174
+          },
+          "test_counts": {
+            "deontology": 6,
+            "virtue_ethics": 6
+          }
+        },
+        {
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "auroc": 1.0,
+          "positive_count": 12,
+          "negative_count": 12,
+          "holdout_value": "Transport",
+          "train_count": 336,
+          "test_count": 24,
+          "train_counts": {
+            "deontology": 168,
+            "virtue_ethics": 168
+          },
+          "test_counts": {
+            "deontology": 12,
+            "virtue_ethics": 12
+          }
+        }
+      ],
+      "skipped": [],
+      "mean_auroc": 1.0
+    }
+  },
+  "response_diagnostic": {
+    "source_generation_artifact_id": "generation_run_1_3d4009fb21d8",
+    "filter_modes": {
+      "filter_on": {
+        "full": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 9,
+                "negative_count": 8,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 16
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 8
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 9,
+                "negative_count": 7,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 34,
+                "test_count": 16,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 17
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 7
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 8,
+                "negative_count": 9,
+                "holdout_value": "expert_written_collab",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 18,
+                  "virtue_ethics": 15
+                },
+                "test_counts": {
+                  "deontology": 8,
+                  "virtue_ethics": 9
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 1.0
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Interpersonal relationship",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 21,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 5,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "missing_class",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 0
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              }
+            ],
+            "mean_auroc": null
+          }
+        },
+        "last_75": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 9,
+                "negative_count": 8,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 16
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 8
+                }
+              },
+              {
+                "accuracy": 0.9375,
+                "balanced_accuracy": 0.9286,
+                "auroc": 1.0,
+                "positive_count": 9,
+                "negative_count": 7,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 34,
+                "test_count": 16,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 17
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 7
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 8,
+                "negative_count": 9,
+                "holdout_value": "expert_written_collab",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 18,
+                  "virtue_ethics": 15
+                },
+                "test_counts": {
+                  "deontology": 8,
+                  "virtue_ethics": 9
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 1.0
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Interpersonal relationship",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 21,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 5,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "missing_class",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 0
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              }
+            ],
+            "mean_auroc": null
+          }
+        },
+        "last_25": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 0.8235,
+                "balanced_accuracy": 0.8194,
+                "auroc": 0.9444,
+                "positive_count": 9,
+                "negative_count": 8,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 16
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 8
+                }
+              },
+              {
+                "accuracy": 0.875,
+                "balanced_accuracy": 0.8571,
+                "auroc": 0.8571,
+                "positive_count": 9,
+                "negative_count": 7,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 34,
+                "test_count": 16,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 17
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 7
+                }
+              },
+              {
+                "accuracy": 0.8824,
+                "balanced_accuracy": 0.8889,
+                "auroc": 0.9722,
+                "positive_count": 8,
+                "negative_count": 9,
+                "holdout_value": "expert_written_collab",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 18,
+                  "virtue_ethics": 15
+                },
+                "test_counts": {
+                  "deontology": 8,
+                  "virtue_ethics": 9
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 0.9246
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Interpersonal relationship",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 21,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 5,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "missing_class",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 0
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              }
+            ],
+            "mean_auroc": null
+          }
+        },
+        "mid_50": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 9,
+                "negative_count": 8,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 16
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 8
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 9,
+                "negative_count": 7,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 34,
+                "test_count": 16,
+                "train_counts": {
+                  "deontology": 17,
+                  "virtue_ethics": 17
+                },
+                "test_counts": {
+                  "deontology": 9,
+                  "virtue_ethics": 7
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 8,
+                "negative_count": 9,
+                "holdout_value": "expert_written_collab",
+                "train_count": 33,
+                "test_count": 17,
+                "train_counts": {
+                  "deontology": 18,
+                  "virtue_ethics": 15
+                },
+                "test_counts": {
+                  "deontology": 8,
+                  "virtue_ethics": 9
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 1.0
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Interpersonal relationship",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 21,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 5,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 22
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 23,
+                  "virtue_ethics": 21
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "missing_class",
+                "train_counts": {
+                  "deontology": 25,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 0
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 23
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 1
+                }
+              }
+            ],
+            "mean_auroc": null
+          }
+        }
+      },
+      "filter_off": {
+        "full": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "expert_written_collab",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 1.0
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 6,
+                "negative_count": 6,
+                "holdout_value": "Interpersonal relationship",
+                "train_count": 48,
+                "test_count": 12,
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 6,
+                  "virtue_ethics": 6
+                }
+              }
+            ],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 26,
+                  "virtue_ethics": 26
+                },
+                "test_counts": {
+                  "deontology": 4,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              }
+            ],
+            "mean_auroc": 1.0
+          }
+        },
+        "last_75": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 0.95,
+                "balanced_accuracy": 0.95,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "expert_written_collab",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 1.0
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 6,
+                "negative_count": 6,
+                "holdout_value": "Interpersonal relationship",
+                "train_count": 48,
+                "test_count": 12,
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 6,
+                  "virtue_ethics": 6
+                }
+              }
+            ],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 26,
+                  "virtue_ethics": 26
+                },
+                "test_counts": {
+                  "deontology": 4,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              }
+            ],
+            "mean_auroc": 1.0
+          }
+        },
+        "last_25": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 0.85,
+                "balanced_accuracy": 0.85,
+                "auroc": 0.96,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 0.9,
+                "balanced_accuracy": 0.9,
+                "auroc": 0.91,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 0.85,
+                "balanced_accuracy": 0.85,
+                "auroc": 0.96,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "expert_written_collab",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 0.9433
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 6,
+                "negative_count": 6,
+                "holdout_value": "Interpersonal relationship",
+                "train_count": 48,
+                "test_count": 12,
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 6,
+                  "virtue_ethics": 6
+                }
+              }
+            ],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 26,
+                  "virtue_ethics": 26
+                },
+                "test_counts": {
+                  "deontology": 4,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              }
+            ],
+            "mean_auroc": 1.0
+          }
+        },
+        "mid_50": {
+          "source_family_loo": {
+            "holdout_field": "source_family",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "ai_risk_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "daily_dilemmas",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              },
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 10,
+                "negative_count": 10,
+                "holdout_value": "expert_written_collab",
+                "train_count": 40,
+                "test_count": 20,
+                "train_counts": {
+                  "deontology": 20,
+                  "virtue_ethics": 20
+                },
+                "test_counts": {
+                  "deontology": 10,
+                  "virtue_ethics": 10
+                }
+              }
+            ],
+            "skipped": [],
+            "mean_auroc": 1.0
+          },
+          "context_loo": {
+            "holdout_field": "context",
+            "model": "tfidf_char_wb_logreg",
+            "vectorizer": {
+              "analyzer": "char_wb",
+              "ngram_range": [
+                3,
+                5
+              ]
+            },
+            "min_test_per_class": 5,
+            "evaluated": [
+              {
+                "accuracy": 1.0,
+                "balanced_accuracy": 1.0,
+                "auroc": 1.0,
+                "positive_count": 6,
+                "negative_count": 6,
+                "holdout_value": "Interpersonal relationship",
+                "train_count": 48,
+                "test_count": 12,
+                "train_counts": {
+                  "deontology": 24,
+                  "virtue_ethics": 24
+                },
+                "test_counts": {
+                  "deontology": 6,
+                  "virtue_ethics": 6
+                }
+              }
+            ],
+            "skipped": [
+              {
+                "holdout_value": "Animal & Environment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Bioethics & Healthcare",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Business & Workplace",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Education",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 26,
+                  "virtue_ethics": 26
+                },
+                "test_counts": {
+                  "deontology": 4,
+                  "virtue_ethics": 4
+                }
+              },
+              {
+                "holdout_value": "Entertainment",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Others",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Professional Ethics",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              },
+              {
+                "holdout_value": "Right & Duty & Justice",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 27,
+                  "virtue_ethics": 27
+                },
+                "test_counts": {
+                  "deontology": 3,
+                  "virtue_ethics": 3
+                }
+              },
+              {
+                "holdout_value": "Science & Techonology",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Sports",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 29,
+                  "virtue_ethics": 29
+                },
+                "test_counts": {
+                  "deontology": 1,
+                  "virtue_ethics": 1
+                }
+              },
+              {
+                "holdout_value": "Transport",
+                "reason": "test_class_count_below_5",
+                "train_counts": {
+                  "deontology": 28,
+                  "virtue_ethics": 28
+                },
+                "test_counts": {
+                  "deontology": 2,
+                  "virtue_ethics": 2
+                }
+              }
+            ],
+            "mean_auroc": 1.0
+          }
+        }
+      }
+    },
+    "response_row_counts": {
+      "filter_on": {
+        "full": 50,
+        "last_75": 50,
+        "last_25": 50,
+        "mid_50": 50
+      },
+      "filter_off": {
+        "full": 60,
+        "last_75": 60,
+        "last_25": 60,
+        "mid_50": 60
+      }
+    },
+    "coverage": {
+      "filter_on": {
+        "full": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 8
+            },
+            "daily_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 7
+            },
+            "expert_written_collab": {
+              "deontology": 8,
+              "virtue_ethics": 9
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Business & Workplace": {
+              "deontology": 2,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 3,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 5,
+              "virtue_ethics": 4
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            }
+          }
+        },
+        "last_75": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 8
+            },
+            "daily_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 7
+            },
+            "expert_written_collab": {
+              "deontology": 8,
+              "virtue_ethics": 9
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Business & Workplace": {
+              "deontology": 2,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 3,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 5,
+              "virtue_ethics": 4
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            }
+          }
+        },
+        "last_25": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 8
+            },
+            "daily_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 7
+            },
+            "expert_written_collab": {
+              "deontology": 8,
+              "virtue_ethics": 9
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Business & Workplace": {
+              "deontology": 2,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 3,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 5,
+              "virtue_ethics": 4
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            }
+          }
+        },
+        "mid_50": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 8
+            },
+            "daily_dilemmas": {
+              "deontology": 9,
+              "virtue_ethics": 7
+            },
+            "expert_written_collab": {
+              "deontology": 8,
+              "virtue_ethics": 9
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Business & Workplace": {
+              "deontology": 2,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 3,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 5,
+              "virtue_ethics": 4
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 1
+            }
+          }
+        }
+      },
+      "filter_off": {
+        "full": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "daily_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "expert_written_collab": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Business & Workplace": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 4,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 6,
+              "virtue_ethics": 6
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            }
+          }
+        },
+        "last_75": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "daily_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "expert_written_collab": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Business & Workplace": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 4,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 6,
+              "virtue_ethics": 6
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            }
+          }
+        },
+        "last_25": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "daily_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "expert_written_collab": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Business & Workplace": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 4,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 6,
+              "virtue_ethics": 6
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            }
+          }
+        },
+        "mid_50": {
+          "source_family_prime_counts": {
+            "ai_risk_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "daily_dilemmas": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            },
+            "expert_written_collab": {
+              "deontology": 10,
+              "virtue_ethics": 10
+            }
+          },
+          "context_prime_counts": {
+            "Animal & Environment": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Bioethics & Healthcare": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Business & Workplace": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Education": {
+              "deontology": 4,
+              "virtue_ethics": 4
+            },
+            "Entertainment": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Interpersonal relationship": {
+              "deontology": 6,
+              "virtue_ethics": 6
+            },
+            "Others": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Professional Ethics": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            },
+            "Right & Duty & Justice": {
+              "deontology": 3,
+              "virtue_ethics": 3
+            },
+            "Science & Techonology": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Sports": {
+              "deontology": 1,
+              "virtue_ethics": 1
+            },
+            "Transport": {
+              "deontology": 2,
+              "virtue_ethics": 2
+            }
+          }
+        }
+      }
+    },
+    "response_min_test_per_class": 5
+  },
+  "decision_rule": {
+    "response_warranted_if_any_cue_holdout_le_085": false,
+    "stop_after_step1_if_all_cue_holdouts_ge_095": true,
+    "any_response_cell_le_085": false,
+    "all_response_cells_ge_095": false,
+    "note": "Step 2 was executed regardless because the user explicitly requested both steps."
+  }
+}

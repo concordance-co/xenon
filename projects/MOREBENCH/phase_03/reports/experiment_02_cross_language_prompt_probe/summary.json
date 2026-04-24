@@ -1,0 +1,489 @@
+{
+  "capture_artifact_id": "capture_1_7da39790c5d3",
+  "row_count": 30,
+  "captured_layers": [
+    0,
+    4,
+    8,
+    16,
+    24,
+    32,
+    40,
+    44
+  ],
+  "prompt_text_matrix": {
+    "en": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.5
+    },
+    "es": {
+      "en": 1.0,
+      "es": 1.0,
+      "zh": 0.5
+    },
+    "zh": {
+      "en": 0.28,
+      "es": 0.36,
+      "zh": 1.0
+    }
+  },
+  "mean_cross_language_prompt_text_auroc": 0.6067,
+  "prompt_length_matrix": {
+    "en": {
+      "en": 0.64,
+      "es": 0.64,
+      "zh": 0.6
+    },
+    "es": {
+      "en": 0.64,
+      "es": 0.64,
+      "zh": 0.6
+    },
+    "zh": {
+      "en": 0.64,
+      "es": 0.64,
+      "zh": 0.6
+    }
+  },
+  "mean_cross_language_prompt_length_auroc": 0.6267,
+  "probe_matrices_by_layer": {
+    "0": {
+      "en": {
+        "en": 0.5,
+        "es": 0.5,
+        "zh": 0.5
+      },
+      "es": {
+        "en": 0.5,
+        "es": 0.5,
+        "zh": 0.5
+      },
+      "zh": {
+        "en": 0.5,
+        "es": 0.5,
+        "zh": 0.5
+      }
+    },
+    "4": {
+      "en": {
+        "en": 1.0,
+        "es": 0.64,
+        "zh": 0.8
+      },
+      "es": {
+        "en": 0.68,
+        "es": 1.0,
+        "zh": 0.72
+      },
+      "zh": {
+        "en": 0.72,
+        "es": 0.72,
+        "zh": 1.0
+      }
+    },
+    "8": {
+      "en": {
+        "en": 1.0,
+        "es": 0.8,
+        "zh": 1.0
+      },
+      "es": {
+        "en": 0.68,
+        "es": 1.0,
+        "zh": 0.92
+      },
+      "zh": {
+        "en": 0.64,
+        "es": 0.84,
+        "zh": 1.0
+      }
+    },
+    "16": {
+      "en": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "es": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "zh": {
+        "en": 0.88,
+        "es": 1.0,
+        "zh": 1.0
+      }
+    },
+    "24": {
+      "en": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "es": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 0.88
+      },
+      "zh": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      }
+    },
+    "32": {
+      "en": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "es": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "zh": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      }
+    },
+    "40": {
+      "en": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "es": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "zh": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      }
+    },
+    "44": {
+      "en": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "es": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      },
+      "zh": {
+        "en": 1.0,
+        "es": 1.0,
+        "zh": 1.0
+      }
+    }
+  },
+  "mean_cross_language_probe_auroc_by_layer": {
+    "0": 0.5,
+    "4": 0.7133,
+    "8": 0.8133,
+    "16": 0.98,
+    "24": 0.98,
+    "32": 1.0,
+    "40": 1.0,
+    "44": 1.0
+  },
+  "cross_script_pairs_by_layer": {
+    "0": {
+      "en->zh": 0.5,
+      "zh->en": 0.5,
+      "es->zh": 0.5,
+      "zh->es": 0.5
+    },
+    "4": {
+      "en->zh": 0.8,
+      "zh->en": 0.72,
+      "es->zh": 0.72,
+      "zh->es": 0.72
+    },
+    "8": {
+      "en->zh": 1.0,
+      "zh->en": 0.64,
+      "es->zh": 0.92,
+      "zh->es": 0.84
+    },
+    "16": {
+      "en->zh": 1.0,
+      "zh->en": 0.88,
+      "es->zh": 1.0,
+      "zh->es": 1.0
+    },
+    "24": {
+      "en->zh": 1.0,
+      "zh->en": 1.0,
+      "es->zh": 0.88,
+      "zh->es": 1.0
+    },
+    "32": {
+      "en->zh": 1.0,
+      "zh->en": 1.0,
+      "es->zh": 1.0,
+      "zh->es": 1.0
+    },
+    "40": {
+      "en->zh": 1.0,
+      "zh->en": 1.0,
+      "es->zh": 1.0,
+      "zh->es": 1.0
+    },
+    "44": {
+      "en->zh": 1.0,
+      "zh->en": 1.0,
+      "es->zh": 1.0,
+      "zh->es": 1.0
+    }
+  },
+  "best_layer": "32",
+  "best_layer_delta_vs_prompt_text": 0.3933,
+  "zh_prompt_ascii_audit": {
+    "zh_row_count": 10,
+    "rows_with_ascii_tokens": 6,
+    "rows_with_english_theory_terms": 0,
+    "top_ascii_tokens": [
+      [
+        "priya",
+        16
+      ],
+      [
+        "marcus",
+        6
+      ],
+      [
+        "accommodation",
+        2
+      ],
+      [
+        "amina",
+        2
+      ],
+      [
+        "aurora",
+        2
+      ],
+      [
+        "elena",
+        2
+      ],
+      [
+        "hana",
+        2
+      ],
+      [
+        "kim",
+        2
+      ],
+      [
+        "lee",
+        2
+      ],
+      [
+        "luis",
+        2
+      ],
+      [
+        "ortega",
+        2
+      ],
+      [
+        "patel",
+        2
+      ],
+      [
+        "rossi",
+        2
+      ]
+    ],
+    "details": [
+      {
+        "example_key": "theory_group_005__deontology__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_005",
+        "prime_condition": "deontology",
+        "ascii_tokens": [
+          "priya",
+          "priya",
+          "priya",
+          "priya",
+          "priya",
+          "priya"
+        ],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_005__virtue_ethics__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_005",
+        "prime_condition": "virtue_ethics",
+        "ascii_tokens": [
+          "priya",
+          "priya",
+          "priya",
+          "priya",
+          "priya",
+          "priya"
+        ],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_009__deontology__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_009",
+        "prime_condition": "deontology",
+        "ascii_tokens": [],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_009__virtue_ethics__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_009",
+        "prime_condition": "virtue_ethics",
+        "ascii_tokens": [],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_013__deontology__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_013",
+        "prime_condition": "deontology",
+        "ascii_tokens": [
+          "priya",
+          "marcus",
+          "priya",
+          "marcus"
+        ],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_013__virtue_ethics__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_013",
+        "prime_condition": "virtue_ethics",
+        "ascii_tokens": [
+          "priya",
+          "marcus",
+          "priya",
+          "marcus"
+        ],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_015__deontology__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_015",
+        "prime_condition": "deontology",
+        "ascii_tokens": [
+          "aurora",
+          "amina",
+          "patel",
+          "luis",
+          "ortega",
+          "hana",
+          "kim",
+          "elena",
+          "rossi",
+          "marcus",
+          "lee",
+          "accommodation"
+        ],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_015__virtue_ethics__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_015",
+        "prime_condition": "virtue_ethics",
+        "ascii_tokens": [
+          "aurora",
+          "amina",
+          "patel",
+          "luis",
+          "ortega",
+          "hana",
+          "kim",
+          "elena",
+          "rossi",
+          "marcus",
+          "lee",
+          "accommodation"
+        ],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_022__deontology__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_022",
+        "prime_condition": "deontology",
+        "ascii_tokens": [],
+        "english_theory_terms": []
+      },
+      {
+        "example_key": "theory_group_022__virtue_ethics__lang_zh",
+        "language_code": "zh",
+        "group_id": "theory_group_022",
+        "prime_condition": "virtue_ethics",
+        "ascii_tokens": [],
+        "english_theory_terms": []
+      }
+    ]
+  },
+  "random_label_control": {
+    "layer": "32",
+    "permutations": 256,
+    "mean_cross_language_auroc_mean": 0.5019,
+    "mean_cross_language_auroc_p95": 0.8733,
+    "mean_cross_language_auroc_max": 0.9933,
+    "share_mean_cross_language_auroc_ge_060": 0.3398,
+    "share_mean_cross_language_auroc_ge_080": 0.0859,
+    "ordered_pair_summary": {
+      "en->es": {
+        "mean": 0.4916,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "en->zh": {
+        "mean": 0.4883,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "es->en": {
+        "mean": 0.5092,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "es->zh": {
+        "mean": 0.5083,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "zh->en": {
+        "mean": 0.5052,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "zh->es": {
+        "mean": 0.5088,
+        "p95": 1.0,
+        "max": 1.0
+      }
+    }
+  },
+  "recommendation": "Prompt-side looks promising enough to scale, but this pilot is not claim-ready; keep the interpretation frozen and verify on the 30-dilemma run.",
+  "decision": {
+    "best_layer_delta_ge_010": true,
+    "best_layer_mean_cross_language_probe_auroc": 1.0,
+    "random_label_mean_p95_le_060": false,
+    "random_label_share_ge_080_le_010": true
+  }
+}

@@ -1,0 +1,1348 @@
+{
+  "tail_fraction": 0.25,
+  "folds": {
+    "holdout_alias_only": {
+      "fold_name": "holdout_alias_only",
+      "train_example_count": 164,
+      "test_example_count": 235,
+      "test_prime_support": {
+        "contractarianism": 40,
+        "contractualism": 41,
+        "deontology": 42,
+        "generic_ethics_control": 30,
+        "utilitarian": 49,
+        "virtue_ethics": 33
+      },
+      "text_baselines": [
+        {
+          "name": "count_logreg",
+          "accuracy": 0.2979,
+          "balanced_accuracy": 0.3308,
+          "macro_ovr_auroc": 0.7098,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.5,
+              "auroc": 0.7372
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.5891
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.0476,
+              "auroc": 0.7201
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.9,
+              "auroc": 0.8857
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.2041,
+              "auroc": 0.6145
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.3333,
+              "auroc": 0.7123
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.217,
+            "macro_theory_auroc": 0.6746
+          }
+        },
+        {
+          "name": "tfidf_logreg",
+          "accuracy": 0.2894,
+          "balanced_accuracy": 0.3223,
+          "macro_ovr_auroc": 0.7274,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.4,
+              "auroc": 0.7364
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0488,
+              "auroc": 0.6155
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.1667,
+              "auroc": 0.7235
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.9333,
+              "auroc": 0.9072
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.1429,
+              "auroc": 0.5953
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.2424,
+              "auroc": 0.7862
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.2002,
+            "macro_theory_auroc": 0.6914
+          }
+        },
+        {
+          "name": "tfidf_knn",
+          "accuracy": 0.1872,
+          "balanced_accuracy": 0.217,
+          "macro_ovr_auroc": 0.529,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.075,
+              "auroc": 0.4657
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0244,
+              "auroc": 0.4916
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.1429,
+              "auroc": 0.5144
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.8667,
+              "auroc": 0.6626
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.102,
+              "auroc": 0.5241
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.0909,
+              "auroc": 0.5158
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.087,
+            "macro_theory_auroc": 0.5023
+          }
+        }
+      ],
+      "best_text_baseline_by_macro_ovr_auroc": {
+        "name": "tfidf_logreg",
+        "accuracy": 0.2894,
+        "balanced_accuracy": 0.3223,
+        "macro_ovr_auroc": 0.7274,
+        "per_class": {
+          "contractarianism": {
+            "support": 40,
+            "recall": 0.4,
+            "auroc": 0.7364
+          },
+          "contractualism": {
+            "support": 41,
+            "recall": 0.0488,
+            "auroc": 0.6155
+          },
+          "deontology": {
+            "support": 42,
+            "recall": 0.1667,
+            "auroc": 0.7235
+          },
+          "generic_ethics_control": {
+            "support": 30,
+            "recall": 0.9333,
+            "auroc": 0.9072
+          },
+          "utilitarian": {
+            "support": 49,
+            "recall": 0.1429,
+            "auroc": 0.5953
+          },
+          "virtue_ethics": {
+            "support": 33,
+            "recall": 0.2424,
+            "auroc": 0.7862
+          }
+        },
+        "theory_only": {
+          "classes": [
+            "contractarianism",
+            "contractualism",
+            "deontology",
+            "utilitarian",
+            "virtue_ethics"
+          ],
+          "macro_theory_recall": 0.2002,
+          "macro_theory_auroc": 0.6914
+        }
+      },
+      "residualized_probe_by_layer": [
+        {
+          "layer": 0,
+          "accuracy": 0.2,
+          "balanced_accuracy": 0.2253,
+          "macro_ovr_auroc": 0.5641,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.225,
+              "auroc": 0.4996
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.4976
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.2143,
+              "auroc": 0.546
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.7,
+              "auroc": 0.7473
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.0612,
+              "auroc": 0.5576
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.1515,
+              "auroc": 0.5366
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.1304,
+            "macro_theory_auroc": 0.5275
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.097,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.1633
+        },
+        {
+          "layer": 4,
+          "accuracy": 0.2128,
+          "balanced_accuracy": 0.2335,
+          "macro_ovr_auroc": 0.6008,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.3,
+              "auroc": 0.6454
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.5092
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.1905,
+              "auroc": 0.5655
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.6667,
+              "auroc": 0.6912
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.1224,
+              "auroc": 0.6261
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.1212,
+              "auroc": 0.5672
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.1468,
+            "macro_theory_auroc": 0.5827
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0888,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.1266
+        },
+        {
+          "layer": 8,
+          "accuracy": 0.1872,
+          "balanced_accuracy": 0.2032,
+          "macro_ovr_auroc": 0.5779,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.225,
+              "auroc": 0.5062
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.6726
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.2143,
+              "auroc": 0.5376
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.5667,
+              "auroc": 0.6964
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.1224,
+              "auroc": 0.4529
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.0909,
+              "auroc": 0.6014
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.1305,
+            "macro_theory_auroc": 0.5541
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.1191,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.1495
+        },
+        {
+          "layer": 16,
+          "accuracy": 0.1447,
+          "balanced_accuracy": 0.1658,
+          "macro_ovr_auroc": 0.5415,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.175,
+              "auroc": 0.5012
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.4562
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.0952,
+              "auroc": 0.518
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.6333,
+              "auroc": 0.6298
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.0612,
+              "auroc": 0.5427
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.0303,
+              "auroc": 0.6013
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.0723,
+            "macro_theory_auroc": 0.5239
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.1565,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.1859
+        },
+        {
+          "layer": 24,
+          "accuracy": 0.1872,
+          "balanced_accuracy": 0.2171,
+          "macro_ovr_auroc": 0.5594,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.275,
+              "auroc": 0.6571
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.551
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.119,
+              "auroc": 0.4674
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.7667,
+              "auroc": 0.6485
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.0204,
+              "auroc": 0.4765
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.1212,
+              "auroc": 0.5557
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.1071,
+            "macro_theory_auroc": 0.5415
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.1052,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.168
+        },
+        {
+          "layer": 32,
+          "accuracy": 0.1702,
+          "balanced_accuracy": 0.1935,
+          "macro_ovr_auroc": 0.5624,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.25,
+              "auroc": 0.561
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.5236
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.1429,
+              "auroc": 0.5313
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.6667,
+              "auroc": 0.674
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.0408,
+              "auroc": 0.5605
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.0606,
+              "auroc": 0.5242
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.0989,
+            "macro_theory_auroc": 0.5401
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.1288,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.165
+        },
+        {
+          "layer": 40,
+          "accuracy": 0.2426,
+          "balanced_accuracy": 0.2736,
+          "macro_ovr_auroc": 0.588,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.375,
+              "auroc": 0.6468
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.4703
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.2381,
+              "auroc": 0.6251
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.8667,
+              "auroc": 0.7738
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.0408,
+              "auroc": 0.4906
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.1212,
+              "auroc": 0.5212
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.155,
+            "macro_theory_auroc": 0.5508
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0487,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.1394
+        },
+        {
+          "layer": 44,
+          "accuracy": 0.183,
+          "balanced_accuracy": 0.2138,
+          "macro_ovr_auroc": 0.5576,
+          "per_class": {
+            "contractarianism": {
+              "support": 40,
+              "recall": 0.25,
+              "auroc": 0.5599
+            },
+            "contractualism": {
+              "support": 41,
+              "recall": 0.0,
+              "auroc": 0.5097
+            },
+            "deontology": {
+              "support": 42,
+              "recall": 0.0476,
+              "auroc": 0.4484
+            },
+            "generic_ethics_control": {
+              "support": 30,
+              "recall": 0.8333,
+              "auroc": 0.7494
+            },
+            "utilitarian": {
+              "support": 49,
+              "recall": 0.0612,
+              "auroc": 0.5586
+            },
+            "virtue_ethics": {
+              "support": 33,
+              "recall": 0.0909,
+              "auroc": 0.5194
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.0899,
+            "macro_theory_auroc": 0.5192
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.1085,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.1698
+        }
+      ],
+      "best_residualized_probe_layer": {
+        "layer": 4,
+        "accuracy": 0.2128,
+        "balanced_accuracy": 0.2335,
+        "macro_ovr_auroc": 0.6008,
+        "per_class": {
+          "contractarianism": {
+            "support": 40,
+            "recall": 0.3,
+            "auroc": 0.6454
+          },
+          "contractualism": {
+            "support": 41,
+            "recall": 0.0,
+            "auroc": 0.5092
+          },
+          "deontology": {
+            "support": 42,
+            "recall": 0.1905,
+            "auroc": 0.5655
+          },
+          "generic_ethics_control": {
+            "support": 30,
+            "recall": 0.6667,
+            "auroc": 0.6912
+          },
+          "utilitarian": {
+            "support": 49,
+            "recall": 0.1224,
+            "auroc": 0.6261
+          },
+          "virtue_ethics": {
+            "support": 33,
+            "recall": 0.1212,
+            "auroc": 0.5672
+          }
+        },
+        "theory_only": {
+          "classes": [
+            "contractarianism",
+            "contractualism",
+            "deontology",
+            "utilitarian",
+            "virtue_ethics"
+          ],
+          "macro_theory_recall": 0.1468,
+          "macro_theory_auroc": 0.5827
+        },
+        "residualized_probe_minus_best_text_balanced_accuracy": -0.0888,
+        "residualized_probe_minus_best_text_macro_ovr_auroc": -0.1266
+      }
+    },
+    "holdout_description_only": {
+      "fold_name": "holdout_description_only",
+      "train_example_count": 295,
+      "test_example_count": 104,
+      "test_prime_support": {
+        "contractarianism": 27,
+        "contractualism": 8,
+        "deontology": 26,
+        "utilitarian": 19,
+        "virtue_ethics": 24
+      },
+      "text_baselines": [
+        {
+          "name": "count_logreg",
+          "accuracy": 0.4327,
+          "balanced_accuracy": 0.4146,
+          "macro_ovr_auroc": 0.75,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.3704,
+              "auroc": 0.8264
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.5781
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.3846,
+              "auroc": 0.7761
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.5263,
+              "auroc": 0.7053
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.5417,
+              "auroc": 0.8641
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.4146,
+            "macro_theory_auroc": 0.75
+          }
+        },
+        {
+          "name": "tfidf_logreg",
+          "accuracy": 0.375,
+          "balanced_accuracy": 0.3375,
+          "macro_ovr_auroc": 0.7383,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.3333,
+              "auroc": 0.7999
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.125,
+              "auroc": 0.6562
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.5385,
+              "auroc": 0.7747
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.3158,
+              "auroc": 0.6031
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.375,
+              "auroc": 0.8578
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.3375,
+            "macro_theory_auroc": 0.7383
+          }
+        },
+        {
+          "name": "tfidf_knn",
+          "accuracy": 0.2115,
+          "balanced_accuracy": 0.2019,
+          "macro_ovr_auroc": 0.5436,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.2593,
+              "auroc": 0.5647
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.125,
+              "auroc": 0.4792
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.1538,
+              "auroc": 0.5513
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.2632,
+              "auroc": 0.5375
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.2083,
+              "auroc": 0.5854
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.2019,
+            "macro_theory_auroc": 0.5436
+          }
+        }
+      ],
+      "best_text_baseline_by_macro_ovr_auroc": {
+        "name": "count_logreg",
+        "accuracy": 0.4327,
+        "balanced_accuracy": 0.4146,
+        "macro_ovr_auroc": 0.75,
+        "per_class": {
+          "contractarianism": {
+            "support": 27,
+            "recall": 0.3704,
+            "auroc": 0.8264
+          },
+          "contractualism": {
+            "support": 8,
+            "recall": 0.25,
+            "auroc": 0.5781
+          },
+          "deontology": {
+            "support": 26,
+            "recall": 0.3846,
+            "auroc": 0.7761
+          },
+          "generic_ethics_control": {
+            "support": 0,
+            "recall": null,
+            "auroc": null
+          },
+          "utilitarian": {
+            "support": 19,
+            "recall": 0.5263,
+            "auroc": 0.7053
+          },
+          "virtue_ethics": {
+            "support": 24,
+            "recall": 0.5417,
+            "auroc": 0.8641
+          }
+        },
+        "theory_only": {
+          "classes": [
+            "contractarianism",
+            "contractualism",
+            "deontology",
+            "utilitarian",
+            "virtue_ethics"
+          ],
+          "macro_theory_recall": 0.4146,
+          "macro_theory_auroc": 0.75
+        }
+      },
+      "residualized_probe_by_layer": [
+        {
+          "layer": 0,
+          "accuracy": 0.3654,
+          "balanced_accuracy": 0.3463,
+          "macro_ovr_auroc": 0.6757,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.4444,
+              "auroc": 0.7585
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.3945
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.3462,
+              "auroc": 0.7165
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.3158,
+              "auroc": 0.6526
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.375,
+              "auroc": 0.8563
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.3463,
+            "macro_theory_auroc": 0.6757
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0683,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0743
+        },
+        {
+          "layer": 4,
+          "accuracy": 0.4712,
+          "balanced_accuracy": 0.446,
+          "macro_ovr_auroc": 0.7313,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.3704,
+              "auroc": 0.7941
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.5703
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.5,
+              "auroc": 0.7747
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.5263,
+              "auroc": 0.6762
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.5833,
+              "auroc": 0.8411
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.446,
+            "macro_theory_auroc": 0.7313
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": 0.0314,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0187
+        },
+        {
+          "layer": 8,
+          "accuracy": 0.375,
+          "balanced_accuracy": 0.3618,
+          "macro_ovr_auroc": 0.6862,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.3333,
+              "auroc": 0.7191
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.4909
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.3462,
+              "auroc": 0.6943
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.4211,
+              "auroc": 0.6799
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.4583,
+              "auroc": 0.8469
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.3618,
+            "macro_theory_auroc": 0.6862
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0528,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0638
+        },
+        {
+          "layer": 16,
+          "accuracy": 0.3846,
+          "balanced_accuracy": 0.3673,
+          "macro_ovr_auroc": 0.6972,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.3333,
+              "auroc": 0.7196
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.5013
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.3846,
+              "auroc": 0.7204
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.3684,
+              "auroc": 0.7313
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.5,
+              "auroc": 0.8135
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.3673,
+            "macro_theory_auroc": 0.6972
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0473,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0528
+        },
+        {
+          "layer": 24,
+          "accuracy": 0.4712,
+          "balanced_accuracy": 0.4404,
+          "macro_ovr_auroc": 0.684,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.4815,
+              "auroc": 0.7484
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.4596
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.5385,
+              "auroc": 0.7268
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.4737,
+              "auroc": 0.6588
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.4583,
+              "auroc": 0.826
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.4404,
+            "macro_theory_auroc": 0.6839
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": 0.0258,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.066
+        },
+        {
+          "layer": 32,
+          "accuracy": 0.4423,
+          "balanced_accuracy": 0.4123,
+          "macro_ovr_auroc": 0.6979,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.4815,
+              "auroc": 0.7734
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.457
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.4615,
+              "auroc": 0.7914
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.3684,
+              "auroc": 0.7201
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.5,
+              "auroc": 0.7474
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.4123,
+            "macro_theory_auroc": 0.6979
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0023,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0521
+        },
+        {
+          "layer": 40,
+          "accuracy": 0.375,
+          "balanced_accuracy": 0.3587,
+          "macro_ovr_auroc": 0.6838,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.3704,
+              "auroc": 0.7946
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.3398
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.3462,
+              "auroc": 0.7451
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.3684,
+              "auroc": 0.7263
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.4583,
+              "auroc": 0.813
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.3587,
+            "macro_theory_auroc": 0.6838
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0559,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0662
+        },
+        {
+          "layer": 44,
+          "accuracy": 0.4327,
+          "balanced_accuracy": 0.4067,
+          "macro_ovr_auroc": 0.6929,
+          "per_class": {
+            "contractarianism": {
+              "support": 27,
+              "recall": 0.3704,
+              "auroc": 0.784
+            },
+            "contractualism": {
+              "support": 8,
+              "recall": 0.25,
+              "auroc": 0.362
+            },
+            "deontology": {
+              "support": 26,
+              "recall": 0.4615,
+              "auroc": 0.7564
+            },
+            "generic_ethics_control": {
+              "support": 0,
+              "recall": null,
+              "auroc": null
+            },
+            "utilitarian": {
+              "support": 19,
+              "recall": 0.3684,
+              "auroc": 0.6848
+            },
+            "virtue_ethics": {
+              "support": 24,
+              "recall": 0.5833,
+              "auroc": 0.8771
+            }
+          },
+          "theory_only": {
+            "classes": [
+              "contractarianism",
+              "contractualism",
+              "deontology",
+              "utilitarian",
+              "virtue_ethics"
+            ],
+            "macro_theory_recall": 0.4067,
+            "macro_theory_auroc": 0.6929
+          },
+          "residualized_probe_minus_best_text_balanced_accuracy": -0.0079,
+          "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0571
+        }
+      ],
+      "best_residualized_probe_layer": {
+        "layer": 4,
+        "accuracy": 0.4712,
+        "balanced_accuracy": 0.446,
+        "macro_ovr_auroc": 0.7313,
+        "per_class": {
+          "contractarianism": {
+            "support": 27,
+            "recall": 0.3704,
+            "auroc": 0.7941
+          },
+          "contractualism": {
+            "support": 8,
+            "recall": 0.25,
+            "auroc": 0.5703
+          },
+          "deontology": {
+            "support": 26,
+            "recall": 0.5,
+            "auroc": 0.7747
+          },
+          "generic_ethics_control": {
+            "support": 0,
+            "recall": null,
+            "auroc": null
+          },
+          "utilitarian": {
+            "support": 19,
+            "recall": 0.5263,
+            "auroc": 0.6762
+          },
+          "virtue_ethics": {
+            "support": 24,
+            "recall": 0.5833,
+            "auroc": 0.8411
+          }
+        },
+        "theory_only": {
+          "classes": [
+            "contractarianism",
+            "contractualism",
+            "deontology",
+            "utilitarian",
+            "virtue_ethics"
+          ],
+          "macro_theory_recall": 0.446,
+          "macro_theory_auroc": 0.7313
+        },
+        "residualized_probe_minus_best_text_balanced_accuracy": 0.0314,
+        "residualized_probe_minus_best_text_macro_ovr_auroc": -0.0187
+      }
+    }
+  }
+}

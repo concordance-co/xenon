@@ -1,0 +1,664 @@
+{
+  "families": [
+    "alias_only",
+    "description_only",
+    "generic_ethics_control",
+    "name_only"
+  ],
+  "row_count": 399,
+  "vocabulary_overlap": {
+    "alias_only__vs__description_only": {
+      "pair_count": 90,
+      "mean_jaccard": 0.2839,
+      "median_jaccard": 0.2778
+    },
+    "alias_only__vs__generic_ethics_control": {
+      "pair_count": 30,
+      "mean_jaccard": 0.7148,
+      "median_jaccard": 0.7158
+    },
+    "alias_only__vs__name_only": {
+      "pair_count": 30,
+      "mean_jaccard": 0.7242,
+      "median_jaccard": 0.7902
+    },
+    "description_only__vs__generic_ethics_control": {
+      "pair_count": 0,
+      "mean_jaccard": null,
+      "median_jaccard": null
+    },
+    "description_only__vs__name_only": {
+      "pair_count": 0,
+      "mean_jaccard": null,
+      "median_jaccard": null
+    },
+    "generic_ethics_control__vs__name_only": {
+      "pair_count": 30,
+      "mean_jaccard": 0.7614,
+      "median_jaccard": 0.7863
+    }
+  },
+  "within_family_group_holdout": {
+    "alias_only": {
+      "class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_example_count": 220,
+      "test_example_count": 15,
+      "train_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "test_class_names": [
+        "contractarianism",
+        "contractualism",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_prime_support": {
+        "contractarianism": 37,
+        "contractualism": 37,
+        "deontology": 42,
+        "generic_ethics_control": 27,
+        "utilitarian": 45,
+        "virtue_ethics": 32
+      },
+      "test_prime_support": {
+        "contractarianism": 3,
+        "contractualism": 4,
+        "generic_ethics_control": 3,
+        "utilitarian": 4,
+        "virtue_ethics": 1
+      },
+      "text_baseline": {
+        "accuracy": 0.8,
+        "balanced_accuracy": 0.8167
+      },
+      "best_probe_layer": {
+        "layer": 4,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "probe_minus_text_baseline_balanced_accuracy": 0.1833
+      },
+      "probe_by_layer": [
+        {
+          "layer": 0,
+          "accuracy": 0.6,
+          "balanced_accuracy": 0.65,
+          "probe_minus_text_baseline_balanced_accuracy": -0.1667
+        },
+        {
+          "layer": 4,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.1833
+        },
+        {
+          "layer": 8,
+          "accuracy": 0.9333,
+          "balanced_accuracy": 0.95,
+          "probe_minus_text_baseline_balanced_accuracy": 0.1333
+        },
+        {
+          "layer": 16,
+          "accuracy": 0.9333,
+          "balanced_accuracy": 0.95,
+          "probe_minus_text_baseline_balanced_accuracy": 0.1333
+        },
+        {
+          "layer": 24,
+          "accuracy": 0.9333,
+          "balanced_accuracy": 0.95,
+          "probe_minus_text_baseline_balanced_accuracy": 0.1333
+        },
+        {
+          "layer": 32,
+          "accuracy": 0.8,
+          "balanced_accuracy": 0.8333,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0166
+        },
+        {
+          "layer": 40,
+          "accuracy": 0.8667,
+          "balanced_accuracy": 0.8833,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0666
+        },
+        {
+          "layer": 44,
+          "accuracy": 0.8,
+          "balanced_accuracy": 0.8167,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        }
+      ]
+    },
+    "description_only": {
+      "class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_example_count": 95,
+      "test_example_count": 9,
+      "train_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "test_class_names": [
+        "contractarianism",
+        "deontology",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_prime_support": {
+        "contractarianism": 24,
+        "contractualism": 8,
+        "deontology": 24,
+        "utilitarian": 18,
+        "virtue_ethics": 21
+      },
+      "test_prime_support": {
+        "contractarianism": 3,
+        "deontology": 2,
+        "utilitarian": 1,
+        "virtue_ethics": 3
+      },
+      "text_baseline": {
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0
+      },
+      "best_probe_layer": {
+        "layer": 0,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0
+      },
+      "probe_by_layer": [
+        {
+          "layer": 0,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        },
+        {
+          "layer": 4,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        },
+        {
+          "layer": 8,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        },
+        {
+          "layer": 16,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        },
+        {
+          "layer": 24,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        },
+        {
+          "layer": 32,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        },
+        {
+          "layer": 40,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        },
+        {
+          "layer": 44,
+          "accuracy": 1.0,
+          "balanced_accuracy": 1.0,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0
+        }
+      ]
+    },
+    "generic_ethics_control": {
+      "class_names": [
+        "generic_ethics_control"
+      ],
+      "train_example_count": 27,
+      "test_example_count": 3,
+      "train_class_names": [
+        "generic_ethics_control"
+      ],
+      "test_class_names": [
+        "generic_ethics_control"
+      ],
+      "train_prime_support": {
+        "generic_ethics_control": 27
+      },
+      "test_prime_support": {
+        "generic_ethics_control": 3
+      },
+      "error": "Split does not contain at least two classes in both train and test"
+    },
+    "name_only": {
+      "class_names": [
+        "generic_ethics_control"
+      ],
+      "train_example_count": 27,
+      "test_example_count": 3,
+      "train_class_names": [
+        "generic_ethics_control"
+      ],
+      "test_class_names": [
+        "generic_ethics_control"
+      ],
+      "train_prime_support": {
+        "generic_ethics_control": 27
+      },
+      "test_prime_support": {
+        "generic_ethics_control": 3
+      },
+      "error": "Split does not contain at least two classes in both train and test"
+    }
+  },
+  "mixed_family_group_holdout": {
+    "class_names": [
+      "contractarianism",
+      "contractualism",
+      "deontology",
+      "generic_ethics_control",
+      "utilitarian",
+      "virtue_ethics"
+    ],
+    "train_example_count": 369,
+    "test_example_count": 30,
+    "train_class_names": [
+      "contractarianism",
+      "contractualism",
+      "deontology",
+      "generic_ethics_control",
+      "utilitarian",
+      "virtue_ethics"
+    ],
+    "test_class_names": [
+      "contractarianism",
+      "contractualism",
+      "deontology",
+      "generic_ethics_control",
+      "utilitarian",
+      "virtue_ethics"
+    ],
+    "train_prime_support": {
+      "contractarianism": 61,
+      "contractualism": 45,
+      "deontology": 66,
+      "generic_ethics_control": 81,
+      "utilitarian": 63,
+      "virtue_ethics": 53
+    },
+    "test_prime_support": {
+      "contractarianism": 6,
+      "contractualism": 4,
+      "deontology": 2,
+      "generic_ethics_control": 9,
+      "utilitarian": 5,
+      "virtue_ethics": 4
+    },
+    "text_baseline": {
+      "accuracy": 0.9,
+      "balanced_accuracy": 0.9444
+    },
+    "best_probe_layer": {
+      "layer": 4,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "probe_minus_text_baseline_balanced_accuracy": 0.0556
+    },
+    "probe_by_layer": [
+      {
+        "layer": 0,
+        "accuracy": 0.8333,
+        "balanced_accuracy": 0.8778,
+        "probe_minus_text_baseline_balanced_accuracy": -0.0666
+      },
+      {
+        "layer": 4,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0556
+      },
+      {
+        "layer": 8,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0556
+      },
+      {
+        "layer": 16,
+        "accuracy": 0.9667,
+        "balanced_accuracy": 0.9815,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0371
+      },
+      {
+        "layer": 24,
+        "accuracy": 0.9667,
+        "balanced_accuracy": 0.9583,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0139
+      },
+      {
+        "layer": 32,
+        "accuracy": 0.9333,
+        "balanced_accuracy": 0.963,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0186
+      },
+      {
+        "layer": 40,
+        "accuracy": 0.9667,
+        "balanced_accuracy": 0.9815,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0371
+      },
+      {
+        "layer": 44,
+        "accuracy": 0.9667,
+        "balanced_accuracy": 0.9815,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0371
+      }
+    ]
+  },
+  "leave_one_family_out": {
+    "alias_only": {
+      "class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_example_count": 164,
+      "test_example_count": 235,
+      "train_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "test_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_prime_support": {
+        "contractarianism": 27,
+        "contractualism": 8,
+        "deontology": 26,
+        "generic_ethics_control": 60,
+        "utilitarian": 19,
+        "virtue_ethics": 24
+      },
+      "test_prime_support": {
+        "contractarianism": 40,
+        "contractualism": 41,
+        "deontology": 42,
+        "generic_ethics_control": 30,
+        "utilitarian": 49,
+        "virtue_ethics": 33
+      },
+      "text_baseline": {
+        "accuracy": 0.4255,
+        "balanced_accuracy": 0.4686
+      },
+      "best_probe_layer": {
+        "layer": 4,
+        "accuracy": 0.4681,
+        "balanced_accuracy": 0.5055,
+        "probe_minus_text_baseline_balanced_accuracy": 0.0369
+      },
+      "probe_by_layer": [
+        {
+          "layer": 0,
+          "accuracy": 0.4,
+          "balanced_accuracy": 0.4333,
+          "probe_minus_text_baseline_balanced_accuracy": -0.0353
+        },
+        {
+          "layer": 4,
+          "accuracy": 0.4681,
+          "balanced_accuracy": 0.5055,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0369
+        },
+        {
+          "layer": 8,
+          "accuracy": 0.4553,
+          "balanced_accuracy": 0.4954,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0268
+        },
+        {
+          "layer": 16,
+          "accuracy": 0.4681,
+          "balanced_accuracy": 0.5021,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0335
+        },
+        {
+          "layer": 24,
+          "accuracy": 0.3787,
+          "balanced_accuracy": 0.4129,
+          "probe_minus_text_baseline_balanced_accuracy": -0.0557
+        },
+        {
+          "layer": 32,
+          "accuracy": 0.4511,
+          "balanced_accuracy": 0.484,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0154
+        },
+        {
+          "layer": 40,
+          "accuracy": 0.4085,
+          "balanced_accuracy": 0.4315,
+          "probe_minus_text_baseline_balanced_accuracy": -0.0371
+        },
+        {
+          "layer": 44,
+          "accuracy": 0.4255,
+          "balanced_accuracy": 0.4613,
+          "probe_minus_text_baseline_balanced_accuracy": -0.0073
+        }
+      ]
+    },
+    "description_only": {
+      "class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_example_count": 295,
+      "test_example_count": 104,
+      "train_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "test_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_prime_support": {
+        "contractarianism": 40,
+        "contractualism": 41,
+        "deontology": 42,
+        "generic_ethics_control": 90,
+        "utilitarian": 49,
+        "virtue_ethics": 33
+      },
+      "test_prime_support": {
+        "contractarianism": 27,
+        "contractualism": 8,
+        "deontology": 26,
+        "utilitarian": 19,
+        "virtue_ethics": 24
+      },
+      "text_baseline": {
+        "accuracy": 0.6827,
+        "balanced_accuracy": 0.6187
+      },
+      "best_probe_layer": {
+        "layer": 8,
+        "accuracy": 0.8942,
+        "balanced_accuracy": 0.8203,
+        "probe_minus_text_baseline_balanced_accuracy": 0.2016
+      },
+      "probe_by_layer": [
+        {
+          "layer": 0,
+          "accuracy": 0.7308,
+          "balanced_accuracy": 0.6412,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0225
+        },
+        {
+          "layer": 4,
+          "accuracy": 0.7788,
+          "balanced_accuracy": 0.7147,
+          "probe_minus_text_baseline_balanced_accuracy": 0.096
+        },
+        {
+          "layer": 8,
+          "accuracy": 0.8942,
+          "balanced_accuracy": 0.8203,
+          "probe_minus_text_baseline_balanced_accuracy": 0.2016
+        },
+        {
+          "layer": 16,
+          "accuracy": 0.7692,
+          "balanced_accuracy": 0.7055,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0868
+        },
+        {
+          "layer": 24,
+          "accuracy": 0.7885,
+          "balanced_accuracy": 0.7064,
+          "probe_minus_text_baseline_balanced_accuracy": 0.0877
+        },
+        {
+          "layer": 32,
+          "accuracy": 0.8173,
+          "balanced_accuracy": 0.7475,
+          "probe_minus_text_baseline_balanced_accuracy": 0.1288
+        },
+        {
+          "layer": 40,
+          "accuracy": 0.7981,
+          "balanced_accuracy": 0.7494,
+          "probe_minus_text_baseline_balanced_accuracy": 0.1307
+        },
+        {
+          "layer": 44,
+          "accuracy": 0.8558,
+          "balanced_accuracy": 0.7808,
+          "probe_minus_text_baseline_balanced_accuracy": 0.1621
+        }
+      ]
+    },
+    "generic_ethics_control": {
+      "class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_example_count": 369,
+      "test_example_count": 30,
+      "train_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "test_class_names": [
+        "generic_ethics_control"
+      ],
+      "train_prime_support": {
+        "contractarianism": 67,
+        "contractualism": 49,
+        "deontology": 68,
+        "generic_ethics_control": 60,
+        "utilitarian": 68,
+        "virtue_ethics": 57
+      },
+      "test_prime_support": {
+        "generic_ethics_control": 30
+      },
+      "error": "Split does not contain at least two classes in both train and test"
+    },
+    "name_only": {
+      "class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "train_example_count": 369,
+      "test_example_count": 30,
+      "train_class_names": [
+        "contractarianism",
+        "contractualism",
+        "deontology",
+        "generic_ethics_control",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "test_class_names": [
+        "generic_ethics_control"
+      ],
+      "train_prime_support": {
+        "contractarianism": 67,
+        "contractualism": 49,
+        "deontology": 68,
+        "generic_ethics_control": 60,
+        "utilitarian": 68,
+        "virtue_ethics": 57
+      },
+      "test_prime_support": {
+        "generic_ethics_control": 30
+      },
+      "error": "Split does not contain at least two classes in both train and test"
+    }
+  }
+}

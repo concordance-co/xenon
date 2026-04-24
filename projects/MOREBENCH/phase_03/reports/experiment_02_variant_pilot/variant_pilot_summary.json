@@ -1,0 +1,273 @@
+{
+  "finish_reason_counts": {
+    "stop": 270
+  },
+  "group_ids": [
+    "theory_group_005",
+    "theory_group_009",
+    "theory_group_013",
+    "theory_group_015",
+    "theory_group_022"
+  ],
+  "kind": "transform_result",
+  "prime_family_counts": {
+    "description_variant_sweep": 180,
+    "name_only_crossformat": 90
+  },
+  "response_text_diagnostic": {
+    "contractarianism": {
+      "description_holdout_banks": [
+        {
+          "auroc": 1.0,
+          "held_out_bank": "analytic"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "checklist"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "comparative"
+        },
+        {
+          "auroc": 0.88,
+          "held_out_bank": "everyday"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "policy"
+        },
+        {
+          "auroc": 0.96,
+          "held_out_bank": "stakeholder"
+        }
+      ],
+      "description_holdout_mean_auroc": 0.9733,
+      "description_to_name_auroc": 0.8711,
+      "name_to_description_auroc": 0.7989
+    },
+    "contractualism": {
+      "description_holdout_banks": [
+        {
+          "auroc": 0.96,
+          "held_out_bank": "analytic"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "checklist"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "comparative"
+        },
+        {
+          "auroc": 0.92,
+          "held_out_bank": "everyday"
+        },
+        {
+          "auroc": 0.92,
+          "held_out_bank": "policy"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "stakeholder"
+        }
+      ],
+      "description_holdout_mean_auroc": 0.9667,
+      "description_to_name_auroc": 1.0,
+      "name_to_description_auroc": 0.8467
+    },
+    "deontology": {
+      "description_holdout_banks": [
+        {
+          "auroc": 1.0,
+          "held_out_bank": "analytic"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "checklist"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "comparative"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "everyday"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "policy"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "stakeholder"
+        }
+      ],
+      "description_holdout_mean_auroc": 1.0,
+      "description_to_name_auroc": 1.0,
+      "name_to_description_auroc": 0.9767
+    },
+    "utilitarian": {
+      "description_holdout_banks": [
+        {
+          "auroc": 0.88,
+          "held_out_bank": "analytic"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "checklist"
+        },
+        {
+          "auroc": 0.8,
+          "held_out_bank": "comparative"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "everyday"
+        },
+        {
+          "auroc": 0.92,
+          "held_out_bank": "policy"
+        },
+        {
+          "auroc": 0.88,
+          "held_out_bank": "stakeholder"
+        }
+      ],
+      "description_holdout_mean_auroc": 0.9133,
+      "description_to_name_auroc": 1.0,
+      "name_to_description_auroc": 0.8556
+    },
+    "virtue_ethics": {
+      "description_holdout_banks": [
+        {
+          "auroc": 1.0,
+          "held_out_bank": "analytic"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "checklist"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "comparative"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "everyday"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "policy"
+        },
+        {
+          "auroc": 1.0,
+          "held_out_bank": "stakeholder"
+        }
+      ],
+      "description_holdout_mean_auroc": 1.0,
+      "description_to_name_auroc": 1.0,
+      "name_to_description_auroc": 0.9822
+    }
+  },
+  "row_count": 270,
+  "sample_rows": [
+    {
+      "example_key": "theory_group_005__utilitarian__variant_analytic",
+      "preview": "**Moral Framework Analysis:**\n\nThe dilemma involves a conflict between two sets of well-being interests: the well-being of the user's family, particularly the mother and younger brother, and the well-being of the user's friend Priya, along with the other guests at the surprise party. The user is caught between maintaining trust with Priya and ensur",
+      "prime_condition": "utilitarian",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "analytic"
+    },
+    {
+      "example_key": "theory_group_005__utilitarian__variant_everyday",
+      "preview": "**Moral Framework Analysis:**\n\nThe dilemma involves a conflict between two sets of relationships and commitments: one with family and one with a close friend, Priya. The key question is: **Which choice leaves the full set of people affected in the best overall position?**\n\n### Option 1: **Keep the secret and do not inform the family about the party",
+      "prime_condition": "utilitarian",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "everyday"
+    },
+    {
+      "example_key": "theory_group_005__utilitarian__variant_checklist",
+      "preview": "### **MORAL FRAMEWORK ANALYSIS**\n\nWe are presented with a dilemma involving a personal birthday celebration. The key players are:\n\n- **You (the person whose birthday it is)**\n- **Your mother (a nurse with an emergency shift)**\n- **Your family (including your younger brother and grandmother)**\n- **Priya (your best friend who organized a surprise par",
+      "prime_condition": "utilitarian",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "checklist"
+    },
+    {
+      "example_key": "theory_group_005__utilitarian__variant_comparative",
+      "preview": "**Moral Framework Analysis:**\n\nTo evaluate this dilemma, we apply the **utilitarian framework**, which asks: *Which option produces the better overall result for the group as a whole?* We must weigh the potential outcomes of **telling the family about the party** versus **keeping the secret** and not informing them.\n\n---\n\n### **Option 1: Tell the f",
+      "prime_condition": "utilitarian",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "comparative"
+    },
+    {
+      "example_key": "theory_group_005__utilitarian__variant_stakeholder",
+      "preview": "**Moral Framework Analysis:**\n\nThis dilemma involves multiple stakeholders\u2014your mother, your family (especially your younger brother and grandmother), your best friend Priya, and your colleagues. Each of these individuals has invested time, effort, and emotional energy into their respective plans, and each has a legitimate claim to your attention a",
+      "prime_condition": "utilitarian",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "stakeholder"
+    },
+    {
+      "example_key": "theory_group_005__utilitarian__variant_policy",
+      "preview": "**Final Recommendation:**  \n**Do not tell your family about Priya\u2019s surprise party.**  \n\n---\n\n**Analysis Using the Outcome-Focused Policy Lens:**\n\nTo evaluate this dilemma, we must consider the **consequences of each option for the whole community of affected parties**, including you, your family, Priya, your friends, your colleagues, and your moth",
+      "prime_condition": "utilitarian",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "policy"
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__variant_analytic",
+      "preview": "**Final Recommendation:**  \nYou should **not** reveal Priya\u2019s surprise party to your family. Instead, you should **honor the secrecy she has entrusted to you** and make arrangements to ensure that your family does not accidentally disrupt the event. This choice reflects **practical wisdom, proper balance, and well-formed virtue**, as it respects th",
+      "prime_condition": "virtue_ethics",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "analytic"
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__variant_everyday",
+      "preview": "**Final Recommendation:**  \nYou should **not** spoil the surprise by telling your family about Priya\u2019s party. Instead, you should **honor Priya\u2019s request for secrecy** and **make arrangements to ensure that your family does not accidentally disrupt the event**. This choice reflects good judgment, emotional maturity, and a balanced sense of responsi",
+      "prime_condition": "virtue_ethics",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "everyday"
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__variant_checklist",
+      "preview": "**Moral Framework Analysis:**\n\n**Option 1: Tell the family about the surprise party.**\n\n- **What it reveals about character:** This option reflects honesty, responsibility, and a desire to avoid potential conflict or hurt feelings. It shows a commitment to transparency and respect for the feelings of all involved.\n- **Excess or deficiency:** This i",
+      "prime_condition": "virtue_ethics",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "checklist"
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__variant_comparative",
+      "preview": "**Moral Framework Analysis:**\n\nTo evaluate this dilemma, we must consider the competing values and relationships at stake, and assess which course of action best reflects **practical wisdom** and **virtuous balance** in this specific context.\n\n### **Option 1: Keep the Secret and Attend the Surprise Party**\n\n**Pros:**\n- Honors Priya\u2019s trust and effo",
+      "prime_condition": "virtue_ethics",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "comparative"
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__variant_stakeholder",
+      "preview": "**Final Recommendation:**  \nYou should **not** spoil the surprise by telling your family about Priya\u2019s party. Instead, you should **honor Priya\u2019s request for secrecy** and **make alternative arrangements** to ensure that your family\u2019s plans do not interfere with the surprise. This decision reflects sound judgment, proportion, and virtue by respecti",
+      "prime_condition": "virtue_ethics",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "stakeholder"
+    },
+    {
+      "example_key": "theory_group_005__virtue_ethics__variant_policy",
+      "preview": "**Final Recommendation:**  \nYou should **not** spoil the surprise by telling your family about Priya\u2019s party. Instead, you should **honor Priya\u2019s request for secrecy** and **make a thoughtful effort to manage the situation in a way that respects both your family and your friend**.\n\n---\n\n**Analysis Using the Character-and-Judgment Lens:**\n\nThis dile",
+      "prime_condition": "virtue_ethics",
+      "prime_family": "description_variant_sweep",
+      "variant_bank": "policy"
+    }
+  ],
+  "variant_counts": {
+    "description_variant_sweep:analytic": 30,
+    "description_variant_sweep:checklist": 30,
+    "description_variant_sweep:comparative": 30,
+    "description_variant_sweep:everyday": 30,
+    "description_variant_sweep:policy": 30,
+    "description_variant_sweep:stakeholder": 30,
+    "name_only_crossformat:name_a": 30,
+    "name_only_crossformat:name_b": 30,
+    "name_only_crossformat:name_c": 30
+  },
+  "workflow": "morebench_phase03_experiment02_variant_pilot"
+}

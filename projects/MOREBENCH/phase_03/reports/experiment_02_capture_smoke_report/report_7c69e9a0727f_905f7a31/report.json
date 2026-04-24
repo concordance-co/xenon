@@ -1,0 +1,869 @@
+{
+  "inputs": [
+    {
+      "artifact_id": "generation_run_1_35985c0c3945",
+      "artifact_kind": "generation_run",
+      "created_at": "2026-04-23T20:40:52.635492+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/generate_theory_primed_responses_results.json",
+      "engine": {
+        "add_generation_prompt": true,
+        "async_scheduling": false,
+        "distributed_executor_backend": null,
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": true,
+        "enable_thinking": false,
+        "enforce_eager": false,
+        "extra": {},
+        "gpu_memory_utilization": 0.9,
+        "kind": "vllm",
+        "max_model_len": 16384,
+        "max_num_batched_tokens": null,
+        "max_num_seqs": 8,
+        "model_id": "Qwen/Qwen3-30B-A3B",
+        "model_path_root": "/models",
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 1
+      },
+      "example_coverage": {
+        "dataset_id": "866cbf06cc97034c95e1729a",
+        "dataset_name": "morebench_phase03_experiment02_capture_smoke",
+        "example_count": 30,
+        "example_key_count": 30,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [],
+      "label_names": [],
+      "name": "generate_theory_primed_responses",
+      "primary_output": {
+        "bytes": 552671,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/generation_run_1_35985c0c3945/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-5q11wbBvfZWGU7nanLd1sD",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "xenon-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 22769,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/generation_run_1_35985c0c3945/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 552671,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/generation_run_1_35985c0c3945/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "completed_example_count": 30,
+        "example_count": 30,
+        "partial": false,
+        "total_example_count": 30
+      },
+      "workflow": {
+        "run_id": "wr_a3343c545c25_4f4ca71f",
+        "step_index": 0,
+        "step_name": "generate_theory_primed_responses",
+        "workflow_name": "morebench_phase03_experiment02_capture_smoke",
+        "workflow_step_key": "a3343c545c25fd0a247a05efaa626f85a2a293b7eade3ea97f42423d8cdd9ab5.generate_theory_primed_responses"
+      }
+    },
+    {
+      "artifact_id": "transform_1_2e9298c2",
+      "artifact_kind": "transform",
+      "created_at": "2026-04-23T20:41:00.315424+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/build_theory_persistence_capture_dataset_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 23,
+        "example_key_count": 23,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "generation_run_1_35985c0c3945"
+      ],
+      "label_names": [
+        "cue_overlap_copy_flag",
+        "direct_theory_copy_flag",
+        "generated_text",
+        "generated_token_count",
+        "generation_finish_reason",
+        "group_id",
+        "prime_condition",
+        "response_char_length",
+        "source_family",
+        "split",
+        "theory_name_copy_flag"
+      ],
+      "name": "build_theory_persistence_capture_dataset",
+      "primary_output": {
+        "bytes": 281958,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-UHSKioguPiiSstHolBJZp7",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          }
+        ]
+      },
+      "storage": {
+        "labels": {
+          "count": 11,
+          "items": {
+            "cue_overlap_copy_flag": {
+              "bytes": 1422,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/cue_overlap_copy_flag.json",
+              "store": "modal_volume"
+            },
+            "direct_theory_copy_flag": {
+              "bytes": 1424,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/direct_theory_copy_flag.json",
+              "store": "modal_volume"
+            },
+            "generated_text": {
+              "bytes": 89247,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/generated_text.json",
+              "store": "modal_volume"
+            },
+            "generated_token_count": {
+              "bytes": 1401,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/generated_token_count.json",
+              "store": "modal_volume"
+            },
+            "generation_finish_reason": {
+              "bytes": 1471,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/generation_finish_reason.json",
+              "store": "modal_volume"
+            },
+            "group_id": {
+              "bytes": 1731,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/group_id.json",
+              "store": "modal_volume"
+            },
+            "prime_condition": {
+              "bytes": 1712,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/prime_condition.json",
+              "store": "modal_volume"
+            },
+            "response_char_length": {
+              "bytes": 1421,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/response_char_length.json",
+              "store": "modal_volume"
+            },
+            "source_family": {
+              "bytes": 1751,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/source_family.json",
+              "store": "modal_volume"
+            },
+            "split": {
+              "bytes": 1468,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/split.json",
+              "store": "modal_volume"
+            },
+            "theory_name_copy_flag": {
+              "bytes": 1422,
+              "format": "json",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/labels/theory_name_copy_flag.json",
+              "store": "modal_volume"
+            }
+          }
+        },
+        "manifest": {
+          "bytes": 6290,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 281958,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "behavioral_divergence_precheck": {
+          "group_distinct_response_counts": {
+            "theory_group_003": 6,
+            "theory_group_006": 6,
+            "theory_group_017": 6,
+            "theory_group_018": 6,
+            "theory_group_027": 6
+          },
+          "groups_with_at_least_three_distinct_responses": 5,
+          "interpretation": "Use this as a cheap divergence pre-check before upgrading any generation-time persistence claim."
+        },
+        "flagged_direct_copy_count": 7,
+        "kept_capture_example_count": 23,
+        "prime_condition_counts": {
+          "contractarianism": 5,
+          "contractualism": 3,
+          "deontology": 4,
+          "generic_ethics_control": 5,
+          "utilitarian": 4,
+          "virtue_ethics": 2
+        },
+        "skipped_empty_count": 0,
+        "skipped_length_count": 0,
+        "source_family_counts": {
+          "ai_risk_dilemmas": 6,
+          "daily_dilemmas": 10,
+          "expert_written_collab": 7
+        },
+        "source_generation_artifact_id": "generation_run_1_35985c0c3945",
+        "source_row_count": 30
+      },
+      "workflow": {
+        "run_id": "wr_a3343c545c25_4f4ca71f",
+        "step_index": 1,
+        "step_name": "build_theory_persistence_capture_dataset",
+        "workflow_name": "morebench_phase03_experiment02_capture_smoke",
+        "workflow_step_key": "a3343c545c25fd0a247a05efaa626f85a2a293b7eade3ea97f42423d8cdd9ab5.build_theory_persistence_capture_dataset"
+      }
+    },
+    {
+      "artifact_id": "capture_1_9e63d326abde",
+      "artifact_kind": "capture",
+      "created_at": "2026-04-23T20:42:25.540764+00:00",
+      "engine": {
+        "add_generation_prompt": true,
+        "async_scheduling": false,
+        "distributed_executor_backend": null,
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": true,
+        "enable_thinking": false,
+        "enforce_eager": false,
+        "extra": {},
+        "gpu_memory_utilization": 0.9,
+        "kind": "vllm",
+        "max_model_len": 16384,
+        "max_num_batched_tokens": null,
+        "max_num_seqs": 4,
+        "model_id": "Qwen/Qwen3-30B-A3B",
+        "model_path_root": "/models",
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 1
+      },
+      "example_coverage": {
+        "dataset_id": "6147b7a210c8d2d2dd40b128",
+        "dataset_name": "morebench_phase03_experiment02_generation_capture",
+        "example_count": 23,
+        "example_key_count": 23,
+        "materialized": true
+      },
+      "feature_names": [
+        "generated_sequence_residual"
+      ],
+      "has_generations": false,
+      "input_artifact_refs": [],
+      "label_names": [],
+      "name": "capture_generated_sequence_residual",
+      "primary_output": {
+        "bytes": 18686,
+        "format": "json",
+        "name": "manifest",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/capture_1_9e63d326abde/manifest.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-PxaG0gXeZFyLD0CtGMxUFA",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "xenon-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "features": {
+          "count": 1,
+          "items": {
+            "generated_sequence_residual": {
+              "bytes": 423461573,
+              "format": "residual_safetensors_v1",
+              "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/capture_1_9e63d326abde/features/generated_sequence_residual.metadata.json",
+              "store": "modal_volume"
+            }
+          }
+        },
+        "manifest": {
+          "bytes": 18686,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/capture_1_9e63d326abde/manifest.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": null,
+      "workflow": {
+        "run_id": "wr_a3343c545c25_4f4ca71f",
+        "step_index": 2,
+        "step_name": "capture_generated_sequence_residual",
+        "workflow_name": "morebench_phase03_experiment02_capture_smoke",
+        "workflow_step_key": "a3343c545c25fd0a247a05efaa626f85a2a293b7eade3ea97f42423d8cdd9ab5.capture_generated_sequence_residual"
+      }
+    },
+    {
+      "artifact_id": "text_baseline_1_ad6b1575",
+      "artifact_kind": "text_baseline",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy for text split split in step text_baseline_generation_prime_condition.",
+          "chart_kind": "text_split_metric",
+          "figure_id": "text_baseline_generation_prime_condition/split_balanced_accuracy",
+          "path": "assets/text_baseline_generation_prime_condition/split_balanced_accuracy.png",
+          "primary": true,
+          "result_kind": "text_baseline_result",
+          "step_name": "text_baseline_generation_prime_condition",
+          "title": "Balanced Accuracy Split"
+        }
+      ],
+      "created_at": "2026-04-23T20:41:15.399313+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/text_baseline_generation_prime_condition_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 23,
+        "example_key_count": 23,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_cross_transfer_balanced_accuracy": null,
+        "best_split_balanced_accuracy": {
+          "cohort": null,
+          "direction": null,
+          "split_name": "split",
+          "value": 0.6
+        },
+        "example_count": 23,
+        "mode": "split_holdout",
+        "model": "countvectorizer_logreg"
+      },
+      "input_artifact_refs": [
+        "transform_1_2e9298c2"
+      ],
+      "label_names": [],
+      "name": "text_baseline_generation_prime_condition",
+      "primary_output": {
+        "bytes": 894,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/text_baseline_1_ad6b1575/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-DgyhoBku3obaR772SjbE7M",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 3085,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/text_baseline_1_ad6b1575/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 894,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/text_baseline_1_ad6b1575/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "class_count": 6,
+        "cohort_count": 0,
+        "example_count": 23,
+        "mode": "split_holdout",
+        "regularization": [
+          1.0
+        ],
+        "split_names": [
+          "split"
+        ]
+      },
+      "table_path": "tables/text_baseline_generation_prime_condition.json",
+      "workflow": {
+        "run_id": "wr_a3343c545c25_4f4ca71f",
+        "step_index": 3,
+        "step_name": "text_baseline_generation_prime_condition",
+        "workflow_name": "morebench_phase03_experiment02_capture_smoke",
+        "workflow_step_key": "a3343c545c25fd0a247a05efaa626f85a2a293b7eade3ea97f42423d8cdd9ab5.text_baseline_generation_prime_condition"
+      }
+    },
+    {
+      "artifact_id": "probe_1_406968a4",
+      "artifact_kind": "probe",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step probe_generation_prime_condition_residual.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "probe_generation_prime_condition_residual/balanced_accuracy_by_layer",
+          "path": "assets/probe_generation_prime_condition_residual/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "probe_generation_prime_condition_residual",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "Accuracy across captured layers for probe step probe_generation_prime_condition_residual.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "probe_generation_prime_condition_residual/accuracy_by_layer",
+          "path": "assets/probe_generation_prime_condition_residual/accuracy_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "probe_generation_prime_condition_residual",
+          "title": "Accuracy by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step probe_generation_prime_condition_residual.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "probe_generation_prime_condition_residual/probe_metrics_by_layer",
+          "path": "assets/probe_generation_prime_condition_residual/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "probe_generation_prime_condition_residual",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-23T20:42:46.653167+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/probe_generation_prime_condition_residual_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 23,
+        "example_key_count": 23,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 8,
+        "best_metric": "balanced_accuracy",
+        "best_value": 0.9,
+        "example_count": 23,
+        "group_count": 5,
+        "split_mode": "fixed"
+      },
+      "input_artifact_refs": [
+        "capture_1_9e63d326abde",
+        "transform_1_2e9298c2"
+      ],
+      "label_names": [],
+      "name": "probe_generation_prime_condition_residual",
+      "primary_output": {
+        "bytes": 2057,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/probe_1_406968a4/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-mvlzFHBj1uRiUcacPenarU",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 3094,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/probe_1_406968a4/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 2057,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/probe_1_406968a4/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "best_layer": 8,
+        "best_metric": "balanced_accuracy",
+        "best_value": 0.9,
+        "example_count": 23,
+        "group_count": 5,
+        "split_mode": "fixed"
+      },
+      "table_path": "tables/probe_generation_prime_condition_residual.json",
+      "workflow": {
+        "run_id": "wr_a3343c545c25_4f4ca71f",
+        "step_index": 4,
+        "step_name": "probe_generation_prime_condition_residual",
+        "workflow_name": "morebench_phase03_experiment02_capture_smoke",
+        "workflow_step_key": "a3343c545c25fd0a247a05efaa626f85a2a293b7eade3ea97f42423d8cdd9ab5.probe_generation_prime_condition_residual"
+      }
+    },
+    {
+      "artifact_id": "transform_1_5714e0c7",
+      "artifact_kind": "transform",
+      "created_at": "2026-04-23T20:42:53.488021+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/summarize_capture_smoke_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "capture_1_9e63d326abde",
+        "generation_run_1_35985c0c3945",
+        "probe_1_406968a4",
+        "text_baseline_1_ad6b1575",
+        "transform_1_2e9298c2"
+      ],
+      "label_names": [],
+      "name": "summarize_capture_smoke",
+      "primary_output": {
+        "bytes": 1789,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_5714e0c7/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-9iF5a1lZrvuBQFpw8aZZBO",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1882,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_5714e0c7/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 1789,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_5714e0c7/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "benchmark": "morebench",
+        "best_generation_probe": {
+          "accuracy": 0.8571,
+          "balanced_accuracy": 0.9,
+          "baseline_majority": 0.2857,
+          "baseline_shuffled": 0.0,
+          "class_count": 6,
+          "example_count": 23,
+          "layer": 8,
+          "selectivity": 0.8571,
+          "split_mode": "fixed"
+        },
+        "capture_dataset_summary": {
+          "behavioral_divergence_precheck": {
+            "group_distinct_response_counts": {
+              "theory_group_003": 6,
+              "theory_group_006": 6,
+              "theory_group_017": 6,
+              "theory_group_018": 6,
+              "theory_group_027": 6
+            },
+            "groups_with_at_least_three_distinct_responses": 5,
+            "interpretation": "Use this as a cheap divergence pre-check before upgrading any generation-time persistence claim."
+          },
+          "flagged_direct_copy_count": 7,
+          "kept_capture_example_count": 23,
+          "prime_condition_counts": {
+            "contractarianism": 5,
+            "contractualism": 3,
+            "deontology": 4,
+            "generic_ethics_control": 5,
+            "utilitarian": 4,
+            "virtue_ethics": 2
+          },
+          "skipped_empty_count": 0,
+          "skipped_length_count": 0,
+          "source_family_counts": {
+            "ai_risk_dilemmas": 6,
+            "daily_dilemmas": 10,
+            "expert_written_collab": 7
+          },
+          "source_generation_artifact_id": "generation_run_1_35985c0c3945",
+          "source_row_count": 30
+        },
+        "capture_feature_artifact": "capture_1_9e63d326abde",
+        "experiment": "experiment_02_theory_conditioned_generation_persistence",
+        "generated_text_baseline_summary": {
+          "class_count": 6,
+          "cohort_count": 0,
+          "example_count": 23,
+          "mode": "split_holdout",
+          "regularization": [
+            1.0
+          ],
+          "split_names": [
+            "split"
+          ]
+        },
+        "generation_finish_reason_counts": {
+          "stop": 30
+        },
+        "kind": "transform_result",
+        "phase": "03"
+      },
+      "workflow": {
+        "run_id": "wr_a3343c545c25_4f4ca71f",
+        "step_index": 5,
+        "step_name": "summarize_capture_smoke",
+        "workflow_name": "morebench_phase03_experiment02_capture_smoke",
+        "workflow_step_key": "a3343c545c25fd0a247a05efaa626f85a2a293b7eade3ea97f42423d8cdd9ab5.summarize_capture_smoke"
+      }
+    }
+  ],
+  "kind": "report_result",
+  "local_results": [
+    {
+      "artifact_id": "generation_run_1_35985c0c3945",
+      "artifact_kind": "generation_run",
+      "name": "generate_theory_primed_responses",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/generate_theory_primed_responses_results.json",
+      "source": {
+        "bytes": 552671,
+        "format": "json",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/generation_run_1_35985c0c3945/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "transform_1_2e9298c2",
+      "artifact_kind": "transform",
+      "name": "build_theory_persistence_capture_dataset",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/build_theory_persistence_capture_dataset_results.json",
+      "source": {
+        "bytes": 281958,
+        "format": "json",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_2e9298c2/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "text_baseline_1_ad6b1575",
+      "artifact_kind": "text_baseline",
+      "name": "text_baseline_generation_prime_condition",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/text_baseline_generation_prime_condition_results.json",
+      "source": {
+        "bytes": 894,
+        "format": "json",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/text_baseline_1_ad6b1575/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "probe_1_406968a4",
+      "artifact_kind": "probe",
+      "name": "probe_generation_prime_condition_residual",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/probe_generation_prime_condition_residual_results.json",
+      "source": {
+        "bytes": 2057,
+        "format": "json",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/probe_1_406968a4/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "transform_1_5714e0c7",
+      "artifact_kind": "transform",
+      "name": "summarize_capture_smoke",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/summarize_capture_smoke_results.json",
+      "source": {
+        "bytes": 1789,
+        "format": "json",
+        "path": "/data/artifacts/morebench_phase_03_experiment02_smoke/transform_1_5714e0c7/result.json",
+        "store": "modal_volume"
+      }
+    }
+  ],
+  "output_dir": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report",
+  "summary": {
+    "example_count": 30,
+    "figures": {
+      "probe_generation_prime_condition_residual/accuracy_by_layer": {
+        "caption": "Accuracy across captured layers for probe step probe_generation_prime_condition_residual.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "probe_generation_prime_condition_residual/accuracy_by_layer",
+        "path": "assets/probe_generation_prime_condition_residual/accuracy_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "probe_generation_prime_condition_residual",
+        "title": "Accuracy by layer"
+      },
+      "probe_generation_prime_condition_residual/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step probe_generation_prime_condition_residual.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "probe_generation_prime_condition_residual/balanced_accuracy_by_layer",
+        "path": "assets/probe_generation_prime_condition_residual/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "probe_generation_prime_condition_residual",
+        "title": "Balanced Accuracy by layer"
+      },
+      "probe_generation_prime_condition_residual/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step probe_generation_prime_condition_residual.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "probe_generation_prime_condition_residual/probe_metrics_by_layer",
+        "path": "assets/probe_generation_prime_condition_residual/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "probe_generation_prime_condition_residual",
+        "title": "Probe metrics by layer"
+      },
+      "text_baseline_generation_prime_condition/split_balanced_accuracy": {
+        "caption": "Balanced Accuracy for text split split in step text_baseline_generation_prime_condition.",
+        "chart_kind": "text_split_metric",
+        "figure_id": "text_baseline_generation_prime_condition/split_balanced_accuracy",
+        "path": "assets/text_baseline_generation_prime_condition/split_balanced_accuracy.png",
+        "primary": true,
+        "result_kind": "text_baseline_result",
+        "step_name": "text_baseline_generation_prime_condition",
+        "title": "Balanced Accuracy Split"
+      }
+    },
+    "input_count": 6,
+    "step_summaries": {
+      "probe_generation_prime_condition_residual": {
+        "headline_metrics": {
+          "best_layer": 8,
+          "best_metric": "balanced_accuracy",
+          "best_value": 0.9,
+          "example_count": 23,
+          "group_count": 5,
+          "split_mode": "fixed"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "probe_generation_prime_condition_residual/balanced_accuracy_by_layer",
+        "step_name": "probe_generation_prime_condition_residual",
+        "table_path": "tables/probe_generation_prime_condition_residual.json"
+      },
+      "text_baseline_generation_prime_condition": {
+        "headline_metrics": {
+          "best_cross_transfer_balanced_accuracy": null,
+          "best_split_balanced_accuracy": {
+            "cohort": null,
+            "direction": null,
+            "split_name": "split",
+            "value": 0.6
+          },
+          "example_count": 23,
+          "mode": "split_holdout",
+          "model": "countvectorizer_logreg"
+        },
+        "kind": "text_baseline_result",
+        "primary_figure_id": "text_baseline_generation_prime_condition/split_balanced_accuracy",
+        "step_name": "text_baseline_generation_prime_condition",
+        "table_path": "tables/text_baseline_generation_prime_condition.json"
+      }
+    },
+    "tables": {
+      "probe_generation_prime_condition_residual": {
+        "columns": [
+          "accuracy",
+          "balanced_accuracy",
+          "baseline_majority",
+          "baseline_shuffled",
+          "class_count",
+          "example_count",
+          "layer",
+          "selectivity",
+          "split_mode"
+        ],
+        "path": "tables/probe_generation_prime_condition_residual.json",
+        "result_kind": "probe_result",
+        "rows": 6,
+        "step_name": "probe_generation_prime_condition_residual"
+      },
+      "text_baseline_generation_prime_condition": {
+        "columns": [
+          "C",
+          "auroc",
+          "balanced_accuracy",
+          "cohort",
+          "cross_transfer_auroc",
+          "cross_transfer_balanced_accuracy",
+          "direction",
+          "model",
+          "row_kind",
+          "split_name",
+          "transfer_delta_balanced_accuracy",
+          "within_baseline_auroc",
+          "within_baseline_balanced_accuracy"
+        ],
+        "path": "tables/text_baseline_generation_prime_condition.json",
+        "result_kind": "text_baseline_result",
+        "rows": 1,
+        "step_name": "text_baseline_generation_prime_condition"
+      }
+    },
+    "template": "default"
+  },
+  "template": "default"
+}

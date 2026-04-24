@@ -1,11 +1,11 @@
 {
   "benchmark": "morebench",
   "phase": "03",
-  "status": "partial_execution_complete",
+  "status": "experiment_01_and_02_triaged",
   "execution_readiness": {
-    "overall": "execution_blocked_on_response_label_freeze",
+    "overall": "pause_before_new_morebench_response_side_capture",
     "prompt_side": "alias_only_diagnostic_family_materialized_but_prompt_side_retry_gate_still_closed",
-    "response_side": "execution_blocked_on_response_label_freeze",
+    "response_side": "experiment_02_completed_with_behavioral_and_methodological_findings_but_no_supported_level_2_claim",
     "multi_model_policy": "new execution models must record exact config in 03-execution-targets.md and satisfy the same labelability gate before response-side probing"
   },
   "behavioral_gate": {
@@ -66,19 +66,22 @@
     ]
   },
   "claim_ceiling_now": {
-    "target": "localized_representational",
+    "target": "behavioral_and_methodological",
     "not_yet_target": [
+      "representational",
+      "localized_representational",
       "causal",
       "mechanistic"
     ]
   },
   "biggest_risks": [
     "prompt-side theory_identity remains a diagnostic-only track until an alias family beats the stronger held-out text baselines",
-    "generation-time theory work could still collapse into explicit theory-copying unless generated-text controls are enforced",
-    "response-side experiments require a generate-annotate-validate-freeze gate",
+    "response-side action labels on generated text can leak by construction because the response text itself contains the advocated action",
+    "MoReBench theory split contains 150 rows but only 30 unique dilemma texts, so row-count intuition can overstate real dilemma diversity",
+    "response-side experiments still require a generate-annotate-validate-freeze gate plus stronger action-equivalence scoring than naive response clustering",
     "stakeholder_tradeoff_density still needs gold-slice validation",
     "action_locus remains only partially repaired",
     "some prompt confound families are still unmaterialized"
   ],
-  "next_step": "continue the alias-only prompt-side diagnostic loop while using description-only as the theory-priming family for the shared response-side generation and freeze workflow"
+  "next_step": "log Experiment 2 as a behavioral-plus-methodological result with a negative response-side representational verdict, then pause before any new MoReBench response-side capture unless the capture location or label family changes materially"
 }

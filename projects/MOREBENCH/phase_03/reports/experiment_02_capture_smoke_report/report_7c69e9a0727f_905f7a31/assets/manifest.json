@@ -1,0 +1,110 @@
+{
+  "figures": {
+    "probe_generation_prime_condition_residual/accuracy_by_layer": {
+      "caption": "Accuracy across captured layers for probe step probe_generation_prime_condition_residual.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_generation_prime_condition_residual/accuracy_by_layer",
+      "path": "assets/probe_generation_prime_condition_residual/accuracy_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_generation_prime_condition_residual",
+      "title": "Accuracy by layer"
+    },
+    "probe_generation_prime_condition_residual/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step probe_generation_prime_condition_residual.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "probe_generation_prime_condition_residual/balanced_accuracy_by_layer",
+      "path": "assets/probe_generation_prime_condition_residual/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "probe_generation_prime_condition_residual",
+      "title": "Balanced Accuracy by layer"
+    },
+    "probe_generation_prime_condition_residual/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step probe_generation_prime_condition_residual.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "probe_generation_prime_condition_residual/probe_metrics_by_layer",
+      "path": "assets/probe_generation_prime_condition_residual/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "probe_generation_prime_condition_residual",
+      "title": "Probe metrics by layer"
+    },
+    "text_baseline_generation_prime_condition/split_balanced_accuracy": {
+      "caption": "Balanced Accuracy for text split split in step text_baseline_generation_prime_condition.",
+      "chart_kind": "text_split_metric",
+      "figure_id": "text_baseline_generation_prime_condition/split_balanced_accuracy",
+      "path": "assets/text_baseline_generation_prime_condition/split_balanced_accuracy.png",
+      "primary": true,
+      "result_kind": "text_baseline_result",
+      "step_name": "text_baseline_generation_prime_condition",
+      "title": "Balanced Accuracy Split"
+    }
+  },
+  "tables": {
+    "probe_generation_prime_condition_residual": {
+      "columns": [
+        "accuracy",
+        "balanced_accuracy",
+        "baseline_majority",
+        "baseline_shuffled",
+        "class_count",
+        "example_count",
+        "layer",
+        "selectivity",
+        "split_mode"
+      ],
+      "path": "tables/probe_generation_prime_condition_residual.json",
+      "result_kind": "probe_result",
+      "rows": 6,
+      "step_name": "probe_generation_prime_condition_residual"
+    },
+    "text_baseline_generation_prime_condition": {
+      "columns": [
+        "C",
+        "auroc",
+        "balanced_accuracy",
+        "cohort",
+        "cross_transfer_auroc",
+        "cross_transfer_balanced_accuracy",
+        "direction",
+        "model",
+        "row_kind",
+        "split_name",
+        "transfer_delta_balanced_accuracy",
+        "within_baseline_auroc",
+        "within_baseline_balanced_accuracy"
+      ],
+      "path": "tables/text_baseline_generation_prime_condition.json",
+      "result_kind": "text_baseline_result",
+      "rows": 1,
+      "step_name": "text_baseline_generation_prime_condition"
+    }
+  },
+  "unsupported_inputs": [
+    {
+      "artifact_id": "generation_run_1_35985c0c3945",
+      "artifact_kind": "generation_run",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/generate_theory_primed_responses_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "generation_run_result",
+      "step_name": "generate_theory_primed_responses"
+    },
+    {
+      "artifact_id": "transform_1_2e9298c2",
+      "artifact_kind": "transform",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/build_theory_persistence_capture_dataset_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "morebench_theory_generation_persistence_capture_dataset",
+      "step_name": "build_theory_persistence_capture_dataset"
+    },
+    {
+      "artifact_id": "transform_1_5714e0c7",
+      "artifact_kind": "transform",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_02_capture_smoke_report/report_7c69e9a0727f_905f7a31/results/summarize_capture_smoke_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "transform_result",
+      "step_name": "summarize_capture_smoke"
+    }
+  ]
+}

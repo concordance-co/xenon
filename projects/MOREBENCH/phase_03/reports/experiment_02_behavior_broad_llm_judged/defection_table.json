@@ -1,0 +1,332 @@
+{
+  "all_split_groups_nonmajority_side_including_ties": {
+    "group_count": 22,
+    "label_count": 37,
+    "by_prime": {
+      "utilitarian": {
+        "count": 10,
+        "rate_over_groups": 0.45454545454545453,
+        "rate_over_labels": 0.2702702702702703,
+        "groups": [
+          "public_conflict_011",
+          "public_conflict_033",
+          "public_conflict_039",
+          "public_conflict_050",
+          "public_conflict_051",
+          "public_conflict_052",
+          "theory_group_005",
+          "theory_group_007",
+          "theory_group_015",
+          "theory_group_022"
+        ]
+      },
+      "virtue_ethics": {
+        "count": 5,
+        "rate_over_groups": 0.22727272727272727,
+        "rate_over_labels": 0.13513513513513514,
+        "groups": [
+          "public_conflict_010",
+          "public_conflict_023",
+          "public_conflict_050",
+          "public_conflict_052",
+          "theory_group_013"
+        ]
+      },
+      "contractarianism": {
+        "count": 4,
+        "rate_over_groups": 0.18181818181818182,
+        "rate_over_labels": 0.10810810810810811,
+        "groups": [
+          "public_conflict_010",
+          "public_conflict_014",
+          "public_conflict_023",
+          "public_conflict_052"
+        ]
+      },
+      "deontology": {
+        "count": 10,
+        "rate_over_groups": 0.45454545454545453,
+        "rate_over_labels": 0.2702702702702703,
+        "groups": [
+          "public_conflict_004",
+          "public_conflict_030",
+          "public_conflict_037",
+          "public_conflict_059",
+          "public_conflict_060",
+          "theory_group_007",
+          "theory_group_009",
+          "theory_group_011",
+          "theory_group_013",
+          "theory_group_022"
+        ]
+      },
+      "contractualism": {
+        "count": 4,
+        "rate_over_groups": 0.18181818181818182,
+        "rate_over_labels": 0.10810810810810811,
+        "groups": [
+          "public_conflict_020",
+          "public_conflict_059",
+          "theory_group_011",
+          "theory_group_022"
+        ]
+      },
+      "generic_ethics_control": {
+        "count": 4,
+        "rate_over_groups": 0.18181818181818182,
+        "rate_over_labels": 0.10810810810810811,
+        "groups": [
+          "public_conflict_011",
+          "public_conflict_033",
+          "public_conflict_039",
+          "public_conflict_060"
+        ]
+      }
+    }
+  },
+  "majority_defined_defections_excluding_3_3": {
+    "group_count": 20,
+    "label_count": 31,
+    "by_prime": {
+      "utilitarian": {
+        "count": 8,
+        "rate_over_groups": 0.4,
+        "rate_over_labels": 0.25806451612903225,
+        "groups": [
+          "public_conflict_011",
+          "public_conflict_033",
+          "public_conflict_039",
+          "public_conflict_050",
+          "public_conflict_051",
+          "theory_group_005",
+          "theory_group_007",
+          "theory_group_015"
+        ]
+      },
+      "virtue_ethics": {
+        "count": 4,
+        "rate_over_groups": 0.2,
+        "rate_over_labels": 0.12903225806451613,
+        "groups": [
+          "public_conflict_010",
+          "public_conflict_023",
+          "public_conflict_050",
+          "theory_group_013"
+        ]
+      },
+      "contractarianism": {
+        "count": 3,
+        "rate_over_groups": 0.15,
+        "rate_over_labels": 0.0967741935483871,
+        "groups": [
+          "public_conflict_010",
+          "public_conflict_014",
+          "public_conflict_023"
+        ]
+      },
+      "deontology": {
+        "count": 9,
+        "rate_over_groups": 0.45,
+        "rate_over_labels": 0.2903225806451613,
+        "groups": [
+          "public_conflict_004",
+          "public_conflict_030",
+          "public_conflict_037",
+          "public_conflict_059",
+          "public_conflict_060",
+          "theory_group_007",
+          "theory_group_009",
+          "theory_group_011",
+          "theory_group_013"
+        ]
+      },
+      "contractualism": {
+        "count": 3,
+        "rate_over_groups": 0.15,
+        "rate_over_labels": 0.0967741935483871,
+        "groups": [
+          "public_conflict_020",
+          "public_conflict_059",
+          "theory_group_011"
+        ]
+      },
+      "generic_ethics_control": {
+        "count": 4,
+        "rate_over_groups": 0.2,
+        "rate_over_labels": 0.12903225806451613,
+        "groups": [
+          "public_conflict_011",
+          "public_conflict_033",
+          "public_conflict_039",
+          "public_conflict_060"
+        ]
+      }
+    }
+  },
+  "tied_3_3_groups": [
+    "public_conflict_052",
+    "theory_group_022"
+  ],
+  "lopsided_groups": {
+    "group_count": 9,
+    "label_count": 9,
+    "by_prime": {
+      "utilitarian": {
+        "count": 3,
+        "rate_over_groups": 0.3333333333333333,
+        "rate_over_labels": 0.3333333333333333,
+        "groups": [
+          "public_conflict_051",
+          "theory_group_005",
+          "theory_group_015"
+        ]
+      },
+      "virtue_ethics": {
+        "count": 0,
+        "rate_over_groups": 0.0,
+        "rate_over_labels": 0.0,
+        "groups": []
+      },
+      "contractarianism": {
+        "count": 1,
+        "rate_over_groups": 0.1111111111111111,
+        "rate_over_labels": 0.1111111111111111,
+        "groups": [
+          "public_conflict_014"
+        ]
+      },
+      "deontology": {
+        "count": 4,
+        "rate_over_groups": 0.4444444444444444,
+        "rate_over_labels": 0.4444444444444444,
+        "groups": [
+          "public_conflict_004",
+          "public_conflict_030",
+          "public_conflict_037",
+          "theory_group_009"
+        ]
+      },
+      "contractualism": {
+        "count": 1,
+        "rate_over_groups": 0.1111111111111111,
+        "rate_over_labels": 0.1111111111111111,
+        "groups": [
+          "public_conflict_020"
+        ]
+      },
+      "generic_ethics_control": {
+        "count": 0,
+        "rate_over_groups": 0.0,
+        "rate_over_labels": 0.0,
+        "groups": []
+      }
+    }
+  },
+  "shape_map": {
+    "public_conflict_004": "5-1",
+    "public_conflict_010": "4-2",
+    "public_conflict_011": "2-4",
+    "public_conflict_014": "5-1",
+    "public_conflict_020": "5-1",
+    "public_conflict_023": "4-2",
+    "public_conflict_030": "1-5",
+    "public_conflict_033": "2-4",
+    "public_conflict_037": "5-1",
+    "public_conflict_039": "2-4",
+    "public_conflict_050": "2-4",
+    "public_conflict_051": "1-5",
+    "public_conflict_052": "3-3",
+    "public_conflict_059": "4-2",
+    "public_conflict_060": "4-2",
+    "theory_group_005": "1-5",
+    "theory_group_007": "2-4",
+    "theory_group_009": "5-1",
+    "theory_group_011": "4-2",
+    "theory_group_013": "2-4",
+    "theory_group_015": "1-5",
+    "theory_group_022": "3-3"
+  },
+  "group_minority_map": {
+    "public_conflict_004": [
+      "deontology"
+    ],
+    "public_conflict_010": [
+      "virtue_ethics",
+      "contractarianism"
+    ],
+    "public_conflict_011": [
+      "utilitarian",
+      "generic_ethics_control"
+    ],
+    "public_conflict_014": [
+      "contractarianism"
+    ],
+    "public_conflict_020": [
+      "contractualism"
+    ],
+    "public_conflict_023": [
+      "virtue_ethics",
+      "contractarianism"
+    ],
+    "public_conflict_030": [
+      "deontology"
+    ],
+    "public_conflict_033": [
+      "utilitarian",
+      "generic_ethics_control"
+    ],
+    "public_conflict_037": [
+      "deontology"
+    ],
+    "public_conflict_039": [
+      "utilitarian",
+      "generic_ethics_control"
+    ],
+    "public_conflict_050": [
+      "utilitarian",
+      "virtue_ethics"
+    ],
+    "public_conflict_051": [
+      "utilitarian"
+    ],
+    "public_conflict_052": [
+      "utilitarian",
+      "virtue_ethics",
+      "contractarianism"
+    ],
+    "public_conflict_059": [
+      "deontology",
+      "contractualism"
+    ],
+    "public_conflict_060": [
+      "deontology",
+      "generic_ethics_control"
+    ],
+    "theory_group_005": [
+      "utilitarian"
+    ],
+    "theory_group_007": [
+      "utilitarian",
+      "deontology"
+    ],
+    "theory_group_009": [
+      "deontology"
+    ],
+    "theory_group_011": [
+      "deontology",
+      "contractualism"
+    ],
+    "theory_group_013": [
+      "virtue_ethics",
+      "deontology"
+    ],
+    "theory_group_015": [
+      "utilitarian"
+    ],
+    "theory_group_022": [
+      "utilitarian",
+      "deontology",
+      "contractualism"
+    ]
+  }
+}

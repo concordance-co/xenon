@@ -1,0 +1,193 @@
+{
+  "benchmark": "morebench",
+  "phase": "03",
+  "experiment": "experiment_02_theory_conditioned_generation_persistence",
+  "generation_finish_reason_counts": {
+    "stop": 180
+  },
+  "capture_dataset_summary": {
+    "behavioral_divergence_precheck": {
+      "group_distinct_response_counts": {
+        "theory_group_001": 6,
+        "theory_group_002": 6,
+        "theory_group_003": 6,
+        "theory_group_004": 6,
+        "theory_group_005": 6,
+        "theory_group_006": 6,
+        "theory_group_007": 6,
+        "theory_group_008": 6,
+        "theory_group_009": 6,
+        "theory_group_010": 6,
+        "theory_group_011": 6,
+        "theory_group_012": 6,
+        "theory_group_013": 6,
+        "theory_group_014": 6,
+        "theory_group_015": 6,
+        "theory_group_016": 6,
+        "theory_group_017": 6,
+        "theory_group_018": 6,
+        "theory_group_019": 6,
+        "theory_group_020": 6,
+        "theory_group_021": 6,
+        "theory_group_022": 6,
+        "theory_group_023": 6,
+        "theory_group_024": 6,
+        "theory_group_025": 6,
+        "theory_group_026": 6,
+        "theory_group_027": 6,
+        "theory_group_028": 6,
+        "theory_group_029": 6,
+        "theory_group_030": 6
+      },
+      "groups_with_at_least_three_distinct_responses": 30,
+      "interpretation": "Use this as a cheap divergence pre-check before upgrading any generation-time persistence claim."
+    },
+    "flagged_direct_copy_count": 46,
+    "kept_capture_example_count": 134,
+    "prime_condition_counts": {
+      "contractarianism": 27,
+      "contractualism": 8,
+      "deontology": 26,
+      "generic_ethics_control": 30,
+      "utilitarian": 19,
+      "virtue_ethics": 24
+    },
+    "skipped_empty_count": 0,
+    "skipped_length_count": 0,
+    "source_family_counts": {
+      "ai_risk_dilemmas": 49,
+      "daily_dilemmas": 46,
+      "expert_written_collab": 39
+    },
+    "source_generation_artifact_id": "generation_run_1_3d4009fb21d8",
+    "source_row_count": 180
+  },
+  "capture_feature_artifact": "capture_1_34cdfd7923d9",
+  "generated_text_baseline_summary": {
+    "class_count": 6,
+    "cohort_count": 0,
+    "example_count": 134,
+    "mode": "split_holdout",
+    "regularization": [
+      1.0
+    ],
+    "split_names": [
+      "split"
+    ]
+  },
+  "generated_text_baseline_split": {
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "example_count": 134,
+    "split_mode": "fixed"
+  },
+  "best_generation_probe": {
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "baseline_majority": 0.25,
+    "baseline_shuffled": 0.25,
+    "class_count": 6,
+    "example_count": 134,
+    "layer": 0,
+    "selectivity": 0.75,
+    "split_mode": "fixed"
+  },
+  "probe_minus_text_baseline_by_layer": [
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.25,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 0,
+      "selectivity": 0.75,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": 0.0
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.4167,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 4,
+      "selectivity": 0.5833,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": 0.0
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.5,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 8,
+      "selectivity": 0.5,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": 0.0
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.4167,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 16,
+      "selectivity": 0.5833,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": 0.0
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.25,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 24,
+      "selectivity": 0.75,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": 0.0
+    },
+    {
+      "accuracy": 0.9167,
+      "balanced_accuracy": 0.9333,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.1667,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 32,
+      "selectivity": 0.75,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": -0.0667
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.3333,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 40,
+      "selectivity": 0.6667,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": 0.0
+    },
+    {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "baseline_majority": 0.25,
+      "baseline_shuffled": 0.3333,
+      "class_count": 6,
+      "example_count": 134,
+      "layer": 44,
+      "selectivity": 0.6667,
+      "split_mode": "fixed",
+      "probe_minus_text_baseline_balanced_accuracy": 0.0
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "source_generation_artifact_id": "generation_run_1_b7d85acbea54",
+  "source_row_count": 180,
+  "kept_capture_example_count": 30,
+  "skipped_length_count": 0,
+  "skipped_empty_count": 0,
+  "flagged_direct_copy_count": 150,
+  "prime_condition_counts": {
+    "generic_ethics_control": 30
+  },
+  "source_family_counts": {
+    "ai_risk_dilemmas": 10,
+    "daily_dilemmas": 10,
+    "expert_written_collab": 10
+  },
+  "behavioral_divergence_precheck": {
+    "group_distinct_response_counts": {
+      "theory_group_001": 6,
+      "theory_group_002": 6,
+      "theory_group_003": 6,
+      "theory_group_004": 6,
+      "theory_group_005": 6,
+      "theory_group_006": 6,
+      "theory_group_007": 6,
+      "theory_group_008": 6,
+      "theory_group_009": 6,
+      "theory_group_010": 6,
+      "theory_group_011": 6,
+      "theory_group_012": 6,
+      "theory_group_013": 6,
+      "theory_group_014": 6,
+      "theory_group_015": 6,
+      "theory_group_016": 6,
+      "theory_group_017": 6,
+      "theory_group_018": 6,
+      "theory_group_019": 6,
+      "theory_group_020": 6,
+      "theory_group_021": 6,
+      "theory_group_022": 6,
+      "theory_group_023": 6,
+      "theory_group_024": 6,
+      "theory_group_025": 6,
+      "theory_group_026": 6,
+      "theory_group_027": 6,
+      "theory_group_028": 6,
+      "theory_group_029": 6,
+      "theory_group_030": 6
+    },
+    "groups_with_at_least_three_distinct_responses": 30,
+    "interpretation": "Use this as a cheap divergence pre-check before upgrading any generation-time persistence claim."
+  }
+}

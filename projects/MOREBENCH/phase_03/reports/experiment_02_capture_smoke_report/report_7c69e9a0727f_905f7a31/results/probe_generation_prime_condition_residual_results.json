@@ -1,0 +1,89 @@
+{
+  "class_names": [
+    "contractarianism",
+    "contractualism",
+    "deontology",
+    "generic_ethics_control",
+    "utilitarian",
+    "virtue_ethics"
+  ],
+  "feature": "generated_sequence_residual",
+  "kind": "probe_result",
+  "label_name": "prime_condition",
+  "layers": [
+    {
+      "accuracy": 0.8571,
+      "balanced_accuracy": 0.9,
+      "baseline_majority": 0.2857,
+      "baseline_shuffled": 0.0,
+      "class_count": 6,
+      "example_count": 23,
+      "layer": 8,
+      "selectivity": 0.8571,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 0.8571,
+      "balanced_accuracy": 0.9,
+      "baseline_majority": 0.2857,
+      "baseline_shuffled": 0.1429,
+      "class_count": 6,
+      "example_count": 23,
+      "layer": 16,
+      "selectivity": 0.7142,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 0.8571,
+      "balanced_accuracy": 0.9,
+      "baseline_majority": 0.2857,
+      "baseline_shuffled": 0.0,
+      "class_count": 6,
+      "example_count": 23,
+      "layer": 24,
+      "selectivity": 0.8571,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 0.8571,
+      "balanced_accuracy": 0.9,
+      "baseline_majority": 0.2857,
+      "baseline_shuffled": 0.1429,
+      "class_count": 6,
+      "example_count": 23,
+      "layer": 32,
+      "selectivity": 0.7142,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 0.8571,
+      "balanced_accuracy": 0.9,
+      "baseline_majority": 0.2857,
+      "baseline_shuffled": 0.0,
+      "class_count": 6,
+      "example_count": 23,
+      "layer": 40,
+      "selectivity": 0.8571,
+      "split_mode": "fixed"
+    },
+    {
+      "accuracy": 0.8571,
+      "balanced_accuracy": 0.9,
+      "baseline_majority": 0.2857,
+      "baseline_shuffled": 0.1429,
+      "class_count": 6,
+      "example_count": 23,
+      "layer": 44,
+      "selectivity": 0.7142,
+      "split_mode": "fixed"
+    }
+  ],
+  "summary": {
+    "best_layer": 8,
+    "best_metric": "balanced_accuracy",
+    "best_value": 0.9,
+    "example_count": 23,
+    "group_count": 5,
+    "split_mode": "fixed"
+  }
+}

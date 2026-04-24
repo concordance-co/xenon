@@ -1,0 +1,641 @@
+{
+  "row_count_all_split_groups": 132,
+  "group_count_all_split_groups": 22,
+  "row_count_majority_defined_non_generic": 100,
+  "group_count_majority_defined": 20,
+  "tie_group_count": 2,
+  "tie_groups": [
+    "public_conflict_052",
+    "theory_group_022"
+  ],
+  "generic_tracks_majority_group_count": 16,
+  "generic_defector_group_count": 4,
+  "generic_defector_groups": [
+    "public_conflict_011",
+    "public_conflict_033",
+    "public_conflict_039",
+    "public_conflict_060"
+  ],
+  "label_disagreement_group_count": 4,
+  "label_disagreement_row_count": 20,
+  "capture_batch_roots": {
+    "benchmark_main_filtered": "/data/artifacts/morebench_phase_03_experiment02",
+    "benchmark_missing_replay": "/data/artifacts/morebench_phase_03_experiment02_benchmark_missing_capture",
+    "public_conflict_replay": "/data/artifacts/morebench_phase_03_experiment02_behavior_broad_capture"
+  },
+  "pooled": {
+    "differs_from_generic": {
+      "example_count": 100,
+      "group_count": 20,
+      "text_baseline": {
+        "positive_count": 39,
+        "negative_count": 61,
+        "auroc": 0.4838,
+        "balanced_accuracy": 0.517
+      },
+      "length_baseline": {
+        "positive_count": 39,
+        "negative_count": 61,
+        "auroc": 0.5628,
+        "balanced_accuracy": 0.5956
+      },
+      "prime_only_baseline": {
+        "positive_count": 39,
+        "negative_count": 61,
+        "auroc": 0.4191,
+        "balanced_accuracy": 0.4689
+      },
+      "probe_by_layer": [
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.5797,
+          "balanced_accuracy": 0.5237,
+          "layer": 0,
+          "probe_minus_text_auroc": 0.0959,
+          "probe_minus_prime_only_auroc": 0.1606
+        },
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.6385,
+          "balanced_accuracy": 0.6427,
+          "layer": 4,
+          "probe_minus_text_auroc": 0.1547,
+          "probe_minus_prime_only_auroc": 0.2194
+        },
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.6032,
+          "balanced_accuracy": 0.616,
+          "layer": 8,
+          "probe_minus_text_auroc": 0.1194,
+          "probe_minus_prime_only_auroc": 0.1841
+        },
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.567,
+          "balanced_accuracy": 0.5259,
+          "layer": 16,
+          "probe_minus_text_auroc": 0.0832,
+          "probe_minus_prime_only_auroc": 0.1479
+        },
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.557,
+          "balanced_accuracy": 0.5597,
+          "layer": 24,
+          "probe_minus_text_auroc": 0.0732,
+          "probe_minus_prime_only_auroc": 0.1379
+        },
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.6028,
+          "balanced_accuracy": 0.6227,
+          "layer": 32,
+          "probe_minus_text_auroc": 0.119,
+          "probe_minus_prime_only_auroc": 0.1837
+        },
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.6314,
+          "balanced_accuracy": 0.6053,
+          "layer": 40,
+          "probe_minus_text_auroc": 0.1476,
+          "probe_minus_prime_only_auroc": 0.2123
+        },
+        {
+          "positive_count": 39,
+          "negative_count": 61,
+          "auroc": 0.5805,
+          "balanced_accuracy": 0.5305,
+          "layer": 44,
+          "probe_minus_text_auroc": 0.0967,
+          "probe_minus_prime_only_auroc": 0.1614
+        }
+      ],
+      "best_probe_layer": {
+        "positive_count": 39,
+        "negative_count": 61,
+        "auroc": 0.6385,
+        "balanced_accuracy": 0.6427,
+        "layer": 4,
+        "probe_minus_text_auroc": 0.1547,
+        "probe_minus_prime_only_auroc": 0.2194
+      }
+    },
+    "defect_from_majority": {
+      "example_count": 100,
+      "group_count": 20,
+      "text_baseline": {
+        "positive_count": 27,
+        "negative_count": 73,
+        "auroc": 0.481,
+        "balanced_accuracy": 0.4822
+      },
+      "length_baseline": {
+        "positive_count": 27,
+        "negative_count": 73,
+        "auroc": 0.4906,
+        "balanced_accuracy": 0.5558
+      },
+      "prime_only_baseline": {
+        "positive_count": 27,
+        "negative_count": 73,
+        "auroc": 0.5205,
+        "balanced_accuracy": 0.6573
+      },
+      "probe_by_layer": [
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.4647,
+          "balanced_accuracy": 0.5132,
+          "layer": 0,
+          "probe_minus_text_auroc": -0.0163,
+          "probe_minus_prime_only_auroc": -0.0558
+        },
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.5708,
+          "balanced_accuracy": 0.4693,
+          "layer": 4,
+          "probe_minus_text_auroc": 0.0898,
+          "probe_minus_prime_only_auroc": 0.0503
+        },
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.5256,
+          "balanced_accuracy": 0.516,
+          "layer": 8,
+          "probe_minus_text_auroc": 0.0446,
+          "probe_minus_prime_only_auroc": 0.0051
+        },
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.48,
+          "balanced_accuracy": 0.4282,
+          "layer": 16,
+          "probe_minus_text_auroc": -0.001,
+          "probe_minus_prime_only_auroc": -0.0405
+        },
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.4439,
+          "balanced_accuracy": 0.396,
+          "layer": 24,
+          "probe_minus_text_auroc": -0.0371,
+          "probe_minus_prime_only_auroc": -0.0766
+        },
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.4054,
+          "balanced_accuracy": 0.431,
+          "layer": 32,
+          "probe_minus_text_auroc": -0.0756,
+          "probe_minus_prime_only_auroc": -0.1151
+        },
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.4343,
+          "balanced_accuracy": 0.4145,
+          "layer": 40,
+          "probe_minus_text_auroc": -0.0467,
+          "probe_minus_prime_only_auroc": -0.0862
+        },
+        {
+          "positive_count": 27,
+          "negative_count": 73,
+          "auroc": 0.4505,
+          "balanced_accuracy": 0.4584,
+          "layer": 44,
+          "probe_minus_text_auroc": -0.0305,
+          "probe_minus_prime_only_auroc": -0.07
+        }
+      ],
+      "best_probe_layer": {
+        "positive_count": 27,
+        "negative_count": 73,
+        "auroc": 0.5708,
+        "balanced_accuracy": 0.4693,
+        "layer": 4,
+        "probe_minus_text_auroc": 0.0898,
+        "probe_minus_prime_only_auroc": 0.0503
+      }
+    }
+  },
+  "within_prime": {
+    "differs_from_generic": {
+      "deontology": {
+        "prime": "deontology",
+        "example_count": 20,
+        "positive_count": 11,
+        "group_count": 20,
+        "text_baseline": {
+          "positive_count": 11,
+          "negative_count": 9,
+          "auroc": 0.4141,
+          "balanced_accuracy": 0.3939
+        },
+        "length_baseline": {
+          "positive_count": 11,
+          "negative_count": 9,
+          "auroc": 0.6667,
+          "balanced_accuracy": 0.7424
+        },
+        "probe_by_layer": [
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.5758,
+            "balanced_accuracy": 0.5404,
+            "layer": 0,
+            "probe_minus_text_auroc": 0.1617
+          },
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.5657,
+            "balanced_accuracy": 0.5404,
+            "layer": 4,
+            "probe_minus_text_auroc": 0.1516
+          },
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.5758,
+            "balanced_accuracy": 0.596,
+            "layer": 8,
+            "probe_minus_text_auroc": 0.1617
+          },
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.6061,
+            "balanced_accuracy": 0.5859,
+            "layer": 16,
+            "probe_minus_text_auroc": 0.192
+          },
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.6667,
+            "balanced_accuracy": 0.6414,
+            "layer": 24,
+            "probe_minus_text_auroc": 0.2526
+          },
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.7172,
+            "balanced_accuracy": 0.6515,
+            "layer": 32,
+            "probe_minus_text_auroc": 0.3031
+          },
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.6162,
+            "balanced_accuracy": 0.596,
+            "layer": 40,
+            "probe_minus_text_auroc": 0.2021
+          },
+          {
+            "positive_count": 11,
+            "negative_count": 9,
+            "auroc": 0.596,
+            "balanced_accuracy": 0.6414,
+            "layer": 44,
+            "probe_minus_text_auroc": 0.1819
+          }
+        ],
+        "best_probe_layer": {
+          "positive_count": 11,
+          "negative_count": 9,
+          "auroc": 0.7172,
+          "balanced_accuracy": 0.6515,
+          "layer": 32,
+          "probe_minus_text_auroc": 0.3031
+        }
+      },
+      "utilitarian": {
+        "prime": "utilitarian",
+        "example_count": 20,
+        "positive_count": 6,
+        "group_count": 20,
+        "text_baseline": {
+          "positive_count": 6,
+          "negative_count": 14,
+          "auroc": 0.2976,
+          "balanced_accuracy": 0.4643
+        },
+        "length_baseline": {
+          "positive_count": 6,
+          "negative_count": 14,
+          "auroc": 0.0595,
+          "balanced_accuracy": 0.1786
+        },
+        "probe_by_layer": [
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.4762,
+            "balanced_accuracy": 0.5833,
+            "layer": 0,
+            "probe_minus_text_auroc": 0.1786
+          },
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.4286,
+            "balanced_accuracy": 0.5476,
+            "layer": 4,
+            "probe_minus_text_auroc": 0.131
+          },
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.5,
+            "balanced_accuracy": 0.4643,
+            "layer": 8,
+            "probe_minus_text_auroc": 0.2024
+          },
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.5,
+            "balanced_accuracy": 0.4643,
+            "layer": 16,
+            "probe_minus_text_auroc": 0.2024
+          },
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.4286,
+            "balanced_accuracy": 0.4286,
+            "layer": 24,
+            "probe_minus_text_auroc": 0.131
+          },
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.5,
+            "balanced_accuracy": 0.4286,
+            "layer": 32,
+            "probe_minus_text_auroc": 0.2024
+          },
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.5595,
+            "balanced_accuracy": 0.5476,
+            "layer": 40,
+            "probe_minus_text_auroc": 0.2619
+          },
+          {
+            "positive_count": 6,
+            "negative_count": 14,
+            "auroc": 0.5238,
+            "balanced_accuracy": 0.4643,
+            "layer": 44,
+            "probe_minus_text_auroc": 0.2262
+          }
+        ],
+        "best_probe_layer": {
+          "positive_count": 6,
+          "negative_count": 14,
+          "auroc": 0.5595,
+          "balanced_accuracy": 0.5476,
+          "layer": 40,
+          "probe_minus_text_auroc": 0.2619
+        }
+      }
+    },
+    "defect_from_majority": {
+      "deontology": {
+        "prime": "deontology",
+        "example_count": 20,
+        "positive_count": 9,
+        "group_count": 20,
+        "text_baseline": {
+          "positive_count": 9,
+          "negative_count": 11,
+          "auroc": 0.4848,
+          "balanced_accuracy": 0.4545
+        },
+        "length_baseline": {
+          "positive_count": 9,
+          "negative_count": 11,
+          "auroc": 0.2323,
+          "balanced_accuracy": 0.3283
+        },
+        "probe_by_layer": [
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.5253,
+            "balanced_accuracy": 0.5859,
+            "layer": 0,
+            "probe_minus_text_auroc": 0.0405
+          },
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.5455,
+            "balanced_accuracy": 0.5859,
+            "layer": 4,
+            "probe_minus_text_auroc": 0.0607
+          },
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.4141,
+            "balanced_accuracy": 0.4394,
+            "layer": 8,
+            "probe_minus_text_auroc": -0.0707
+          },
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.4343,
+            "balanced_accuracy": 0.5303,
+            "layer": 16,
+            "probe_minus_text_auroc": -0.0505
+          },
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.5051,
+            "balanced_accuracy": 0.5859,
+            "layer": 24,
+            "probe_minus_text_auroc": 0.0203
+          },
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.4545,
+            "balanced_accuracy": 0.5404,
+            "layer": 32,
+            "probe_minus_text_auroc": -0.0303
+          },
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.4848,
+            "balanced_accuracy": 0.5859,
+            "layer": 40,
+            "probe_minus_text_auroc": 0.0
+          },
+          {
+            "positive_count": 9,
+            "negative_count": 11,
+            "auroc": 0.5152,
+            "balanced_accuracy": 0.5859,
+            "layer": 44,
+            "probe_minus_text_auroc": 0.0304
+          }
+        ],
+        "best_probe_layer": {
+          "positive_count": 9,
+          "negative_count": 11,
+          "auroc": 0.5455,
+          "balanced_accuracy": 0.5859,
+          "layer": 4,
+          "probe_minus_text_auroc": 0.0607
+        }
+      },
+      "utilitarian": {
+        "prime": "utilitarian",
+        "example_count": 20,
+        "positive_count": 8,
+        "group_count": 20,
+        "text_baseline": {
+          "positive_count": 8,
+          "negative_count": 12,
+          "auroc": 0.5,
+          "balanced_accuracy": 0.4167
+        },
+        "length_baseline": {
+          "positive_count": 8,
+          "negative_count": 12,
+          "auroc": 0.3021,
+          "balanced_accuracy": 0.4583
+        },
+        "probe_by_layer": [
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.6667,
+            "balanced_accuracy": 0.6042,
+            "layer": 0,
+            "probe_minus_text_auroc": 0.1667
+          },
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.4271,
+            "balanced_accuracy": 0.5208,
+            "layer": 4,
+            "probe_minus_text_auroc": -0.0729
+          },
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.5417,
+            "balanced_accuracy": 0.5,
+            "layer": 8,
+            "probe_minus_text_auroc": 0.0417
+          },
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.375,
+            "balanced_accuracy": 0.5208,
+            "layer": 16,
+            "probe_minus_text_auroc": -0.125
+          },
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.3646,
+            "balanced_accuracy": 0.5208,
+            "layer": 24,
+            "probe_minus_text_auroc": -0.1354
+          },
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.3958,
+            "balanced_accuracy": 0.375,
+            "layer": 32,
+            "probe_minus_text_auroc": -0.1042
+          },
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.3125,
+            "balanced_accuracy": 0.375,
+            "layer": 40,
+            "probe_minus_text_auroc": -0.1875
+          },
+          {
+            "positive_count": 8,
+            "negative_count": 12,
+            "auroc": 0.3333,
+            "balanced_accuracy": 0.3125,
+            "layer": 44,
+            "probe_minus_text_auroc": -0.1667
+          }
+        ],
+        "best_probe_layer": {
+          "positive_count": 8,
+          "negative_count": 12,
+          "auroc": 0.6667,
+          "balanced_accuracy": 0.6042,
+          "layer": 0,
+          "probe_minus_text_auroc": 0.1667
+        }
+      }
+    }
+  },
+  "pca": {
+    "0": {
+      "explained_variance_ratio": [
+        0.1827,
+        0.0845
+      ],
+      "silhouette_by_capture_batch": 0.0004,
+      "silhouette_by_prime": 0.0099,
+      "silhouette_by_override_status": -0.0048
+    },
+    "8": {
+      "explained_variance_ratio": [
+        0.1426,
+        0.1059
+      ],
+      "silhouette_by_capture_batch": 0.002,
+      "silhouette_by_prime": 0.0428,
+      "silhouette_by_override_status": -0.0009
+    },
+    "44": {
+      "explained_variance_ratio": [
+        0.1552,
+        0.1009
+      ],
+      "silhouette_by_capture_batch": 0.009,
+      "silhouette_by_prime": 0.0201,
+      "silhouette_by_override_status": -0.0084
+    }
+  }
+}
