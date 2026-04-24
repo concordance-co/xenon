@@ -1,0 +1,43 @@
+{
+  "id": "counselbench_advice_safety_phase_03_eval",
+  "name": "CounselBench Eval Phase 03 Expert-Label Readouts",
+  "description": "Response-context readouts over aggregated CounselBench-Eval expert labels.",
+  "project_id": "COUNSELBENCH",
+  "inherits": "projects/COUNSELBENCH/project_spec.json",
+  "goal": "Test whether expert-rated empathy, specificity, boundary adherence, factuality, toxicity, and overall quality are decodable beyond cheap baselines.",
+  "workflow_specs": [
+    "projects/COUNSELBENCH/advice_safety/phase_03_eval/specs/workflow.py"
+  ],
+  "overrides": {
+    "dataset": {
+      "eval_source": "izi-ano/CounselBench-Eval",
+      "aggregation": "question_response_key"
+    },
+    "capture": {
+      "model": "/models/Qwen/Qwen3-30B-A3B",
+      "prompt_format": "chat_user_question_assistant_response",
+      "sections": [
+        "question_end",
+        "response_end"
+      ]
+    },
+    "analysis": {
+      "group_by": "questionID",
+      "required_controls": [
+        "response_text_baseline",
+        "topic_nuisance",
+        "responder_nuisance",
+        "length_nuisance",
+        "lexical_trigger_nuisance",
+        "geometry_metrics",
+        "boundary_vs_quality_direction_overlap",
+        "control_triage"
+      ]
+    },
+    "report": {}
+  },
+  "outputs": {
+    "output_dir": "projects/COUNSELBENCH/advice_safety/phase_03_eval/reports",
+    "notes": "Response-side claims require label-support checks and grouped splits by questionID."
+  }
+}

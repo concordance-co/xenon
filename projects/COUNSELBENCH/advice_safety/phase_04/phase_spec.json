@@ -1,0 +1,29 @@
+{
+  "id": "counselbench_advice_safety_phase_04",
+  "name": "CounselBench Phase 04 Intervention Readiness",
+  "description": "Pairing and gate materialization before causal intervention workflows.",
+  "project_id": "COUNSELBENCH",
+  "inherits": "projects/COUNSELBENCH/project_spec.json",
+  "goal": "Prepare matched donor-target pairs and explicit intervention criteria without making causal claims prematurely.",
+  "workflow_specs": [
+    "projects/COUNSELBENCH/advice_safety/phase_04/specs/workflow.py"
+  ],
+  "overrides": {
+    "dataset": {
+      "eval_source": "izi-ano/CounselBench-Eval"
+    },
+    "analysis": {
+      "blocked_until": [
+        "phase_03b_controls_pass",
+        "eval_phase_03_response_readout_pass",
+        "matched_pairs_exist",
+        "same_label_controls_exist"
+      ]
+    },
+    "report": {}
+  },
+  "outputs": {
+    "output_dir": "projects/COUNSELBENCH/advice_safety/phase_04/reports",
+    "notes": "This phase currently builds readiness artifacts; actual interchange/patching is a gated follow-up."
+  }
+}

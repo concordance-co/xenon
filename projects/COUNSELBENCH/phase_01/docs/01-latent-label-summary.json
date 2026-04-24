@@ -1,0 +1,25 @@
+{
+  "benchmark": "counselbench",
+  "phase": "01",
+  "version": "v1",
+  "frozen_date": "2026-04-23",
+  "prompt_labels": [
+    "adv_failure_mode",
+    "topic",
+    "question_id",
+    "prompt_length_bucket"
+  ],
+  "response_labels": [
+    "empathy_high",
+    "specificity_high",
+    "medical_boundary_violation",
+    "factuality_low",
+    "toxicity_or_judgmental",
+    "overall_quality_high"
+  ],
+  "blocked_labels": [
+    "generated_medical_boundary_heuristic"
+  ],
+  "next_action": "phase_02_behavioral_smoke"
+}
+

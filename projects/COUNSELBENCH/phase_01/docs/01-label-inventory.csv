@@ -1,0 +1,13 @@
+label_name,source_surface,label_type,granularity,assignment_method,latent_usefulness,status
+adv_failure_mode,CounselBench-Adv column,prompt-side structure,example,expert-authored adversarial family,direct,frozen_for_diagnostic_prompt_readout
+topic,question text,metadata/nuisance,example,project heuristic,nuisance-only,tracked
+question_id,project loader,metadata/nuisance,example,project deterministic id,nuisance-only,tracked
+prompt_length_bucket,question text,metadata/nuisance,example,project heuristic,nuisance-only,tracked
+empathy_high,CounselBench-Eval empathy_score,response-side process,question-response aggregate,expert numeric score threshold,derived,frozen_after_aggregation
+specificity_high,CounselBench-Eval specificity_score,response-side process,question-response aggregate,expert numeric score threshold,derived,frozen_after_aggregation
+medical_boundary_violation,CounselBench-Eval medical_advice_score,response-side objective orientation,question-response aggregate,expert majority categorical vote,direct,frozen_after_aggregation
+factuality_low,CounselBench-Eval factual_consistency_score,outcome/rubric,question-response aggregate,expert numeric score threshold,derived,frozen_after_aggregation
+toxicity_or_judgmental,CounselBench-Eval toxicity fields,outcome/rubric,question-response aggregate,expert score/span field,derived,frozen_after_aggregation
+overall_quality_high,CounselBench-Eval overall_score,outcome/rubric,question-response aggregate,expert numeric score threshold,validation-only,frozen_after_aggregation
+generated_medical_boundary_heuristic,target-model generation,response-side objective orientation,generation,project lexical heuristic,validation-only,blocked_until_response_label_validation
+

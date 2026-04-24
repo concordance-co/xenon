@@ -1,0 +1,33 @@
+{
+  "benchmark": "counselbench",
+  "phase": "00",
+  "version": "v1",
+  "frozen_date": "2026-04-23",
+  "recommendation": "proceed_to_latent_labels",
+  "public_sources": {
+    "project_page": "https://llm-eval-mental-health.github.io/counselbench-2025/",
+    "repo": "https://github.com/llm-eval-mental-health/CounselBench",
+    "eval_dataset": "https://huggingface.co/datasets/izi-ano/CounselBench-Eval",
+    "adv_dataset": "https://huggingface.co/datasets/izi-ano/CounselBench-Adv"
+  },
+  "datasets": {
+    "eval": {
+      "rows": 2000,
+      "unit": "expert annotation row",
+      "requires_aggregation": true
+    },
+    "adv": {
+      "rows": 20,
+      "melted_examples": 120,
+      "unit": "adversarial prompt"
+    }
+  },
+  "primary_risks": [
+    "surface lexical leakage",
+    "response-side labels mistaken for prompt-side labels",
+    "annotation-row leakage",
+    "unvalidated generated-response labels"
+  ],
+  "next_action": "phase_01_latent_label_freeze"
+}
+

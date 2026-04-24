@@ -1,0 +1,45 @@
+{
+  "id": "counselbench_advice_safety_phase_03b",
+  "name": "CounselBench Adv Phase 03b Controls And Localization",
+  "description": "Control-heavy follow-up over CounselBench-Adv prompt-family readouts.",
+  "project_id": "COUNSELBENCH",
+  "inherits": "projects/COUNSELBENCH/project_spec.json",
+  "goal": "Determine whether Adv failure-mode readouts survive grouped splits, nuisance probes, residualization, and quantitative geometry before any causal promotion.",
+  "workflow_specs": [
+    "projects/COUNSELBENCH/advice_safety/phase_03b/specs/workflow.py"
+  ],
+  "overrides": {
+    "dataset": {
+      "adv_source": "izi-ano/CounselBench-Adv"
+    },
+    "capture": {
+      "model": "/models/Qwen/Qwen3-30B-A3B",
+      "sections": [
+        "prompt_end",
+        "risk_span",
+        "generated_end"
+      ]
+    },
+    "analysis": {
+      "required_controls": [
+        "grouped_cv_by_source_row_id",
+        "text_baseline",
+        "topic_only_baseline",
+        "length_only_baseline",
+        "lexical_trigger_only_baseline",
+        "source_row_identity_baseline",
+        "topic_nuisance_probe",
+        "length_nuisance_probe",
+        "lexical_trigger_nuisance_probe",
+        "residualized_topic_probe",
+        "residualized_lexical_probe",
+        "geometry_metrics"
+      ]
+    },
+    "report": {}
+  },
+  "outputs": {
+    "output_dir": "projects/COUNSELBENCH/advice_safety/phase_03b/reports",
+    "notes": "Passing this phase permits localized representational claims only; Phase 4 still requires matched pairs and intervention controls."
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "COUNSELBENCH",
+  "name": "CounselBench Mechanistic Interpretability",
+  "description": "Benchmark-first mechanistic interpretability work on mental-health counseling safety, empathy, specificity, and boundary-adherence labels.",
+  "version": 1,
+  "goal": "Turn CounselBench's expert and adversarial label structure into reusable readouts, controls, and later causal follow-up targets for high-stakes counseling advice behavior.",
+  "subprojects": [
+    "advice_safety"
+  ],
+  "defaults": {
+    "capture_execution": "modal",
+    "analysis_execution": "modal",
+    "report_execution": "local"
+  }
+}
+

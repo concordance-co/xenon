@@ -1,0 +1,16 @@
+{
+  "benchmark": "counselbench",
+  "phase": "03",
+  "version": "v1",
+  "frozen_date": "2026-04-23",
+  "first_workflow": "projects/COUNSELBENCH/advice_safety/phase_03/specs/workflow.py",
+  "experiments": [
+    "E1_prompt_failure_mode",
+    "E2_generated_medical_boundary",
+    "E2_5_pca_response_posture_geometry",
+    "E3_eval_empathy_specificity",
+    "E4_warmth_safety_hard_negative"
+  ],
+  "current_status": "full_adv_phase_03_workflow_ready_to_run",
+  "claim_ceiling": "representational"
+}

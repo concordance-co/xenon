@@ -1,0 +1,33 @@
+{
+  "id": "counselbench_advice_safety_phase_03",
+  "name": "CounselBench Advice Safety Phase 03",
+  "description": "First executable readout workflow over CounselBench-Adv prompts and generated responses.",
+  "project_id": "COUNSELBENCH",
+  "inherits": "projects/COUNSELBENCH/project_spec.json",
+  "goal": "Run a balanced adversarial smoke and first prompt/generation residual readouts with text baselines.",
+  "workflow_specs": [
+    "projects/COUNSELBENCH/advice_safety/phase_03/specs/workflow.py"
+  ],
+  "overrides": {
+    "dataset": {
+      "adv_source": "izi-ano/CounselBench-Adv",
+      "eval_source": "izi-ano/CounselBench-Eval"
+    },
+    "capture": {
+      "model": "/models/Qwen/Qwen3-30B-A3B"
+    },
+    "analysis": {
+      "required_controls": [
+        "text baselines",
+        "grouped splits",
+        "manual behavioral inspection before claims"
+      ]
+    },
+    "report": {}
+  },
+  "outputs": {
+    "output_dir": "projects/COUNSELBENCH/advice_safety/phase_03/reports",
+    "notes": "The first report is a smoke/readout package, not a causal or mechanistic claim."
+  }
+}
+
