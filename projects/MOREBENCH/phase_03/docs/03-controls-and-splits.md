@@ -16,6 +16,15 @@ input_artifacts:
 
 Every phase-03 readout must be paired with a nuisance-aware split or control that could realistically kill a shortcut explanation.
 
+Before probing begins, run the lexical-baseline gate on the exact planned evaluation split.
+If cheap lexical baselines are already near ceiling on that split, probing is blocked until the target, split, or data design is changed.
+
+For MoReBench, the next mainline full-public-split experiment should treat this as mandatory:
+
+- `char-TFIDF + logistic` on prompt text
+- prompt length baseline
+- source-family-aware holdout on the exact intended label
+
 ## Theory-Identity Controls
 
 - held-out alias-bank transfer is mandatory for any prompt-side theory diagnostic
@@ -55,6 +64,15 @@ Every phase-03 readout must be paired with a nuisance-aware split or control tha
 - explicitly compare against prompt length and dilemma-structure baselines
 - include a source/topic-aware baseline in the first serious pilot
 
+## Objective-Pressure-Profile Controls
+
+- freeze the rubric-derived label before probing
+- run the lexical gate first on the exact planned split
+- report source-family-aware holdout before any random split result
+- add context-aware holdout where support permits
+- explicitly compare against prompt length and source-family baselines
+- do not promote the family if text is already near ceiling on the same holdout
+
 ## Action-Locus Controls
 
 - treat the current rewrite set as pilot-only
@@ -70,6 +88,12 @@ Every phase-03 readout must be paired with a nuisance-aware split or control tha
 2. theory-name-aware control split
 3. source-family-aware split where feasible
 4. dilemma-structure-aware split
+
+For the full-public-split `objective_pressure_profile` experiment, override the generic ordering:
+
+1. source-family-aware split
+2. context-aware split
+3. random stratified split only as a secondary convenience report
 
 ### Preferred response-side split hierarchy
 

@@ -13,7 +13,34 @@ input_artifacts:
 
 # MoReBench 03 Experiment Specs
 
-## Experiment 1: Theory-Alias Prompt Diagnostic
+## Experiment 1: Full-Public Objective-Pressure Prompt Readout
+
+- target label family:
+  `objective_pressure_profile`
+- execution target:
+  any declared phase-03 execution model recorded in `03-execution-targets.md`
+- target tier:
+  `main`
+- data:
+  full `500`-row `morebench_public/test` split only
+- label-freeze prerequisite:
+  construct and freeze a rubric-derived binary or ternary objective label from the public `RUBRIC` field, including ambiguity thresholds and exclusion rules
+- method:
+  prompt-side linear probes plus difference-in-means directions on final prompt states
+- capture regime:
+  full prompt pass with prompt-final residual as the primary readout site; span-localization is follow-up only if the prompt-final readout survives the lexical gate
+- primary shortcut risk:
+  the label is recoverable from prompt text via source-family, topic, or rubric-correlated lexical cues rather than a genuine objective-pressure state
+- required controls:
+  `char-TFIDF + logistic` lexical gate, prompt-length baseline, source-family-aware holdout, and context-aware holdout where cell counts permit
+- success criteria:
+  prompt-side readout survives source-family-aware lexical baselines on the exact planned split and shows meaningful margin over text plus length controls
+- failure criteria:
+  the lexical gate is already near ceiling on the intended split, or the neural readout fails to beat the text baseline once source-family-aware holdouts are used
+- claim ceiling if successful:
+  representational
+
+## Experiment 2: Theory-Alias Prompt Diagnostic
 
 - target label family:
   `theory_identity`
@@ -36,7 +63,7 @@ input_artifacts:
 - claim ceiling if successful:
   diagnostic representational evidence only, not a main benchmark claim
 
-## Experiment 2: Theory-Conditioned Generation Persistence
+## Experiment 3: Theory-Conditioned Generation Persistence
 
 - target label family:
   `theory_conditioned_generation_persistence`
@@ -65,7 +92,7 @@ input_artifacts:
 - claim ceiling if successful:
   localized representational
 
-## Experiment 3: Generation-Time Commitment Transition Pilot
+## Experiment 4: Generation-Time Commitment Transition Pilot
 
 - target label family:
   `commitment_style`
@@ -90,7 +117,7 @@ input_artifacts:
 - claim ceiling if successful:
   localized representational
 
-## Experiment 4: Tradeoff-Engagement Response Readout
+## Experiment 5: Tradeoff-Engagement Response Readout
 
 - target label family:
   `tradeoff_engagement`
@@ -115,7 +142,7 @@ input_artifacts:
 - claim ceiling if successful:
   representational or localized representational
 
-## Experiment 5: Helpfulness vs Harm-Avoidance Separability
+## Experiment 6: Helpfulness vs Harm-Avoidance Separability
 
 - target label family:
   `helpfulness_invoked`, `harm_avoidance_invoked`
@@ -140,7 +167,7 @@ input_artifacts:
 - claim ceiling if successful:
   representational separability, not yet mechanistic separability
 
-## Experiment 6: Stakeholder-Tradeoff-Density Prompt Pilot
+## Experiment 7: Stakeholder-Tradeoff-Density Prompt Pilot
 
 - target label family:
   `stakeholder_tradeoff_density`

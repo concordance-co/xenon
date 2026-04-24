@@ -78,6 +78,9 @@ Important note:
 - `action_locus`
   advisor-like vs agent-like setup, derived from `ROLE_DOMAIN` plus prompt text
   currently not probeable on the public split without augmentation
+- `objective_pressure_profile`
+  rubric-derived helpfulness-vs-harm pressure label on the full public test split
+  now the cleanest next mainline experiment candidate because it is benchmark-native, prompt-side, and does not depend on theory augmentation
 - `dilemma_structure`
   long-case / short-case / expert-case framing, primarily a nuisance or auxiliary label
 - `stakeholder_tradeoff_density`
@@ -195,6 +198,8 @@ It is useful as a caution against forcing binary philosophical axes too early wh
 
 - `helpful vs harmless`
   likely the strongest first-pass objective-orientation contrast, but best treated as two separable labels before any combined relation label
+- `objective pressure profile on full public test`
+  current best next experiment: derive a prompt-side binary or ternary objective label from rubric weighting on the `500`-row public test split, then test prompt-final readout under source-family-aware lexical gating before any new response-side capture
 - `advisor vs agent`
   plausible control-state distinction, but blocked on augmentation in the current public split
 - `multi-consideration representation`
@@ -207,6 +212,7 @@ It is useful as a caution against forcing binary philosophical axes too early wh
 - `Helpful Outcome` -> helpfulness-oriented response policy
 - `Harmless Outcome` -> harm-avoidance response policy
 - `Helpful Outcome x Harmless Outcome` -> objective weighting or tradeoff handling
+- rubric weighting over `Helpful Outcome` and `Harmless Outcome` -> `objective_pressure_profile`
 - `ROLE_DOMAIN` -> advisor-vs-agent control-state difference
 
 ## 8. Methods That Look Promising
@@ -218,6 +224,7 @@ For first-pass readout:
 - layer/token sweeps
 - generation-time token-position probes
 - paired-generation theory-prime comparisons
+- prompt-final readout on the full public split using rubric-derived objective labels plus source-family holdouts
 
 For localization:
 
@@ -246,6 +253,7 @@ For follow-up:
 
 - response generations under the intended model/protocol
 - matched theory-primed generation slice using the `description_only` family plus generic-ethics controls
+- rubric-derived freeze for `objective_pressure_profile` on the full `morebench_public/test` split, including ambiguity thresholds and source-family-aware lexical preflight
 - matched or rewritten advisor/agent contrasts
 - source-balanced or template-balanced slices
 - structure-normalized, length-matched, and person-grammar control variants
@@ -255,9 +263,40 @@ For follow-up:
 
 ## 11. Open Questions
 
+- does prompt-final state on the full `500`-row public split encode a rubric-derived `objective_pressure_profile` strongly enough to survive source-family-aware lexical gates?
 - how cleanly separable is `helpful` vs `harmless` in generation-time activations?
 - does advisor-vs-agent survive once source/template confounds are controlled?
 - when in the generation does the model move from dilemma representation to recommendation commitment?
+
+## 12. Next Mainline Experiment
+
+The current best next experiment is no longer response-side theory persistence.
+It is a prompt-side full-public-split readout on a benchmark-native objective label.
+
+Recommended target:
+
+- `objective_pressure_profile`
+  derived from the public split `RUBRIC` field by collapsing each dilemma into:
+  - `helpfulness-pressured`
+  - `harm-avoidance-pressured`
+  - or `mixed / ambiguous`
+
+Recommended first pass:
+
+- use the full `500`-row `morebench_public/test` split
+- run the lexical gate first on the exact planned split:
+  - `char-TFIDF + logistic`
+  - prompt length baseline
+  - source-family-aware holdout
+- only proceed to probing if the label is not already shortcut-satisfiable on the chosen split
+
+Why this is the best next move:
+
+- it uses the full benchmark rather than the small paired theory subset
+- it is benchmark-native rather than augmentation-dependent
+- it stays prompt-side, where the current MoReBench work actually produced defended results
+- it directly targets the benchmark's strongest conceptual question:
+  whether the prompt encodes the helpfulness-vs-harm pressure profile before generation
 - can tradeoff engagement be labeled reliably from generated responses at useful scale?
 - does theory conditioning persist into generated reasoning once prompt tokens are out of view?
 - can an alias-only theory family ever beat stronger held-out text baselines well enough to be more than a prompt-side diagnostic?

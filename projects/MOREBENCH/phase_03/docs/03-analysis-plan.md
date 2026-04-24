@@ -44,14 +44,16 @@ Turn the validated MoReBench latent-label set plus repaired phase-02 prompt fami
 
 ### Tier 1: begin immediately
 
+- `objective_pressure_profile`
+  reason: benchmark-native, prompt-side, uses the full `500`-row public test split, and avoids the response-side lexical trap that dominated Experiment 2
 - `theory_conditioned_generation_persistence`
-  reason: the main theory question is whether framework conditioning persists into generated reasoning, not just whether cue text is readable from prompt states
+  reason: keep as a secondary follow-up only if the benchmark returns to theory work later; not the next mainline execution target
 - `tradeoff_engagement`
-  reason: strongest benchmark-native response-side process label
+  reason: still scientifically interesting, but no longer the immediate next capture target
 - `commitment_style`
-  reason: directly tied to the benchmark's recommendation-vs-deliberation structure
+  reason: same as above
 - `helpfulness_invoked` and `harm_avoidance_invoked`
-  reason: most plausible objective-orientation contrast, and specifically important to keep separate
+  reason: still relevant for later response-side work, but the next step is to test the prompt-side objective profile first
 
 ### Tier 2: begin after one more data-quality gate
 
@@ -77,6 +79,17 @@ Turn the validated MoReBench latent-label set plus repaired phase-02 prompt fami
   token/section sweeps centered on the alias clause and late prompt summary states
 - strongest realistic claim if successful:
   prompt-side diagnostic evidence that framework-conditioned aliases survive beyond one fixed surface form; not a standalone mechanistic target
+
+### `objective_pressure_profile`
+
+- first-pass readout:
+  prompt-final linear probes and difference-in-means directions on the full `morebench_public/test` split
+- stronger follow-up:
+  source-family-aware and context-aware holdouts plus comparison against the lexical gate baselines on the exact same split
+- localization:
+  final prompt token first, then prompt span comparison only if the prompt-final readout survives the lexical gate
+- strongest realistic claim if successful:
+  prompt-side representational claim that the model encodes a rubric-derived helpfulness-vs-harm pressure profile before generation
 
 ### `theory_conditioned_generation_persistence`
 
@@ -194,6 +207,8 @@ The best realistic outcome of phase 03 is:
 
 ## Expected Artifacts From Execution
 
+- prompt-side rubric-derived label freeze and lexical-gate report for `objective_pressure_profile`
+- prompt-side probe tables and split-robustness readouts for the full-public-split `objective_pressure_profile` experiment
 - prompt-side probe tables for `theory_identity` and later `stakeholder_tradeoff_density`
 - paired-generation comparisons and generation-time probe tables for `theory_conditioned_generation_persistence`
 - response-label pilot and freeze artifacts for `tradeoff_engagement`, `commitment_style`, `helpfulness_invoked`, `harm_avoidance_invoked`, `refuses_or_hedges`, and `uncertainty_and_scope_calibration`
@@ -204,6 +219,7 @@ The best realistic outcome of phase 03 is:
 
 ## Key Risks
 
+- the rubric-derived `objective_pressure_profile` could still be shortcut-satisfiable from the dilemma text under source-family or context leakage, which is why the lexical gate must run before any probe claim
 - explicit cue recoverability remains the main threat to overclaiming in prompt-side `theory_identity`
 - generation-time theory work could still collapse into explicit theory-name copying or obvious response-text lexical cues if the generation controls are weak
 - generation-time theory work could also collapse into response-length or dilemma-topic effects if same-prime / different-dilemma and length baselines are not included
@@ -215,9 +231,10 @@ The best realistic outcome of phase 03 is:
 ## Recommended Phase-03 Order
 
 1. finalize execution targets and per-batch config in `03-execution-targets.md`
-2. keep prompt-side `theory_identity` in diagnostic mode until an alias family clears the retry gate against stronger held-out text baselines
-3. build the shared response generation batch with `description_only` and generic-ethics theory primes so theory persistence can be evaluated on generated tokens
-4. run the behavioral-divergence pre-check plus the small captured full-sequence theory-persistence slice
-5. complete `03-response-label-pilot.md` and freeze the response-side labeled slice
-6. run the generation-time theory-persistence readout plus Experiments 2 through 4 on that frozen slice
+2. construct and freeze the full-public-split rubric-derived `objective_pressure_profile` label
+3. run the lexical gate for that label on the exact intended split family:
+   source-family-aware text baseline plus prompt-length baseline
+4. only if the gate is passed, run the prompt-final readout and split-robustness sweep for `objective_pressure_profile`
+5. keep prompt-side `theory_identity` in diagnostic mode until an alias family clears the retry gate against stronger held-out text baselines
+6. defer fresh response-side generation work until the prompt-side full-public-split experiment is triaged
 7. only then decide whether `stakeholder_tradeoff_density`, `action_locus`, prompt-side theory retry, or phase-04 causal follow-up is worth immediate effort

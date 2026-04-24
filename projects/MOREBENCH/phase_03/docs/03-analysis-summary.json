@@ -1,9 +1,9 @@
 {
   "benchmark": "morebench",
   "phase": "03",
-  "status": "experiment_01_and_02_triaged",
+  "status": "experiment_01_and_02_triaged_next_full_public_prompt_experiment_scoped",
   "execution_readiness": {
-    "overall": "pause_before_new_morebench_response_side_capture",
+    "overall": "full_public_prompt_side_experiment_ready_to_scope_before_any_new_response_side_capture",
     "prompt_side": "alias_only_diagnostic_family_materialized_but_prompt_side_retry_gate_still_closed",
     "response_side": "experiment_02_completed_with_behavioral_and_methodological_findings_but_no_supported_level_2_claim",
     "multi_model_policy": "new execution models must record exact config in 03-execution-targets.md and satisfy the same labelability gate before response-side probing"
@@ -15,6 +15,7 @@
     "follow_up_required": "apply the same content-inspection standard to any newly added execution model before response-side probing"
   },
   "priority_label_families": [
+    "objective_pressure_profile",
     "theory_conditioned_generation_persistence",
     "tradeoff_engagement",
     "commitment_style",
@@ -27,6 +28,13 @@
     "action_locus"
   ],
   "first_methods": {
+    "objective_pressure_profile": [
+      "rubric-derived label freeze on full public split",
+      "prompt-side linear probe",
+      "difference-in-means direction",
+      "source-family-aware lexical gate",
+      "context-aware split where feasible"
+    ],
     "theory_identity": [
       "linear probe",
       "difference-in-means direction",
@@ -75,6 +83,7 @@
     ]
   },
   "biggest_risks": [
+    "the full-public-split objective label could still be shortcut-satisfiable from source-family or topic cues, so the lexical gate must run before any probe claim",
     "prompt-side theory_identity remains a diagnostic-only track until an alias family beats the stronger held-out text baselines",
     "response-side action labels on generated text can leak by construction because the response text itself contains the advocated action",
     "MoReBench theory split contains 150 rows but only 30 unique dilemma texts, so row-count intuition can overstate real dilemma diversity",
@@ -83,5 +92,5 @@
     "action_locus remains only partially repaired",
     "some prompt confound families are still unmaterialized"
   ],
-  "next_step": "log Experiment 2 as a behavioral-plus-methodological result with a negative response-side representational verdict, then pause before any new MoReBench response-side capture unless the capture location or label family changes materially"
+  "next_step": "freeze a full-public-split rubric-derived objective_pressure_profile label and run the prompt-side lexical gate plus source-family-aware readout before any new MoReBench response-side capture"
 }
