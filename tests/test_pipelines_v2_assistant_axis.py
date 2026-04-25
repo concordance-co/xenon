@@ -27,11 +27,12 @@ from pipelines_v2.operations import operation_spec_from_dict
 
 
 def test_assistant_axis_dataset_helper_points_at_canonical_hf_dataset() -> None:
-    dataset = assistant_axis_prompt_dataset(limit=3)
+    dataset = assistant_axis_prompt_dataset(limit=3, revision="abc123")
 
     assert dataset.is_deferred
     assert dataset.name == "assistant_axis_prompt_sources"
     assert dataset.source["path"] == ASSISTANT_AXIS_PROMPT_DATASET_REPO
+    assert dataset.source["revision"] == "abc123"
     assert dataset.fetch["prompt_column"] == "name"
     assert dataset.fetch["prompt_template"] == "{source_type}:{name}"
     assert dataset.fetch["limit"] == 3
@@ -40,11 +41,16 @@ def test_assistant_axis_dataset_helper_points_at_canonical_hf_dataset() -> None:
 
 
 def test_precomputed_assistant_axis_helper_resolves_known_hf_vector_and_roundtrips() -> None:
-    spec = AssistantAxisPrecomputedCoordinateSpec(model_id="Qwen/Qwen3-32B", token_env_var="HF_TOKEN")
+    spec = AssistantAxisPrecomputedCoordinateSpec(
+        model_id="Qwen/Qwen3-32B",
+        revision="abc123",
+        token_env_var="HF_TOKEN",
+    )
     loaded = operation_spec_from_dict(spec.to_dict())
     runtime_spec = spec.runtime_spec()
 
     assert isinstance(loaded, AssistantAxisPrecomputedCoordinateSpec)
+    assert loaded.revision == "abc123"
     assert spec.resolved_layer() == 32
     assert spec.resolved_filename() == "qwen-3-32b/assistant_axis.pt"
     assert assistant_axis_model_config("gemma-2-27b")["target_layer"] == 22
@@ -116,6 +122,12 @@ def test_assistant_axis_vector_generation_and_scoring(tmp_path: Path) -> None:
 def test_unknown_assistant_axis_model_warns() -> None:
     with pytest.warns(UserWarning, match="best layer"):
         AssistantAxisVectorSpec(model_id="acme/unknown-instruct-model")
+
+
+def test_assistant_axis_score_from_dict_defaults_to_generated_slice() -> None:
+    spec = AssistantAxisScoreSpec.from_dict({"kind": "assistant_axis_score", "model_id": "qwen-3-32b"})
+
+    assert spec.slices.names == ("generated",)
 
 
 def _assistant_axis_training_dataset() -> Dataset:

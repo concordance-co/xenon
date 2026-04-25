@@ -71,6 +71,7 @@ def run_projection(spec: ProjectionSpec) -> OperationExecutionResult:
         resolve_coordinate(source, fallback_name=f"coordinate_{index}")
         for index, source in enumerate(spec.coordinates)
     ]
+    _validate_projection_coordinate_names(resolved_coordinates, emit_labels=spec.emit_labels)
     for coordinate in resolved_coordinates:
         if not set(coordinate.layers).intersection(selected_layers):
             raise SpecValidationError(
@@ -79,6 +80,15 @@ def run_projection(spec: ProjectionSpec) -> OperationExecutionResult:
 
     example_keys = sorted(layer_payloads[selected_layers[0]])
     selected_keys = align_example_keys_to_rows(example_keys, spec.rows, label="projection")
+    for layer in selected_layers:
+        missing = [key for key in selected_keys if key not in layer_payloads[layer]]
+        if missing:
+            preview = ", ".join(missing[:5])
+            suffix = "..." if len(missing) > 5 else ""
+            raise SpecValidationError(
+                f"Projection feature layer {layer} is missing selected examples: "
+                f"{preview}{suffix} ({len(missing)} missing)"
+            )
 
     rows: list[dict[str, Any]] = []
     example_summaries: list[dict[str, Any]] = []
@@ -223,6 +233,7 @@ def run_projection_calibration(spec: ProjectionCalibrationSpec) -> OperationExec
         fit_on_keys = {str(key) for key in spec.fit_on.resolve_example_keys()}
 
     grouped: dict[tuple[str, int], list[float]] = defaultdict(list)
+    used_example_keys: set[str] = set()
     if spec.summary_name is not None:
         summary_name = str(spec.summary_name)
         for row in payload.get("example_summaries", ()):
@@ -235,6 +246,7 @@ def run_projection_calibration(spec: ProjectionCalibrationSpec) -> OperationExec
             if not isinstance(metrics, Mapping) or summary_name not in metrics:
                 continue
             grouped[(str(row.get("coordinate") or ""), int(row.get("layer") or 0))].append(float(metrics[summary_name]))
+            used_example_keys.add(example_key)
     else:
         for row in payload.get("rows", ()):
             if not isinstance(row, Mapping):
@@ -243,6 +255,7 @@ def run_projection_calibration(spec: ProjectionCalibrationSpec) -> OperationExec
             if fit_on_keys is not None and example_key not in fit_on_keys:
                 continue
             grouped[(str(row.get("coordinate") or ""), int(row.get("layer") or 0))].append(float(row.get("score") or 0.0))
+            used_example_keys.add(example_key)
 
     if spec.strategy != "quantile_bands":
         raise SpecValidationError(f"Unsupported projection calibration strategy: {spec.strategy!r}")
@@ -270,15 +283,15 @@ def run_projection_calibration(spec: ProjectionCalibrationSpec) -> OperationExec
         "definitions": definitions,
         "summary": {
             "definition_count": len(definitions),
-            "fit_example_count": len(fit_on_keys) if fit_on_keys is not None else None,
+            "fit_example_count": len(used_example_keys),
         },
     }
     return OperationExecutionResult(
         payload=payload_out,
         example_coverage={
             "materialized": True,
-            "example_count": len(fit_on_keys) if fit_on_keys is not None else 0,
-            "example_keys": sorted(fit_on_keys) if fit_on_keys is not None else [],
+            "example_count": len(used_example_keys),
+            "example_keys": sorted(used_example_keys),
         },
     )
 
@@ -359,6 +372,28 @@ def _projection_labels_for_summary(
     label_values[f"projection__{key}__layer_{layer}__slice_count"][example_key] = int(slice_count)
     for metric_name, metric_value in metrics.items():
         label_values[f"projection__{key}__layer_{layer}__{metric_name}"][example_key] = metric_value
+
+
+def _validate_projection_coordinate_names(
+    coordinates: Sequence[Any],
+    *,
+    emit_labels: bool,
+) -> None:
+    """Reject coordinate names that make projection rows or labels ambiguous."""
+
+    names = [str(coordinate.name) for coordinate in coordinates]
+    duplicate_names = sorted({name for name in names if names.count(name) > 1})
+    if duplicate_names:
+        raise SpecValidationError(f"Projection coordinate names must be unique, got duplicates: {duplicate_names}")
+    if not emit_labels:
+        return
+    keys = [coordinate_name_key(name) for name in names]
+    duplicate_keys = sorted({key for key in keys if keys.count(key) > 1})
+    if duplicate_keys:
+        raise SpecValidationError(
+            "Projection label names would collide after coordinate-name sanitization: "
+            f"{duplicate_keys}. Use distinct coordinate names."
+        )
 
 
 def _coordinate_orientation(orientation: Mapping[str, str], coordinate_name: str) -> str | None:

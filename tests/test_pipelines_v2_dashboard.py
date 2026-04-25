@@ -15,11 +15,13 @@ from typing import Any
 import pytest
 
 from pipelines_v2.storage.composite import CompositeCatalog
+from pipelines_v2.data.datasets import Dataset
 from pipelines_v2.storage.local import FileCatalog
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
 
 from pipelines_v2.dashboard.catalog import DashboardCatalog
 from pipelines_v2.dashboard.normalize import build_run_detail, build_run_summary
+from pipelines_v2.dashboard.previews import _resolved_dataset_cache_key
 from pipelines_v2.dashboard.pg import DashboardPg
 from pipelines_v2.dashboard.result_preview import read_result_payload
 from pipelines_v2.storage.artifacts import ArtifactManifest
@@ -48,6 +50,15 @@ def _probe_step_payload(name: str, depends_on: list[str], runner: str = "analysi
         "name": name,
         "runner": runner,
         "spec": {"kind": "probe"},
+        "depends_on": depends_on,
+    }
+
+
+def _projection_step_payload(name: str, depends_on: list[str], runner: str = "analysis") -> dict[str, Any]:
+    return {
+        "name": name,
+        "runner": runner,
+        "spec": {"kind": "projection"},
         "depends_on": depends_on,
     }
 
@@ -165,6 +176,7 @@ def test_build_run_detail_produces_stable_nodes_and_edges() -> None:
         [
             _capture_step_payload("cap"),
             _probe_step_payload("probe", depends_on=["cap"]),
+            _projection_step_payload("score_axis", depends_on=["cap"]),
             _report_step_payload("report", depends_on=["probe"]),
         ]
     )
@@ -172,9 +184,10 @@ def test_build_run_detail_produces_stable_nodes_and_edges() -> None:
     steps = [
         _make_step_record(run_id="r1", step_index=0, step_name="cap", runner="capture", artifact_id="a1"),
         _make_step_record(run_id="r1", step_index=1, step_name="probe", runner="analysis", artifact_id="a2"),
+        _make_step_record(run_id="r1", step_index=2, step_name="score_axis", runner="analysis", artifact_id="a4"),
         _make_step_record(
             run_id="r1",
-            step_index=2,
+            step_index=3,
             step_name="report",
             runner="report",
             artifact_id="a3",
@@ -185,20 +198,21 @@ def test_build_run_detail_produces_stable_nodes_and_edges() -> None:
     detail = build_run_detail(run, steps)
 
     node_ids = [n.id for n in detail.nodes]
-    assert node_ids == ["cap", "probe", "report"], "nodes follow step_index ordering"
+    assert node_ids == ["cap", "probe", "score_axis", "report"], "nodes follow step_index ordering"
 
     families = {n.id: n.family for n in detail.nodes}
-    assert families == {"cap": "capture", "probe": "readout", "report": "report"}
+    assert families == {"cap": "capture", "probe": "readout", "score_axis": "mechinterp", "report": "report"}
 
     edges = sorted((e.source, e.target, e.kind) for e in detail.edges)
     assert edges == [
         ("cap", "probe", "declared"),
+        ("cap", "score_axis", "declared"),
         ("probe", "report", "declared"),
     ]
 
     assert detail.run.has_report is True
-    assert detail.run.step_counts.total == 3
-    assert detail.run.step_counts.completed == 3
+    assert detail.run.step_counts.total == 4
+    assert detail.run.step_counts.completed == 4
 
 
 def test_build_run_detail_includes_unexecuted_steps_as_pending() -> None:
@@ -243,6 +257,27 @@ def test_server_cache_put_prunes_expired_and_oldest() -> None:
 
     _put_server_cache(cache, key="newer", value="fresh2", ttl_seconds=10.0, maxsize=2)
     assert list(cache.keys()) == ["new", "newer"]
+
+
+def test_deferred_preview_cache_key_includes_bound_artifact_id() -> None:
+    @dataclass(frozen=True)
+    class ArtifactLike:
+        id: str
+
+    left = Dataset(
+        examples=(),
+        id="dataset_ref",
+        source={"kind": "artifact_dataset"},
+        fetch={"artifact": ArtifactLike("artifact_a")},
+    )
+    right = Dataset(
+        examples=(),
+        id="dataset_ref",
+        source={"kind": "artifact_dataset"},
+        fetch={"artifact": ArtifactLike("artifact_b")},
+    )
+
+    assert _resolved_dataset_cache_key(left, sample_size=5) != _resolved_dataset_cache_key(right, sample_size=5)
 
 
 def test_run_summary_flags_reused_and_has_report() -> None:

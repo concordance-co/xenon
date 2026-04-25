@@ -85,6 +85,14 @@ def matrix_from_layer_payload(
     token_selector: TokenSelector | None,
     token_pooling: TokenPooling | None,
 ) -> NDArray[np.float32]:
+    missing = [str(key) for key in example_keys if str(key) not in layer_payload]
+    if missing:
+        preview = ", ".join(missing[:5])
+        suffix = "..." if len(missing) > 5 else ""
+        raise SpecValidationError(
+            "Feature layer payload is missing selected examples: "
+            f"{preview}{suffix} ({len(missing)} missing)"
+        )
     rows: list[NDArray[np.float32]] = []
     for key in example_keys:
         record = dict(layer_payload[key])
@@ -156,7 +164,7 @@ def routing_vector_from_record(
     if "topk_from_gate" in record and isinstance(record["topk_from_gate"], Mapping):
         topk = record["topk_from_gate"]
         expert_ids = [int(expert_id) for expert_id in topk.get("expert_ids", ())]
-        expert_weights = topk.get("expert_weights")
+        expert_weights = topk.get("weights", topk.get("expert_weights"))
         if expert_weights is None:
             weights = np.ones(len(expert_ids), dtype=np.float32)
         else:
@@ -173,10 +181,20 @@ def routing_vector_from_record(
         return dense
     if "expert_load" in record and isinstance(record["expert_load"], Mapping):
         expert_load = record["expert_load"]
-        expert_ids = [int(expert_id) for expert_id in expert_load.get("expert_ids", ())]
-        counts = np.asarray(expert_load.get("counts", ()), dtype=np.float32)
+        raw_counts = expert_load.get("counts", ())
+        if isinstance(raw_counts, Mapping):
+            pairs = [(int(expert_id), value) for expert_id, value in raw_counts.items()]
+            expert_ids = [expert_id for expert_id, _value in pairs]
+            counts = np.asarray([value for _expert_id, value in pairs], dtype=np.float32)
+        else:
+            expert_ids = [int(expert_id) for expert_id in expert_load.get("expert_ids", ())]
+            counts = np.asarray(raw_counts, dtype=np.float32)
         if expert_ids and counts.size == len(expert_ids):
-            num_experts = max(expert_ids) + 1
+            num_experts = None
+            if isinstance(routing_policy, Mapping) and routing_policy.get("num_experts") is not None:
+                num_experts = int(routing_policy["num_experts"])
+            else:
+                num_experts = max(expert_ids) + 1
             dense = np.zeros(num_experts, dtype=np.float32)
             dense[np.asarray(expert_ids, dtype=np.int64)] = counts
             return dense

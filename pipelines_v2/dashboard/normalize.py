@@ -38,6 +38,12 @@ _KIND_FAMILY: dict[str, str] = {
     "basis": "representation",
     "geometry": "representation",
     "activation_patch": "representation",
+    "coordinate_import": "mechinterp",
+    "projection": "mechinterp",
+    "projection_calibration": "mechinterp",
+    "assistant_axis_precomputed_coordinate": "mechinterp",
+    "assistant_axis_vector": "mechinterp",
+    "assistant_axis_score": "mechinterp",
     "report": "report",
 }
 

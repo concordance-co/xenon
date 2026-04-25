@@ -320,9 +320,15 @@ def _build_runners(
 ) -> dict[str, object]:
     if runner_specs is not None:
         # Checked-in runner specs are the explicit workflow-level contract.
-        # Workspace defaults should only fill CLI-built runners, not override
-        # workflow-authored local/shared catalog choices.
+        # Workspace defaults fill wholly-unset catalog specs, but if the workflow
+        # authors any catalog explicitly we leave the remaining runners local.
         runners = {name: spec.to_runner() for name, spec in runner_specs.items()}
+        all_catalogs_unset = all(
+            getattr(getattr(runner, "catalog", NullCatalog()), "kind", "none") == "none"
+            for runner in runners.values()
+        )
+        if all_catalogs_unset:
+            _apply_workspace_catalog_defaults(runners, ns)
     else:
         runners = _build_runners_from_args(ns)
         _apply_workspace_catalog_defaults(runners, ns)

@@ -24,6 +24,7 @@ from pipelines_v2.dashboard.models import (
     LabelDistributionBucket,
     LabelPreview,
 )
+from pipelines_v2.core.types import stable_hash
 from pipelines_v2.data.datasets import Dataset, Example
 from pipelines_v2.storage.artifacts import ArtifactManifest, artifact_from_manifest
 from pipelines_v2.storage.local import LocalArtifactStore
@@ -302,7 +303,7 @@ def _materialize_sample(
             artifact_manifests_by_step=artifact_manifests_by_step,
             local_cache_root=local_cache_root,
         )
-        cache_key = (str(dataset.id or ""), int(sample_size))
+        cache_key = _resolved_dataset_cache_key(dataset, sample_size=sample_size)
         if cache_key[0]:
             now = time.monotonic()
             with _RESOLVED_CACHE_LOCK:
@@ -335,6 +336,29 @@ def clear_resolved_dataset_cache() -> None:
     invalidate endpoint."""
     with _RESOLVED_CACHE_LOCK:
         _RESOLVED_CACHE.clear()
+
+
+def _resolved_dataset_cache_key(dataset: Dataset, *, sample_size: int) -> tuple[str, int]:
+    """Return a cache key that distinguishes run-bound artifact datasets."""
+
+    source = dict(dataset.source or {})
+    fetch = dict(dataset.fetch or {})
+    artifact = fetch.get("artifact")
+    artifact_id = getattr(artifact, "id", None)
+    if artifact_id is not None:
+        fetch["artifact_id"] = str(artifact_id)
+        fetch.pop("artifact", None)
+    return (
+        stable_hash(
+            {
+                "dataset_id": dataset.id,
+                "source": source,
+                "fetch": fetch,
+                "selection": dict(dataset.selection),
+            }
+        )[:32],
+        int(sample_size),
+    )
 
 
 def _bind_artifact_dataset_step_refs(

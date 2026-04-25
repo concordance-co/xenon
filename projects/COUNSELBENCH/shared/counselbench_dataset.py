@@ -615,7 +615,7 @@ def render_eval_response_prompt(question: Any, response: Any) -> list[dict[str, 
 
 def eval_chat_prompt_sections(rendered_prompt: str) -> dict[str, Any]:
     """Derive question/response sections from a rendered Qwen-style chat prompt."""
-    text = _clean_text(rendered_prompt)
+    text = str(rendered_prompt or "")
     question = _role_body_span(text, "user")
     response = _role_body_span(text, "assistant")
     if question is None or response is None:
@@ -640,7 +640,7 @@ def eval_chat_prompt_sections(rendered_prompt: str) -> dict[str, Any]:
 
 def adv_prompt_chat_sections(rendered_prompt: str) -> dict[str, Any]:
     """Derive raw Adv prompt sections from a rendered chat prompt."""
-    text = _clean_text(rendered_prompt)
+    text = str(rendered_prompt or "")
     prompt = _role_body_span(text, "user")
     if prompt is None:
         prompt = (0, max(0, len(text)))
@@ -660,7 +660,7 @@ def adv_prompt_chat_sections(rendered_prompt: str) -> dict[str, Any]:
 
 def adv_generated_chat_prompt_sections(rendered_prompt: str) -> dict[str, Any]:
     """Derive Adv user prompt and generated assistant sections from rendered chat."""
-    text = _clean_text(rendered_prompt)
+    text = str(rendered_prompt or "")
     prompt = _role_body_span(text, "user")
     generated = _role_body_span(text, "assistant")
     if prompt is None:

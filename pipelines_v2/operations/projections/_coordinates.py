@@ -145,11 +145,17 @@ def _load_coordinate_tensor(*, path: Path, format: str) -> Any:
     if normalized == "torch_tensor_or_axis_dict":
         import torch
 
-        payload = torch.load(path, map_location="cpu")
+        try:
+            payload = torch.load(path, map_location="cpu", weights_only=True)
+        except TypeError as exc:  # pragma: no cover - older torch safety surface
+            raise SpecValidationError(
+                "Loading PyTorch coordinate artifacts requires torch.load(..., weights_only=True). "
+                "Upgrade torch or convert the coordinate to .npy/json_vector."
+            ) from exc
         if isinstance(payload, Mapping) and payload.get("axis") is not None:
             payload = payload["axis"]
         if hasattr(payload, "detach"):
-            return payload.detach().cpu().numpy()
+            return payload.detach().cpu().to(torch.float32).numpy()
         return np.asarray(payload)
     if normalized == "npy":
         return np.load(path)

@@ -50,11 +50,13 @@ def run_assistant_axis_precomputed_coordinate(spec: AssistantAxisPrecomputedCoor
         repo_id=spec.repo_id,
         filename=filename,
         repo_type="dataset",
+        revision=spec.revision,
         token=_hf_token(spec.token_env_var),
     )
     metadata = {
         "source": "precomputed_huggingface",
         "repo_id": spec.repo_id,
+        "revision": spec.revision,
         "filename": filename,
         "model_id": spec.model_id,
         **(config or {}),
@@ -94,7 +96,7 @@ def run_assistant_axis_vector(spec: AssistantAxisVectorSpec) -> OperationExecuti
 
     matrices, example_keys = feature_matrices(
         spec.feature,
-        layers=tuple(spec.layers) if spec.layers else None,
+        layers=spec.resolved_layers(),
         token_selector=spec.tokens,
         token_pooling=spec.pooling,
     )

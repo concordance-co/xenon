@@ -15,6 +15,7 @@ export type StepFamily =
   | "derive"
   | "readout"
   | "representation"
+  | "mechinterp"
   | "report"
   | string;
 

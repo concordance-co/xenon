@@ -29,6 +29,7 @@ export function RunOverview({ detail }: { detail: RunDetail }) {
           families={["representation"]}
           heading="representations"
         />
+        <ReadoutsSection detail={detail} families={["mechinterp"]} heading="mech interp" />
         <DeriveRow detail={detail} />
         <ReportSection detail={detail} />
       </div>

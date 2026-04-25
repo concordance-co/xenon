@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from pipelines_v2.api import (
     CaptureSpec,
@@ -22,6 +23,7 @@ from pipelines_v2.api import (
     ToyEngine,
 )
 from pipelines_v2.engine.prompt_metadata import resolve_prompt_metadata, section_records_from_metadata, token_sections_from_metadata
+from pipelines_v2.operations.execution.common import routing_vector_from_record
 
 
 def test_prompt_metadata_builder_chat_turns_produces_section_records() -> None:
@@ -208,6 +210,41 @@ def test_coordinate_import_projection_and_quantile_calibration(tmp_path: Path) -
     assert definitions[0]["orientation"] == "higher_is_more_assistant"
     assert definitions[0]["bands"] == ["A", "B", "C"]
     assert len(definitions[0]["thresholds"]) == 2
+
+    calibration_all = runner.run(ProjectionCalibrationSpec(projections=projections))
+    assert calibration_all.result()["summary"]["fit_example_count"] == 2
+    assert calibration_all.manifest().example_coverage["example_count"] == 2
+
+
+def test_routing_projection_vector_reader_accepts_capture_record_schema() -> None:
+    topk = routing_vector_from_record(
+        {"topk_from_gate": {"expert_ids": [1, 3], "weights": [0.25, 0.75]}},
+        routing_policy={"num_experts": 4},
+    )
+    expert_load = routing_vector_from_record(
+        {"expert_load": {"counts": {"1": 2, "3": 1}}},
+        routing_policy={"num_experts": 4},
+    )
+
+    assert topk.tolist() == [0.0, 0.25, 0.0, 0.75]
+    assert expert_load.tolist() == [0.0, 2.0, 0.0, 1.0]
+
+
+def test_coordinate_import_casts_torch_bfloat16_axes(tmp_path: Path) -> None:
+    torch = pytest.importorskip("torch")
+    axis_path = tmp_path / "axis.pt"
+    torch.save(torch.ones((1, 4), dtype=torch.bfloat16), axis_path)
+
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    imported = runner.run(
+        CoordinateImportSpec(
+            path=str(axis_path),
+            format="torch_tensor_or_axis_dict",
+            select_layer=0,
+        )
+    )
+
+    assert imported.result()["layers"]["0"]["vector"] == [0.5, 0.5, 0.5, 0.5]
 
 
 def _conversation_section_metadata() -> dict[str, object]:

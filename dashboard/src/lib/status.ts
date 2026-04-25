@@ -66,6 +66,8 @@ export function familyAccent(family: StepFamily | null | undefined): {
       return { label: "readout", text: "text-sky-300", bar: "bg-sky-500/70" };
     case "representation":
       return { label: "representation", text: "text-fuchsia-300", bar: "bg-fuchsia-500/70" };
+    case "mechinterp":
+      return { label: "mech interp", text: "text-cyan-300", bar: "bg-cyan-500/70" };
     case "report":
       return { label: "report", text: "text-rose-300", bar: "bg-rose-500/70" };
     default:

@@ -16,6 +16,7 @@ ASSISTANT_AXIS_PROMPT_DATASET_REPO = "belmore/assistant-axis-vector-prompts"
 def assistant_axis_prompt_dataset(
     *,
     repo_id: str = ASSISTANT_AXIS_PROMPT_DATASET_REPO,
+    revision: str | None = None,
     split: str = "train",
     limit: int | None = None,
 ) -> Dataset:
@@ -29,7 +30,7 @@ def assistant_axis_prompt_dataset(
     """
 
     return Dataset.from_huggingface(
-        source=HuggingFaceSource(path=repo_id),
+        source=HuggingFaceSource(path=repo_id, revision=revision),
         split=split,
         prompt_column="name",
         prompt_template="{source_type}:{name}",

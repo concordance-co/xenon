@@ -120,6 +120,7 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
 
     model_id: str = ""
     repo_id: str = ASSISTANT_AXIS_VECTOR_REPO
+    revision: str | None = None
     filename: str | None = None
     select_layer: int | None = None
     normalize: str = "l2"
@@ -132,6 +133,8 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
     def __post_init__(self) -> None:
         object.__setattr__(self, "model_id", str(self.model_id))
         object.__setattr__(self, "repo_id", str(self.repo_id))
+        if self.revision is not None:
+            object.__setattr__(self, "revision", str(self.revision))
         if self.filename is not None:
             object.__setattr__(self, "filename", str(self.filename))
         if self.select_layer is not None:
@@ -192,6 +195,7 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
             schema_version=int(payload.get("schema_version", 1)),
             model_id=str(payload.get("model_id", "")),
             repo_id=str(payload.get("repo_id", ASSISTANT_AXIS_VECTOR_REPO)),
+            revision=str(payload["revision"]) if payload.get("revision") is not None else None,
             filename=str(payload["filename"]) if payload.get("filename") is not None else None,
             select_layer=int(payload["select_layer"]) if payload.get("select_layer") is not None else None,
             normalize=str(payload.get("normalize", "l2")),
@@ -246,6 +250,16 @@ class AssistantAxisVectorSpec(OperationSpec):
         if self.model_id is not None:
             object.__setattr__(self, "model_id", str(self.model_id))
         _warn_if_unknown_model(self.model_id, self.warn_unknown_model)
+
+    def resolved_layers(self) -> tuple[int, ...] | None:
+        """Return explicit layers, a known-model target layer, or None for all layers."""
+
+        if self.layers:
+            return tuple(int(layer) for layer in self.layers)
+        config = assistant_axis_model_config(self.model_id)
+        if config is not None:
+            return (int(config["target_layer"]),)
+        return None
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
         return runtime_secrets_from_refs(
@@ -340,7 +354,11 @@ class AssistantAxisScoreSpec(OperationSpec):
             axis=spec_value_from_dict(payload.get("axis")),
             model_id=str(payload["model_id"]) if payload.get("model_id") is not None else None,
             layer=int(payload["layer"]) if payload.get("layer") is not None else None,
-            slices=SectionSelector.from_dict(payload.get("slices")),
+            slices=(
+                SectionSelector.from_dict(payload["slices"])
+                if payload.get("slices") is not None
+                else SectionSelector.named("generated")
+            ),
             rows=spec_value_from_dict(payload.get("rows")),
             pooling=TokenPooling.from_dict(payload.get("pooling", {"kind": "mean"})),
             metric=str(payload.get("metric", "signed_dot")),

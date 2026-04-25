@@ -8,7 +8,6 @@ from pipelines_v2.api import (
     ArtifactDatasetSource,
     CaptureSpec,
     Dataset,
-    GenerationRunSpec,
     GenerationSpec,
     GeometrySpec,
     LocalArtifactStore,
@@ -34,11 +33,9 @@ from pipelines_v2.api import (
     WorkflowStep,
 )
 from projects.COUNSELBENCH.shared.counselbench_dataset import (
-    adv_generated_chat_prompt_sections,
     adv_prompt_chat_sections,
     build_adv_prompt_dataset,
     build_raw_adv_source_dataset,
-    build_successful_generation_capture_dataset,
     summarize_geometry_metrics,
     triage_adv_03b_controls,
 )
@@ -78,15 +75,6 @@ def _adv_dataset_ref() -> Dataset:
     )
 
 
-def _generated_dataset_ref() -> Dataset:
-    return Dataset.from_source(
-        source=ArtifactDatasetSource(),
-        artifact=StepRef("build_successful_generation_capture_dataset"),
-        result_key="dataset",
-        name="counselbench_adv_successful_prompt_generated_contexts",
-    )
-
-
 def build_runner_specs() -> dict[str, object]:
     modal_store = ModalVolumeStore(name=ARTIFACTS_VOLUME, root=MODAL_ARTIFACT_ROOT)
     return {
@@ -115,7 +103,6 @@ def build_dataset(*, limit: int | None = None) -> Dataset:
 def build_workflow(raw_adv_dataset: Dataset | None = None) -> WorkflowSpec:
     raw_adv = raw_adv_dataset or build_dataset()
     adv_dataset = _adv_dataset_ref()
-    generated_dataset = _generated_dataset_ref()
     prompt_capture_ref = StepRef("capture_adv_prompt_only_residual")
     return WorkflowSpec(
         name="counselbench_adv_phase03b_controls_localization",
@@ -147,45 +134,6 @@ def build_workflow(raw_adv_dataset: Dataset | None = None) -> WorkflowSpec:
                     sites=[
                         ResidualSite(name="residual_prompt_end", site="resid_post", layers=list(CAPTURED_LAYERS), tokens=TokenSelector.section("prompt_end"), storage=TensorStorage(dtype="float16", format="safetensors")),
                         ResidualSite(name="residual_risk_span", site="resid_post", layers=list(CAPTURED_LAYERS), tokens=TokenSelector.section("risk_span"), storage=TensorStorage(dtype="float16", format="safetensors")),
-                    ],
-                ),
-            ),
-            WorkflowStep(
-                name="generate_adv_responses",
-                runner="capture_gpu",
-                description="Regenerate deterministic Adv responses under the corrected no-system chat prompt format.",
-                spec=GenerationRunSpec(
-                    engine=_engine(),
-                    dataset=adv_dataset,
-                    generation=GenerationSpec(enabled=True, max_tokens=15000, temperature=0.0, top_p=1.0, top_k=-1),
-                ),
-            ),
-            WorkflowStep(
-                name="build_successful_generation_capture_dataset",
-                runner="analysis_cpu",
-                description="Build user/assistant replay contexts for generated-answer-end capture.",
-                spec=TransformSpec(
-                    builder=TransformBuilder.from_function(
-                        build_successful_generation_capture_dataset,
-                        local_python_sources=("projects/COUNSELBENCH",),
-                    ),
-                    inputs={"generation": StepRef("generate_adv_responses")},
-                ),
-            ),
-            WorkflowStep(
-                name="capture_adv_generated_residual",
-                runner="capture_gpu",
-                description="Capture generated-answer-end residuals from replayed user/assistant chat contexts.",
-                spec=CaptureSpec(
-                    engine=_engine(max_num_seqs=4, add_generation_prompt=False),
-                    dataset=generated_dataset,
-                    generation=GenerationSpec(enabled=False),
-                    prompt_metadata_builder=PromptMetadataBuilder.from_function(
-                        adv_generated_chat_prompt_sections,
-                        local_python_sources=("projects/COUNSELBENCH",),
-                    ),
-                    sites=[
-                        ResidualSite(name="residual_generation_end", site="resid_post", layers=list(CAPTURED_LAYERS), tokens=TokenSelector.section("generated_end"), storage=TensorStorage(dtype="float16", format="safetensors")),
                     ],
                 ),
             ),

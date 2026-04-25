@@ -860,7 +860,7 @@ def _fill_router_features(
     example: Example,
     token_count: int,
     token_sections: dict[str, list[int]],
-    section_records: list[dict[str, Any]],
+    section_records: list[dict[str, Any]] | None = None,
     discovered_router_layers: list[int] | None = None,
 ) -> None:
     if not routing_sites:
@@ -874,7 +874,7 @@ def _fill_router_features(
             selected_positions=positions,
         )
         feature_section_records = rebase_section_records(
-            section_records=section_records,
+            section_records=section_records or [],
             selected_positions=positions,
         )
         for layer in site.layers:
