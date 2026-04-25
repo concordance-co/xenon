@@ -73,6 +73,8 @@ class _DashboardAppState:
     run_bundle_cache: dict[str, tuple[float, _RunBundle]] = field(default_factory=dict)
     run_bundle_building: dict[str, threading.Event] = field(default_factory=dict)
     run_bundle_lock: threading.Lock = field(default_factory=threading.Lock)
+    runs_cache_maxsize: int = 64
+    run_bundle_cache_maxsize: int = 128
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,7 +246,10 @@ def create_app(
         cold_ttl=cache_cold_ttl,
         cache_maxsize=cache_maxsize,
     )
-    runtime_state = _DashboardAppState()
+    runtime_state = _DashboardAppState(
+        runs_cache_maxsize=max(16, min(128, cache_maxsize // 32 or 16)),
+        run_bundle_cache_maxsize=max(32, min(256, cache_maxsize // 8 or 32)),
+    )
 
     @asynccontextmanager
     async def lifespan(_app):  # noqa: ARG001 - standard FastAPI lifespan signature
@@ -333,6 +338,7 @@ def create_app(
             if expiry > now:
                 _perf_log.debug("/api/runs: CACHE HIT (%.1fms)", (now - (expiry - _RUNS_CACHE_TTL)) * 1000)
                 return response
+            runtime_state.runs_cache.pop(cache_key, None)
 
         t0 = _time.perf_counter()
 
@@ -422,6 +428,7 @@ def create_app(
                         seen=seen,
                         workflow_name=workflow_name,
                         status=status,
+                        limit=limit,
                     )
                     local_extra = len(local_summaries)
                     if local_extra > 0:
@@ -439,9 +446,12 @@ def create_app(
                     _ms(), len(summaries),
                 )
                 result = RunsResponse(runs=summaries)
-                runtime_state.runs_cache[cache_key] = (
-                    _time.perf_counter() + _RUNS_CACHE_TTL,
-                    result,
+                _put_server_cache(
+                    runtime_state.runs_cache,
+                    key=cache_key,
+                    value=result,
+                    ttl_seconds=_RUNS_CACHE_TTL,
+                    maxsize=runtime_state.runs_cache_maxsize,
                 )
                 # Pre-warm run bundle cache for the most recent runs so they're
                 # instant when the user clicks. Fire-and-forget in background.
@@ -475,7 +485,13 @@ def create_app(
             _ms(), len(summaries),
         )
         result = RunsResponse(runs=summaries)
-        runtime_state.runs_cache[cache_key] = (_time.perf_counter() + _RUNS_CACHE_TTL, result)
+        _put_server_cache(
+            runtime_state.runs_cache,
+            key=cache_key,
+            value=result,
+            ttl_seconds=_RUNS_CACHE_TTL,
+            maxsize=runtime_state.runs_cache_maxsize,
+        )
         return result
 
     @app.get("/api/runs/{run_id}/report-status", response_model=RunReportStatus)
@@ -676,6 +692,11 @@ def create_app(
             out["catalog_cache"] = stats_fn()
         else:
             out["catalog_cache"] = None
+        out["runtime"] = {
+            "runs_cache_entries": _live_server_cache_entries(runtime_state.runs_cache),
+            "run_bundle_cache_entries": _live_server_cache_entries(runtime_state.run_bundle_cache),
+            "run_bundle_building": len(runtime_state.run_bundle_building),
+        }
         if dash.pg is not None:
             out["pg"] = dash.pg.stats()
         return out
@@ -690,14 +711,18 @@ def create_app(
         sample_size: int = Query(default=DEFAULT_SAMPLE_SIZE, ge=1, le=500),
         source_step: str | None = Query(default=None),
     ) -> DatasetPreview:
+        bundle = _load_run_bundle(runtime_state, dash, run_id)
         run = dash.composite.load_workflow_run(run_id)
         if run is None:
             raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
+        artifact_manifests_by_step = _resolve_manifests_for_steps(dash, run_id, bundle.step_records)
         return build_dataset_preview(
             run=run,
             target_step=step_name,
             sample_size=sample_size,
             source_step=source_step,
+            artifact_manifests_by_step=artifact_manifests_by_step,
+            local_cache_root=dash.local_root,
         )
 
     @app.get(
@@ -710,14 +735,18 @@ def create_app(
         source_step: str | None = Query(default=None),
         sample_size: int = Query(default=DEFAULT_SAMPLE_SIZE, ge=1, le=500),
     ) -> LabelPreview:
+        bundle = _load_run_bundle(runtime_state, dash, run_id)
         run = dash.composite.load_workflow_run(run_id)
         if run is None:
             raise HTTPException(status_code=404, detail=f"Unknown run_id: {run_id}")
+        artifact_manifests_by_step = _resolve_manifests_for_steps(dash, run_id, bundle.step_records)
         return build_label_preview(
             run=run,
             target_step=step_name,
             source_step=source_step,
             sample_size=sample_size,
+            artifact_manifests_by_step=artifact_manifests_by_step,
+            local_cache_root=dash.local_root,
         )
 
     @app.get("/api/reports/{artifact_id}", response_model=ReportDetail)
@@ -796,6 +825,7 @@ def _parallel_local_summaries(
     seen: set[str],
     workflow_name: str | None,
     status: str | None,
+    limit: int | None,
 ) -> list[Any]:
     """Read lightweight local run summaries, falling back to run-file scans."""
     light_lister = getattr(local_catalog, "list_workflow_runs_light", None)
@@ -804,7 +834,7 @@ def _parallel_local_summaries(
             rows = light_lister(
                 workflow_name=workflow_name,
                 status=status,
-                limit=None,
+                limit=limit,
             )
         except Exception:
             rows = None
@@ -854,6 +884,9 @@ def _parallel_local_summaries(
             summary = future.result()
             if summary is not None:
                 results.append(summary)
+    results.sort(key=lambda summary: (summary.started_at, summary.run_id), reverse=True)
+    if limit is not None:
+        return results[:limit]
     return results
 
 
@@ -969,6 +1002,7 @@ def _load_run_bundle(
         expiry, bundle = cached
         if expiry > now:
             return bundle
+        runtime_state.run_bundle_cache.pop(run_id, None)
 
     # Slow path: serialize cache-fill per run_id.
     build_event: threading.Event | None = None
@@ -980,6 +1014,7 @@ def _load_run_bundle(
             expiry, bundle = cached
             if expiry > now:
                 return bundle
+            runtime_state.run_bundle_cache.pop(run_id, None)
         # Check if another thread is already building this run_id.
         build_event = runtime_state.run_bundle_building.get(run_id)
         if build_event is None:
@@ -1039,7 +1074,13 @@ def _load_run_bundle(
         )
         terminal = run.status in ("completed", "failed", "cancelled")
         ttl = _RUN_BUNDLE_TTL if terminal else 15.0
-        runtime_state.run_bundle_cache[run_id] = (time_mod.perf_counter() + ttl, bundle)
+        _put_server_cache(
+            runtime_state.run_bundle_cache,
+            key=run_id,
+            value=bundle,
+            ttl_seconds=ttl,
+            maxsize=runtime_state.run_bundle_cache_maxsize,
+        )
         return bundle
     finally:
         if builder and build_event is not None:
@@ -1067,6 +1108,31 @@ def _dashboard_read_catalog(dash: DashboardCatalog) -> _DashboardReadCatalog:
         seen.add(marker)
         sources.append(_CatalogSource(name=name, catalog=candidate))
     return _DashboardReadCatalog(tuple(sources))
+
+
+def _put_server_cache(
+    cache: dict[Any, tuple[float, Any]],
+    *,
+    key: Any,
+    value: Any,
+    ttl_seconds: float,
+    maxsize: int,
+) -> None:
+    now = time_mod.perf_counter()
+    expired_keys = [cache_key for cache_key, (expiry, _value) in cache.items() if expiry <= now]
+    for cache_key in expired_keys:
+        cache.pop(cache_key, None)
+    if key in cache:
+        cache.pop(key, None)
+    cache[key] = (now + ttl_seconds, value)
+    while len(cache) > maxsize:
+        oldest_key = next(iter(cache))
+        cache.pop(oldest_key, None)
+
+
+def _live_server_cache_entries(cache: dict[Any, tuple[float, Any]]) -> int:
+    now = time_mod.perf_counter()
+    return sum(1 for expiry, _value in cache.values() if expiry > now)
 
 
 def _resolve_report_step(workflow: WorkflowSpec, *, step_name: str | None) -> WorkflowStep:

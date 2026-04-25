@@ -3125,11 +3125,12 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
             "root": str(tmp_path / "artifacts"),
         },
         spec_payload=spec.to_dict(),
-        workflow_context=None,
+        workflow_context={"step_name": "capture_prompt_generated_residual"},
         progress_callback=lambda payload: progress_events.append(dict(payload)),
     )
 
     function_kwargs = dict(captured["function_kwargs"])
+    assert captured["app_name"] == "xenon-capture-prompt-generated-residual"
     assert function_kwargs["max_containers"] == 1
     assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert function_kwargs["env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
@@ -3270,12 +3271,17 @@ def test_modal_worker_shards_model_bound_specs(
             "root": str(tmp_path / "artifacts"),
         },
         spec_payload=make_toy_capture_spec().to_dict(),
-        workflow_context={"run_id": "wr_test", "workflow_step_key": "wf.capture"},
+        workflow_context={
+            "run_id": "wr_test",
+            "workflow_step_key": "wf.capture_prompt_generated_residual",
+            "step_name": "capture_prompt_generated_residual",
+        },
         progress_callback=lambda payload: progress_events.append(dict(payload)),
     )
 
     assert result["artifact_id"] == "capture_merged"
     assert result["runner"]["runtime_app_id"] == "ap-test-shards"
+    assert captured["app_name"] == "xenon-capture-prompt-generated-residual"
     assert sorted(dict(context["execution_shard"])["index"] for context in shard_contexts) == [0, 1, 2]
     assert len(merged_inputs) == 3
     assert "remote_shards_submitted" in [event["stage"] for event in progress_events]
@@ -6076,6 +6082,12 @@ def test_phase5_style_specs_execute_over_residual_router_and_text(tmp_path: Path
     assert "test_predictions" not in text_baseline_payload["results"]["grouped_cv"]
     assert residualized_payload["kind"] == "residualized_probe_result"
     assert residualized_payload["layers"][0]["family_subspace_rank"] >= 1
+    assert residualized_payload["summary"]["best_residualized_balanced_accuracy"] is not None
+    assert residualized_payload["summary"]["max_nuisance_accuracy_on_null_training_fit"] is not None
+    assert residualized_payload["summary"]["residualization_diagnostic"] in {
+        "nuisance_reduced",
+        "nuisance_still_decodable",
+    }
     assert geometry_pca_payload["kind"] == "geometry_result"
     assert geometry_pca_payload["layers"][0]["example_count"] == 4
     assert geometry_lda_payload["kind"] == "geometry_result"

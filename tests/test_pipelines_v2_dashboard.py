@@ -119,6 +119,10 @@ def _make_step_record(
     )
 
 
+def _noop_transform_for_dashboard_test() -> dict[str, Any]:
+    return {}
+
+
 # ---------------------------------------------------------------------------
 # CompositeCatalog behavior — the dashboard relies on merge dedupe + ordering.
 # ---------------------------------------------------------------------------
@@ -224,6 +228,23 @@ def test_build_run_detail_includes_unexecuted_steps_as_pending() -> None:
     assert any(e.source == "cap" and e.target == "probe" for e in detail.edges)
 
 
+def test_server_cache_put_prunes_expired_and_oldest() -> None:
+    from pipelines_v2.dashboard.server import _put_server_cache
+    import time
+
+    cache: dict[str, tuple[float, str]] = {
+        "expired": (0.0, "old"),
+        "keep": (time.perf_counter() + 1_000.0, "keep"),
+    }
+    _put_server_cache(cache, key="new", value="fresh", ttl_seconds=10.0, maxsize=2)
+
+    assert "expired" not in cache
+    assert list(cache.keys()) == ["keep", "new"]
+
+    _put_server_cache(cache, key="newer", value="fresh2", ttl_seconds=10.0, maxsize=2)
+    assert list(cache.keys()) == ["new", "newer"]
+
+
 def test_run_summary_flags_reused_and_has_report() -> None:
     wf = _workflow_payload([_capture_step_payload("cap"), _report_step_payload("report", ["cap"])])
     run = _make_run_record(run_id="r1", workflow_payload=wf, started_at="2026-04-15T00:00:00Z")
@@ -243,6 +264,31 @@ def test_run_summary_flags_reused_and_has_report() -> None:
     assert summary.has_report is True
     assert summary.step_counts.reused == 1
     assert summary.step_counts.completed == 1
+
+
+def test_parallel_local_summaries_respects_limit(tmp_path: Path) -> None:
+    from pipelines_v2.dashboard.server import _parallel_local_summaries
+
+    local = FileCatalog(root=tmp_path / "catalog")
+    wf = _workflow_payload([_capture_step_payload("cap")])
+    for idx in range(5):
+        run_id = f"run_{idx}"
+        local.record_workflow_run(
+            _make_run_record(
+                run_id=run_id,
+                workflow_payload=wf,
+                started_at=f"2026-04-1{idx}T00:00:00Z",
+            )
+        )
+    summaries = _parallel_local_summaries(
+        local,
+        seen=set(),
+        workflow_name=None,
+        status=None,
+        limit=2,
+    )
+    assert len(summaries) == 2
+    assert [summary.run_id for summary in summaries] == ["run_4", "run_3"]
 
 
 # ---------------------------------------------------------------------------
@@ -770,6 +816,66 @@ def test_read_result_payload_truncates_large_local_results(tmp_path: Path) -> No
     assert preview.tables == []
 
 
+def test_read_result_payload_preserves_nested_geometry_component_scalars(tmp_path: Path) -> None:
+    import json as _json
+
+    result_path = tmp_path / "geometry_result.json"
+    result_path.write_text(
+        _json.dumps(
+            {
+                "kind": "geometry_result",
+                "summary": {"method": "pca", "example_count": 4},
+                "layers": [
+                    {
+                        "layer": 16,
+                        "components": [
+                            [0.1, 0.2, 0.3],
+                            [0.4, 0.5, 0.6],
+                        ],
+                        "labels": ["alpha", "beta"],
+                        "explained_variance_ratio": [0.41, 0.29, 0.12],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest = ArtifactManifest(
+        artifact_id="geometry_result_test",
+        artifact_kind="geometry",
+        schema_version=1,
+        operation_spec_hash="spec",
+        operation_semantic_hash="semantic",
+        created_at="2026-04-15T00:00:00Z",
+        engine={},
+        runner={"kind": "local"},
+        input_artifact_refs=(),
+        example_coverage={},
+        storage_refs={
+            "result": {
+                "store": "local",
+                "path": str(result_path),
+                "format": "json",
+                "bytes": result_path.stat().st_size,
+            }
+        },
+        metadata={},
+        workflow_context={},
+    )
+
+    preview = read_result_payload(
+        artifact_manifest=manifest,
+        report_manifest=None,
+        step_name="geometry_step",
+    )
+
+    assert preview.available is True
+    assert preview.payload is not None
+    first_layer = preview.payload["layers"][0]
+    assert first_layer["components"][0][0] == pytest.approx(0.1)
+    assert first_layer["components"][1][2] == pytest.approx(0.6)
+
+
 def test_dashboard_pg_retries_once_on_stale_connection_error() -> None:
     class FakeOperationalError(Exception):
         __module__ = "psycopg"
@@ -987,6 +1093,144 @@ def test_dataset_preview_samples_in_memory_dataset(tmp_path: Path) -> None:
     assert payload["total_rows"] == 8
     assert payload["source"]["kind"] == "memory"
     assert payload["rows"][0]["prompt_preview"].startswith("Prompt number")
+
+
+def test_dataset_preview_resolves_artifact_dataset_step_ref(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from pipelines_v2.api import CaptureSpec, Dataset, Example, GenerationSpec, TransformBuilder, TransformSpec
+    from pipelines_v2.dashboard.server import create_app
+    from pipelines_v2.engine.toy import ToyEngine
+    from pipelines_v2.operations.capture.sites import ResidualSite
+    from pipelines_v2.storage import ArtifactManifest, LocalArtifactStore
+    from pipelines_v2.workflow.specs import StepRef, WorkflowSpec, WorkflowStep
+
+    root = tmp_path / "catalog"
+    local = FileCatalog(root=root)
+    composite = CompositeCatalog(catalogs=(local,))
+    artifacts = LocalArtifactStore(root / "artifacts")
+
+    upstream_dataset = Dataset.from_examples(
+        [
+            Example(key="ex0", prompt="Artifact prompt 0", labels={"class": "safe"}),
+            Example(key="ex1", prompt="Artifact prompt 1", labels={"class": "unsafe"}),
+            Example(key="ex2", prompt="Artifact prompt 2", labels={"class": "safe"}),
+        ],
+        name="artifact_backed_rows",
+    )
+    artifact_id = "transform_rows"
+    result_ref = artifacts.write_json(
+        artifact_id,
+        "result.json",
+        {"dataset": upstream_dataset.to_dict()},
+    )
+    manifest = ArtifactManifest.from_dict(
+        {
+            "artifact_id": artifact_id,
+            "artifact_kind": "transform",
+            "schema_version": 1,
+            "operation_spec_hash": "transform_hash",
+            "operation_semantic_hash": "transform_hash",
+            "created_at": "2026-04-15T00:00:30Z",
+            "engine": {},
+            "runner": {"kind": "local"},
+            "input_artifact_refs": [],
+            "example_coverage": upstream_dataset.coverage(),
+            "storage_refs": {
+                "result": result_ref,
+                "manifest": artifacts.write_json(artifact_id, "manifest.json", {"artifact_id": artifact_id}),
+            },
+            "metadata": {},
+            "workflow_context": {
+                "run_id": "run_artifact_dataset",
+                "workflow_name": "artifact_dataset_workflow",
+                "workflow_hash": "wh_run_artifact_dataset",
+                "workflow_step_key": "wh_run_artifact_dataset.build",
+                "step_name": "build",
+                "step_index": 0,
+                "runner": "analysis",
+                "step_semantic_hash": "ss_build",
+                "step_spec_hash": "sp_build",
+            },
+        }
+    )
+    local.record_artifact(manifest)
+
+    capture_dataset = Dataset(
+        examples=(),
+        name="artifact_dataset_capture",
+        source={"kind": "artifact_dataset"},
+        fetch={"artifact": StepRef("build"), "result_key": "dataset"},
+    )
+
+    workflow = WorkflowSpec(
+        name="artifact_dataset_workflow",
+        steps=(
+            WorkflowStep(
+                name="build",
+                runner="analysis",
+                spec=TransformSpec(
+                    builder=TransformBuilder.from_function(_noop_transform_for_dashboard_test),
+                    inputs={"seed": 1},
+                ),
+            ),
+            WorkflowStep(
+                name="cap",
+                runner="capture",
+                spec=CaptureSpec(
+                    engine=ToyEngine(),
+                    dataset=capture_dataset,
+                    sites=(ResidualSite(name="resid", site="post", layers=(0,)),),
+                    generation=GenerationSpec(max_tokens=4),
+                    prompt_metadata_builder=None,
+                ),
+                depends_on=("build",),
+            ),
+        ),
+    )
+    run = _make_run_record(
+        run_id="run_artifact_dataset",
+        workflow_payload=workflow.to_dict(),
+        started_at="2026-04-15T00:00:00Z",
+    )
+    local.record_workflow_run(run)
+    local.record_workflow_step(
+        _make_step_record(
+            run_id="run_artifact_dataset",
+            step_index=0,
+            step_name="build",
+            runner="analysis",
+            artifact_id=artifact_id,
+            artifact_kind="transform",
+        )
+    )
+    local.record_workflow_step(
+        _make_step_record(
+            run_id="run_artifact_dataset",
+            step_index=1,
+            step_name="cap",
+            runner="capture",
+        )
+    )
+
+    app = create_app(
+        catalog=DashboardCatalog(
+            local=local,
+            composite=composite,
+            raw=composite,
+            local_root=root,
+            postgres_env=None,
+        )
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/runs/run_artifact_dataset/steps/cap/dataset-preview?sample_size=2")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["available"] is True
+    assert len(payload["rows"]) == 2
+    assert payload["rows"][0]["prompt_preview"].startswith("Artifact prompt")
+    assert payload["resolved_from_step"] is None
 
 
 def test_label_preview_bucket_distribution(tmp_path: Path) -> None:

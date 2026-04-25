@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import time
 from collections import Counter
+from pathlib import Path
 from statistics import mean, pstdev
 from threading import Lock
 from typing import Any, Mapping
@@ -24,6 +25,9 @@ from pipelines_v2.dashboard.models import (
     LabelPreview,
 )
 from pipelines_v2.data.datasets import Dataset, Example
+from pipelines_v2.storage.artifacts import ArtifactManifest, artifact_from_manifest
+from pipelines_v2.storage.local import LocalArtifactStore
+from pipelines_v2.storage.modal import ModalVolumeStore
 from pipelines_v2.workflow.records import WorkflowRunRecord
 from pipelines_v2.workflow.specs import WorkflowSpec, WorkflowStep
 
@@ -54,6 +58,8 @@ def build_dataset_preview(
     target_step: str,
     sample_size: int = DEFAULT_SAMPLE_SIZE,
     source_step: str | None = None,
+    artifact_manifests_by_step: Mapping[str, ArtifactManifest] | None = None,
+    local_cache_root: Path | None = None,
 ) -> DatasetPreview:
     """Shape the dataset preview response for one workflow step."""
     try:
@@ -87,7 +93,12 @@ def build_dataset_preview(
         )
 
     try:
-        sampled, total, materialized = _materialize_sample(dataset, sample_size)
+        sampled, total, materialized = _materialize_sample(
+            dataset,
+            sample_size,
+            artifact_manifests_by_step=artifact_manifests_by_step,
+            local_cache_root=local_cache_root,
+        )
     except EnvVarMissing as exc:
         return DatasetPreview(
             available=False,
@@ -122,6 +133,8 @@ def build_label_preview(
     target_step: str,
     sample_size: int = DEFAULT_SAMPLE_SIZE,
     source_step: str | None = None,
+    artifact_manifests_by_step: Mapping[str, ArtifactManifest] | None = None,
+    local_cache_root: Path | None = None,
 ) -> LabelPreview:
     """Shape the label preview response for one workflow step."""
     try:
@@ -143,7 +156,12 @@ def build_label_preview(
         )
 
     try:
-        sampled, _, _ = _materialize_sample(dataset, sample_size)
+        sampled, _, _ = _materialize_sample(
+            dataset,
+            sample_size,
+            artifact_manifests_by_step=artifact_manifests_by_step,
+            local_cache_root=local_cache_root,
+        )
     except EnvVarMissing as exc:
         return LabelPreview(available=False, reason=str(exc), labels=[], samples=[])
     except Exception as exc:
@@ -266,6 +284,9 @@ def _describe_step(step: WorkflowStep) -> str:
 def _materialize_sample(
     dataset: Dataset,
     sample_size: int,
+    *,
+    artifact_manifests_by_step: Mapping[str, ArtifactManifest] | None = None,
+    local_cache_root: Path | None = None,
 ) -> tuple[Dataset, int | None, Dataset | None]:
     """Return (sampled_dataset, total_if_known, materialized_if_resolved).
 
@@ -276,6 +297,11 @@ def _materialize_sample(
     round-trip to the source.
     """
     if dataset.is_deferred:
+        dataset = _bind_artifact_dataset_step_refs(
+            dataset,
+            artifact_manifests_by_step=artifact_manifests_by_step,
+            local_cache_root=local_cache_root,
+        )
         cache_key = (str(dataset.id or ""), int(sample_size))
         if cache_key[0]:
             now = time.monotonic()
@@ -309,6 +335,95 @@ def clear_resolved_dataset_cache() -> None:
     invalidate endpoint."""
     with _RESOLVED_CACHE_LOCK:
         _RESOLVED_CACHE.clear()
+
+
+def _bind_artifact_dataset_step_refs(
+    dataset: Dataset,
+    *,
+    artifact_manifests_by_step: Mapping[str, ArtifactManifest] | None,
+    local_cache_root: Path | None,
+) -> Dataset:
+    source = dataset.source or {}
+    if source.get("kind") != "artifact_dataset":
+        return dataset
+    fetch = dict(dataset.fetch or {})
+    artifact_value = fetch.get("artifact")
+    step_name = _artifact_source_step_name(artifact_value)
+    if step_name is None:
+        return dataset
+    if artifact_manifests_by_step is None:
+        raise RuntimeError(
+            f"artifact-backed dataset for step {step_name!r} cannot be resolved without step manifests"
+        )
+    manifest = artifact_manifests_by_step.get(step_name)
+    if manifest is None:
+        raise RuntimeError(f"artifact-backed dataset source step {step_name!r} has no recorded artifact manifest")
+    store = _artifact_store_from_manifest(manifest, local_cache_root=local_cache_root)
+    fetch["artifact"] = artifact_from_manifest(manifest, store=store)
+    return Dataset(
+        examples=(),
+        id=dataset.id,
+        name=dataset.name,
+        source=source,
+        fetch=fetch,
+        selection=dict(dataset.selection),
+    )
+
+
+def _artifact_source_step_name(value: Any) -> str | None:
+    if isinstance(value, Mapping) and value.get("kind") == "step_ref":
+        step = value.get("step")
+        return str(step) if step is not None else None
+    step = getattr(value, "step", None)
+    kind = getattr(value, "kind", None)
+    if kind == "step_ref" and step is not None:
+        return str(step)
+    return None
+
+
+def _artifact_store_from_manifest(manifest: ArtifactManifest, *, local_cache_root: Path | None) -> Any:
+    ref = _first_storage_ref(manifest.storage_refs)
+    if ref is None:
+        raise RuntimeError(f"Artifact {manifest.artifact_id!r} has no storage refs to infer a store from")
+    store_kind = str(ref.get("store") or "").strip()
+    path = ref.get("path")
+    if not path:
+        raise RuntimeError(f"Artifact {manifest.artifact_id!r} storage ref is missing a path")
+    root = _infer_artifact_root(path, manifest.artifact_id)
+    if store_kind == "modal_volume":
+        name = ref.get("name")
+        if not name:
+            raise RuntimeError(f"Artifact {manifest.artifact_id!r} Modal ref is missing a volume name")
+        return ModalVolumeStore(name=str(name), root=str(root), local_cache_root=local_cache_root)
+    if store_kind in {"local", "local_path"}:
+        return LocalArtifactStore(root=root)
+    raise RuntimeError(f"Unsupported artifact store kind for dataset preview: {store_kind!r}")
+
+
+def _first_storage_ref(value: Any) -> Mapping[str, Any] | None:
+    if isinstance(value, Mapping):
+        if "store" in value and "path" in value:
+            return value
+        for child in value.values():
+            found = _first_storage_ref(child)
+            if found is not None:
+                return found
+    return None
+
+
+def _infer_artifact_root(path: str | Path, artifact_id: str) -> Path:
+    resolved = Path(path)
+    parts = resolved.parts
+    try:
+        index = parts.index(artifact_id)
+    except ValueError:
+        return resolved.parent
+    if index == 0:
+        return resolved.parent
+    root = Path(parts[0])
+    for part in parts[1:index]:
+        root /= part
+    return root
 
 
 def _precheck_deferred_source(dataset: Dataset) -> None:

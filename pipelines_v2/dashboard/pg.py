@@ -377,8 +377,10 @@ class DashboardPg:
 
         Skips `workflow_payload` entirely (it can be multi-MB per run when
         datasets are materialized into the payload). `has_report` is
-        computed on the Postgres side via `jsonb_path_exists` so the network
-        only carries a boolean.
+        computed on the Postgres side, but only after the candidate run set
+        has been ordered + limited. This avoids forcing Postgres to inspect
+        large workflow payload JSONB blobs for every historical row when the
+        UI only needs the newest N runs.
         """
         predicates, params = self._run_filter_clauses(
             workflow_name=workflow_name, workflow_hash=workflow_hash, status=status
@@ -388,9 +390,33 @@ class DashboardPg:
         if limit is not None:
             params.append(int(limit))
         sql = f"""
+            WITH recent_runs AS MATERIALIZED (
+                SELECT
+                    run_id,
+                    workflow_name,
+                    workflow_hash,
+                    workflow_spec_hash,
+                    status,
+                    started_at,
+                    parent_run_id,
+                    finished_at,
+                    error,
+                    workflow_payload
+                FROM pipelines_v2_workflow_runs
+                {where}
+                ORDER BY started_at DESC, run_id DESC
+                {limit_clause}
+            )
             SELECT
-                run_id, workflow_name, workflow_hash, workflow_spec_hash,
-                status, started_at, parent_run_id, finished_at, error,
+                run_id,
+                workflow_name,
+                workflow_hash,
+                workflow_spec_hash,
+                status,
+                started_at,
+                parent_run_id,
+                finished_at,
+                error,
                 COALESCE(
                     jsonb_path_exists(
                         workflow_payload,
@@ -398,10 +424,8 @@ class DashboardPg:
                     ),
                     FALSE
                 ) AS has_report
-            FROM pipelines_v2_workflow_runs
-            {where}
+            FROM recent_runs
             ORDER BY started_at DESC, run_id DESC
-            {limit_clause}
         """
         out: list[dict[str, Any]] = []
         for row in self._fetchall(sql, tuple(params)):

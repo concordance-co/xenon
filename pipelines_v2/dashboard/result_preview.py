@@ -234,10 +234,10 @@ def _table_preview(*, name: str, rows: list[Mapping[str, Any]]) -> dict[str, Any
 
 
 def _preview_value(value: Any, *, depth: int = 0) -> tuple[Any, bool]:
-    if depth >= RESULT_PAYLOAD_PREVIEW_DEPTH:
-        return "<truncated: maximum preview depth reached>", True
     if value is None or isinstance(value, (bool, int, float, str)):
         return value, False
+    if depth >= RESULT_PAYLOAD_PREVIEW_DEPTH:
+        return "<truncated: maximum preview depth reached>", True
     if isinstance(value, Mapping):
         out: dict[str, Any] = {}
         truncated = False

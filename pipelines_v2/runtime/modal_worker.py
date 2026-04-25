@@ -52,7 +52,10 @@ def run_on_modal(
     _validate_secret_bindings(runtime_spec=runtime_spec, resources=resources)
     mounted_volumes = _mounted_volumes(store_config=store_config, resources=resources)
     app = modal.App(
-        f"pipelines-v2-{_slug(runner_config.get('kind', 'modal'))}-{_slug(str(store_config['name']))}"
+        _modal_app_name(
+            spec_payload=spec_payload,
+            workflow_context=workflow_context,
+        )
     )
     image = modal.Image.debian_slim(python_version=runtime_spec.python_version)
     if runtime_spec.pip_packages:
@@ -328,6 +331,20 @@ def _commit_mounted_volumes(volumes: tuple[MountedVolume, ...]) -> list[str]:
 
 def _slug(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9-]+", "-", value).strip("-").lower() or "default"
+
+
+def _modal_app_name(
+    *,
+    spec_payload: Mapping[str, Any],
+    workflow_context: Mapping[str, Any] | None,
+) -> str:
+    step_name = None
+    if isinstance(workflow_context, Mapping):
+        step_name = workflow_context.get("step_name") or workflow_context.get("workflow_step_key")
+    if step_name:
+        return f"xenon-{_slug(str(step_name))}"[:80].rstrip("-")
+    suffix = _slug(str(spec_payload.get("kind") or "operation"))
+    return f"xenon-{suffix}"[:80].rstrip("-") or "xenon-operation"
 
 
 def _resolved_runtime_spec(

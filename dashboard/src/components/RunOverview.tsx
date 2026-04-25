@@ -655,9 +655,16 @@ function ReadoutsSection({
     (s) => s.family !== null && families.includes(s.family),
   );
   if (steps.length === 0) return null;
+  const isRepresentationSection = families.includes("representation");
   return (
     <Section title={heading}>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
+      <div
+        className={
+          isRepresentationSection
+            ? "flex flex-wrap items-start gap-2"
+            : "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2"
+        }
+      >
         {steps.map((step) => (
           <ResultCard key={step.step_name} step={step} runId={detail.run.run_id} />
         ))}
@@ -727,13 +734,26 @@ function ResultCard({ step, runId }: { step: StepSummary; runId: string }) {
     queryFn: () => api.getStepResult(runId, step.step_name),
   });
   const data = q.data ?? null;
+  const geometry = useMemo(
+    () => chartGeometry(data?.payload ?? null),
+    [data],
+  );
   const picked = pickMetric(data);
   return (
-    <TileCard step={step}>
+    <TileCard
+      step={step}
+      className={
+        step.spec_kind === "geometry"
+          ? "w-full max-w-[515px]"
+          : undefined
+      }
+    >
       {q.isLoading ? (
         <SkeletonLine />
       ) : !data?.available ? (
         <MutedNote>{data?.reason ?? "no result"}</MutedNote>
+      ) : geometry ? (
+        <GeometryCard preview={geometry} />
       ) : picked.primary ? (
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between gap-2">
@@ -1129,6 +1149,291 @@ function ResultDebug({ data }: { data: ResultPreview }) {
   );
 }
 
+function GeometryCard({ preview }: { preview: GeometryPreview }) {
+  const [layerIndex, setLayerIndex] = useState(preview.defaultLayerIndex);
+  useEffect(() => {
+    setLayerIndex(
+      Math.min(preview.defaultLayerIndex, Math.max(0, preview.layers.length - 1)),
+    );
+  }, [preview.defaultLayerIndex, preview.layers]);
+
+  const currentLayer =
+    preview.layers[Math.min(layerIndex, Math.max(0, preview.layers.length - 1))];
+  const S = 240;
+  const padL = 28;
+  const padR = 18;
+  const padT = 18;
+  const padB = 24;
+  const plotWidth = S - padL - padR;
+  const plotHeight = S - padT - padB;
+  const plotCenterX = padL + plotWidth / 2;
+  const plotCenterY = padT + plotHeight / 2;
+  const xs = currentLayer.points.map((point) => point.x);
+  const ys = currentLayer.points.map((point) => point.y);
+  const xMin = Math.min(...xs);
+  const xMax = Math.max(...xs);
+  const yMin = Math.min(...ys);
+  const yMax = Math.max(...ys);
+  const xSpan = Math.max(0.0001, xMax - xMin);
+  const ySpan = Math.max(0.0001, yMax - yMin);
+  const sx = (x: number) => padL + ((x - xMin) / xSpan) * (S - padL - padR);
+  const sy = (y: number) => padT + (1 - (y - yMin) / ySpan) * (S - padT - padB);
+  const xZero = xMin <= 0 && xMax >= 0 ? sx(0) : null;
+  const yZero = yMin <= 0 && yMax >= 0 ? sy(0) : null;
+  const shownFraction =
+    preview.exampleCount != null && preview.exampleCount > currentLayer.shownPoints
+      ? `${currentLayer.shownPoints}/${preview.exampleCount}`
+      : currentLayer.shownPoints.toLocaleString();
+  const displayedGroups = currentLayer.groups.slice(0, 6);
+  const plotGridFractions = [0.25, 0.5, 0.75];
+  const groupingLabel = formatGeometryDisplayLabel(currentLayer.groupingLabel);
+
+  return (
+    <div className="w-full space-y-3">
+      <div className="flex items-end justify-between gap-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap text-[0.56rem] font-mono uppercase tracking-[0.22em] text-ink-500">
+            <span className="text-accent">{preview.method}</span>
+            <span>{groupingLabel}</span>
+          </div>
+          <div className="text-[0.72rem] font-mono text-ink-200">
+            {currentLayer.axisX} × {currentLayer.axisY}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="field-label">layer</div>
+          <div className="mt-1 text-[1.15rem] leading-none font-semibold tabular-nums text-ink-50">
+            {currentLayer.layer}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_9rem] md:items-start">
+        <div className="rounded-sm border border-ink-800 bg-[linear-gradient(180deg,rgba(18,16,13,0.92),rgba(10,9,8,0.92))] p-3">
+          <div className="relative aspect-square">
+            <svg
+              viewBox={`0 0 ${S} ${S}`}
+              preserveAspectRatio="xMidYMid meet"
+              className="absolute inset-0 h-full w-full"
+              role="img"
+              aria-label={`${preview.method} projection at layer ${currentLayer.layer}`}
+            >
+              <rect x="0" y="0" width={S} height={S} fill="transparent" />
+              {plotGridFractions.map((fraction) => {
+                const x = padL + fraction * (S - padL - padR);
+                const y = padT + fraction * (S - padT - padB);
+                return (
+                  <g key={fraction}>
+                    <line
+                      x1={x}
+                      x2={x}
+                      y1={padT}
+                      y2={S - padB}
+                      stroke="rgb(38,35,30)"
+                      strokeWidth={0.65}
+                    />
+                    <line
+                      x1={padL}
+                      x2={S - padR}
+                      y1={y}
+                      y2={y}
+                      stroke="rgb(38,35,30)"
+                      strokeWidth={0.65}
+                    />
+                  </g>
+                );
+              })}
+              <rect
+                x={padL}
+                y={padT}
+                width={S - padL - padR}
+                height={S - padT - padB}
+                fill="none"
+                stroke="rgb(58,53,46)"
+                strokeWidth={0.9}
+              />
+              {xZero != null ? (
+                <line
+                  x1={xZero}
+                  x2={xZero}
+                  y1={padT}
+                  y2={S - padB}
+                  stroke="rgb(97,92,84)"
+                  strokeWidth={0.7}
+                  strokeDasharray="3 4"
+                  opacity={0.78}
+                />
+              ) : null}
+              {yZero != null ? (
+                <line
+                  x1={padL}
+                  x2={S - padR}
+                  y1={yZero}
+                  y2={yZero}
+                  stroke="rgb(97,92,84)"
+                  strokeWidth={0.7}
+                  strokeDasharray="3 4"
+                  opacity={0.78}
+                />
+              ) : null}
+
+              {currentLayer.points.map((point, index) => (
+                <circle
+                  key={`${point.group}-${index}`}
+                  cx={sx(point.x)}
+                  cy={sy(point.y)}
+                  r={2.75}
+                  fill={point.color}
+                  fillOpacity={0.74}
+                  stroke="rgba(12,11,9,0.92)"
+                  strokeWidth={0.5}
+                />
+              ))}
+
+              {displayedGroups.map((group) => (
+                <g key={group.label}>
+                  <rect
+                    x={sx(group.centroidX) - 4}
+                    y={sy(group.centroidY) - 4}
+                    width={8}
+                    height={8}
+                    transform={`rotate(45 ${sx(group.centroidX)} ${sy(group.centroidY)})`}
+                    fill={group.color}
+                    stroke="rgb(242,236,224)"
+                    strokeWidth={0.85}
+                  />
+                </g>
+              ))}
+
+              <text
+                x={plotCenterX}
+                y={S - 7}
+                fontSize={7}
+                fill="rgb(143,136,124)"
+                fontFamily="ui-monospace, monospace"
+                textAnchor="middle"
+              >
+                {currentLayer.axisX}
+              </text>
+              <text
+                x={11}
+                y={plotCenterY}
+                fontSize={7}
+                fill="rgb(143,136,124)"
+                fontFamily="ui-monospace, monospace"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                transform={`rotate(-90 11 ${plotCenterY})`}
+              >
+                {currentLayer.axisY}
+              </text>
+            </svg>
+          </div>
+
+          {preview.method === "pca" && currentLayer.explainedVariance.length > 0 ? (
+            <div className="mt-3 grid grid-cols-3 gap-1 text-[0.55rem] font-mono text-right">
+              {currentLayer.explainedVariance.map((value, index) => (
+                <div
+                  key={index}
+                  className="rounded-sm border border-ink-800/80 bg-ink-950/50 px-1.5 py-1"
+                >
+                  <div className="field-label text-left">{`PC${index + 1}`}</div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-sm bg-ink-800">
+                    <div
+                      className="h-full bg-accent/80"
+                      style={{ width: `${Math.max(6, Math.min(100, value * 100))}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 text-ink-300">{(value * 100).toFixed(1)}%</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-3">
+          {preview.layers.length > 1 ? (
+            <div className="space-y-1.5 rounded-sm border border-ink-800 bg-ink-950/35 px-2.5 py-2">
+              <div className="flex items-center justify-between text-[0.58rem] font-mono uppercase tracking-[0.16em]">
+                <span className="text-ink-500">layer {preview.layers[0].layer}</span>
+                <span className="text-ink-300">
+                  layer {preview.layers[preview.layers.length - 1].layer}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={preview.layers.length - 1}
+                step={1}
+                value={layerIndex}
+                onChange={(event) => setLayerIndex(Number(event.target.value))}
+                className="w-full accent-[rgb(224,164,88)]"
+                aria-label="Geometry layer"
+              />
+              <div className="text-[0.62rem] font-mono uppercase tracking-[0.16em] text-ink-300">
+                layer {currentLayer.layer}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-1 rounded-sm border border-ink-800 bg-ink-950/35 px-2.5 py-2">
+            <GeometryMetricRow label="shown" value={shownFraction} />
+            <GeometryMetricRow label="groups" value={String(currentLayer.groups.length)} />
+            <GeometryMetricRow label="dims" value={String(currentLayer.componentCount)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="field-label">cohorts</div>
+            <div className="space-y-1">
+            {displayedGroups.map((group) => (
+                <div
+                  key={group.label}
+                  className="flex items-center gap-2 rounded-sm border border-ink-800/80 bg-ink-950/30 px-2 py-1.5"
+                  title={`${group.label} · ${group.count}`}
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: group.color }}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1 truncate text-[0.66rem] text-ink-200">
+                    {formatGeometryDisplayLabel(group.label)}
+                  </span>
+                  <span className="text-[0.6rem] font-mono tabular-nums text-ink-400">
+                    {group.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {currentLayer.groups.length > displayedGroups.length ? (
+              <div className="text-[0.55rem] font-mono uppercase tracking-widest text-ink-600">
+                +{currentLayer.groups.length - displayedGroups.length} more
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GeometryMetricRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 text-[0.58rem] font-mono uppercase tracking-[0.16em]">
+      <span className="text-ink-500">{label}</span>
+      <span className="text-[0.8rem] leading-none tabular-nums text-ink-50">{value}</span>
+    </div>
+  );
+}
+
+function truncateGroupLabel(value: string): string {
+  return value.length > 16 ? `${value.slice(0, 15)}…` : value;
+}
+
+function formatGeometryDisplayLabel(value: string): string {
+  return truncateGroupLabel(value.replace(/[_-]+/g, " "));
+}
+
 function summarizeKeys(value: unknown, prefix = "", depth = 0): string {
   if (depth > 4) return "";
   if (!isObj(value)) return "";
@@ -1170,6 +1475,40 @@ interface BarPoint {
   label: string;
   value: number;
   group?: string;
+}
+
+interface GeometryPoint {
+  x: number;
+  y: number;
+  group: string;
+  color: string;
+}
+
+interface GeometryGroup {
+  label: string;
+  color: string;
+  count: number;
+  centroidX: number;
+  centroidY: number;
+}
+
+interface GeometryLayerPreview {
+  layer: number;
+  shownPoints: number;
+  componentCount: number;
+  axisX: string;
+  axisY: string;
+  groupingLabel: string;
+  explainedVariance: number[];
+  points: GeometryPoint[];
+  groups: GeometryGroup[];
+}
+
+interface GeometryPreview {
+  method: string;
+  exampleCount: number | null;
+  layers: GeometryLayerPreview[];
+  defaultLayerIndex: number;
 }
 
 interface MetricPick {
@@ -1404,6 +1743,252 @@ interface LayerSeries {
  * ------------------------------------------------------------------------- */
 
 type Specialized = Partial<MetricPick>;
+
+const GEOMETRY_PALETTE = [
+  "rgb(224,164,88)",
+  "rgb(108,159,199)",
+  "rgb(165,131,193)",
+  "rgb(209,112,88)",
+  "rgb(117,170,112)",
+  "rgb(201,133,143)",
+  "rgb(93,176,166)",
+  "rgb(190,177,109)",
+];
+
+function chartGeometry(payload: Record<string, unknown> | null): GeometryPreview | null {
+  if (!isObj(payload) || payload.kind !== "geometry_result") return null;
+  const method = geometryMethod(payload);
+  const layers = Array.isArray(payload.layers) ? payload.layers.filter(isObj) : [];
+  if (layers.length === 0) return null;
+  const candidateLayers = layers
+    .map((layer) => {
+      const components = normalizeGeometryComponents(layer.components);
+      if (components.length < 2) return null;
+      const grouping = geometryGrouping(layer);
+      const groupValues = components.map(
+        (_, index) => grouping.values[index] ?? grouping.values[0] ?? "unlabeled",
+      );
+      return {
+        record: layer,
+        components,
+        grouping,
+        groupValues,
+      };
+    })
+    .filter((layer): layer is {
+      record: Record<string, unknown>;
+      components: Array<[number, number]>;
+      grouping: { label: string; values: string[] };
+      groupValues: string[];
+    } => layer !== null);
+  if (candidateLayers.length === 0) return null;
+  const groupsInOrder = orderedUnique(candidateLayers.flatMap((layer) => layer.groupValues));
+  if (groupsInOrder.length === 0) return null;
+  const colorMap = new Map<string, string>();
+  groupsInOrder.forEach((group, index) => {
+    colorMap.set(group, GEOMETRY_PALETTE[index % GEOMETRY_PALETTE.length]);
+  });
+  const geometryLayers = candidateLayers.map((layer) => {
+    const points = layer.components.map(([x, y], index) => ({
+      x,
+      y,
+      group: layer.groupValues[index],
+      color: colorMap.get(layer.groupValues[index]) ?? GEOMETRY_PALETTE[0],
+    }));
+    const groups = groupsInOrder
+      .map((group) => {
+        const members = points.filter((point) => point.group === group);
+        if (members.length === 0) return null;
+        return {
+          label: group,
+          color: colorMap.get(group) ?? GEOMETRY_PALETTE[0],
+          count: members.length,
+          centroidX: mean(members.map((point) => point.x)),
+          centroidY: mean(members.map((point) => point.y)),
+        };
+      })
+      .filter((group): group is GeometryGroup => group !== null);
+    const explainedVariance = Array.isArray(layer.record.explained_variance_ratio)
+      ? layer.record.explained_variance_ratio
+          .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+          .slice(0, 3)
+      : [];
+    return {
+      layer: typeof layer.record.layer === "number" ? layer.record.layer : Number(layer.record.layer ?? 0),
+      shownPoints: points.length,
+      componentCount:
+        typeof layer.record.component_count === "number"
+          ? layer.record.component_count
+          : layer.components[0]?.length ?? 2,
+      axisX: geometryAxisLabel(method, explainedVariance[0] ?? null, 1),
+      axisY: geometryAxisLabel(method, explainedVariance[1] ?? null, 2),
+      groupingLabel: layer.grouping.label,
+      explainedVariance,
+      points,
+      groups,
+    };
+  });
+  const defaultLayerRecord = selectGeometryLayer(
+    candidateLayers.map((layer) => layer.record),
+    method,
+  );
+  const defaultLayerIndex = Math.max(
+    0,
+    candidateLayers.findIndex((layer) => layer.record === defaultLayerRecord),
+  );
+  return {
+    method,
+    exampleCount:
+      typeof defaultLayerRecord.example_count === "number"
+        ? defaultLayerRecord.example_count
+        : typeof payload.summary === "object" && payload.summary && typeof (payload.summary as Record<string, unknown>).example_count === "number"
+          ? ((payload.summary as Record<string, unknown>).example_count as number)
+          : null,
+    layers: geometryLayers,
+    defaultLayerIndex,
+  };
+}
+
+function geometryMethod(payload: Record<string, unknown>): string {
+  const summary = isObj(payload.summary) ? payload.summary : null;
+  const raw =
+    (typeof payload.method === "string" && payload.method) ||
+    (summary && typeof summary.method === "string" ? summary.method : null) ||
+    "geometry";
+  return String(raw).toLowerCase();
+}
+
+function selectGeometryLayer(
+  layers: Record<string, unknown>[],
+  method: string,
+): Record<string, unknown> {
+  if (layers.length === 1) return layers[0];
+  if (method === "pca") {
+    let bestLayer = layers[0];
+    let bestScore = scoreGeometryLayer(layers[0]);
+    for (const layer of layers.slice(1)) {
+      const score = scoreGeometryLayer(layer);
+      if (score > bestScore) {
+        bestScore = score;
+        bestLayer = layer;
+      }
+    }
+    return bestLayer;
+  }
+  return layers
+    .slice()
+    .sort((a, b) => Number(a.layer ?? 0) - Number(b.layer ?? 0))
+    .at(-1) ?? layers[0];
+}
+
+function scoreGeometryLayer(layer: Record<string, unknown>): number {
+  if (!Array.isArray(layer.explained_variance_ratio)) {
+    return Number(layer.layer ?? 0);
+  }
+  const variance = layer.explained_variance_ratio
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+    .slice(0, 2);
+  return variance.reduce((acc, value) => acc + value, 0);
+}
+
+function normalizeGeometryComponents(
+  value: unknown,
+): Array<[number, number]> {
+  if (!Array.isArray(value)) return [];
+  const points: Array<[number, number]> = [];
+  for (const row of value) {
+    if (!Array.isArray(row) || row.length < 2) continue;
+    const x = row[0];
+    const y = row[1];
+    if (typeof x === "number" && Number.isFinite(x) && typeof y === "number" && Number.isFinite(y)) {
+      points.push([x, y]);
+    }
+  }
+  return points;
+}
+
+function geometryGrouping(layer: Record<string, unknown>): { label: string; values: string[] } {
+  const labels = Array.isArray(layer.labels)
+    ? layer.labels.map(stringifyGeometryValue)
+    : [];
+  if (labels.length > 0) {
+    return {
+      label: inferGeometryLabelName(layer, labels),
+      values: labels,
+    };
+  }
+  const colorByEntries = isObj(layer.color_by)
+    ? Object.entries(layer.color_by).filter(
+        (entry): entry is [string, unknown[]] => Array.isArray(entry[1]),
+      )
+    : [];
+  const preferred = pickPreferredGeometryColorKey(colorByEntries);
+  if (preferred) {
+    return {
+      label: preferred[0],
+      values: preferred[1].map(stringifyGeometryValue),
+    };
+  }
+  return { label: "group", values: ["unlabeled"] };
+}
+
+function inferGeometryLabelName(layer: Record<string, unknown>, labels: string[]): string {
+  if (typeof layer.label_name === "string" && layer.label_name) return layer.label_name;
+  if (isObj(layer.color_by)) {
+    for (const [key, values] of Object.entries(layer.color_by)) {
+      if (!Array.isArray(values) || values.length !== labels.length) continue;
+      const candidate = values.map(stringifyGeometryValue);
+      if (candidate.every((value, index) => value === labels[index])) return key;
+    }
+  }
+  return "label";
+}
+
+function pickPreferredGeometryColorKey(
+  entries: Array<[string, unknown[]]>,
+): [string, unknown[]] | null {
+  if (entries.length === 0) return null;
+  const priority = [
+    "label",
+    "failure_mode",
+    "medical_boundary_violation",
+    "strategy_family",
+    "family",
+    "class",
+    "alignment",
+    "topic",
+  ];
+  for (const key of priority) {
+    const match = entries.find(([entryKey]) => entryKey === key);
+    if (match) return match;
+  }
+  return entries[0];
+}
+
+function stringifyGeometryValue(value: unknown): string {
+  if (value == null) return "null";
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  return String(value);
+}
+
+function orderedUnique(values: string[]): string[] {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const value of values) {
+    if (seen.has(value)) continue;
+    seen.add(value);
+    ordered.push(value);
+  }
+  return ordered;
+}
+
+function geometryAxisLabel(method: string, explainedVariance: number | null, componentIndex: number): string {
+  const axis = method === "lda" ? `LD${componentIndex}` : `PC${componentIndex}`;
+  if (method !== "pca" || explainedVariance == null) return axis;
+  return `${axis} ${(explainedVariance * 100).toFixed(1)}%`;
+}
 
 // probe_result: result.layers = [{layer, balanced_accuracy, auroc, accuracy, ...}]
 // Render the primary metric as a line across layers, overlay up to two other
@@ -2189,12 +2774,19 @@ function ReportLink({ runId, artifactId }: { runId: string; artifactId: string }
 function TileCard({
   step,
   children,
+  className,
 }: {
   step: StepSummary;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="border border-ink-800 bg-ink-900 rounded-sm flex flex-col">
+    <div
+      className={[
+        "border border-ink-800 bg-ink-900 rounded-sm flex flex-col",
+        className ?? "",
+      ].join(" ")}
+    >
       <TileBanner step={step} />
       <div className="px-3 py-2.5 flex-1">{children}</div>
     </div>
