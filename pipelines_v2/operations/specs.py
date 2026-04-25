@@ -37,6 +37,7 @@ from pipelines_v2.operations.interventions import (
     SwapComponentsPatch,
     SwapMeanPatch,
 )
+from pipelines_v2.operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec, SectionSelector
 from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from pipelines_v2.operations.reports import ReportSpec
 from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
@@ -51,6 +52,7 @@ __all__ = [
     "CaptureSite",
     "CaptureSpec",
     "CentroidSpec",
+    "CoordinateImportSpec",
     "DirectionSpec",
     "ExplicitPathEdge",
     "ExplicitPathMaskSpec",
@@ -67,6 +69,8 @@ __all__ = [
     "PatchedGenerationSpec",
     "PromptMetadataBuilder",
     "ProbeSpec",
+    "ProjectionCalibrationSpec",
+    "ProjectionSpec",
     "ResidualizedProbeSpec",
     "ReportSpec",
     "ProjectOutPatch",
@@ -75,6 +79,7 @@ __all__ = [
     "ResidualPathPatch",
     "ResidualSite",
     "RoutingRecord",
+    "SectionSelector",
     "SwapComponentsPatch",
     "SwapMeanPatch",
     "TensorStorage",

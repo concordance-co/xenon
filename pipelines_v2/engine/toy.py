@@ -18,7 +18,13 @@ from pipelines_v2.engine.base import (
     EngineInterventionResult,
     PythonRuntimeSpec,
 )
-from pipelines_v2.engine.prompt_metadata import rebase_token_sections, resolve_prompt_metadata, token_sections_from_metadata
+from pipelines_v2.engine.prompt_metadata import (
+    rebase_section_records,
+    rebase_token_sections,
+    resolve_prompt_metadata,
+    section_records_from_metadata,
+    token_sections_from_metadata,
+)
 from pipelines_v2.operations.interventions import (
     ActivationPatchSpec,
     AddDirectionPatch,
@@ -542,7 +548,7 @@ class ToyEngine:
         for layer in site.layers:
             layer_payload: dict[str, Any] = {}
             for example in spec.dataset.examples:
-                token_sections = _toy_token_sections(example, spec.prompt_metadata_builder)
+                token_sections, section_records = _toy_section_metadata(example, spec.prompt_metadata_builder)
                 token_count = self.sequence_length
                 if spec.generation.capture_generated_tokens:
                     generated_count = int(spec.generation.max_tokens or 0) if spec.generation.enabled else 0
@@ -553,6 +559,11 @@ class ToyEngine:
                         "generated": list(range(self.sequence_length, token_count)),
                         "full": list(range(token_count)),
                     }
+                    section_records = _with_generated_section_records(
+                        section_records=section_records,
+                        prompt_token_count=self.sequence_length,
+                        token_count=token_count,
+                    )
                 positions = site.tokens.resolve(token_count, token_sections=token_sections)
                 values = np.stack(
                     [self._activation_vector(example, layer, pos) for pos in positions],
@@ -562,11 +573,16 @@ class ToyEngine:
                     token_sections=token_sections,
                     selected_positions=positions,
                 )
+                feature_section_records = rebase_section_records(
+                    section_records=section_records,
+                    selected_positions=positions,
+                )
                 layer_payload[example.key] = {
                     "tokens": positions,
                     "values": values,
                     "prompt_hash": example.prompt_hash,
                     "token_sections": feature_token_sections,
+                    "section_records": feature_section_records,
                 }
             layers[str(layer)] = layer_payload
         return {
@@ -582,7 +598,7 @@ class ToyEngine:
         for layer in site.layers:
             layer_payload: dict[str, Any] = {}
             for example in spec.dataset.examples:
-                token_sections = _toy_token_sections(example, spec.prompt_metadata_builder)
+                token_sections, section_records = _toy_section_metadata(example, spec.prompt_metadata_builder)
                 positions = site.tokens.resolve(self.sequence_length, token_sections=token_sections)
                 records_by_token: dict[str, Any] = {}
                 for pos in positions:
@@ -592,11 +608,16 @@ class ToyEngine:
                     token_sections=token_sections,
                     selected_positions=positions,
                 )
+                feature_section_records = rebase_section_records(
+                    section_records=section_records,
+                    selected_positions=positions,
+                )
                 layer_payload[example.key] = {
                     "tokens": positions,
                     "records": records_by_token,
                     "prompt_hash": example.prompt_hash,
                     "token_sections": feature_token_sections,
+                    "section_records": feature_section_records,
                 }
             layers[str(layer)] = layer_payload
         return {
@@ -733,18 +754,68 @@ def _normalize(values: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.float32]
 
 
 def _toy_token_sections(example: Example, builder: Any | None) -> dict[str, list[int]]:
+    token_sections, _ = _toy_section_metadata(example, builder)
+    return token_sections
+
+
+def _toy_section_metadata(example: Example, builder: Any | None) -> tuple[dict[str, list[int]], list[dict[str, Any]]]:
     rendered_prompt = example.prompt if isinstance(example.prompt, str) else json.dumps(example.prompt, sort_keys=True)
     metadata = resolve_prompt_metadata(
         metadata=example.metadata,
         rendered_prompt=rendered_prompt,
         builder=builder,
+        prompt=example.prompt,
     )
-    return token_sections_from_metadata(
+    token_sections = token_sections_from_metadata(
         metadata=metadata,
         offsets=None,
         require_sections=False,
         allow_char_spans=False,
     )
+    section_records = section_records_from_metadata(
+        metadata=metadata,
+        offsets=None,
+        token_sections=token_sections,
+        allow_char_spans=False,
+    )
+    return token_sections, section_records
+
+
+def _with_generated_section_records(
+    *,
+    section_records: list[dict[str, Any]],
+    prompt_token_count: int,
+    token_count: int,
+) -> list[dict[str, Any]]:
+    records = [dict(record) for record in section_records]
+    existing_names = {str(record.get("name") or "") for record in records}
+    extras = (
+        {
+            "name": "prompt",
+            "unit": "segment",
+            "index": 0,
+            "token_positions": list(range(int(prompt_token_count))),
+        },
+        {
+            "name": "generated",
+            "unit": "segment",
+            "index": 1,
+            "token_positions": list(range(int(prompt_token_count), int(token_count))),
+        },
+        {
+            "name": "full",
+            "unit": "segment",
+            "index": 2,
+            "token_positions": list(range(int(token_count))),
+        },
+    )
+    for record in extras:
+        if record["name"] in existing_names:
+            continue
+        if not record["token_positions"]:
+            continue
+        records.append(record)
+    return records
 
 
 def _toy_structured_output(example: Example) -> dict[str, Any]:

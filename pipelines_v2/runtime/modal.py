@@ -7,11 +7,17 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pipelines_v2.core.types import OperationSpec
+from pipelines_v2.mechinterp.assistant_axis import (
+    AssistantAxisPrecomputedCoordinateSpec,
+    AssistantAxisScoreSpec,
+    AssistantAxisVectorSpec,
+)
 from pipelines_v2.operations.specs import (
     ActivationBankSpec,
     BasisSpec,
     CaptureSpec,
     CentroidSpec,
+    CoordinateImportSpec,
     DirectionSpec,
     ExplicitPathMaskSpec,
     GenerationRunSpec,
@@ -22,6 +28,8 @@ from pipelines_v2.operations.specs import (
     PairDeltaSpec,
     PatchedGenerationSpec,
     ProbeSpec,
+    ProjectionCalibrationSpec,
+    ProjectionSpec,
     ReportSpec,
     ResidualizedProbeSpec,
     SubspaceSpec,
@@ -251,6 +259,12 @@ _ARTIFACT_BOUND_SPECS = (
     LabelFieldsSpec,
     TransformSpec,
     PatchComparisonSpec,
+    CoordinateImportSpec,
+    ProjectionSpec,
+    ProjectionCalibrationSpec,
+    AssistantAxisPrecomputedCoordinateSpec,
+    AssistantAxisVectorSpec,
+    AssistantAxisScoreSpec,
     ReportSpec,
 )
 

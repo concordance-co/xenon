@@ -24,6 +24,17 @@ from .engine import (
     ToyEngine,
     VLLMEngine,
 )
+from .mechinterp.assistant_axis import (
+    ASSISTANT_AXIS_PROMPT_DATASET_REPO,
+    ASSISTANT_AXIS_VECTOR_REPO,
+    AssistantAxisPrecomputedCoordinateSpec,
+    AssistantAxisScoreSpec,
+    AssistantAxisVectorSpec,
+    KNOWN_ASSISTANT_AXIS_MODELS,
+    assistant_axis_model_config,
+    assistant_axis_prompt_dataset,
+    discover_assistant_axis_layer_and_capping,
+)
 from .operations.capture import CaptureSpec, GenerationSpec, MoERoutingSite, ResidualSite, RoutingRecord
 from .operations.common.builders import PromptMetadataBuilder, TransformBuilder, TransformResult
 from .operations.common.schemas import TensorStorage
@@ -47,6 +58,7 @@ from .operations.interventions import (
     SwapComponentsPatch,
     SwapMeanPatch,
 )
+from .operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec, SectionSelector
 from .operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from .operations.reports import ReportSpec
 from .operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
@@ -93,10 +105,15 @@ __all__ = [
     "ActivationPatchSpec",
     "ActivationBankSpec",
     "AddDirectionPatch",
+    "ASSISTANT_AXIS_PROMPT_DATASET_REPO",
+    "ASSISTANT_AXIS_VECTOR_REPO",
     "ArtifactManifest",
     "ArtifactLabelRef",
     "ArtifactDatasetSource",
     "ArtifactStore",
+    "AssistantAxisPrecomputedCoordinateSpec",
+    "AssistantAxisScoreSpec",
+    "AssistantAxisVectorSpec",
     "BasisSpec",
     "CapabilityError",
     "CaptureArtifact",
@@ -105,6 +122,7 @@ __all__ = [
     "Catalog",
     "CentroidSpec",
     "CompositeCatalog",
+    "CoordinateImportSpec",
     "Dataset",
     "DirectionSpec",
     "Engine",
@@ -124,6 +142,7 @@ __all__ = [
     "GeometrySpec",
     "HuggingFaceSource",
     "InMemorySource",
+    "KNOWN_ASSISTANT_AXIS_MODELS",
     "LabelFieldsSpec",
     "LabelPredicate",
     "LabelMapSpec",
@@ -149,6 +168,8 @@ __all__ = [
     "PostgresSource",
     "PromptMetadataBuilder",
     "ProbeSpec",
+    "ProjectionCalibrationSpec",
+    "ProjectionSpec",
     "PythonRuntimeSpec",
     "ResidualizedProbeSpec",
     "ReportSpec",
@@ -164,6 +185,7 @@ __all__ = [
     "RoutingRecord",
     "Runner",
     "RunnerSpec",
+    "SectionSelector",
     "Source",
     "SpecValidationError",
     "StepFeatureRef",
@@ -193,4 +215,7 @@ __all__ = [
     "WorkflowStepContext",
     "WorkflowStepRecord",
     "PairDeltaSpec",
+    "assistant_axis_model_config",
+    "assistant_axis_prompt_dataset",
+    "discover_assistant_axis_layer_and_capping",
 ]

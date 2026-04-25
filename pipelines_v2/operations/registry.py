@@ -14,11 +14,31 @@ from pipelines_v2.operations.interventions import (
     PatchComparisonSpec,
     PatchedGenerationSpec,
 )
+from pipelines_v2.operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec
 from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
 from pipelines_v2.operations.reports import ReportSpec
 from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 
 OperationLoader = Callable[[dict[str, Any]], OperationSpec]
+
+
+def _assistant_axis_precomputed_coordinate_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.assistant_axis import AssistantAxisPrecomputedCoordinateSpec
+
+    return AssistantAxisPrecomputedCoordinateSpec.from_dict(payload)
+
+
+def _assistant_axis_vector_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.assistant_axis import AssistantAxisVectorSpec
+
+    return AssistantAxisVectorSpec.from_dict(payload)
+
+
+def _assistant_axis_score_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.assistant_axis import AssistantAxisScoreSpec
+
+    return AssistantAxisScoreSpec.from_dict(payload)
+
 
 _OPERATION_LOADERS: dict[str, OperationLoader] = {
     CaptureSpec.kind: CaptureSpec.from_dict,
@@ -40,6 +60,12 @@ _OPERATION_LOADERS: dict[str, OperationLoader] = {
     GenerationRunSpec.kind: GenerationRunSpec.from_dict,
     PatchedGenerationSpec.kind: PatchedGenerationSpec.from_dict,
     PatchComparisonSpec.kind: PatchComparisonSpec.from_dict,
+    CoordinateImportSpec.kind: CoordinateImportSpec.from_dict,
+    ProjectionSpec.kind: ProjectionSpec.from_dict,
+    ProjectionCalibrationSpec.kind: ProjectionCalibrationSpec.from_dict,
+    "assistant_axis_precomputed_coordinate": _assistant_axis_precomputed_coordinate_from_dict,
+    "assistant_axis_vector": _assistant_axis_vector_from_dict,
+    "assistant_axis_score": _assistant_axis_score_from_dict,
     ReportSpec.kind: ReportSpec.from_dict,
 }
 

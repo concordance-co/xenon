@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from pipelines_v2.data.datasets import Example
 from pipelines_v2.engine.base import EngineCaptureResult
-from pipelines_v2.engine.prompt_metadata import rebase_token_sections
-from pipelines_v2.engine.prompt_metadata import resolve_prompt_metadata, token_sections_from_metadata
+from pipelines_v2.engine.prompt_metadata import rebase_section_records, rebase_token_sections
+from pipelines_v2.engine.prompt_metadata import resolve_prompt_metadata, section_records_from_metadata, token_sections_from_metadata
 from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord
 
 if TYPE_CHECKING:
@@ -160,8 +160,10 @@ def run_vllm_capture(
                 example = record["example"]
                 prompt_token_ids = record["prompt_token_ids"]
                 prompt_token_sections = record["prompt_token_sections"]
+                prompt_section_records = record["prompt_section_records"]
                 residual_token_count = record["residual_token_count"]
                 residual_token_sections = record["residual_token_sections"]
+                residual_section_records = record["residual_section_records"]
                 residual = record["residual"]
                 router_data = record["router_data"]
                 actual_router_layers = record["actual_router_layers"]
@@ -175,6 +177,7 @@ def run_vllm_capture(
                     example=example,
                     token_count=residual_token_count,
                     token_sections=residual_token_sections,
+                    section_records=residual_section_records,
                 )
                 _fill_router_features(
                     feature_payloads=feature_payloads,
@@ -183,6 +186,7 @@ def run_vllm_capture(
                     example=example,
                     token_count=len(prompt_token_ids),
                     token_sections=prompt_token_sections,
+                    section_records=prompt_section_records,
                     discovered_router_layers=discovered_router_layers,
                 )
 
@@ -301,6 +305,7 @@ def _prompt_token_ids(
         chat_template_kwargs=chat_template_kwargs,
     )
     token_sections: dict[str, list[int]] = {}
+    section_records: list[dict[str, Any]] = []
     needs_rendered_metadata = require_sections or prompt_metadata_builder is not None or bool(example.metadata)
     if needs_rendered_metadata:
         rendered = _render_prompt(
@@ -316,6 +321,7 @@ def _prompt_token_ids(
             metadata=example.metadata,
             rendered_prompt=rendered,
             builder=prompt_metadata_builder,
+            prompt=example.prompt,
         )
         encoding = tokenizer(rendered, add_special_tokens=False, return_offsets_mapping=True)
         rendered_token_ids = _normalize_token_ids(encoding)
@@ -326,15 +332,29 @@ def _prompt_token_ids(
             require_sections=require_sections,
             allow_char_spans=True,
         )
-        if token_sections and token_ids != rendered_token_ids:
-            token_sections = _remap_token_sections(
-                token_sections=token_sections,
+        section_records = section_records_from_metadata(
+            metadata=metadata,
+            offsets=offsets,
+            token_sections=token_sections,
+            allow_char_spans=True,
+        )
+        if (token_sections or section_records) and token_ids != rendered_token_ids:
+            index_map = _align_source_positions_to_target(
                 source_token_ids=rendered_token_ids,
                 target_token_ids=token_ids,
+            )
+            token_sections = _remap_token_sections_with_index_map(
+                token_sections=token_sections,
+                index_map=index_map,
+            )
+            section_records = _remap_section_records(
+                section_records=section_records,
+                index_map=index_map,
             )
     return {
         "token_ids": token_ids,
         "token_sections": token_sections,
+        "section_records": section_records,
     }
 
 
@@ -377,11 +397,41 @@ def _remap_token_sections(
         source_token_ids=source_token_ids,
         target_token_ids=target_token_ids,
     )
+    return _remap_token_sections_with_index_map(
+        token_sections=token_sections,
+        index_map=index_map,
+    )
+
+
+def _remap_token_sections_with_index_map(
+    *,
+    token_sections: dict[str, list[int]],
+    index_map: dict[int, int],
+) -> dict[str, list[int]]:
     remapped: dict[str, list[int]] = {}
     for name, positions in token_sections.items():
         mapped = [index_map[int(position)] for position in positions if int(position) in index_map]
         if mapped:
             remapped[str(name)] = mapped
+    return remapped
+
+
+def _remap_section_records(
+    *,
+    section_records: list[dict[str, Any]],
+    index_map: dict[int, int],
+) -> list[dict[str, Any]]:
+    remapped: list[dict[str, Any]] = []
+    for raw_record in section_records:
+        positions = raw_record.get("token_positions")
+        if not isinstance(positions, list):
+            continue
+        mapped = [index_map[int(position)] for position in positions if int(position) in index_map]
+        if not mapped:
+            continue
+        record = dict(raw_record)
+        record["token_positions"] = mapped
+        remapped.append(record)
     return remapped
 
 
@@ -472,6 +522,7 @@ def _fill_residual_features(
     example: Example,
     token_count: int,
     token_sections: dict[str, list[int]],
+    section_records: list[dict[str, Any]],
 ) -> None:
     if not residual_sites:
         return
@@ -484,6 +535,10 @@ def _fill_residual_features(
             token_sections=token_sections,
             selected_positions=positions,
         )
+        feature_section_records = rebase_section_records(
+            section_records=section_records,
+            selected_positions=positions,
+        )
         for layer in site.layers:
             idx = layer_index[int(layer)]
             values = residual[idx, positions, :]
@@ -492,6 +547,7 @@ def _fill_residual_features(
                 "values": values,
                 "prompt_hash": example.prompt_hash,
                 "token_sections": feature_token_sections,
+                "section_records": feature_section_records,
             }
 
 
@@ -591,6 +647,7 @@ def _capture_prompt_batch(
         residual_token_count = len(prompt_token_ids)
         captured_generated_token_count = 0
         residual_token_sections = dict(tokenized_prompt["token_sections"])
+        residual_section_records = [dict(record) for record in tokenized_prompt.get("section_records", ())]
         if capture_generated_tokens and not wants_generation:
             raise RuntimeError("capture_generated_tokens=True requires generation.enabled=True")
         residual = None
@@ -625,6 +682,11 @@ def _capture_prompt_batch(
                     prompt_token_count=len(prompt_token_ids),
                     captured_generated_token_count=captured_generated_token_count,
                 )
+                residual_section_records = _with_generation_section_records(
+                    section_records=residual_section_records,
+                    prompt_token_count=len(prompt_token_ids),
+                    captured_generated_token_count=captured_generated_token_count,
+                )
             residual = hs[:, :residual_token_count, :].detach().cpu().to(torch.float32).numpy()
             connector_file.unlink(missing_ok=True)
         results.append(
@@ -632,8 +694,10 @@ def _capture_prompt_batch(
                 "example": example,
                 "prompt_token_ids": prompt_token_ids,
                 "prompt_token_sections": tokenized_prompt["token_sections"],
+                "prompt_section_records": tokenized_prompt.get("section_records", []),
                 "residual_token_count": residual_token_count,
                 "residual_token_sections": residual_token_sections,
+                "residual_section_records": residual_section_records,
                 "generated_token_count": generated_token_count,
                 "captured_generated_token_count": captured_generated_token_count,
                 "residual": residual,
@@ -657,6 +721,44 @@ def _with_generation_token_sections(
     sections["generated"] = list(range(int(prompt_token_count), token_count))
     sections["full"] = list(range(token_count))
     return sections
+
+
+def _with_generation_section_records(
+    *,
+    section_records: list[dict[str, Any]],
+    prompt_token_count: int,
+    captured_generated_token_count: int,
+) -> list[dict[str, Any]]:
+    token_count = int(prompt_token_count) + int(captured_generated_token_count)
+    records = [dict(record) for record in section_records]
+    existing_names = {str(record.get("name") or "") for record in records}
+    extras = (
+        {
+            "name": "prompt",
+            "unit": "segment",
+            "index": 0,
+            "token_positions": list(range(int(prompt_token_count))),
+        },
+        {
+            "name": "generated",
+            "unit": "segment",
+            "index": 1,
+            "token_positions": list(range(int(prompt_token_count), token_count)),
+        },
+        {
+            "name": "full",
+            "unit": "segment",
+            "index": 2,
+            "token_positions": list(range(token_count)),
+        },
+    )
+    for record in extras:
+        if record["name"] in existing_names:
+            continue
+        if not record["token_positions"]:
+            continue
+        records.append(record)
+    return records
 
 
 def _split_router_capture_batch(
@@ -758,6 +860,7 @@ def _fill_router_features(
     example: Example,
     token_count: int,
     token_sections: dict[str, list[int]],
+    section_records: list[dict[str, Any]],
     discovered_router_layers: list[int] | None = None,
 ) -> None:
     if not routing_sites:
@@ -768,6 +871,10 @@ def _fill_router_features(
         positions = site.tokens.resolve(token_count, token_sections=token_sections)
         feature_token_sections = rebase_token_sections(
             token_sections=token_sections,
+            selected_positions=positions,
+        )
+        feature_section_records = rebase_section_records(
+            section_records=section_records,
             selected_positions=positions,
         )
         for layer in site.layers:
@@ -810,6 +917,7 @@ def _fill_router_features(
                 "records": records_by_token,
                 "prompt_hash": example.prompt_hash,
                 "token_sections": feature_token_sections,
+                "section_records": feature_section_records,
             }
 
 

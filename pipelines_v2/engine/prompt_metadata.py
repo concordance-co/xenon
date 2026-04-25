@@ -14,15 +14,70 @@ def resolve_prompt_metadata(
     metadata: Any,
     rendered_prompt: str,
     builder: PromptMetadataBuilder | None,
+    prompt: Any = None,
 ) -> dict[str, Any]:
     """Merge example metadata with builder-derived prompt metadata."""
     resolved: dict[str, Any] = dict(metadata) if isinstance(metadata, Mapping) else {}
     if builder is None:
         return resolved
-    built = builder.build(rendered_prompt)
+    built = builder.build(
+        rendered_prompt,
+        prompt=prompt,
+        metadata=resolved,
+    )
     for key, value in built.items():
         resolved.setdefault(str(key), value)
     return resolved
+
+
+def build_chat_turn_metadata(
+    rendered_prompt: str,
+    *,
+    prompt: Any = None,
+    name_template: str = "{role}_turn_{index:03d}",
+    include_section_records: bool = True,
+) -> dict[str, object]:
+    """Best-effort turn spans over chat prompts based on message contents."""
+
+    if not isinstance(prompt, Sequence) or isinstance(prompt, str | bytes | bytearray):
+        return {}
+
+    token_sections: dict[str, dict[str, int]] = {}
+    section_records: list[dict[str, object]] = []
+    search_start = 0
+
+    for index, message in enumerate(prompt):
+        if not isinstance(message, Mapping):
+            continue
+        role = str(message.get("role") or "unknown")
+        content_text = _message_content_text(message.get("content"))
+        if not content_text:
+            continue
+        start = rendered_prompt.find(content_text, search_start)
+        if start < 0:
+            start = rendered_prompt.find(content_text)
+        if start < 0:
+            continue
+        end = start + len(content_text)
+        search_start = end
+        name = name_template.format(role=role, index=index)
+        token_sections[name] = {"char_start": int(start), "char_end": int(end)}
+        if include_section_records:
+            section_records.append(
+                {
+                    "name": name,
+                    "role": role,
+                    "unit": "turn",
+                    "index": int(index),
+                    "char_start": int(start),
+                    "char_end": int(end),
+                }
+            )
+
+    payload: dict[str, object] = {"token_sections": token_sections}
+    if include_section_records:
+        payload["section_records"] = section_records
+    return payload
 
 
 def token_sections_from_metadata(
@@ -88,6 +143,90 @@ def rebase_token_sections(
     return rebased
 
 
+def section_records_from_metadata(
+    *,
+    metadata: Mapping[str, Any] | None,
+    offsets: list[tuple[int, int]] | None,
+    token_sections: Mapping[str, Sequence[int]] | None,
+    allow_char_spans: bool,
+) -> list[dict[str, Any]]:
+    """Resolve structured section records into prompt-level token positions."""
+
+    raw_records = metadata.get("section_records") if isinstance(metadata, Mapping) else None
+    if raw_records is None:
+        return []
+    if isinstance(raw_records, str):
+        raw_records = json.loads(raw_records)
+    if not isinstance(raw_records, Sequence) or isinstance(raw_records, str | bytes | bytearray):
+        raise TypeError("section_records metadata must be a sequence or JSON array string")
+
+    resolved: list[dict[str, Any]] = []
+    for item in raw_records:
+        if not isinstance(item, Mapping):
+            raise TypeError("section_records entries must be mappings")
+        name = str(item.get("name") or item.get("section_name") or "").strip()
+        if not name:
+            raise TypeError("section_records entries must define 'name'")
+        positions = _token_positions_for_section_record(
+            section_name=name,
+            raw_record=item,
+            offsets=offsets,
+            allow_char_spans=allow_char_spans,
+            token_sections=token_sections,
+        )
+        if not positions:
+            continue
+        record = {
+            str(key): value
+            for key, value in dict(item).items()
+            if key not in {"section_name", "positions"}
+        }
+        record["name"] = name
+        record["token_positions"] = positions
+        if record.get("index") is not None:
+            record["index"] = int(record["index"])
+        tags = record.get("tags")
+        if tags is not None:
+            if not isinstance(tags, Mapping):
+                raise TypeError(f"section_records[{name!r}]['tags'] must be a mapping")
+            record["tags"] = {str(key): value for key, value in tags.items()}
+        resolved.append(record)
+    return resolved
+
+
+def rebase_section_records(
+    *,
+    section_records: Sequence[Mapping[str, Any]] | None,
+    selected_positions: Sequence[int],
+) -> list[dict[str, Any]]:
+    """Translate prompt-level section records into feature-local coordinates."""
+
+    if not isinstance(section_records, Sequence) or isinstance(section_records, str | bytes | bytearray):
+        return []
+    local_index_by_position = {
+        int(position): local_index
+        for local_index, position in enumerate(selected_positions)
+    }
+    rebased: list[dict[str, Any]] = []
+    for raw_record in section_records:
+        if not isinstance(raw_record, Mapping):
+            continue
+        positions = raw_record.get("token_positions")
+        if not isinstance(positions, Sequence) or isinstance(positions, str | bytes | bytearray):
+            continue
+        local_positions = [
+            local_index_by_position[int(position)]
+            for position in positions
+            if int(position) in local_index_by_position
+        ]
+        if not local_positions:
+            continue
+        record = dict(raw_record)
+        record["token_positions"] = local_positions
+        rebased.append(record)
+    return rebased
+
+
 def _token_positions_for_section(
     *,
     section_name: str,
@@ -138,3 +277,51 @@ def _token_positions_for_section(
     if not positions:
         raise RuntimeError(f"token_sections[{section_name!r}] span did not map to any token positions")
     return positions
+
+
+def _token_positions_for_section_record(
+    *,
+    section_name: str,
+    raw_record: Mapping[str, Any],
+    offsets: list[tuple[int, int]] | None,
+    allow_char_spans: bool,
+    token_sections: Mapping[str, Sequence[int]] | None,
+) -> list[int]:
+    positions = raw_record.get("token_positions", raw_record.get("positions"))
+    if positions is not None:
+        if not isinstance(positions, Sequence) or isinstance(positions, str | bytes | bytearray):
+            raise TypeError(f"section_records[{section_name!r}] token positions must be a sequence of integers")
+        if not all(isinstance(position, int) for position in positions):
+            raise TypeError(f"section_records[{section_name!r}] token positions must contain only integers")
+        return [int(position) for position in positions]
+    if raw_record.get("char_start", raw_record.get("start")) is not None:
+        return _token_positions_for_section(
+            section_name=section_name,
+            raw_value={
+                "char_start": raw_record.get("char_start", raw_record.get("start")),
+                "char_end": raw_record.get("char_end", raw_record.get("end")),
+            },
+            offsets=offsets,
+            allow_char_spans=allow_char_spans,
+        )
+    if isinstance(token_sections, Mapping) and section_name in token_sections:
+        return [int(position) for position in token_sections[section_name]]
+    return []
+
+
+def _message_content_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, Sequence) and not isinstance(content, str | bytes | bytearray):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+                continue
+            if not isinstance(item, Mapping):
+                continue
+            item_type = str(item.get("type") or "")
+            if item_type == "text" and item.get("text") is not None:
+                parts.append(str(item["text"]))
+        return "".join(parts)
+    return ""

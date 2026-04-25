@@ -8,8 +8,14 @@ from .common import OperationExecutionResult, feature_matrices
 
 
 def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
+    from pipelines_v2.mechinterp.assistant_axis import (
+        AssistantAxisPrecomputedCoordinateSpec,
+        AssistantAxisScoreSpec,
+        AssistantAxisVectorSpec,
+    )
     from pipelines_v2.operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
     from pipelines_v2.operations.interventions import ActivationBankSpec, ExplicitPathMaskSpec, PatchComparisonSpec
+    from pipelines_v2.operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec
     from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
     from pipelines_v2.operations.reports import ReportSpec
 
@@ -69,6 +75,24 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
     if isinstance(spec, PatchComparisonSpec):
         from .interventions import run_patch_comparison
         return run_patch_comparison(spec)
+    if isinstance(spec, CoordinateImportSpec):
+        from .projections import run_coordinate_import
+        return run_coordinate_import(spec)
+    if isinstance(spec, ProjectionSpec):
+        from .projections import run_projection
+        return run_projection(spec)
+    if isinstance(spec, ProjectionCalibrationSpec):
+        from .projections import run_projection_calibration
+        return run_projection_calibration(spec)
+    if isinstance(spec, AssistantAxisPrecomputedCoordinateSpec):
+        from pipelines_v2.mechinterp.assistant_axis.execution import run_assistant_axis_precomputed_coordinate
+        return run_assistant_axis_precomputed_coordinate(spec)
+    if isinstance(spec, AssistantAxisVectorSpec):
+        from pipelines_v2.mechinterp.assistant_axis.execution import run_assistant_axis_vector
+        return run_assistant_axis_vector(spec)
+    if isinstance(spec, AssistantAxisScoreSpec):
+        from pipelines_v2.mechinterp.assistant_axis.execution import run_assistant_axis_score
+        return run_assistant_axis_score(spec)
     if isinstance(spec, ReportSpec):
         from .reports import run_report
         return run_report(spec)

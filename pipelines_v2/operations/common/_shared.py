@@ -15,17 +15,23 @@ from pipelines_v2.data.datasets import CaseSet, Dataset, LabelPredicate, LabelSe
 from .tokens import TokenSelector
 
 
-def analysis_runtime_spec() -> Any:
+def analysis_runtime_spec(
+    *,
+    extra_pip_packages: Sequence[str] = (),
+) -> Any:
     from pipelines_v2.engine.base import PythonRuntimeSpec
 
     return PythonRuntimeSpec(
-        pip_packages=(
-            "matplotlib",
-            "numpy",
-            "scikit-learn",
-            "safetensors",
-            "pyarrow",
-            "psycopg[binary]",
+        pip_packages=merge_string_tuples(
+            (
+                "matplotlib",
+                "numpy",
+                "scikit-learn",
+                "safetensors",
+                "pyarrow",
+                "psycopg[binary]",
+            ),
+            tuple(str(item) for item in extra_pip_packages),
         ),
         local_python_sources=("pipelines_v2",),
     )
