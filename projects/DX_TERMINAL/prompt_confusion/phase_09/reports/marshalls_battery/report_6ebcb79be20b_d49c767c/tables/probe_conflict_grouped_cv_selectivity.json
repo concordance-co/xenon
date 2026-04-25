@@ -1,0 +1,165 @@
+{
+  "columns": [
+    "auroc",
+    "balanced_accuracy",
+    "baseline_majority",
+    "baseline_shuffled",
+    "class_count",
+    "example_count",
+    "layer",
+    "selectivity",
+    "split_mode"
+  ],
+  "headline_metrics": {
+    "best_layer": 40,
+    "best_metric": "balanced_accuracy",
+    "best_value": 0.7928,
+    "example_count": 864,
+    "group_count": 480,
+    "split_mode": "stratified_group_kfold"
+  },
+  "result_kind": "probe_result",
+  "rows": [
+    {
+      "auroc": 0.5,
+      "balanced_accuracy": 0.5,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.4988,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 0,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.5096,
+      "balanced_accuracy": 0.5102,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.4896,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 4,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.5403,
+      "balanced_accuracy": 0.5371,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.4953,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 8,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.4872,
+      "balanced_accuracy": 0.4918,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.4664,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 12,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.5909,
+      "balanced_accuracy": 0.572,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.4849,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 16,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.5674,
+      "balanced_accuracy": 0.5522,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.5034,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 20,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.6783,
+      "balanced_accuracy": 0.6481,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.4745,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 24,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.8208,
+      "balanced_accuracy": 0.7511,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.5035,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 28,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.8576,
+      "balanced_accuracy": 0.7731,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.5081,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 32,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.8625,
+      "balanced_accuracy": 0.7835,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.515,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 36,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.8841,
+      "balanced_accuracy": 0.7928,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.5185,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 40,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    },
+    {
+      "auroc": 0.8754,
+      "balanced_accuracy": 0.7789,
+      "baseline_majority": 0.4988,
+      "baseline_shuffled": 0.5104,
+      "class_count": 2,
+      "example_count": 864,
+      "layer": 44,
+      "selectivity": NaN,
+      "split_mode": "stratified_group_kfold"
+    }
+  ],
+  "step_name": "probe_conflict_grouped_cv_selectivity",
+  "summary": {
+    "best_layer": 40,
+    "best_metric": "balanced_accuracy",
+    "best_value": 0.7928,
+    "example_count": 864,
+    "group_count": 480,
+    "split_mode": "stratified_group_kfold"
+  }
+}

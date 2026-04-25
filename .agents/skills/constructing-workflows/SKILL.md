@@ -15,9 +15,9 @@ resuming, rerunning, and inspecting existing workflows, use
 ## Start Here
 
 1. Read:
-   - [AGENTS.md](/Users/brockelmore/concordance/xenon/AGENTS.md)
-   - [docs/PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
-   - [docs/ARCH2.md](/Users/brockelmore/concordance/xenon/docs/ARCH2.md)
+   - [AGENTS.md](../../../AGENTS.md)
+   - [platform/API.md](../../../platform/API.md)
+   - [platform/ARCH.md](../../../platform/ARCH.md)
 2. Inspect the nearest existing phase workflow under `projects/.../specs/workflow.py`.
 3. Prefer first-class `pipelines_v2` specs over `TransformSpec`.
 

@@ -58,7 +58,7 @@ state.
 
 The pulled `origin/main` additions are directly useful. Most important files:
 
-- `docs/mech-interp/benchmark-to-latent-labels.md`
+- `methodology/archive/benchmark-to-latent-labels.md`
 - `projects/MOREBENCH/phase_01/docs/01-latent-label-spec.md`
 - `projects/MOREBENCH/phase_01/docs/01-confound-audit.md`
 - `projects/MOREBENCH/phase_02/docs/02-augmentation-report.md`

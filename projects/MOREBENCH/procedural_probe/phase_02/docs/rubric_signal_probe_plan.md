@@ -8,8 +8,8 @@ Grounding:
 
 - local skill: `benchmark-mech-interp`
 - local skill: `constructing-llm-probes`
-- methodology roster: `docs/mech-interp/mech-interp-methodology-roster.md`
-- benchmark planning doc: `docs/mech-interp/benchmark-to-mech-interp.md`
+- methodology roster: `methodology/ROSTER.md`
+- benchmark planning doc: `methodology/archive/benchmark-to-mech-interp.md`
 - paper: https://arxiv.org/pdf/2510.16380
 - official repo: https://github.com/morebench/morebench
 

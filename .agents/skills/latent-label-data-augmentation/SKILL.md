@@ -304,7 +304,7 @@ The report should include at least one explicit content-inspection section tied 
 
 Primary references:
 
-- [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
+- [methodology/PRINCIPLES.md](../../../methodology/PRINCIPLES.md)
 - [synthetic-data-generation](../synthetic-data-generation/SKILL.md)
 - [benchmark-to-latent-labels](../benchmark-to-latent-labels/SKILL.md)
 - [activation-patching-causal-evals](../activation-patching-causal-evals/SKILL.md)

@@ -2,10 +2,8 @@ from __future__ import annotations
 
 """Capture reusable real-data residual anchors for complaint-transfer experiments."""
 
-import json
 import os
 import re
-import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -14,10 +12,12 @@ from pipelines_v2.api import (
     Dataset,
     LocalArtifactStore,
     LocalRunnerSpec,
+    ModalSecret,
     ModalResources,
     ModalRunnerSpec,
     ModalVolumeMount,
     ModalVolumeStore,
+    PostgresSource,
     PromptMetadataBuilder,
     ResidualSite,
     TensorStorage,
@@ -32,11 +32,10 @@ from projects.DX_TERMINAL.prompt_confusion.catalogs import build_prompt_confusio
 MODEL_VOLUME_NAME = "xenon-models"
 MODEL_VOLUME_PATH = "/models"
 MODEL_ID = "/models/Qwen/Qwen3-30B-A3B"
-DEFAULT_DATASET_PATH = Path(
-    os.environ.get(
-        "REAL_COMPLAINT_TRANSFER_DATASET_PATH",
-        "projects/DX_TERMINAL/prompt_confusion/phase_12/outputs/real_complaint_transfer/real_complaint_transfer_dataset.jsonl",
-    )
+DB_ENV_VAR = "XENON_NEON_DATABASE_URL"
+DEFAULT_TRANSFER_TABLE = os.environ.get(
+    "REAL_COMPLAINT_TRANSFER_TABLE",
+    "dx_terminal_real_complaint_transfer_ticks_v1",
 )
 CAPTURED_LAYERS = (0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44)
 HIGH_SIGNAL_COMPLAINT_TYPES = frozenset(
@@ -122,80 +121,61 @@ def _dataset_shard_index_from_env(shard_count: int | None) -> int | None:
     return value
 
 
-def _load_dataset_records(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
-        raise FileNotFoundError(f"Real complaint transfer dataset not found: {path}")
-    rows: list[dict[str, Any]] = []
-    with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            text = line.strip()
-            if text:
-                rows.append(json.loads(text))
-    if not rows:
-        raise ValueError(f"Real complaint transfer dataset is empty: {path}")
-    return rows
+def _validate_table_name(value: str) -> str:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value):
+        raise ValueError(f"Unsafe table name: {value}")
+    return value
 
 
-def _prompt_char_count(row: dict[str, Any]) -> int:
-    prompt = row.get("prompt_messages_json")
-    if isinstance(prompt, str):
-        prompt = json.loads(prompt)
-    if not isinstance(prompt, list):
-        return 0
-    total = 0
-    for message in prompt:
-        if isinstance(message, dict):
-            content = message.get("content")
-            if isinstance(content, str):
-                total += len(content)
-    return total
+def _sql_string_list(values: frozenset[str]) -> str:
+    return ", ".join("'" + value.replace("'", "''") + "'" for value in sorted(values))
 
 
-def _row_shard_key(row: dict[str, Any]) -> str:
-    candidate = row.get("example_id") or f"{row.get('trace_id')}::{row.get('tick_index')}"
-    return str(candidate)
+def _slice_filter_sql(slice_name: str) -> str:
+    if slice_name == "all":
+        return "TRUE"
+    if slice_name == "baseline_control":
+        return (
+            f"(root_cause IN ({_sql_string_list(BASELINE_CONTROL_ROOT_CAUSES)}) "
+            "OR label = 'market')"
+        )
+    if slice_name != "high_signal":
+        raise ValueError(f"Unsupported slice name: {slice_name}")
+    return (
+        "label <> 'market' "
+        f"AND complaint_type IN ({_sql_string_list(HIGH_SIGNAL_COMPLAINT_TYPES)}) "
+        f"AND (root_cause IS NULL OR root_cause NOT IN ({_sql_string_list(HIGH_SIGNAL_EXCLUDED_ROOT_CAUSES)}))"
+    )
 
 
-def _row_belongs_to_shard(row: dict[str, Any], *, shard_count: int | None, shard_index: int | None) -> bool:
-    if shard_count is None or shard_index is None:
-        return True
-    digest = hashlib.sha256(_row_shard_key(row).encode("utf-8")).digest()
-    bucket = int.from_bytes(digest[:8], "big") % shard_count
-    return bucket == shard_index
-
-
-def _keep_record(
-    row: dict[str, Any],
+def build_dataset_sql(
     *,
+    table_name: str = DEFAULT_TRANSFER_TABLE,
     slice_name: str,
     max_prompt_chars: int | None = None,
     shard_count: int | None = None,
     shard_index: int | None = None,
-) -> bool:
-    if slice_name == "all":
-        keep = True
-    elif slice_name == "baseline_control":
-        keep = (
-            str(row.get("root_cause") or "") in BASELINE_CONTROL_ROOT_CAUSES
-            or row.get("label") == "market"
+) -> str:
+    table_name = _validate_table_name(table_name)
+    filters = [
+        "prompt_messages_json IS NOT NULL",
+        "jsonb_typeof(prompt_messages_json) = 'array'",
+        _slice_filter_sql(slice_name),
+    ]
+    if max_prompt_chars is not None:
+        filters.append(f"length(prompt_messages_json::text) <= {int(max_prompt_chars)}")
+    if shard_count is not None and shard_index is not None:
+        filters.append(
+            "mod((('x' || substr(md5(example_id), 1, 8))::bit(32)::bigint), "
+            f"{int(shard_count)}) = {int(shard_index)}"
         )
-    elif slice_name != "high_signal":
-        raise ValueError(f"Unsupported slice name: {slice_name}")
-    else:
-        if row.get("label") == "market":
-            return False
-        if str(row.get("complaint_type") or "") not in HIGH_SIGNAL_COMPLAINT_TYPES:
-            return False
-        if str(row.get("root_cause") or "") in HIGH_SIGNAL_EXCLUDED_ROOT_CAUSES:
-            return False
-        keep = True
-    if not keep:
-        return False
-    if max_prompt_chars is not None and _prompt_char_count(row) > max_prompt_chars:
-        return False
-    if not _row_belongs_to_shard(row, shard_count=shard_count, shard_index=shard_index):
-        return False
-    return True
+    where_sql = "\n          AND ".join(filters)
+    return f"""
+        SELECT *
+        FROM {table_name}
+        WHERE {where_sql}
+        ORDER BY example_id
+    """
 
 
 def build_dataset(*, limit: int | None = None, slice_name: str | None = None) -> Dataset:
@@ -203,18 +183,16 @@ def build_dataset(*, limit: int | None = None, slice_name: str | None = None) ->
     max_prompt_chars = _dataset_max_prompt_chars_from_env()
     shard_count = _dataset_shard_count_from_env()
     shard_index = _dataset_shard_index_from_env(shard_count)
-    dataset = Dataset.from_records(
-        [
-            row
-            for row in _load_dataset_records(DEFAULT_DATASET_PATH)
-            if _keep_record(
-                row,
-                slice_name=selected_slice,
-                max_prompt_chars=max_prompt_chars,
-                shard_count=shard_count,
-                shard_index=shard_index,
-            )
-        ],
+    final_limit = limit if limit is not None else _dataset_limit_from_env()
+    dataset = Dataset.from_postgres(
+        source=PostgresSource.from_env(DB_ENV_VAR),
+        sql=build_dataset_sql(
+            table_name=DEFAULT_TRANSFER_TABLE,
+            slice_name=selected_slice,
+            max_prompt_chars=max_prompt_chars,
+            shard_count=shard_count,
+            shard_index=shard_index,
+        ),
         prompt_column="prompt_messages_json",
         example_key_column="example_id",
         label_columns=[
@@ -252,10 +230,10 @@ def build_dataset(*, limit: int | None = None, slice_name: str | None = None) ->
         ],
         case_columns=["trace_id", "vault_address"],
         case_key_column="trace_id",
+        limit=final_limit,
         name=f"prompt_confusion_real_complaint_transfer_{selected_slice}",
     )
-    final_limit = limit if limit is not None else _dataset_limit_from_env()
-    return dataset.select(limit=final_limit) if final_limit is not None else dataset
+    return dataset
 
 
 def _default_residual_engine() -> VLLMEngine:
@@ -328,6 +306,7 @@ def build_real_complaint_prompt_metadata(rendered_prompt: str) -> dict[str, Any]
 
 
 def build_runner_specs() -> dict[str, object]:
+    db_secret = ModalSecret.from_env_var(DB_ENV_VAR, secret_name="xenon-neon")
     artifact_store = ModalVolumeStore(
         name="xenon-data",
         root="/data/artifacts/prompt_confusion_real_complaint_transfer",
@@ -336,6 +315,7 @@ def build_runner_specs() -> dict[str, object]:
         "capture_gpu": ModalRunnerSpec(
             resources=ModalResources(
                 gpu="H100",
+                secrets=(db_secret,),
                 volumes=(ModalVolumeMount(name=MODEL_VOLUME_NAME, mount_path=MODEL_VOLUME_PATH),),
             ),
             artifacts=artifact_store,

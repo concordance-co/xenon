@@ -10,20 +10,20 @@ not clean enough to treat as a proper measurement.
 
 ### What Changed
 
-1. In [`pipelines_v2/engine/vllm/capture.py`](/Users/trentelmore/Projects/concordance/xenon-pv2/pipelines_v2/engine/vllm/capture.py):
+1. In [`pipelines_v2/engine/vllm/capture.py`](../../../../../pipelines_v2/engine/vllm/capture.py):
    - reasoning parser auto-enable is now gated on `capture_reasoning=True`
    - `chat_template_kwargs` are threaded through the vLLM capture path
    - chat prompts are tokenized directly through `tokenizer.apply_chat_template(...)`
      instead of rendering to text and re-tokenizing for the actual generation input
 
-2. In [`wave1_workflow.py`](/Users/trentelmore/Projects/concordance/xenon-pv2/projects/DX_TERMINAL/prompt_confusion/phase_09/specs/wave1_workflow.py):
+2. In [`wave1_workflow.py`](../specs/wave1_workflow.py):
    - boundary generation uses a dedicated engine config with:
      - `reasoning_parser=""`
      - `extra={"chat_template_kwargs": {"enable_thinking": False}}`
      - `max_tokens=256`
 
 3. A dedicated stable behavioral validation script was added:
-   - [`run_boundary_behavior_check.py`](/Users/trentelmore/Projects/concordance/xenon-pv2/projects/DX_TERMINAL/prompt_confusion/phase_09/scripts/run_boundary_behavior_check.py)
+   - [`run_boundary_behavior_check.py`](../scripts/run_boundary_behavior_check.py)
 
 ### Current Clean Result
 

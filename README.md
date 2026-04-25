@@ -63,10 +63,10 @@ XENON_NEON_DATABASE_URL=postgresql://...
 
 ## Docs
 
-- [docs/PIPELINES_V2_API.md](/Users/brockelmore/concordance/xenon/docs/PIPELINES_V2_API.md)
-- [docs/WORKFLOW.md](/Users/brockelmore/concordance/xenon/docs/WORKFLOW.md)
-- [docs/SPECS.md](/Users/brockelmore/concordance/xenon/docs/SPECS.md)
-- [docs/ARCH2.md](/Users/brockelmore/concordance/xenon/docs/ARCH2.md)
+- [platform/API.md](platform/API.md)
+- [platform/WORKFLOW.md](platform/WORKFLOW.md)
+- [platform/SPECS.md](platform/SPECS.md)
+- [platform/ARCH.md](platform/ARCH.md)
 
 For long-running `pipelines_v2` jobs, prefer:
 

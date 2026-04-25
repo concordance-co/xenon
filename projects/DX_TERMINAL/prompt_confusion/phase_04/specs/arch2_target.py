@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Runnable ARCH2 target for prompt_confusion phase_04.
+"""Runnable ARCH target for prompt_confusion phase_04.
 
 This target is intentionally narrow. It mirrors the current Phase 04 direction:
 
@@ -45,7 +45,7 @@ from pipelines_v2.api import (
 from pipelines_v2.runtime.specs import runner_spec_from_dict
 
 
-DB_ENV_VAR = "XENON_DATABASE_URL"
+DB_ENV_VAR = "XENON_NEON_DATABASE_URL"
 MODEL_VOLUME_NAME = "xenon-models"
 MODEL_VOLUME_PATH = "/models"
 MODEL_ID = "/models/Qwen/Qwen3-30B-A3B"

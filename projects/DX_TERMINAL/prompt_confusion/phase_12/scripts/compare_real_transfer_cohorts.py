@@ -8,10 +8,13 @@ from typing import Any
 import numpy as np
 from safetensors import safe_open
 
+from projects.DX_TERMINAL.prompt_confusion.neon import connect_neon
 from projects.DX_TERMINAL.prompt_confusion.paths import phase_root
+from projects.DX_TERMINAL.prompt_confusion.phase_12.scripts.transfer_bridge_neon import fetch_table_rows
 ROOT = phase_root("phase_12", __file__)
 FEATURE_CACHE = ROOT / "outputs" / "real_complaint_transfer_feature_cache"
 REAL_DATASET = ROOT / "outputs" / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
+REAL_TABLE = "dx_terminal_real_complaint_transfer_ticks_v1"
 SCORE_DIR = ROOT / "outputs" / "real_complaint_transfer_scores"
 
 BASELINE_ROOT_CAUSES = {"USER_EXPECTATION_MISMATCH", "CORRECT_BEHAVIOR", "MARKET_LEGITIMATE"}
@@ -38,7 +41,11 @@ def load_vector(tensors: safe_open, tensor_key: str) -> np.ndarray:
 
 
 def baseline_record_map() -> dict[str, dict[str, Any]]:
-    rows = load_jsonl(REAL_DATASET)
+    if REAL_DATASET.exists():
+        rows = load_jsonl(REAL_DATASET)
+    else:
+        with connect_neon() as conn:
+            rows = fetch_table_rows(conn, REAL_TABLE)
     out: dict[str, dict[str, Any]] = {}
     for row in rows:
         if row.get("root_cause") in BASELINE_ROOT_CAUSES or row.get("label") == "market":

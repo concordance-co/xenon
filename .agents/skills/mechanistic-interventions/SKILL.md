@@ -115,7 +115,7 @@ Those may later justify dedicated skills, but this phase should at least surface
 
 Primary reference:
 
-- [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
+- [methodology/PRINCIPLES.md](../../../methodology/PRINCIPLES.md)
 - [activation-patching-causal-evals](../activation-patching-causal-evals/SKILL.md)
 
 Related references:

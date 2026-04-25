@@ -5,7 +5,7 @@
 **Freeze Date:** `2026-04-23`
 
 Canonical shared rules live in:
-- [mech-interp-principles.md](/Users/trentelmore/Projects/concordance/xenon/docs/mech-interp/mech-interp-principles.md)
+- [methodology/PRINCIPLES.md](../../methodology/PRINCIPLES.md)
 
 ## 1. Benchmark Snapshot
 

@@ -2,22 +2,31 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from projects.DX_TERMINAL.prompt_confusion.paths import phase_outputs_dir, phase_root
+from projects.DX_TERMINAL.prompt_confusion.neon import connect_neon, ensure_schema, validate_table_name
+from projects.DX_TERMINAL.prompt_confusion.paths import phase_root
+from projects.DX_TERMINAL.prompt_confusion.phase_12.scripts.transfer_bridge_neon import (
+    replace_transfer_table,
+    table_exists,
+)
 
 PHASE_12_ROOT = phase_root("phase_12", __file__)
-REAL_DATASET = phase_outputs_dir("phase_12", __file__) / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
-PHASE_09_DATASET = phase_outputs_dir("phase_09", __file__) / "phase_09_dataset" / "phase_09_dataset.jsonl"
 OUTPUT_DIR = PHASE_12_ROOT / "outputs" / "transfer_bridge"
 
-STRICT_OUTPUT = OUTPUT_DIR / "trade_size_stage1b_adapter_strict.jsonl"
 STRICT_SUMMARY = OUTPUT_DIR / "trade_size_stage1b_adapter_strict_summary.json"
-LOOSE_OUTPUT = OUTPUT_DIR / "trade_size_stage1b_adapter_loose.jsonl"
 LOOSE_SUMMARY = OUTPUT_DIR / "trade_size_stage1b_adapter_loose_summary.json"
+REAL_TICK_TABLE = os.environ.get("REAL_COMPLAINT_TRANSFER_TABLE", "dx_terminal_real_complaint_transfer_ticks_v1")
+SYNTHETIC_TABLE_CANDIDATES = (
+    os.environ.get("TRADE_SIZE_SYNTHETIC_SOURCE_TABLE", "conflict_probe_examples_v5"),
+    "conflict_probe_examples_v4",
+)
+STRICT_TABLE = os.environ.get("TRADE_SIZE_STAGE1B_STRICT_TABLE", "dx_terminal_trade_size_stage1b_adapter_strict_v1")
+LOOSE_TABLE = os.environ.get("TRADE_SIZE_STAGE1B_LOOSE_TABLE", "dx_terminal_trade_size_stage1b_adapter_loose_v1")
 
 MARKET_START_MARKER = "## MARKET SNAPSHOT"
 ACTIVE_STRATEGIES_MARKER = "## ACTIVE STRATEGIES"
@@ -26,22 +35,71 @@ PORTFOLIO_MARKER = "PORTFOLIO CONTEXT"
 CONSTRAINTS_MARKER = "## CONSTRAINTS"
 
 
-def load_jsonl(path: Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            text = line.strip()
-            if text:
-                rows.append(json.loads(text))
-    return rows
+def first_synthetic_system_text(conn: Any) -> str:
+    for raw_table in SYNTHETIC_TABLE_CANDIDATES:
+        table = validate_table_name(str(raw_table))
+        if not table_exists(conn, table):
+            continue
+        row = conn.execute(
+            f"""
+            SELECT system_text
+            FROM {table}
+            WHERE system_text IS NOT NULL
+              AND length(system_text) > 0
+            ORDER BY example_id
+            LIMIT 1
+            """
+        ).fetchone()
+        if row and row.get("system_text"):
+            return str(row["system_text"])
+    raise ValueError("No synthetic system_text found in the configured Neon synthetic source tables")
 
 
-def first_phase09_system_text() -> str:
-    for row in load_jsonl(PHASE_09_DATASET):
-        text = row.get("system_text")
-        if isinstance(text, str) and text.strip():
-            return text
-    raise ValueError(f"No system_text found in {PHASE_09_DATASET}")
+def load_real_tick_rows(conn: Any) -> list[dict[str, Any]]:
+    table = validate_table_name(REAL_TICK_TABLE)
+    rows = conn.execute(
+        f"""
+        SELECT
+            example_id,
+            trace_id,
+            prompt_messages_json,
+            label,
+            fault,
+            root_cause,
+            agent_was_correct,
+            severity,
+            confidence,
+            urgency,
+            complaint_type,
+            complaint_text,
+            referenced_tokens,
+            has_strategy,
+            strategies_text,
+            slider_ta,
+            slider_arp,
+            slider_ts,
+            slider_hs,
+            slider_div,
+            n_relevant_ticks,
+            n_ticks_attached,
+            tick_index,
+            created_at,
+            minute_key,
+            tool,
+            llm_model,
+            size_relevant_complaint,
+            activity_relevant_complaint,
+            config_conflict_like,
+            system_fault
+        FROM {table}
+        WHERE prompt_messages_json IS NOT NULL
+          AND jsonb_typeof(prompt_messages_json) = 'array'
+        ORDER BY trace_id, tick_index
+        """
+    ).fetchall()
+    if not rows:
+        raise ValueError(f"No rows found in Neon table {table}")
+    return [dict(row) for row in rows]
 
 
 def unique_trace_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -243,9 +301,9 @@ def stable_sort_key(row: dict[str, Any]) -> str:
     return hashlib.sha256(str(row["trace_id"]).encode("utf-8")).hexdigest()
 
 
-def build_adapter_rows(*, strict: bool) -> list[dict[str, Any]]:
-    system_text = first_phase09_system_text()
-    base_rows = unique_trace_rows(load_jsonl(REAL_DATASET))
+def build_adapter_rows(conn: Any, *, strict: bool) -> list[dict[str, Any]]:
+    system_text = first_synthetic_system_text(conn)
+    base_rows = unique_trace_rows(load_real_tick_rows(conn))
     adapter_rows: list[dict[str, Any]] = []
 
     for row in sorted(base_rows, key=stable_sort_key):
@@ -266,7 +324,7 @@ def build_adapter_rows(*, strict: bool) -> list[dict[str, Any]]:
                 "example_id": f"trade_size_stage1b:{'strict' if strict else 'loose'}:{row['trace_id']}",
                 "trace_id": row["trace_id"],
                 "source_example_id": row["example_id"],
-                "prompt_messages_json": json.dumps(prompt_messages, ensure_ascii=False),
+                "prompt_messages_json": prompt_messages,
                 "prompt_text": f"[system] {system_text}\n\n[user] {adapter_user_text}",
                 "prompt_message_count": 2,
                 "label": row.get("label"),
@@ -309,13 +367,10 @@ def build_adapter_rows(*, strict: bool) -> list[dict[str, Any]]:
     return adapter_rows
 
 
-def write_dataset(rows: list[dict[str, Any]], *, output_path: Path, summary_path: Path, strict: bool) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(row, ensure_ascii=False))
-            handle.write("\n")
-
+def write_dataset(conn: Any, rows: list[dict[str, Any]], *, table_name: str, summary_path: Path, strict: bool) -> None:
+    table_name = validate_table_name(table_name)
+    table_summary = replace_transfer_table(conn, table_name, rows)
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
     counts = Counter(row["adapter_alignment_label"] for row in rows)
     complaint_counts = defaultdict(Counter)
     root_counts = defaultdict(Counter)
@@ -324,9 +379,10 @@ def write_dataset(rows: list[dict[str, Any]], *, output_path: Path, summary_path
         root_counts[row["adapter_alignment_label"]][str(row.get("root_cause"))] += 1
 
     summary = {
-        "dataset_path": str(output_path),
+        "dataset_table": table_name,
         "strict_slider_extremes": strict,
         "rows": len(rows),
+        "table_summary": table_summary,
         "label_counts": dict(counts),
         "complaint_type_counts_by_label": {label: dict(counter.most_common(10)) for label, counter in complaint_counts.items()},
         "root_cause_counts_by_label": {label: dict(counter.most_common(10)) for label, counter in root_counts.items()},
@@ -336,12 +392,14 @@ def write_dataset(rows: list[dict[str, Any]], *, output_path: Path, summary_path
 
 
 def main() -> None:
-    strict_rows = build_adapter_rows(strict=True)
-    loose_rows = build_adapter_rows(strict=False)
-    write_dataset(strict_rows, output_path=STRICT_OUTPUT, summary_path=STRICT_SUMMARY, strict=True)
-    write_dataset(loose_rows, output_path=LOOSE_OUTPUT, summary_path=LOOSE_SUMMARY, strict=False)
-    print(f"Wrote {len(strict_rows)} strict rows to {STRICT_OUTPUT}")
-    print(f"Wrote {len(loose_rows)} loose rows to {LOOSE_OUTPUT}")
+    with connect_neon(autocommit=True) as conn:
+        ensure_schema(conn)
+        strict_rows = build_adapter_rows(conn, strict=True)
+        loose_rows = build_adapter_rows(conn, strict=False)
+        write_dataset(conn, strict_rows, table_name=STRICT_TABLE, summary_path=STRICT_SUMMARY, strict=True)
+        write_dataset(conn, loose_rows, table_name=LOOSE_TABLE, summary_path=LOOSE_SUMMARY, strict=False)
+    print(f"Wrote {len(strict_rows)} strict rows to Neon table {STRICT_TABLE}")
+    print(f"Wrote {len(loose_rows)} loose rows to Neon table {LOOSE_TABLE}")
 
 
 if __name__ == "__main__":

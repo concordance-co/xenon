@@ -57,7 +57,7 @@ These choices affect which labels are even meaningful.
 
 Use the full process in:
 
-- [benchmark-to-latent-labels.md](../../../docs/mech-interp/benchmark-to-latent-labels.md)
+- [benchmark-to-latent-labels.md](../../../methodology/archive/benchmark-to-latent-labels.md)
 
 At a high level:
 
@@ -232,9 +232,9 @@ This phase is done when:
 
 Primary references:
 
-- [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
-- [benchmark-to-latent-labels.md](../../../docs/mech-interp/benchmark-to-latent-labels.md)
-- [benchmark-first-mech-interp-failure-modes.md](../../../docs/mech-interp/benchmark-first-mech-interp-failure-modes.md)
+- [methodology/PRINCIPLES.md](../../../methodology/PRINCIPLES.md)
+- [benchmark-to-latent-labels.md](../../../methodology/archive/benchmark-to-latent-labels.md)
+- [benchmark-first-mech-interp-failure-modes.md](../../../methodology/archive/benchmark-first-mech-interp-failure-modes.md)
 
 Related skills:
 

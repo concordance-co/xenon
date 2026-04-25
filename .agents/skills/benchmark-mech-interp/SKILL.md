@@ -49,12 +49,12 @@ One feature hypothesis may support several methods.
 
 Read these docs before drafting a benchmark spec:
 
-- [benchmark-to-mech-interp.md](../../../docs/mech-interp/benchmark-to-mech-interp.md)
-- [mech-interp-methodology-roster.md](../../../docs/mech-interp/mech-interp-methodology-roster.md)
-- [mech-interp-replication-priorities-2026-04-20.md](../../../docs/mech-interp/mech-interp-replication-priorities-2026-04-20.md)
+- [benchmark-to-mech-interp.md](../../../methodology/archive/benchmark-to-mech-interp.md)
+- [methodology/ROSTER.md](../../../methodology/ROSTER.md)
+- [mech-interp-replication-priorities-2026-04-20.md](../../../methodology/archive/mech-interp-replication-priorities-2026-04-20.md)
 - [constructing-llm-probes](../constructing-llm-probes/SKILL.md)
 - [synthetic-data-generation](../synthetic-data-generation/SKILL.md)
-- [mechanistic-benchmark-analysis](../mechanistic-benchmark-analysis/SKILL.md)
+- [benchmark-mech-interp-analysis](../benchmark-mech-interp-analysis/SKILL.md)
 - [activation-patching-causal-evals](../activation-patching-causal-evals/SKILL.md)
 
 Use the replication document mainly as a `methodology library`, not as a strict project queue.
@@ -150,7 +150,7 @@ Useful structure:
 
 Choose methods per `feature hypothesis`, not per benchmark.
 
-Use [mech-interp-methodology-roster.md](../../../docs/mech-interp/mech-interp-methodology-roster.md) to select from:
+Use [methodology/ROSTER.md](../../../methodology/ROSTER.md) to select from:
 
 - linear residual probes
 - difference-in-means directions

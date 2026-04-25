@@ -166,17 +166,17 @@ The main thing is that someone should be able to inspect:
 
 Read these before making a validation call:
 
-- [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
-- [benchmark-to-mech-interp.md](../../../docs/mech-interp/benchmark-to-mech-interp.md)
-- [benchmark-first-mech-interp-failure-modes.md](../../../docs/mech-interp/benchmark-first-mech-interp-failure-modes.md)
-- [benchmark-context-template.md](../../../docs/mech-interp/benchmark-context-template.md)
+- [methodology/PRINCIPLES.md](../../../methodology/PRINCIPLES.md)
+- [benchmark-to-mech-interp.md](../../../methodology/archive/benchmark-to-mech-interp.md)
+- [benchmark-first-mech-interp-failure-modes.md](../../../methodology/archive/benchmark-first-mech-interp-failure-modes.md)
+- [benchmark-context-template.md](../../../methodology/archive/benchmark-context-template.md)
 
 ## Handoff
 
 If the benchmark passes:
 
 - hand off to [benchmark-to-latent-labels](../benchmark-to-latent-labels/SKILL.md)
-- initialize the benchmark sidecar from [benchmark-context-template.md](../../../docs/mech-interp/benchmark-context-template.md)
+- initialize the benchmark sidecar from [benchmark-context-template.md](../../../methodology/archive/benchmark-context-template.md)
 
 If the benchmark fails only because of missing controls or structure:
 

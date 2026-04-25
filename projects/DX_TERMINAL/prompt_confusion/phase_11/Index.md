@@ -27,6 +27,10 @@ activation patching on the shared Phase 10 conflict-family structure.
 | [design.md](specs/design.md) | Phase 11 multi-conflict scope and intended analyses |
 | [build_phase_11_dataset.py](scripts/build_phase_11_dataset.py) | Joint size-plus-risk benchmark scaffold |
 
+## Artifacts
+
+- Local dataset: `outputs/phase_11_dataset/phase_11_dataset.jsonl`
+
 ## Current status
 
 This phase is now running with first-pass data.

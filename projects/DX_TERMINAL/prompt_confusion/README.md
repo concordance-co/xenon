@@ -15,6 +15,12 @@ The active landmarks still kept in this repo are:
   - QA baselines plus combined capture/probe workflow
 - [Phase 09](./phase_09/Index.md)
   - implemented benchmark and strongest empirical result so far
+- [Phase 10](./phase_10/)
+  - strict risk-preference extension and trade-size/risk comparison work
+- [Phase 11](./phase_11/)
+  - additional prompt-confusion follow-up experiments
+- [Phase 12](./phase_12/Index.md)
+  - three-family geometry, strict family checkpoint, and real-transfer bridge work
 
 Older prompt-confusion phases were moved to the archive repo.
 
@@ -65,6 +71,11 @@ Use those helpers instead of hardcoding:
 - repo-local `projects/DX_TERMINAL/...` paths
 - `~/.xenon/pipelines_v2/catalog`
 - `~/.xenon/pipelines_v2/cache`
+
+`dataset_exports_root(...)` accepts `XENON_DX_TERMINAL_DATASET_EXPORTS_ROOT`
+when an explicit export location is needed. When called from a phase script, it
+also recognizes a phase-local `dataset_exports/` directory before falling back
+to `projects/DX_TERMINAL/dataset_exports`.
 
 The real complaint export now has a repeatable uploader at:
 

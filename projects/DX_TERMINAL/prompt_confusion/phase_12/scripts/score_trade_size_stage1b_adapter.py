@@ -9,7 +9,9 @@ from typing import Any
 import numpy as np
 from safetensors import safe_open
 
+from projects.DX_TERMINAL.prompt_confusion.neon import connect_neon
 from projects.DX_TERMINAL.prompt_confusion.paths import phase_outputs_dir, phase_root
+from projects.DX_TERMINAL.prompt_confusion.phase_12.scripts.transfer_bridge_neon import fetch_table_rows
 
 ROOT = phase_root("phase_12", __file__)
 FEATURE_CACHE = ROOT / "outputs" / "real_complaint_transfer_feature_cache"
@@ -94,10 +96,25 @@ def summarize(values: list[float]) -> dict[str, float]:
     }
 
 
-def score_artifact(artifact_root: Path, dataset_path: Path, output_prefix: str) -> dict[str, Any]:
+def load_dataset_rows(dataset_path: Path | None, dataset_table: str | None) -> dict[str, dict[str, Any]]:
+    if dataset_table:
+        with connect_neon() as conn:
+            return {row["example_id"]: row for row in fetch_table_rows(conn, dataset_table)}
+    if dataset_path is None:
+        raise ValueError("Either dataset_path or dataset_table is required")
+    return {row["example_id"]: row for row in load_jsonl(dataset_path)}
+
+
+def score_artifact(
+    artifact_root: Path,
+    dataset_path: Path | None,
+    output_prefix: str,
+    *,
+    dataset_table: str | None = None,
+) -> dict[str, Any]:
     metadata = load_json(artifact_root / "features" / "residual_prompt_last.metadata.json")
     tensor_path = artifact_root / "features" / "feature_tensors.safetensors"
-    dataset_rows = {row["example_id"]: row for row in load_jsonl(dataset_path)}
+    dataset_rows = load_dataset_rows(dataset_path, dataset_table)
     direction = build_trade_size_direction()
 
     per_example_rows: list[dict[str, Any]] = []
@@ -159,7 +176,8 @@ def score_artifact(artifact_root: Path, dataset_path: Path, output_prefix: str) 
             handle.write("\n")
     summary = {
         "artifact_root": str(artifact_root),
-        "dataset_path": str(dataset_path),
+        "dataset_path": str(dataset_path) if dataset_path is not None else None,
+        "dataset_table": dataset_table,
         "rows": len(per_example_rows),
         "layers": layer_summary,
     }
@@ -170,14 +188,16 @@ def score_artifact(artifact_root: Path, dataset_path: Path, output_prefix: str) 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifact-root", required=True)
-    parser.add_argument("--dataset", required=True)
+    parser.add_argument("--dataset", default=None)
+    parser.add_argument("--dataset-table", default="dx_terminal_trade_size_stage1b_adapter_strict_v1")
     parser.add_argument("--output-prefix", default="trade_size_stage1b_adapter_strict")
     args = parser.parse_args()
 
     summary = score_artifact(
         artifact_root=Path(args.artifact_root),
-        dataset_path=Path(args.dataset),
+        dataset_path=Path(args.dataset) if args.dataset else None,
         output_prefix=str(args.output_prefix),
+        dataset_table=str(args.dataset_table) if args.dataset_table else None,
     )
     best = max(
         ((layer, payload["mean_delta_conflict_minus_aligned"]) for layer, payload in summary["layers"].items() if payload["mean_delta_conflict_minus_aligned"] is not None),

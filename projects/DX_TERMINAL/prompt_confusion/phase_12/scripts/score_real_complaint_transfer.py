@@ -9,11 +9,14 @@ from typing import Any
 import numpy as np
 from safetensors import safe_open
 
+from projects.DX_TERMINAL.prompt_confusion.neon import connect_neon
 from projects.DX_TERMINAL.prompt_confusion.paths import phase_outputs_dir, phase_root
+from projects.DX_TERMINAL.prompt_confusion.phase_12.scripts.transfer_bridge_neon import fetch_table_rows
 
 ROOT = phase_root("phase_12", __file__)
 FEATURE_CACHE = ROOT / "outputs" / "real_complaint_transfer_feature_cache"
 REAL_DATASET = ROOT / "outputs" / "real_complaint_transfer" / "real_complaint_transfer_dataset.jsonl"
+REAL_TABLE = "dx_terminal_real_complaint_transfer_ticks_v1"
 OUTPUT_DIR = ROOT / "outputs" / "real_complaint_transfer_scores"
 
 PHASE_09_DATASET = phase_outputs_dir("phase_09", __file__) / "phase_09_dataset" / "phase_09_dataset.jsonl"
@@ -140,7 +143,11 @@ def shard_rows_from_metadata(metadata_name: str) -> list[str]:
 
 
 def build_real_record_map() -> dict[str, dict[str, Any]]:
-    rows = load_jsonl(REAL_DATASET)
+    if REAL_DATASET.exists():
+        rows = load_jsonl(REAL_DATASET)
+    else:
+        with connect_neon() as conn:
+            rows = fetch_table_rows(conn, REAL_TABLE)
     return {row["example_id"]: row for row in rows}
 
 

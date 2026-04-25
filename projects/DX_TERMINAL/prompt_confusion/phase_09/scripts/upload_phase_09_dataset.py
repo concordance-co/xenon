@@ -19,6 +19,7 @@ TABLE_COLUMNS = [
     "strategy_direction",
     "setting_value",
     "setting_implied_direction",
+    "main_benchmark_row",
     "conflict_present",
     "edge_conflict",
     "conflict_band",
@@ -80,6 +81,7 @@ def ensure_table(conn: Any, table_name: str) -> None:
             strategy_direction TEXT NOT NULL,
             setting_value INT NOT NULL,
             setting_implied_direction TEXT NOT NULL,
+            main_benchmark_row BOOLEAN NOT NULL,
             conflict_present BOOLEAN NULL,
             edge_conflict BOOLEAN NOT NULL,
             conflict_band TEXT NOT NULL,
@@ -118,9 +120,13 @@ def upload_rows(conn: Any, table_name: str, rows: list[dict[str, Any]]) -> None:
     column_list = ", ".join(TABLE_COLUMNS)
     with conn.cursor().copy(f"COPY {table_name} ({column_list}) FROM STDIN") as copy:
         for row in rows:
+            normalized = dict(row)
+            normalized.setdefault("main_benchmark_row", True)
             copy.write_row(
                 tuple(
-                    json.dumps(row[column], sort_keys=True) if isinstance(row[column], (dict, list)) else row[column]
+                    json.dumps(normalized[column], sort_keys=True)
+                    if isinstance(normalized[column], (dict, list))
+                    else normalized[column]
                     for column in TABLE_COLUMNS
                 )
             )

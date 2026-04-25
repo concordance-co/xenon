@@ -127,7 +127,7 @@ def build_phase_02_method_plan() -> dict[str, object]:
     return {
         "phase": "raw_rubric_dimension_prompt_vs_generation_probes",
         "methodology_sources": [
-            "docs/mech-interp/mech-interp-methodology-roster.md",
+            "methodology/ROSTER.md",
             "benchmark-mech-interp skill",
             "constructing-llm-probes skill",
         ],

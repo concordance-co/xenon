@@ -8,7 +8,9 @@ from typing import Any
 import numpy as np
 from safetensors import safe_open
 
+from projects.DX_TERMINAL.prompt_confusion.neon import connect_neon
 from projects.DX_TERMINAL.prompt_confusion.paths import phase_outputs_dir, phase_root, pipelines_cache_root
+from projects.DX_TERMINAL.prompt_confusion.phase_12.scripts.transfer_bridge_neon import fetch_table_rows
 
 ROOT = phase_root("phase_12", __file__)
 FEATURE_CACHE = ROOT / "outputs" / "real_complaint_transfer_feature_cache"
@@ -21,10 +23,12 @@ CACHE_ROOT = pipelines_cache_root()
 STAGE_SPECS = {
     "stage1a": {
         "dataset": TRANSFER_BRIDGE_DIR / "trade_size_stage1a_template_control.jsonl",
+        "table": "dx_terminal_trade_size_stage1a_template_control_v1",
         "artifact_root": CACHE_ROOT / "capture_1_1def4f9a",
     },
     "stage1b": {
         "dataset": TRANSFER_BRIDGE_DIR / "trade_size_stage1b_adapter_strict.jsonl",
+        "table": "dx_terminal_trade_size_stage1b_adapter_strict_v1",
         "artifact_root": CACHE_ROOT / "capture_1_45d4a738",
     },
 }
@@ -85,8 +89,15 @@ def build_synthetic_direction() -> dict[str, np.ndarray]:
     return directions
 
 
-def load_stage_matrix(dataset_path: Path, artifact_root: Path) -> tuple[dict[str, dict[str, Any]], dict[str, np.ndarray]]:
-    rows = {row["example_id"]: row for row in load_jsonl(dataset_path)}
+def load_stage_rows(dataset_path: Path, dataset_table: str) -> dict[str, dict[str, Any]]:
+    if dataset_path.exists():
+        return {row["example_id"]: row for row in load_jsonl(dataset_path)}
+    with connect_neon() as conn:
+        return {row["example_id"]: row for row in fetch_table_rows(conn, dataset_table)}
+
+
+def load_stage_matrix(dataset_path: Path, dataset_table: str, artifact_root: Path) -> tuple[dict[str, dict[str, Any]], dict[str, np.ndarray]]:
+    rows = load_stage_rows(dataset_path, dataset_table)
     metadata = load_json(artifact_root / "features" / "residual_prompt_last.metadata.json")
     tensor_path = artifact_root / "features" / "feature_tensors.safetensors"
     matrices: dict[str, np.ndarray] = {}
@@ -162,7 +173,7 @@ def main() -> None:
     stage_labels: dict[str, np.ndarray] = {}
 
     for stage_name, spec in STAGE_SPECS.items():
-        rows, matrices = load_stage_matrix(spec["dataset"], spec["artifact_root"])
+        rows, matrices = load_stage_matrix(spec["dataset"], spec["table"], spec["artifact_root"])
         stage_rows[stage_name] = rows
         stage_matrices[stage_name] = matrices
         stage_labels[stage_name] = labels_from_rows(rows)

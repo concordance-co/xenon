@@ -339,7 +339,7 @@ behavior checks was fixed by:
 
 Reference:
 
-- [boundary_generation_cleanup_20260415.md](/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_09/notes/boundary_generation_cleanup_20260415.md)
+- [boundary_generation_cleanup_20260415.md](notes/boundary_generation_cleanup_20260415.md)
 
 ## Main-Benchmark Refresh History
 
@@ -351,7 +351,7 @@ Run:
 
 Artifacts:
 
-- [report.md](/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_09/reports/pipelines_v2/report_d9b5ae9ef51b_b6c872ce/report.md)
+- archived report path: `reports/pipelines_v2/report_d9b5ae9ef51b_b6c872ce/report.md`
 
 Headline results:
 
@@ -383,7 +383,7 @@ Run:
 
 Artifacts:
 
-- [report.md](/Users/trentelmore/Projects/concordance/xenon-dashboard/projects/DX_TERMINAL/prompt_confusion/phase_09/reports/pipelines_v2/report_dc4120a07d2e_6197853f/report.md)
+- archived report path: `reports/pipelines_v2/report_dc4120a07d2e_6197853f/report.md`
 
 Main benchmark population:
 

@@ -8,7 +8,9 @@ from typing import Any
 
 import pyarrow.parquet as pq
 
-DEFAULT_INPUT = Path(__file__).resolve().parents[3] / "dataset_exports" / "complaint_dataset_enriched.parquet"
+from projects.DX_TERMINAL.prompt_confusion.paths import dataset_exports_root
+
+DEFAULT_INPUT = dataset_exports_root(__file__) / "complaint_dataset_enriched.parquet"
 DEFAULT_TABLE = "dx_terminal_complaint_dataset_enriched_v1"
 REMOTE_INPUT_PATH = "/root/complaint_dataset_enriched.parquet"
 

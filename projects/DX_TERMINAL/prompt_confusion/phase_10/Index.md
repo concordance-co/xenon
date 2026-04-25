@@ -22,6 +22,10 @@ question rather than an entry-threshold question.
 | [design.md](specs/design.md) | Phase 10 scope and the risk-portrayal design |
 | [build_phase_10_dataset.py](scripts/build_phase_10_dataset.py) | Risk dataset generator |
 
+## Artifacts
+
+- Local dataset: `outputs/phase_10_dataset/phase_10_dataset.jsonl`
+
 ## Intended execution model
 
 1. iterate on the market portrayal for conservative vs aggressive assets

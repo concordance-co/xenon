@@ -1,6 +1,6 @@
 """V2 pipelines package.
 
-This package is intentionally separate from `pipelines` while the ARCH2 API is
+This package is intentionally separate from `pipelines` while the ARCH API is
 being built out.
 
 Keep the package root light: importing a submodule such as

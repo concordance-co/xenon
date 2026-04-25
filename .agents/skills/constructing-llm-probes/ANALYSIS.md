@@ -14,11 +14,13 @@ It does **not** by itself establish:
 
 For mechanistic workflows, treat representation analysis as one part of a broader chain:
 
-1. behavioral sanity
-2. probe readout
-3. span / position localization
-4. causal intervention
-5. mechanism follow-up
+<!-- canonical at methodology/PRINCIPLES.md §2 — keep verbatim -->
+
+- **Level 1 — behavioral.** The model behaves sanely on the task.
+- **Level 2 — representational.** A readout or probe detects the target variable.
+- **Level 3 — localized representational.** The signal is localized to a span, section, token, layer, or position.
+- **Level 4 — causal.** An intervention changes behavior beyond controls.
+- **Level 5 — mechanistic.** A plausible computation path is identified.
 
 ## Common result gotchas
 

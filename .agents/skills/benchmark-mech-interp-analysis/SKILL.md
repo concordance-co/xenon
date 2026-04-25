@@ -29,18 +29,20 @@ This skill should not be the place where native labels are first interpreted.
 
 The right progression is usually:
 
-1. confirm behavioral sanity
-2. global readout
-3. localization
-4. causal testing
-5. mechanism-focused follow-up
+<!-- canonical at methodology/PRINCIPLES.md §2 — keep verbatim -->
+
+- **Level 1 — behavioral.** The model behaves sanely on the task.
+- **Level 2 — representational.** A readout or probe detects the target variable.
+- **Level 3 — localized representational.** The signal is localized to a span, section, token, layer, or position.
+- **Level 4 — causal.** An intervention changes behavior beyond controls.
+- **Level 5 — mechanistic.** A plausible computation path is identified.
 6. claim shaping
 
 ## Required gate
 
 Before using this skill, complete the behavioral-sanity check in:
 
-- [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
+- [methodology/PRINCIPLES.md](../../../methodology/PRINCIPLES.md)
 
 In particular:
 
@@ -132,15 +134,13 @@ See the shared principle on response-side probing and active confound reduction.
 
 Decide what level of claim is realistic:
 
-- indicator
-- representational
-- localized representational
-- causal
-- mechanistic
+<!-- canonical at methodology/PRINCIPLES.md §2 — keep verbatim -->
 
-Use the canonical ladder in:
-
-- [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
+- **Level 1 — behavioral.** The model behaves sanely on the task.
+- **Level 2 — representational.** A readout or probe detects the target variable.
+- **Level 3 — localized representational.** The signal is localized to a span, section, token, layer, or position.
+- **Level 4 — causal.** An intervention changes behavior beyond controls.
+- **Level 5 — mechanistic.** A plausible computation path is identified.
 
 ### 4. Split and control planning
 
@@ -254,7 +254,7 @@ Verdicts and routing:
 
 Primary references:
 
-- [mech-interp-principles.md](../../../docs/mech-interp/mech-interp-principles.md)
+- [methodology/PRINCIPLES.md](../../../methodology/PRINCIPLES.md)
 - [constructing-llm-probes](../constructing-llm-probes/SKILL.md)
 - [activation-patching-causal-evals](../activation-patching-causal-evals/SKILL.md)
 

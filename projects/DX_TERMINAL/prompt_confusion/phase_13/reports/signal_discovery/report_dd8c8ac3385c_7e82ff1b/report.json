@@ -1,0 +1,1611 @@
+{
+  "inputs": [
+    {
+      "artifact_id": "transform_1_a3a50795",
+      "artifact_kind": "transform",
+      "created_at": "2026-04-24T17:10:17.426293+00:00",
+      "downloaded_result_path": "projects/DX_TERMINAL/prompt_confusion/phase_13/reports/signal_discovery/report_dd8c8ac3385c_7e82ff1b/results/coarse_projection_grid_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 951,
+        "example_key_count": 951,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "capture_1_bbfed191794c",
+        "transform_1_1a87e6d1"
+      ],
+      "label_names": [
+        "projection__L12__market_end__diversification_preference",
+        "projection__L12__market_end__risk_preference",
+        "projection__L12__market_end__shared_mean",
+        "projection__L12__market_end__trade_size",
+        "projection__L12__portfolio_end__diversification_preference",
+        "projection__L12__portfolio_end__risk_preference",
+        "projection__L12__portfolio_end__shared_mean",
+        "projection__L12__portfolio_end__trade_size",
+        "projection__L12__prompt_im_end__diversification_preference",
+        "projection__L12__prompt_im_end__risk_preference",
+        "projection__L12__prompt_im_end__shared_mean",
+        "projection__L12__prompt_im_end__trade_size",
+        "projection__L12__settings_end__diversification_preference",
+        "projection__L12__settings_end__risk_preference",
+        "projection__L12__settings_end__shared_mean",
+        "projection__L12__settings_end__trade_size",
+        "projection__L12__strategies_end__diversification_preference",
+        "projection__L12__strategies_end__risk_preference",
+        "projection__L12__strategies_end__shared_mean",
+        "projection__L12__strategies_end__trade_size",
+        "projection__L12__system_end__diversification_preference",
+        "projection__L12__system_end__risk_preference",
+        "projection__L12__system_end__shared_mean",
+        "projection__L12__system_end__trade_size",
+        "projection__L16__market_end__diversification_preference",
+        "projection__L16__market_end__risk_preference",
+        "projection__L16__market_end__shared_mean",
+        "projection__L16__market_end__trade_size",
+        "projection__L16__portfolio_end__diversification_preference",
+        "projection__L16__portfolio_end__risk_preference",
+        "projection__L16__portfolio_end__shared_mean",
+        "projection__L16__portfolio_end__trade_size",
+        "projection__L16__prompt_im_end__diversification_preference",
+        "projection__L16__prompt_im_end__risk_preference",
+        "projection__L16__prompt_im_end__shared_mean",
+        "projection__L16__prompt_im_end__trade_size",
+        "projection__L16__settings_end__diversification_preference",
+        "projection__L16__settings_end__risk_preference",
+        "projection__L16__settings_end__shared_mean",
+        "projection__L16__settings_end__trade_size",
+        "projection__L16__strategies_end__diversification_preference",
+        "projection__L16__strategies_end__risk_preference",
+        "projection__L16__strategies_end__shared_mean",
+        "projection__L16__strategies_end__trade_size",
+        "projection__L16__system_end__diversification_preference",
+        "projection__L16__system_end__risk_preference",
+        "projection__L16__system_end__shared_mean",
+        "projection__L16__system_end__trade_size",
+        "projection__L20__market_end__diversification_preference",
+        "projection__L20__market_end__risk_preference",
+        "projection__L20__market_end__shared_mean",
+        "projection__L20__market_end__trade_size",
+        "projection__L20__portfolio_end__diversification_preference",
+        "projection__L20__portfolio_end__risk_preference",
+        "projection__L20__portfolio_end__shared_mean",
+        "projection__L20__portfolio_end__trade_size",
+        "projection__L20__prompt_im_end__diversification_preference",
+        "projection__L20__prompt_im_end__risk_preference",
+        "projection__L20__prompt_im_end__shared_mean",
+        "projection__L20__prompt_im_end__trade_size",
+        "projection__L20__settings_end__diversification_preference",
+        "projection__L20__settings_end__risk_preference",
+        "projection__L20__settings_end__shared_mean",
+        "projection__L20__settings_end__trade_size",
+        "projection__L20__strategies_end__diversification_preference",
+        "projection__L20__strategies_end__risk_preference",
+        "projection__L20__strategies_end__shared_mean",
+        "projection__L20__strategies_end__trade_size",
+        "projection__L20__system_end__diversification_preference",
+        "projection__L20__system_end__risk_preference",
+        "projection__L20__system_end__shared_mean",
+        "projection__L20__system_end__trade_size",
+        "projection__L24__market_end__diversification_preference",
+        "projection__L24__market_end__risk_preference",
+        "projection__L24__market_end__shared_mean",
+        "projection__L24__market_end__trade_size",
+        "projection__L24__portfolio_end__diversification_preference",
+        "projection__L24__portfolio_end__risk_preference",
+        "projection__L24__portfolio_end__shared_mean",
+        "projection__L24__portfolio_end__trade_size",
+        "projection__L24__prompt_im_end__diversification_preference",
+        "projection__L24__prompt_im_end__risk_preference",
+        "projection__L24__prompt_im_end__shared_mean",
+        "projection__L24__prompt_im_end__trade_size",
+        "projection__L24__settings_end__diversification_preference",
+        "projection__L24__settings_end__risk_preference",
+        "projection__L24__settings_end__shared_mean",
+        "projection__L24__settings_end__trade_size",
+        "projection__L24__strategies_end__diversification_preference",
+        "projection__L24__strategies_end__risk_preference",
+        "projection__L24__strategies_end__shared_mean",
+        "projection__L24__strategies_end__trade_size",
+        "projection__L24__system_end__diversification_preference",
+        "projection__L24__system_end__risk_preference",
+        "projection__L24__system_end__shared_mean",
+        "projection__L24__system_end__trade_size",
+        "projection__L28__market_end__diversification_preference",
+        "projection__L28__market_end__risk_preference",
+        "projection__L28__market_end__shared_mean",
+        "projection__L28__market_end__trade_size",
+        "projection__L28__portfolio_end__diversification_preference",
+        "projection__L28__portfolio_end__risk_preference",
+        "projection__L28__portfolio_end__shared_mean",
+        "projection__L28__portfolio_end__trade_size",
+        "projection__L28__prompt_im_end__diversification_preference",
+        "projection__L28__prompt_im_end__risk_preference",
+        "projection__L28__prompt_im_end__shared_mean",
+        "projection__L28__prompt_im_end__trade_size",
+        "projection__L28__settings_end__diversification_preference",
+        "projection__L28__settings_end__risk_preference",
+        "projection__L28__settings_end__shared_mean",
+        "projection__L28__settings_end__trade_size",
+        "projection__L28__strategies_end__diversification_preference",
+        "projection__L28__strategies_end__risk_preference",
+        "projection__L28__strategies_end__shared_mean",
+        "projection__L28__strategies_end__trade_size",
+        "projection__L28__system_end__diversification_preference",
+        "projection__L28__system_end__risk_preference",
+        "projection__L28__system_end__shared_mean",
+        "projection__L28__system_end__trade_size",
+        "projection__L32__market_end__diversification_preference",
+        "projection__L32__market_end__risk_preference",
+        "projection__L32__market_end__shared_mean",
+        "projection__L32__market_end__trade_size",
+        "projection__L32__portfolio_end__diversification_preference",
+        "projection__L32__portfolio_end__risk_preference",
+        "projection__L32__portfolio_end__shared_mean",
+        "projection__L32__portfolio_end__trade_size",
+        "projection__L32__prompt_im_end__diversification_preference",
+        "projection__L32__prompt_im_end__risk_preference",
+        "projection__L32__prompt_im_end__shared_mean",
+        "projection__L32__prompt_im_end__trade_size",
+        "projection__L32__settings_end__diversification_preference",
+        "projection__L32__settings_end__risk_preference",
+        "projection__L32__settings_end__shared_mean",
+        "projection__L32__settings_end__trade_size",
+        "projection__L32__strategies_end__diversification_preference",
+        "projection__L32__strategies_end__risk_preference",
+        "projection__L32__strategies_end__shared_mean",
+        "projection__L32__strategies_end__trade_size",
+        "projection__L32__system_end__diversification_preference",
+        "projection__L32__system_end__risk_preference",
+        "projection__L32__system_end__shared_mean",
+        "projection__L32__system_end__trade_size",
+        "projection__L36__market_end__diversification_preference",
+        "projection__L36__market_end__risk_preference",
+        "projection__L36__market_end__shared_mean",
+        "projection__L36__market_end__trade_size",
+        "projection__L36__portfolio_end__diversification_preference",
+        "projection__L36__portfolio_end__risk_preference",
+        "projection__L36__portfolio_end__shared_mean",
+        "projection__L36__portfolio_end__trade_size",
+        "projection__L36__prompt_im_end__diversification_preference",
+        "projection__L36__prompt_im_end__risk_preference",
+        "projection__L36__prompt_im_end__shared_mean",
+        "projection__L36__prompt_im_end__trade_size",
+        "projection__L36__settings_end__diversification_preference",
+        "projection__L36__settings_end__risk_preference",
+        "projection__L36__settings_end__shared_mean",
+        "projection__L36__settings_end__trade_size",
+        "projection__L36__strategies_end__diversification_preference",
+        "projection__L36__strategies_end__risk_preference",
+        "projection__L36__strategies_end__shared_mean",
+        "projection__L36__strategies_end__trade_size",
+        "projection__L36__system_end__diversification_preference",
+        "projection__L36__system_end__risk_preference",
+        "projection__L36__system_end__shared_mean",
+        "projection__L36__system_end__trade_size",
+        "projection__L40__market_end__diversification_preference",
+        "projection__L40__market_end__risk_preference",
+        "projection__L40__market_end__shared_mean",
+        "projection__L40__market_end__trade_size",
+        "projection__L40__portfolio_end__diversification_preference",
+        "projection__L40__portfolio_end__risk_preference",
+        "projection__L40__portfolio_end__shared_mean",
+        "projection__L40__portfolio_end__trade_size",
+        "projection__L40__prompt_im_end__diversification_preference",
+        "projection__L40__prompt_im_end__risk_preference",
+        "projection__L40__prompt_im_end__shared_mean",
+        "projection__L40__prompt_im_end__trade_size",
+        "projection__L40__settings_end__diversification_preference",
+        "projection__L40__settings_end__risk_preference",
+        "projection__L40__settings_end__shared_mean",
+        "projection__L40__settings_end__trade_size",
+        "projection__L40__strategies_end__diversification_preference",
+        "projection__L40__strategies_end__risk_preference",
+        "projection__L40__strategies_end__shared_mean",
+        "projection__L40__strategies_end__trade_size",
+        "projection__L40__system_end__diversification_preference",
+        "projection__L40__system_end__risk_preference",
+        "projection__L40__system_end__shared_mean",
+        "projection__L40__system_end__trade_size",
+        "projection__L44__market_end__diversification_preference",
+        "projection__L44__market_end__risk_preference",
+        "projection__L44__market_end__shared_mean",
+        "projection__L44__market_end__trade_size",
+        "projection__L44__portfolio_end__diversification_preference",
+        "projection__L44__portfolio_end__risk_preference",
+        "projection__L44__portfolio_end__shared_mean",
+        "projection__L44__portfolio_end__trade_size",
+        "projection__L44__prompt_im_end__diversification_preference",
+        "projection__L44__prompt_im_end__risk_preference",
+        "projection__L44__prompt_im_end__shared_mean",
+        "projection__L44__prompt_im_end__trade_size",
+        "projection__L44__settings_end__diversification_preference",
+        "projection__L44__settings_end__risk_preference",
+        "projection__L44__settings_end__shared_mean",
+        "projection__L44__settings_end__trade_size",
+        "projection__L44__strategies_end__diversification_preference",
+        "projection__L44__strategies_end__risk_preference",
+        "projection__L44__strategies_end__shared_mean",
+        "projection__L44__strategies_end__trade_size",
+        "projection__L44__system_end__diversification_preference",
+        "projection__L44__system_end__risk_preference",
+        "projection__L44__system_end__shared_mean",
+        "projection__L44__system_end__trade_size"
+      ],
+      "name": "coarse_projection_grid",
+      "primary_output": {
+        "bytes": 16842804,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-embZkU8csXGpv2kSHvUIbg",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          }
+        ]
+      },
+      "storage": {
+        "labels": {
+          "count": 216,
+          "items": {
+            "projection__L12__market_end__diversification_preference": {
+              "bytes": 182000,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__market_end__risk_preference": {
+              "bytes": 180643,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__market_end__shared_mean": {
+              "bytes": 180852,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__market_end__trade_size": {
+              "bytes": 181223,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__portfolio_end__diversification_preference": {
+              "bytes": 182303,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__portfolio_end__risk_preference": {
+              "bytes": 180782,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__portfolio_end__shared_mean": {
+              "bytes": 180880,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__portfolio_end__trade_size": {
+              "bytes": 181151,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__prompt_im_end__diversification_preference": {
+              "bytes": 181877,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__prompt_im_end__risk_preference": {
+              "bytes": 180748,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__prompt_im_end__shared_mean": {
+              "bytes": 180811,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__prompt_im_end__trade_size": {
+              "bytes": 181619,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__settings_end__diversification_preference": {
+              "bytes": 182545,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__settings_end__risk_preference": {
+              "bytes": 180736,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__settings_end__shared_mean": {
+              "bytes": 180209,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__settings_end__trade_size": {
+              "bytes": 181049,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__strategies_end__diversification_preference": {
+              "bytes": 182143,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__strategies_end__risk_preference": {
+              "bytes": 180860,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__strategies_end__shared_mean": {
+              "bytes": 180887,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__strategies_end__trade_size": {
+              "bytes": 180980,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__system_end__diversification_preference": {
+              "bytes": 182611,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__system_end__risk_preference": {
+              "bytes": 180202,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__system_end__shared_mean": {
+              "bytes": 180924,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L12__system_end__trade_size": {
+              "bytes": 180851,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L12__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__market_end__diversification_preference": {
+              "bytes": 180833,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__market_end__risk_preference": {
+              "bytes": 180824,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__market_end__shared_mean": {
+              "bytes": 180755,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__market_end__trade_size": {
+              "bytes": 180768,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__portfolio_end__diversification_preference": {
+              "bytes": 180898,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__portfolio_end__risk_preference": {
+              "bytes": 180841,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__portfolio_end__shared_mean": {
+              "bytes": 180714,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__portfolio_end__trade_size": {
+              "bytes": 180717,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__prompt_im_end__diversification_preference": {
+              "bytes": 180788,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__prompt_im_end__risk_preference": {
+              "bytes": 180724,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__prompt_im_end__shared_mean": {
+              "bytes": 180327,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__prompt_im_end__trade_size": {
+              "bytes": 180730,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__settings_end__diversification_preference": {
+              "bytes": 180270,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__settings_end__risk_preference": {
+              "bytes": 180586,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__settings_end__shared_mean": {
+              "bytes": 180678,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__settings_end__trade_size": {
+              "bytes": 180188,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__strategies_end__diversification_preference": {
+              "bytes": 181011,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__strategies_end__risk_preference": {
+              "bytes": 180868,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__strategies_end__shared_mean": {
+              "bytes": 180458,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__strategies_end__trade_size": {
+              "bytes": 180342,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__system_end__diversification_preference": {
+              "bytes": 180939,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__system_end__risk_preference": {
+              "bytes": 180926,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__system_end__shared_mean": {
+              "bytes": 180701,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L16__system_end__trade_size": {
+              "bytes": 180923,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L16__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__market_end__diversification_preference": {
+              "bytes": 180870,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__market_end__risk_preference": {
+              "bytes": 181890,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__market_end__shared_mean": {
+              "bytes": 180803,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__market_end__trade_size": {
+              "bytes": 180516,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__portfolio_end__diversification_preference": {
+              "bytes": 181202,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__portfolio_end__risk_preference": {
+              "bytes": 181981,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__portfolio_end__shared_mean": {
+              "bytes": 180837,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__portfolio_end__trade_size": {
+              "bytes": 180567,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__prompt_im_end__diversification_preference": {
+              "bytes": 180766,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__prompt_im_end__risk_preference": {
+              "bytes": 182429,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__prompt_im_end__shared_mean": {
+              "bytes": 180734,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__prompt_im_end__trade_size": {
+              "bytes": 180719,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__settings_end__diversification_preference": {
+              "bytes": 180825,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__settings_end__risk_preference": {
+              "bytes": 182232,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__settings_end__shared_mean": {
+              "bytes": 180637,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__settings_end__trade_size": {
+              "bytes": 180439,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__strategies_end__diversification_preference": {
+              "bytes": 181233,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__strategies_end__risk_preference": {
+              "bytes": 181480,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__strategies_end__shared_mean": {
+              "bytes": 181192,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__strategies_end__trade_size": {
+              "bytes": 180858,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__system_end__diversification_preference": {
+              "bytes": 180939,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__system_end__risk_preference": {
+              "bytes": 182454,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__system_end__shared_mean": {
+              "bytes": 180924,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L20__system_end__trade_size": {
+              "bytes": 180197,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L20__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__market_end__diversification_preference": {
+              "bytes": 181781,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__market_end__risk_preference": {
+              "bytes": 181760,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__market_end__shared_mean": {
+              "bytes": 181982,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__market_end__trade_size": {
+              "bytes": 182031,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__portfolio_end__diversification_preference": {
+              "bytes": 181737,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__portfolio_end__risk_preference": {
+              "bytes": 181700,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__portfolio_end__shared_mean": {
+              "bytes": 182170,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__portfolio_end__trade_size": {
+              "bytes": 182016,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__prompt_im_end__diversification_preference": {
+              "bytes": 181882,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__prompt_im_end__risk_preference": {
+              "bytes": 181200,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__prompt_im_end__shared_mean": {
+              "bytes": 182481,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__prompt_im_end__trade_size": {
+              "bytes": 182729,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__settings_end__diversification_preference": {
+              "bytes": 182121,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__settings_end__risk_preference": {
+              "bytes": 181037,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__settings_end__shared_mean": {
+              "bytes": 182195,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__settings_end__trade_size": {
+              "bytes": 182042,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__strategies_end__diversification_preference": {
+              "bytes": 181612,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__strategies_end__risk_preference": {
+              "bytes": 181522,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__strategies_end__shared_mean": {
+              "bytes": 182472,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__strategies_end__trade_size": {
+              "bytes": 182464,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__system_end__diversification_preference": {
+              "bytes": 181013,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__system_end__risk_preference": {
+              "bytes": 180203,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__system_end__shared_mean": {
+              "bytes": 182449,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L24__system_end__trade_size": {
+              "bytes": 182671,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L24__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__market_end__diversification_preference": {
+              "bytes": 181756,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__market_end__risk_preference": {
+              "bytes": 180663,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__market_end__shared_mean": {
+              "bytes": 180809,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__market_end__trade_size": {
+              "bytes": 180554,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__portfolio_end__diversification_preference": {
+              "bytes": 181852,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__portfolio_end__risk_preference": {
+              "bytes": 180471,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__portfolio_end__shared_mean": {
+              "bytes": 180707,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__portfolio_end__trade_size": {
+              "bytes": 180527,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__prompt_im_end__diversification_preference": {
+              "bytes": 181786,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__prompt_im_end__risk_preference": {
+              "bytes": 180566,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__prompt_im_end__shared_mean": {
+              "bytes": 180797,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__prompt_im_end__trade_size": {
+              "bytes": 180786,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__settings_end__diversification_preference": {
+              "bytes": 181972,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__settings_end__risk_preference": {
+              "bytes": 180289,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__settings_end__shared_mean": {
+              "bytes": 180860,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__settings_end__trade_size": {
+              "bytes": 180713,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__strategies_end__diversification_preference": {
+              "bytes": 181770,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__strategies_end__risk_preference": {
+              "bytes": 180908,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__strategies_end__shared_mean": {
+              "bytes": 180690,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__strategies_end__trade_size": {
+              "bytes": 180615,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__system_end__diversification_preference": {
+              "bytes": 181890,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__system_end__risk_preference": {
+              "bytes": 180928,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__system_end__shared_mean": {
+              "bytes": 180924,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L28__system_end__trade_size": {
+              "bytes": 180196,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L28__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__market_end__diversification_preference": {
+              "bytes": 180473,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__market_end__risk_preference": {
+              "bytes": 180537,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__market_end__shared_mean": {
+              "bytes": 180289,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__market_end__trade_size": {
+              "bytes": 180154,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__portfolio_end__diversification_preference": {
+              "bytes": 180687,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__portfolio_end__risk_preference": {
+              "bytes": 180677,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__portfolio_end__shared_mean": {
+              "bytes": 180476,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__portfolio_end__trade_size": {
+              "bytes": 180426,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__prompt_im_end__diversification_preference": {
+              "bytes": 180611,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__prompt_im_end__risk_preference": {
+              "bytes": 180612,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__prompt_im_end__shared_mean": {
+              "bytes": 180459,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__prompt_im_end__trade_size": {
+              "bytes": 180530,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__settings_end__diversification_preference": {
+              "bytes": 180722,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__settings_end__risk_preference": {
+              "bytes": 180626,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__settings_end__shared_mean": {
+              "bytes": 180769,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__settings_end__trade_size": {
+              "bytes": 180601,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__strategies_end__diversification_preference": {
+              "bytes": 180589,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__strategies_end__risk_preference": {
+              "bytes": 180714,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__strategies_end__shared_mean": {
+              "bytes": 180450,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__strategies_end__trade_size": {
+              "bytes": 180632,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__system_end__diversification_preference": {
+              "bytes": 180213,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__system_end__risk_preference": {
+              "bytes": 180928,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__system_end__shared_mean": {
+              "bytes": 180196,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L32__system_end__trade_size": {
+              "bytes": 180123,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L32__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__market_end__diversification_preference": {
+              "bytes": 181658,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__market_end__risk_preference": {
+              "bytes": 181011,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__market_end__shared_mean": {
+              "bytes": 182304,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__market_end__trade_size": {
+              "bytes": 180863,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__portfolio_end__diversification_preference": {
+              "bytes": 181684,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__portfolio_end__risk_preference": {
+              "bytes": 180768,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__portfolio_end__shared_mean": {
+              "bytes": 181907,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__portfolio_end__trade_size": {
+              "bytes": 180987,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__prompt_im_end__diversification_preference": {
+              "bytes": 181656,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__prompt_im_end__risk_preference": {
+              "bytes": 181349,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__prompt_im_end__shared_mean": {
+              "bytes": 182015,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__prompt_im_end__trade_size": {
+              "bytes": 181457,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__settings_end__diversification_preference": {
+              "bytes": 181573,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__settings_end__risk_preference": {
+              "bytes": 180813,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__settings_end__shared_mean": {
+              "bytes": 181294,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__settings_end__trade_size": {
+              "bytes": 180823,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__strategies_end__diversification_preference": {
+              "bytes": 181817,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__strategies_end__risk_preference": {
+              "bytes": 180776,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__strategies_end__shared_mean": {
+              "bytes": 181813,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__strategies_end__trade_size": {
+              "bytes": 180292,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__system_end__diversification_preference": {
+              "bytes": 181890,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__system_end__risk_preference": {
+              "bytes": 180928,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__system_end__shared_mean": {
+              "bytes": 181721,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L36__system_end__trade_size": {
+              "bytes": 180923,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L36__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__market_end__diversification_preference": {
+              "bytes": 180783,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__market_end__risk_preference": {
+              "bytes": 181817,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__market_end__shared_mean": {
+              "bytes": 181619,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__market_end__trade_size": {
+              "bytes": 181989,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__portfolio_end__diversification_preference": {
+              "bytes": 180710,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__portfolio_end__risk_preference": {
+              "bytes": 181061,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__portfolio_end__shared_mean": {
+              "bytes": 181202,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__portfolio_end__trade_size": {
+              "bytes": 182126,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__prompt_im_end__diversification_preference": {
+              "bytes": 181638,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__prompt_im_end__risk_preference": {
+              "bytes": 181270,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__prompt_im_end__shared_mean": {
+              "bytes": 181685,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__prompt_im_end__trade_size": {
+              "bytes": 181651,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__settings_end__diversification_preference": {
+              "bytes": 181122,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__settings_end__risk_preference": {
+              "bytes": 181438,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__settings_end__shared_mean": {
+              "bytes": 181573,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__settings_end__trade_size": {
+              "bytes": 181570,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__strategies_end__diversification_preference": {
+              "bytes": 180945,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__strategies_end__risk_preference": {
+              "bytes": 181003,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__strategies_end__shared_mean": {
+              "bytes": 181778,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__strategies_end__trade_size": {
+              "bytes": 181938,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__system_end__diversification_preference": {
+              "bytes": 180939,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__system_end__risk_preference": {
+              "bytes": 181305,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__system_end__shared_mean": {
+              "bytes": 181878,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L40__system_end__trade_size": {
+              "bytes": 181149,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L40__system_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__market_end__diversification_preference": {
+              "bytes": 180979,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__market_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__market_end__risk_preference": {
+              "bytes": 181347,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__market_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__market_end__shared_mean": {
+              "bytes": 180958,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__market_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__market_end__trade_size": {
+              "bytes": 181425,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__market_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__portfolio_end__diversification_preference": {
+              "bytes": 181058,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__portfolio_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__portfolio_end__risk_preference": {
+              "bytes": 181505,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__portfolio_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__portfolio_end__shared_mean": {
+              "bytes": 181284,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__portfolio_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__portfolio_end__trade_size": {
+              "bytes": 181696,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__portfolio_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__prompt_im_end__diversification_preference": {
+              "bytes": 181720,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__prompt_im_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__prompt_im_end__risk_preference": {
+              "bytes": 180923,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__prompt_im_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__prompt_im_end__shared_mean": {
+              "bytes": 181551,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__prompt_im_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__prompt_im_end__trade_size": {
+              "bytes": 180950,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__prompt_im_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__settings_end__diversification_preference": {
+              "bytes": 181462,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__settings_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__settings_end__risk_preference": {
+              "bytes": 181680,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__settings_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__settings_end__shared_mean": {
+              "bytes": 181613,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__settings_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__settings_end__trade_size": {
+              "bytes": 181643,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__settings_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__strategies_end__diversification_preference": {
+              "bytes": 180676,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__strategies_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__strategies_end__risk_preference": {
+              "bytes": 181043,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__strategies_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__strategies_end__shared_mean": {
+              "bytes": 180970,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__strategies_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__strategies_end__trade_size": {
+              "bytes": 181589,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__strategies_end__trade_size.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__system_end__diversification_preference": {
+              "bytes": 181018,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__system_end__diversification_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__system_end__risk_preference": {
+              "bytes": 180928,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__system_end__risk_preference.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__system_end__shared_mean": {
+              "bytes": 181075,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__system_end__shared_mean.json",
+              "store": "modal_volume"
+            },
+            "projection__L44__system_end__trade_size": {
+              "bytes": 180995,
+              "format": "json",
+              "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/labels/projection__L44__system_end__trade_size.json",
+              "store": "modal_volume"
+            }
+          }
+        },
+        "manifest": {
+          "bytes": 238691,
+          "format": "json",
+          "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 16842804,
+          "format": "json",
+          "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "expected_grid_cell_count": 216,
+        "grid_cell_count": 216,
+        "note": "No classifier, thresholds, or AUROC are computed in this coarse phase."
+      },
+      "workflow": {
+        "run_id": "wr_14f78308dbac_dbc78513",
+        "step_index": 2,
+        "step_name": "coarse_projection_grid",
+        "workflow_name": "dx_terminal_phase13_signal_discovery",
+        "workflow_step_key": "14f78308dbac695a0d519a82088bee0847d83890f3b167df53ece86107be51c0.coarse_projection_grid"
+      }
+    }
+  ],
+  "kind": "report_result",
+  "local_results": [
+    {
+      "artifact_id": "transform_1_a3a50795",
+      "artifact_kind": "transform",
+      "name": "coarse_projection_grid",
+      "path": "projects/DX_TERMINAL/prompt_confusion/phase_13/reports/signal_discovery/report_dd8c8ac3385c_7e82ff1b/results/coarse_projection_grid_results.json",
+      "source": {
+        "bytes": 16842804,
+        "format": "json",
+        "path": "/data/artifacts/prompt_confusion_phase13_signal_discovery/transform_1_a3a50795/result.json",
+        "store": "modal_volume"
+      }
+    }
+  ],
+  "output_dir": "projects/DX_TERMINAL/prompt_confusion/phase_13/reports/signal_discovery",
+  "summary": {
+    "example_count": 951,
+    "figures": {},
+    "input_count": 1,
+    "step_summaries": {},
+    "tables": {},
+    "template": "default"
+  },
+  "template": "default"
+}

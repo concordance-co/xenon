@@ -27,6 +27,11 @@ This phase should be treated as a reset around:
 | [build_phase_09_dataset.py](scripts/build_phase_09_dataset.py) | New synth-data builder scaffold |
 | [upload_phase_09_dataset.py](scripts/upload_phase_09_dataset.py) | Neon uploader for the rebuilt dataset |
 
+## Artifacts
+
+- Neon destination table: `conflict_probe_examples_v5` (target — uploader has not yet run here)
+- Report dir: `reports/pipelines_v2/`
+
 ## Intended execution model
 
 1. iterate on the Phase 09 prompt/data generator locally

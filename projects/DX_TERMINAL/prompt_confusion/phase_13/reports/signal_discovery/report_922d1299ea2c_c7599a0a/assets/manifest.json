@@ -1,0 +1,14 @@
+{
+  "figures": {},
+  "tables": {},
+  "unsupported_inputs": [
+    {
+      "artifact_id": "transform_1_0a089d56",
+      "artifact_kind": "transform",
+      "downloaded_result_path": "projects/DX_TERMINAL/prompt_confusion/phase_13/reports/signal_discovery/report_922d1299ea2c_c7599a0a/results/coarse_projection_grid_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "phase13_signal_discovery_grid",
+      "step_name": "coarse_projection_grid"
+    }
+  ]
+}

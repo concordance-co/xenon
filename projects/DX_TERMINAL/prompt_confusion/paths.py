@@ -26,6 +26,16 @@ def phase_outputs_dir(phase_name: str, start: str | Path | None = None) -> Path:
 
 
 def dataset_exports_root(start: str | Path | None = None) -> Path:
+    configured = os.environ.get("XENON_DX_TERMINAL_DATASET_EXPORTS_ROOT")
+    if configured:
+        return Path(configured).expanduser().resolve()
+
+    current = Path(start).resolve() if start is not None else Path(__file__).resolve()
+    for candidate in [current, *current.parents]:
+        phase_local = candidate / "dataset_exports"
+        if candidate.name.startswith("phase_") and phase_local.exists():
+            return phase_local
+
     return dx_terminal_root(start) / "dataset_exports"
 
 

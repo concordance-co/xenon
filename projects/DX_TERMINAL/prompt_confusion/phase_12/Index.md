@@ -28,6 +28,10 @@ The new ingredient is that `PORTFOLIO` is now operational:
 | [build_phase_12_dataset.py](scripts/build_phase_12_dataset.py) | Diversification dataset generator |
 | [notes.md](notes.md) | Running methodology notes for the phase |
 
+## Artifacts
+
+- Local dataset: `outputs/phase_12_dataset/phase_12_dataset.jsonl`
+
 ## Intended execution model
 
 1. keep the portfolio-conditioned mapping behaviorally legible

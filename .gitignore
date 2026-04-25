@@ -51,6 +51,15 @@ projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/process_su
 # Local ingestion artifacts
 /data/
 
+# Data artifacts (locality enforcement — operations/LOCALITY.md)
+*.jsonl
+*.parquet
+*.safetensors
+*.pt
+*.pth
+activations/
+captures/
+
 # Dashboard frontend
 node_modules/
 dashboard/node_modules/

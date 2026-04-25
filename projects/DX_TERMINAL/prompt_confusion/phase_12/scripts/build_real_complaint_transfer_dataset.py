@@ -1,198 +1,173 @@
 from __future__ import annotations
 
+"""Build the real complaint transfer tick table in Neon.
+
+The source complaint export is stored as one row per complaint, with recent
+agent ticks nested under the `ticks` JSONB column. This script materializes the
+workflow-ready tick table in Neon so capture workflows can use
+`Dataset.from_postgres(...)` directly.
+"""
+
+import argparse
 import json
-from collections import Counter
-from pathlib import Path
 from typing import Any
 
-import pyarrow.parquet as pq
-
-from projects.DX_TERMINAL.prompt_confusion.paths import dataset_exports_root, phase_root
-
-PHASE_ROOT = phase_root("phase_12", __file__)
-SOURCE_PATH = dataset_exports_root(__file__) / "complaint_dataset_enriched.parquet"
-OUTPUT_DIR = PHASE_ROOT / "outputs" / "real_complaint_transfer"
-OUTPUT_JSONL = OUTPUT_DIR / "real_complaint_transfer_dataset.jsonl"
-OUTPUT_SUMMARY = OUTPUT_DIR / "summary.json"
+from projects.DX_TERMINAL.prompt_confusion.neon import connect_neon, ensure_schema, validate_table_name
 
 
-def _safe_json_dumps(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+DEFAULT_SOURCE_TABLE = "dx_terminal_complaint_dataset_enriched_v1"
+DEFAULT_DEST_TABLE = "dx_terminal_real_complaint_transfer_ticks_v1"
 
 
-def _load_rows(path: Path) -> list[dict[str, Any]]:
-    table = pq.read_table(path)
-    return table.to_pylist()
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Build the DX Terminal real complaint transfer tick table in Neon.")
+    parser.add_argument("--source-table", default=DEFAULT_SOURCE_TABLE)
+    parser.add_argument("--dest-table", default=DEFAULT_DEST_TABLE)
+    parser.add_argument("--limit", type=int, default=None, help="Optional complaint-row limit for smoke builds.")
+    return parser.parse_args()
 
 
-def _message_text(messages: list[dict[str, Any]]) -> str:
-    parts: list[str] = []
-    for message in messages:
-        role = str(message.get("role", ""))
-        content = message.get("content", "")
-        if isinstance(content, list):
-            text = " ".join(str(item.get("text", item)) for item in content)
-        else:
-            text = str(content)
-        parts.append(f"[{role}] {text}")
-    return "\n\n".join(parts)
+def _source_relation(table_name: str, limit: int | None) -> str:
+    table_name = validate_table_name(table_name)
+    if limit is None:
+        return f"SELECT * FROM {table_name}"
+    if limit <= 0:
+        raise ValueError("--limit must be positive when provided")
+    return f"SELECT * FROM {table_name} ORDER BY trace_id LIMIT {int(limit)}"
 
 
-def _tool_calls(choice_message: dict[str, Any]) -> list[dict[str, Any]]:
-    tool_calls = choice_message.get("tool_calls") or []
-    normalized: list[dict[str, Any]] = []
-    for call in tool_calls:
-        function = call.get("function") or {}
-        normalized.append(
-            {
-                "id": call.get("id"),
-                "type": call.get("type"),
-                "name": function.get("name"),
-                "arguments": function.get("arguments"),
-            }
+def build_tick_table(conn: Any, *, source_table: str, dest_table: str, limit: int | None = None) -> dict[str, Any]:
+    source_table = validate_table_name(source_table)
+    dest_table = validate_table_name(dest_table)
+    source_sql = _source_relation(source_table, limit)
+
+    conn.execute(f"DROP TABLE IF EXISTS {dest_table}")
+    conn.execute(
+        f"""
+        CREATE TABLE {dest_table} AS
+        WITH source_rows AS (
+            {source_sql}
         )
-    return normalized
+        SELECT
+            c.trace_id || '::tick_' || (expanded.ordinality - 1)::text AS example_id,
+            c.trace_id,
+            (expanded.ordinality - 1)::bigint AS tick_index,
+            expanded.tick ->> 'created_at' AS created_at,
+            expanded.tick ->> 'minute_key' AS minute_key,
+            c.vault_address,
+            c.person_id,
+            c.label,
+            c.fault,
+            c.root_cause,
+            c.agent_was_correct,
+            c.severity,
+            c.confidence,
+            c.urgency,
+            c.complaint_text,
+            c.complaint_type,
+            c.referenced_tokens,
+            c.has_strategy,
+            c.strategies_text,
+            c.slider_ta,
+            c.slider_arp,
+            c.slider_ts,
+            c.slider_hs,
+            c.slider_div,
+            c.n_relevant_ticks,
+            c.n_ticks_attached,
+            expanded.tick ->> 'tool' AS tool,
+            expanded.tick -> 'tool_args' AS tool_args_json,
+            expanded.tick ->> 'reasoning' AS reasoning,
+            NULLIF(expanded.tick ->> 'inference_duration_ms', '')::bigint AS inference_duration_ms,
+            expanded.tick #>> '{{llm_request_payload,model}}' AS llm_model,
+            expanded.tick #> '{{llm_request_payload,options}}' AS request_options_json,
+            expanded.tick #> '{{snapshot,agent,options}}' AS snapshot_agent_options_json,
+            expanded.tick -> 'snapshot' AS snapshot_json,
+            expanded.tick #> '{{llm_request_payload,llm_input,messages}}' AS prompt_messages_json,
+            (
+                SELECT string_agg(
+                    '[' || COALESCE(message ->> 'role', '') || '] ' ||
+                    CASE jsonb_typeof(message -> 'content')
+                        WHEN 'string' THEN message ->> 'content'
+                        WHEN 'array' THEN (
+                            SELECT string_agg(COALESCE(content_item ->> 'text', content_item::text), ' ')
+                            FROM jsonb_array_elements(message -> 'content') AS content_items(content_item)
+                        )
+                        ELSE COALESCE((message -> 'content')::text, '')
+                    END,
+                    E'\\n\\n'
+                    ORDER BY message_ordinality
+                )
+                FROM jsonb_array_elements(expanded.tick #> '{{llm_request_payload,llm_input,messages}}')
+                    WITH ORDINALITY AS messages(message, message_ordinality)
+            ) AS prompt_text,
+            jsonb_array_length(expanded.tick #> '{{llm_request_payload,llm_input,messages}}')::bigint AS prompt_message_count,
+            expanded.tick #>> '{{llm_completion_payload,choices,0,message,content}}' AS completion_content,
+            expanded.tick #>> '{{llm_completion_payload,choices,0,message,reasoning}}' AS completion_reasoning,
+            COALESCE(expanded.tick #> '{{llm_completion_payload,choices,0,message,tool_calls}}', '[]'::jsonb) AS completion_tool_calls_json,
+            expanded.tick -> 'llm_request_payload' AS raw_request_payload_json,
+            expanded.tick -> 'llm_completion_payload' AS raw_completion_payload_json,
+            (c.complaint_type = 'WRONG_SIZE') AS size_relevant_complaint,
+            (c.complaint_type IN ('NOT_TRADING', 'OVERTRADING', 'HOLDING_VIOLATION')) AS activity_relevant_complaint,
+            (c.root_cause IN ('USER_CONFIG_CONFLICT', 'STRATEGY_SLIDER_LOCKOUT')) AS config_conflict_like,
+            (c.label = 'true_confusion') AS system_fault,
+            c.raw_row_json,
+            now() AS built_at
+        FROM source_rows c
+        CROSS JOIN LATERAL jsonb_array_elements(c.ticks) WITH ORDINALITY AS expanded(tick, ordinality)
+        WHERE jsonb_typeof(c.ticks) = 'array'
+          AND jsonb_typeof(expanded.tick #> '{{llm_request_payload,llm_input,messages}}') = 'array'
+          AND jsonb_array_length(expanded.tick #> '{{llm_request_payload,llm_input,messages}}') > 0
+        """
+    )
+    conn.execute(f"ALTER TABLE {dest_table} ADD PRIMARY KEY (example_id)")
+    conn.execute(f"CREATE INDEX {dest_table}_trace_id_idx ON {dest_table} (trace_id)")
+    conn.execute(f"CREATE INDEX {dest_table}_label_idx ON {dest_table} (label)")
+    conn.execute(f"CREATE INDEX {dest_table}_complaint_type_idx ON {dest_table} (complaint_type)")
+    conn.execute(f"CREATE INDEX {dest_table}_root_cause_idx ON {dest_table} (root_cause)")
+    conn.execute(f"CREATE INDEX {dest_table}_slider_ts_idx ON {dest_table} (slider_ts)")
 
-
-def _normalize_tick(row: dict[str, Any], tick: dict[str, Any], tick_index: int) -> dict[str, Any] | None:
-    request_payload = tick.get("llm_request_payload") or {}
-    llm_input = request_payload.get("llm_input") or {}
-    messages = llm_input.get("messages") or []
-    if not messages:
-        return None
-
-    completion_payload = tick.get("llm_completion_payload") or {}
-    choices = completion_payload.get("choices") or []
-    first_choice = choices[0] if choices else {}
-    choice_message = first_choice.get("message") or {}
-
-    trace_id = str(row["trace_id"])
-    complaint_label = str(row["label"])
-    root_cause = str(row["root_cause"])
-    complaint_type = str(row["complaint_type"])
-
-    snapshot = tick.get("snapshot") or {}
-    agent = snapshot.get("agent") or {}
-    options = agent.get("options") or {}
-
+    summary = conn.execute(
+        f"""
+        SELECT
+            COUNT(*) AS output_examples,
+            COUNT(DISTINCT trace_id) AS distinct_traces,
+            COUNT(DISTINCT lower(vault_address)) AS distinct_vaults,
+            SUM(CASE WHEN size_relevant_complaint THEN 1 ELSE 0 END) AS size_relevant_examples,
+            SUM(CASE WHEN activity_relevant_complaint THEN 1 ELSE 0 END) AS activity_relevant_examples,
+            SUM(CASE WHEN config_conflict_like THEN 1 ELSE 0 END) AS config_conflict_like_examples,
+            SUM(CASE WHEN system_fault THEN 1 ELSE 0 END) AS system_fault_examples
+        FROM {dest_table}
+        """
+    ).fetchone()
+    label_counts = conn.execute(
+        f"SELECT label, COUNT(*) AS n FROM {dest_table} GROUP BY label ORDER BY n DESC, label"
+    ).fetchall()
+    complaint_type_counts = conn.execute(
+        f"SELECT complaint_type, COUNT(*) AS n FROM {dest_table} GROUP BY complaint_type ORDER BY n DESC, complaint_type LIMIT 10"
+    ).fetchall()
     return {
-        "example_id": f"{trace_id}::tick_{tick_index}",
-        "trace_id": trace_id,
-        "tick_index": tick_index,
-        "created_at": tick.get("created_at"),
-        "minute_key": tick.get("minute_key"),
-        "vault_address": row.get("vault_address"),
-        "person_id": row.get("person_id"),
-        "label": complaint_label,
-        "fault": row.get("fault"),
-        "root_cause": root_cause,
-        "agent_was_correct": row.get("agent_was_correct"),
-        "severity": row.get("severity"),
-        "confidence": row.get("confidence"),
-        "urgency": row.get("urgency"),
-        "complaint_text": row.get("complaint_text"),
-        "complaint_type": complaint_type,
-        "referenced_tokens": row.get("referenced_tokens") or [],
-        "has_strategy": row.get("has_strategy"),
-        "strategies_text": row.get("strategies_text"),
-        "slider_ta": row.get("slider_ta"),
-        "slider_arp": row.get("slider_arp"),
-        "slider_ts": row.get("slider_ts"),
-        "slider_hs": row.get("slider_hs"),
-        "slider_div": row.get("slider_div"),
-        "n_relevant_ticks": row.get("n_relevant_ticks"),
-        "n_ticks_attached": row.get("n_ticks_attached"),
-        "tool": tick.get("tool"),
-        "tool_args_json": _safe_json_dumps(tick.get("tool_args")),
-        "reasoning": tick.get("reasoning"),
-        "inference_duration_ms": tick.get("inference_duration_ms"),
-        "llm_model": request_payload.get("model"),
-        "request_options_json": _safe_json_dumps(request_payload.get("options")),
-        "snapshot_agent_options_json": _safe_json_dumps(options),
-        "snapshot_json": _safe_json_dumps(snapshot),
-        "prompt_messages_json": _safe_json_dumps(messages),
-        "prompt_text": _message_text(messages),
-        "prompt_message_count": len(messages),
-        "completion_content": choice_message.get("content"),
-        "completion_reasoning": choice_message.get("reasoning"),
-        "completion_tool_calls_json": _safe_json_dumps(_tool_calls(choice_message)),
-        "raw_request_payload_json": _safe_json_dumps(request_payload),
-        "raw_completion_payload_json": _safe_json_dumps(completion_payload),
-        # Useful coarse slices for first real-data transfer passes.
-        "size_relevant_complaint": complaint_type == "WRONG_SIZE",
-        "activity_relevant_complaint": complaint_type in {"NOT_TRADING", "OVERTRADING", "HOLDING_VIOLATION"},
-        "config_conflict_like": root_cause in {"USER_CONFIG_CONFLICT", "STRATEGY_SLIDER_LOCKOUT"},
-        "system_fault": complaint_label == "true_confusion",
+        "source_table": source_table,
+        "dest_table": dest_table,
+        "source_limit": limit,
+        **dict(summary),
+        "label_counts": {row["label"]: row["n"] for row in label_counts},
+        "complaint_type_counts_top10": {row["complaint_type"]: row["n"] for row in complaint_type_counts},
     }
 
 
-def build_dataset() -> dict[str, Any]:
-    rows = _load_rows(SOURCE_PATH)
-    examples: list[dict[str, Any]] = []
-
-    trace_counter: Counter[str] = Counter()
-    label_counter: Counter[str] = Counter()
-    root_cause_counter: Counter[str] = Counter()
-    complaint_type_counter: Counter[str] = Counter()
-    tool_counter: Counter[str] = Counter()
-    model_counter: Counter[str] = Counter()
-
-    skipped_no_ticks = 0
-    skipped_no_messages = 0
-
-    for row in rows:
-        trace_counter[str(row["trace_id"])] += 1
-        ticks_raw = row.get("ticks")
-        if not ticks_raw:
-            skipped_no_ticks += 1
-            continue
-        ticks = json.loads(ticks_raw)
-        if not ticks:
-            skipped_no_ticks += 1
-            continue
-
-        for tick_index, tick in enumerate(ticks):
-            example = _normalize_tick(row, tick, tick_index)
-            if example is None:
-                skipped_no_messages += 1
-                continue
-            examples.append(example)
-            label_counter.update([str(example["label"])])
-            root_cause_counter.update([str(example["root_cause"])])
-            complaint_type_counter.update([str(example["complaint_type"])])
-            tool_counter.update([str(example["tool"])])
-            model_counter.update([str(example["llm_model"])])
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    with OUTPUT_JSONL.open("w", encoding="utf-8") as handle:
-        for example in examples:
-            handle.write(_safe_json_dumps(example))
-            handle.write("\n")
-
-    summary = {
-        "source_path": str(SOURCE_PATH),
-        "output_jsonl": str(OUTPUT_JSONL),
-        "source_rows": len(rows),
-        "output_examples": len(examples),
-        "distinct_traces": len({example["trace_id"] for example in examples}),
-        "distinct_vaults": len({str(example["vault_address"]).lower() for example in examples}),
-        "skipped_no_ticks": skipped_no_ticks,
-        "skipped_no_messages": skipped_no_messages,
-        "avg_examples_per_trace": round(len(examples) / max(1, len({example["trace_id"] for example in examples})), 4),
-        "label_counts": dict(label_counter),
-        "root_cause_counts_top10": dict(root_cause_counter.most_common(10)),
-        "complaint_type_counts_top10": dict(complaint_type_counter.most_common(10)),
-        "tool_counts": dict(tool_counter),
-        "model_counts": dict(model_counter),
-        "size_relevant_examples": sum(1 for example in examples if bool(example["size_relevant_complaint"])),
-        "activity_relevant_examples": sum(1 for example in examples if bool(example["activity_relevant_complaint"])),
-        "config_conflict_like_examples": sum(1 for example in examples if bool(example["config_conflict_like"])),
-        "system_fault_examples": sum(1 for example in examples if bool(example["system_fault"])),
-    }
-    OUTPUT_SUMMARY.write_text(_safe_json_dumps(summary), encoding="utf-8")
-    return summary
+def main() -> None:
+    args = parse_args()
+    with connect_neon(autocommit=True) as conn:
+        ensure_schema(conn)
+        summary = build_tick_table(
+            conn,
+            source_table=args.source_table,
+            dest_table=args.dest_table,
+            limit=args.limit,
+        )
+    print(json.dumps(summary, indent=2, sort_keys=True, default=str))
 
 
 if __name__ == "__main__":
-    summary = build_dataset()
-    print(json.dumps(summary, indent=2))
+    main()
