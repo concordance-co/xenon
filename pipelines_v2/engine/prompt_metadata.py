@@ -42,6 +42,8 @@ def build_chat_turn_metadata(
     prompt: Any = None,
     name_template: str = "{role}_turn_{index:03d}",
     include_section_records: bool = True,
+    include_assistant_colon: bool = False,
+    assistant_colon_name: str = "assistant_colon",
 ) -> dict[str, object]:
     """Build best-effort turn spans over rendered chat prompts.
 
@@ -54,7 +56,13 @@ def build_chat_turn_metadata(
     """
 
     if not isinstance(prompt, Sequence) or isinstance(prompt, str | bytes | bytearray):
-        return {}
+        payload: dict[str, object] = {}
+        return _with_assistant_colon_metadata(
+            payload,
+            rendered_prompt=rendered_prompt,
+            include_assistant_colon=include_assistant_colon,
+            assistant_colon_name=assistant_colon_name,
+        )
 
     token_sections: dict[str, dict[str, int]] = {}
     section_records: list[dict[str, object]] = []
@@ -91,7 +99,59 @@ def build_chat_turn_metadata(
     payload: dict[str, object] = {"token_sections": token_sections}
     if include_section_records:
         payload["section_records"] = section_records
+    return _with_assistant_colon_metadata(
+        payload,
+        rendered_prompt=rendered_prompt,
+        include_assistant_colon=include_assistant_colon,
+        assistant_colon_name=assistant_colon_name,
+    )
+
+
+def _with_assistant_colon_metadata(
+    payload: dict[str, object],
+    *,
+    rendered_prompt: str,
+    include_assistant_colon: bool,
+    assistant_colon_name: str,
+) -> dict[str, object]:
+    if not include_assistant_colon:
+        return payload
+    colon_index = _assistant_colon_index(rendered_prompt)
+    if colon_index < 0:
+        return payload
+
+    token_sections = dict(payload.get("token_sections", {})) if isinstance(payload.get("token_sections"), Mapping) else {}
+    token_sections[str(assistant_colon_name)] = {"char_start": colon_index, "char_end": colon_index + 1}
+    payload["token_sections"] = token_sections
+
+    raw_records = payload.get("section_records")
+    if isinstance(raw_records, Sequence) and not isinstance(raw_records, str | bytes | bytearray):
+        records = list(raw_records)
+        records.append(
+            {
+                "name": str(assistant_colon_name),
+                "role": "assistant",
+                "unit": "marker",
+                "index": len(records),
+                "char_start": colon_index,
+                "char_end": colon_index + 1,
+                "tags": {"marker": "assistant_colon"},
+            }
+        )
+        payload["section_records"] = records
     return payload
+
+
+def _assistant_colon_index(rendered_prompt: str) -> int:
+    lowered = rendered_prompt.lower()
+    start = max(lowered.rfind("assistant:"), lowered.rfind("assistant\n"))
+    if start < 0:
+        return -1
+    colon = rendered_prompt.find(":", start)
+    if colon >= 0:
+        return colon
+    newline = rendered_prompt.find("\n", start)
+    return newline if newline >= 0 else -1
 
 
 def token_sections_from_metadata(

@@ -61,6 +61,8 @@ class PromptMetadataBuilder:
         *,
         name_template: str = "{role}_turn_{index:03d}",
         include_section_records: bool = True,
+        include_assistant_colon: bool = False,
+        assistant_colon_name: str = "assistant_colon",
     ) -> "PromptMetadataBuilder":
         """Create the built-in builder that marks each chat message as a turn."""
 
@@ -69,6 +71,8 @@ class PromptMetadataBuilder:
             config={
                 "name_template": str(name_template),
                 "include_section_records": bool(include_section_records),
+                "include_assistant_colon": bool(include_assistant_colon),
+                "assistant_colon_name": str(assistant_colon_name),
             },
         )
 

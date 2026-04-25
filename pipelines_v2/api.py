@@ -35,6 +35,14 @@ from .mechinterp.assistant_axis import (
     assistant_axis_prompt_dataset,
     discover_assistant_axis_layer_and_capping,
 )
+from .mechinterp.emotions import (
+    EMOTION_VECTOR_SPACE_KIND,
+    EmotionDirectionSpec,
+    EmotionGeometrySpec,
+    EmotionPrecomputedVectorSpaceSpec,
+    EmotionScoreSpec,
+    EmotionVectorSpaceSpec,
+)
 from .operations.capture import CaptureSpec, GenerationSpec, MoERoutingSite, ResidualSite, RoutingRecord
 from .operations.common.builders import PromptMetadataBuilder, TransformBuilder, TransformResult
 from .operations.common.schemas import TensorStorage
@@ -130,8 +138,14 @@ __all__ = [
     "EngineCaptureResult",
     "EngineGenerationResult",
     "EngineInterventionResult",
+    "EMOTION_VECTOR_SPACE_KIND",
     "Example",
     "ExecutionPlan",
+    "EmotionDirectionSpec",
+    "EmotionGeometrySpec",
+    "EmotionPrecomputedVectorSpaceSpec",
+    "EmotionScoreSpec",
+    "EmotionVectorSpaceSpec",
     "FeatureLayerRef",
     "FeatureRef",
     "FileCatalog",

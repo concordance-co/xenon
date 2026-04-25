@@ -12,6 +12,13 @@ from pipelines_v2.mechinterp.assistant_axis import (
     AssistantAxisScoreSpec,
     AssistantAxisVectorSpec,
 )
+from pipelines_v2.mechinterp.emotions import (
+    EmotionDirectionSpec,
+    EmotionGeometrySpec,
+    EmotionPrecomputedVectorSpaceSpec,
+    EmotionScoreSpec,
+    EmotionVectorSpaceSpec,
+)
 from pipelines_v2.operations.specs import (
     ActivationBankSpec,
     BasisSpec,
@@ -265,6 +272,11 @@ _ARTIFACT_BOUND_SPECS = (
     AssistantAxisPrecomputedCoordinateSpec,
     AssistantAxisVectorSpec,
     AssistantAxisScoreSpec,
+    EmotionPrecomputedVectorSpaceSpec,
+    EmotionVectorSpaceSpec,
+    EmotionScoreSpec,
+    EmotionDirectionSpec,
+    EmotionGeometrySpec,
     ReportSpec,
 )
 

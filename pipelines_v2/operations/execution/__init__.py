@@ -13,6 +13,13 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
         AssistantAxisScoreSpec,
         AssistantAxisVectorSpec,
     )
+    from pipelines_v2.mechinterp.emotions import (
+        EmotionDirectionSpec,
+        EmotionGeometrySpec,
+        EmotionPrecomputedVectorSpaceSpec,
+        EmotionScoreSpec,
+        EmotionVectorSpaceSpec,
+    )
     from pipelines_v2.operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
     from pipelines_v2.operations.interventions import ActivationBankSpec, ExplicitPathMaskSpec, PatchComparisonSpec
     from pipelines_v2.operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec
@@ -93,6 +100,21 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
     if isinstance(spec, AssistantAxisScoreSpec):
         from pipelines_v2.mechinterp.assistant_axis.execution import run_assistant_axis_score
         return run_assistant_axis_score(spec)
+    if isinstance(spec, EmotionPrecomputedVectorSpaceSpec):
+        from pipelines_v2.mechinterp.emotions.execution import run_emotion_precomputed_vector_space
+        return run_emotion_precomputed_vector_space(spec)
+    if isinstance(spec, EmotionVectorSpaceSpec):
+        from pipelines_v2.mechinterp.emotions.execution import run_emotion_vector_space
+        return run_emotion_vector_space(spec)
+    if isinstance(spec, EmotionScoreSpec):
+        from pipelines_v2.mechinterp.emotions.execution import run_emotion_score
+        return run_emotion_score(spec)
+    if isinstance(spec, EmotionDirectionSpec):
+        from pipelines_v2.mechinterp.emotions.execution import run_emotion_direction
+        return run_emotion_direction(spec)
+    if isinstance(spec, EmotionGeometrySpec):
+        from pipelines_v2.mechinterp.emotions.execution import run_emotion_geometry
+        return run_emotion_geometry(spec)
     if isinstance(spec, ReportSpec):
         from .reports import run_report
         return run_report(spec)

@@ -68,6 +68,38 @@ def test_prompt_metadata_builder_chat_turns_produces_section_records() -> None:
     assert assistant_record["token_positions"]
 
 
+def test_prompt_metadata_builder_chat_turns_can_mark_assistant_colon() -> None:
+    builder = PromptMetadataBuilder.chat_turns(include_assistant_colon=True)
+    prompt = [{"role": "user", "content": "How should I respond?"}]
+    rendered = "Human: How should I respond?\n\nAssistant:"
+    offsets = [(index, index + 1) for index in range(len(rendered))]
+
+    metadata = resolve_prompt_metadata(
+        metadata={},
+        rendered_prompt=rendered,
+        builder=builder,
+        prompt=prompt,
+    )
+    token_sections = token_sections_from_metadata(
+        metadata=metadata,
+        offsets=offsets,
+        require_sections=False,
+        allow_char_spans=True,
+    )
+    section_records = section_records_from_metadata(
+        metadata=metadata,
+        offsets=offsets,
+        token_sections=token_sections,
+        allow_char_spans=True,
+    )
+
+    assert token_sections["assistant_colon"]
+    marker = next(record for record in section_records if record["name"] == "assistant_colon")
+    assert marker["role"] == "assistant"
+    assert marker["unit"] == "marker"
+    assert marker["tags"] == {"marker": "assistant_colon"}
+
+
 def test_projection_scores_semantic_assistant_turn_slices_and_emits_labels(tmp_path: Path) -> None:
     metadata = _conversation_section_metadata()
     dataset = Dataset.from_examples(

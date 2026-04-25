@@ -44,6 +44,11 @@ _KIND_FAMILY: dict[str, str] = {
     "assistant_axis_precomputed_coordinate": "mechinterp",
     "assistant_axis_vector": "mechinterp",
     "assistant_axis_score": "mechinterp",
+    "emotion_precomputed_vector_space": "mechinterp",
+    "emotion_vector_space": "mechinterp",
+    "emotion_score": "mechinterp",
+    "emotion_direction": "mechinterp",
+    "emotion_geometry": "mechinterp",
     "report": "report",
 }
 
