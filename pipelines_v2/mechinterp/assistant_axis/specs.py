@@ -1,4 +1,11 @@
-"""Assistant Axis operation specs and known-model metadata."""
+"""Assistant Axis operation specs and known-model metadata.
+
+The assistant-axis APIs are domain-specific mech-interp helpers layered on top
+of the generic projection primitives in ``pipelines_v2.operations.projections``.
+They encode the Yora/Assistant Axis workflow as first-class operation specs:
+load a released assistant-axis direction, derive a direction from captured role
+play/default activations, or score captured text spans against that direction.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +26,9 @@ from pipelines_v2.operations.projections import SectionSelector
 ASSISTANT_AXIS_VECTOR_REPO = "lu-christina/assistant-axis-vectors"
 
 
+# These are the model/layer choices released with the Assistant Axis assets.
+# Unknown models remain usable, but callers must provide layers explicitly and
+# should treat scores as exploratory until layer and capping calibration exist.
 KNOWN_ASSISTANT_AXIS_MODELS: dict[str, dict[str, Any]] = {
     "google/gemma-2-27b-it": {
         "short_name": "gemma-2-27b",
@@ -73,7 +83,13 @@ KNOWN_ASSISTANT_AXIS_MODELS: dict[str, dict[str, Any]] = {
 
 
 def assistant_axis_model_config(model_id: str | None) -> dict[str, Any] | None:
-    """Return the Assistant Axis config for a known model id."""
+    """Return the released Assistant Axis config for a model id or alias.
+
+    The lookup is case-insensitive and resolves aliases such as
+    ``qwen-3-32b`` to the canonical released model entry. The returned mapping
+    is a copy so callers can attach it to payload metadata without mutating the
+    registry.
+    """
 
     if model_id is None:
         return None
@@ -91,7 +107,16 @@ def assistant_axis_model_config(model_id: str | None) -> dict[str, Any] | None:
 
 @dataclass(frozen=True, slots=True)
 class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
-    """Load a precomputed Assistant Axis coordinate from Hugging Face."""
+    """Load a released Assistant Axis coordinate as a canonical coordinate.
+
+    This is the shortest path for supported models: it downloads the vector
+    artifact from ``repo_id`` (by default
+    ``lu-christina/assistant-axis-vectors``), optionally selects one layer, and
+    emits the same ``coordinate_result`` payload consumed by
+    ``ProjectionSpec``. Use ``filename`` for custom repositories or
+    unreleased layouts; otherwise a known ``model_id`` supplies the filename
+    and target layer.
+    """
 
     model_id: str = ""
     repo_id: str = ASSISTANT_AXIS_VECTOR_REPO
@@ -123,6 +148,8 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
             )
 
     def resolved_filename(self) -> str:
+        """Return the HF artifact filename after model-id alias resolution."""
+
         if self.filename is not None:
             return str(self.filename)
         config = assistant_axis_model_config(self.model_id)
@@ -131,12 +158,16 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
         return str(config["hf_axis_filename"])
 
     def resolved_layer(self) -> int | None:
+        """Return the selected vector layer, if this coordinate is layer-bound."""
+
         if self.select_layer is not None:
             return int(self.select_layer)
         config = assistant_axis_model_config(self.model_id)
         return int(config["target_layer"]) if config is not None else None
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
+        """Declare the optional HF token environment variable for remote runs."""
+
         if self.token_env_var is None:
             return ()
         return (RuntimeSecret(env_var=self.token_env_var),)
@@ -172,7 +203,20 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
 
 @dataclass(frozen=True, slots=True)
 class AssistantAxisVectorSpec(OperationSpec):
-    """Compute an Assistant Axis coordinate from captured response activations."""
+    """Derive an Assistant Axis coordinate from captured activations.
+
+    The spec expects a feature artifact containing response activations,
+    usually residual activations over the generated-token section. Examples are
+    split into default-assistant responses via ``default_when`` and role-play
+    responses via ``role_when`` or the complement of ``default_when``. Role
+    examples are grouped by ``role_by``; each retained role contributes one
+    mean vector, and the final direction is:
+
+    ``mean(default responses) - mean(per-role role-play means)``
+
+    ``score_by`` and ``score_values`` optionally restrict role-play examples to
+    high-quality or high-intensity rows before the direction is computed.
+    """
 
     feature: Any = None
     role_by: Any = None
@@ -240,7 +284,13 @@ class AssistantAxisVectorSpec(OperationSpec):
 
 @dataclass(frozen=True, slots=True)
 class AssistantAxisScoreSpec(OperationSpec):
-    """Score captured slices against an Assistant Axis coordinate."""
+    """Score captured activation slices against an Assistant Axis coordinate.
+
+    This is a thin assistant-axis wrapper around ``ProjectionSpec``. It adds
+    known-model layer resolution and assistant-axis metadata, then delegates the
+    actual per-section pooling and dot/cosine scoring to the generic projection
+    executor.
+    """
 
     feature: Any = None
     axis: Any = None
@@ -265,6 +315,8 @@ class AssistantAxisScoreSpec(OperationSpec):
         _warn_if_unknown_model(self.model_id, self.warn_unknown_model)
 
     def resolved_layer(self) -> int:
+        """Return the explicit layer or the released target layer for model_id."""
+
         if self.layer is not None:
             return int(self.layer)
         config = assistant_axis_model_config(self.model_id)

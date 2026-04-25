@@ -1,4 +1,9 @@
-"""Projection calibration specs."""
+"""Projection calibration specs.
+
+Calibration converts raw projection scores into reusable score-band metadata.
+It is deliberately separate from scoring so a project can fit calibration on
+one split and apply or report the resulting thresholds elsewhere.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +16,13 @@ from pipelines_v2.operations.common._shared import analysis_runtime_spec, runtim
 
 @dataclass(frozen=True, slots=True)
 class ProjectionCalibrationSpec(OperationSpec):
-    """Fit calibration metadata on top of raw projection outputs."""
+    """Fit calibration metadata on top of raw projection outputs.
+
+    ``projections`` must resolve to a ``projection_result``. If ``summary_name``
+    is set, calibration uses that example-level summary metric; otherwise it
+    fits over raw per-slice scores. ``fit_on`` can restrict calibration to a
+    held-out or training subset by example key.
+    """
 
     projections: Any = None
     fit_on: Any = None

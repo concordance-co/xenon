@@ -13,7 +13,12 @@ def summarize_scores(
     summary_names: Sequence[str],
     order_values: Sequence[float] | None = None,
 ) -> dict[str, float]:
-    """Compute reusable summaries over ordered slice scores."""
+    """Compute reusable summaries over ordered slice scores.
+
+    ``order_values`` lets callers summarize repeated semantic slices in their
+    original order, for example chat-turn index. The ``trend`` summary is the
+    least-squares slope of score versus that order value.
+    """
 
     values = np.asarray([float(score) for score in scores], dtype=np.float32)
     if values.size == 0:

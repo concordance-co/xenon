@@ -1,4 +1,9 @@
-"""External coordinate import specs."""
+"""External coordinate import specs.
+
+Coordinate import is the generic escape hatch for vector artifacts produced
+outside ``pipelines_v2``. Domain-specific loaders, such as Assistant Axis HF
+loading, should normalize their data into the same coordinate payload shape.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +16,13 @@ from pipelines_v2.operations.common._shared import analysis_runtime_spec
 
 @dataclass(frozen=True, slots=True)
 class CoordinateImportSpec(OperationSpec):
-    """Import an external vector artifact into a canonical coordinate payload."""
+    """Import an external vector artifact into a canonical coordinate payload.
+
+    Supported formats currently include PyTorch tensors or axis dictionaries,
+    ``.npy`` arrays, and JSON vectors. Rank-1 inputs become a single-layer
+    coordinate; rank-2 inputs are interpreted as ``[layer, hidden]`` unless
+    ``select_layer`` narrows them to one layer.
+    """
 
     path: str = ""
     format: str = "torch_tensor_or_axis_dict"

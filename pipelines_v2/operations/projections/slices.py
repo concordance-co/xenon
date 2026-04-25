@@ -11,21 +11,33 @@ from pipelines_v2.core.types import SpecValidationError
 
 @dataclass(frozen=True, slots=True)
 class SectionSelector:
-    """Select repeated semantic slices from one captured example."""
+    """Select repeated semantic slices from one captured example.
+
+    A section record is a mapping with at least ``name`` and
+    ``token_positions``. Optional fields such as ``index``, ``role``, ``unit``,
+    and ``tags`` are preserved in projection rows and can be used by
+    ``where(...)`` selectors.
+    """
 
     names: tuple[str, ...] = ()
     where_fields: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def all(cls) -> "SectionSelector":
+        """Select every available section record."""
+
         return cls()
 
     @classmethod
     def named(cls, *names: str) -> "SectionSelector":
+        """Select section records whose ``name`` is in ``names``."""
+
         return cls(names=tuple(str(name) for name in names if str(name).strip()))
 
     @classmethod
     def where(cls, **criteria: Any) -> "SectionSelector":
+        """Select records by top-level fields or entries inside ``tags``."""
+
         return cls(where_fields={str(key): value for key, value in criteria.items()})
 
     def to_dict(self) -> dict[str, Any]:
@@ -52,7 +64,12 @@ def coerce_section_records(
     *,
     token_sections: Mapping[str, Sequence[int]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Normalize stored section records or synthesize them from token sections."""
+    """Normalize stored section records or synthesize them from token sections.
+
+    Older capture payloads may only contain ``token_sections``. In that case we
+    synthesize simple records so projection scoring still has a uniform section
+    abstraction.
+    """
 
     if raw is None:
         return _records_from_token_sections(token_sections)

@@ -13,7 +13,13 @@ from ._shared import callable_import_ref, load_importable_function
 
 @dataclass(frozen=True, slots=True)
 class PromptMetadataBuilder:
-    """Serializable ref to a user-defined function that derives prompt metadata."""
+    """Serializable ref to a function that derives prompt metadata.
+
+    Capture specs can use this to attach ``token_sections`` and
+    ``section_records`` after the prompt has been rendered but before
+    tokenization/capture. The import path plus optional ``local_python_sources``
+    keeps the builder runnable in local and remote runtimes.
+    """
 
     import_path: str
     local_python_sources: tuple[str, ...] = field(default_factory=tuple)
@@ -40,6 +46,8 @@ class PromptMetadataBuilder:
         *,
         local_python_sources: Sequence[str] | None = None,
     ) -> "PromptMetadataBuilder":
+        """Create a builder from an importable Python function."""
+
         import_path, sources = callable_import_ref(
             function,
             local_python_sources=local_python_sources,
@@ -54,6 +62,8 @@ class PromptMetadataBuilder:
         name_template: str = "{role}_turn_{index:03d}",
         include_section_records: bool = True,
     ) -> "PromptMetadataBuilder":
+        """Create the built-in builder that marks each chat message as a turn."""
+
         return cls(
             import_path="pipelines_v2.engine.prompt_metadata:build_chat_turn_metadata",
             config={
@@ -81,6 +91,13 @@ class PromptMetadataBuilder:
         )
 
     def build(self, rendered_prompt: str, **context: Any) -> dict[str, Any]:
+        """Run the builder function with supported context arguments.
+
+        Builder functions may accept only the arguments they need. If the
+        function does not accept ``**kwargs``, unsupported context keys are
+        filtered out based on its signature.
+        """
+
         function = load_importable_function(
             self.import_path,
             label="Prompt metadata builder",

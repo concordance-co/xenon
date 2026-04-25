@@ -17,7 +17,12 @@ def pool_positions(
     positions: Sequence[int],
     pooling: TokenPooling,
 ) -> NDArray[np.float32]:
-    """Pool one token-matrix slice into a single readout vector."""
+    """Pool one token-matrix slice into a single readout vector.
+
+    ``values`` is the feature-local token matrix for one example/layer. The
+    positions are already rebased into that feature-local coordinate system by
+    capture, so this helper only validates and pools.
+    """
 
     selected_positions = [int(position) for position in positions]
     if not selected_positions:
@@ -40,7 +45,11 @@ def project_vector(
     direction: NDArray[np.float32],
     metric: str,
 ) -> float:
-    """Project one pooled vector onto one coordinate."""
+    """Project one pooled vector onto one coordinate.
+
+    ``signed_dot`` assumes callers have normalized coordinates when they want a
+    pure signed projection. ``cosine`` normalizes both operands at score time.
+    """
 
     value = np.asarray(pooled, dtype=np.float32)
     axis = np.asarray(direction, dtype=np.float32)

@@ -30,6 +30,8 @@ from pipelines_v2.storage.artifacts import FeatureLayerRef, FeatureRef
 
 
 def run_coordinate_import(spec: CoordinateImportSpec) -> OperationExecutionResult:
+    """Execute coordinate import and return a materialized coordinate payload."""
+
     payload = load_coordinate_import_payload(
         path=spec.path,
         format=spec.format,
@@ -49,6 +51,14 @@ def run_coordinate_import(spec: CoordinateImportSpec) -> OperationExecutionResul
 
 
 def run_projection(spec: ProjectionSpec) -> OperationExecutionResult:
+    """Execute generic section-based projection scoring.
+
+    The executor aligns examples, resolves coordinate vectors, selects section
+    records per example/layer, pools each selected token span, and emits both
+    raw per-slice rows and optional per-example summaries. Method-specific
+    wrappers should call this function instead of duplicating projection logic.
+    """
+
     feature_kind, layer_payloads, routing_policy = _load_projection_feature(
         spec.feature,
         layers=tuple(spec.layers) if spec.layers else None,
@@ -198,6 +208,8 @@ def run_projection(spec: ProjectionSpec) -> OperationExecutionResult:
 
 
 def run_projection_calibration(spec: ProjectionCalibrationSpec) -> OperationExecutionResult:
+    """Fit calibration definitions from a ``projection_result`` payload."""
+
     payload = spec.projections.result() if hasattr(spec.projections, "result") else spec.projections
     if not isinstance(payload, Mapping) or str(payload.get("kind") or "") != "projection_result":
         raise SpecValidationError("ProjectionCalibrationSpec requires a projection_result source")
@@ -276,6 +288,8 @@ def _load_projection_feature(
     *,
     layers: Sequence[int] | None,
 ) -> tuple[str, dict[int, Mapping[str, Any]], Mapping[str, Any] | None]:
+    """Load residual or routing feature records for the requested layers."""
+
     if isinstance(feature, FeatureLayerRef):
         payload = feature.feature.load()
         feature_kind = str(payload.get("kind") or "")
@@ -307,6 +321,8 @@ def _projection_token_matrix(
     record: Mapping[str, Any],
     routing_policy: Mapping[str, Any] | None,
 ) -> np.ndarray:
+    """Return a token-by-feature matrix for one projection feature row."""
+
     if feature_kind == "residual":
         values = np.asarray(record["values"], dtype=np.float32)
         if values.ndim != 2:
@@ -337,6 +353,8 @@ def _projection_labels_for_summary(
     slice_count: int,
     metrics: Mapping[str, Any],
 ) -> None:
+    """Emit projection summary metrics as normal pipelines_v2 label payloads."""
+
     key = coordinate_name_key(coordinate_name)
     label_values[f"projection__{key}__layer_{layer}__slice_count"][example_key] = int(slice_count)
     for metric_name, metric_value in metrics.items():
@@ -344,6 +362,8 @@ def _projection_labels_for_summary(
 
 
 def _coordinate_orientation(orientation: Mapping[str, str], coordinate_name: str) -> str | None:
+    """Resolve optional human-facing low/high orientation metadata."""
+
     if coordinate_name in orientation:
         return str(orientation[coordinate_name])
     key = coordinate_name_key(coordinate_name)

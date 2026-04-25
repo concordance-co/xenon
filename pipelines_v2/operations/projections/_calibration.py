@@ -12,7 +12,12 @@ def fit_quantile_bands(
     *,
     bands: Sequence[str],
 ) -> dict[str, object]:
-    """Fit simple quantile thresholds for ordered score bands."""
+    """Fit simple quantile thresholds for ordered score bands.
+
+    For ``n`` named bands this returns ``n - 1`` thresholds. Consumers can map a
+    future scalar score into the first band whose upper threshold it does not
+    exceed, with the final band acting as the open-ended high side.
+    """
 
     normalized_bands = [str(band) for band in bands if str(band).strip()]
     if len(normalized_bands) < 2:

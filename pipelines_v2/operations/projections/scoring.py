@@ -1,4 +1,10 @@
-"""Structured projection scoring specs."""
+"""Structured projection scoring specs.
+
+Projection operations are intentionally generic. They know how to pool captured
+activation slices and score those pooled vectors against named coordinates, but
+they do not encode any Assistant Axis, persona-vector, or project-specific
+methodology.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +19,15 @@ from pipelines_v2.operations.common.tokens import TokenPooling
 
 @dataclass(frozen=True, slots=True)
 class ProjectionSpec(OperationSpec):
-    """Score repeated semantic slices against one or more coordinates."""
+    """Score repeated semantic slices against one or more coordinates.
+
+    ``feature`` points at a captured activation artifact such as residual
+    activations or MoE routing features. ``coordinates`` resolve to
+    ``coordinate_result`` payloads. ``slices`` selects structured
+    ``section_records`` stored with each feature row, allowing the same example
+    to emit multiple ordered scores such as one score per chat turn or one
+    score over the generated response.
+    """
 
     feature: Any = None
     coordinates: Sequence[Any] = field(default_factory=tuple)

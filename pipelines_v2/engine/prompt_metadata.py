@@ -16,7 +16,13 @@ def resolve_prompt_metadata(
     builder: PromptMetadataBuilder | None,
     prompt: Any = None,
 ) -> dict[str, Any]:
-    """Merge example metadata with builder-derived prompt metadata."""
+    """Merge example metadata with builder-derived prompt metadata.
+
+    Builder output fills missing keys only. This lets datasets provide explicit
+    ``token_sections`` or ``section_records`` while still allowing a capture
+    spec to add best-effort defaults for examples that do not already define
+    them.
+    """
     resolved: dict[str, Any] = dict(metadata) if isinstance(metadata, Mapping) else {}
     if builder is None:
         return resolved
@@ -37,7 +43,15 @@ def build_chat_turn_metadata(
     name_template: str = "{role}_turn_{index:03d}",
     include_section_records: bool = True,
 ) -> dict[str, object]:
-    """Best-effort turn spans over chat prompts based on message contents."""
+    """Build best-effort turn spans over rendered chat prompts.
+
+    ``prompt`` is expected to be a chat-message sequence. The function searches
+    each message's textual content inside ``rendered_prompt`` and emits
+    character spans that tokenization later resolves into ``token_sections`` and
+    optional structured ``section_records``. It is intentionally best-effort:
+    if a message cannot be found exactly, that turn is omitted rather than
+    inventing a span.
+    """
 
     if not isinstance(prompt, Sequence) or isinstance(prompt, str | bytes | bytearray):
         return {}
@@ -87,7 +101,12 @@ def token_sections_from_metadata(
     require_sections: bool,
     allow_char_spans: bool,
 ) -> dict[str, list[int]]:
-    """Resolve explicit ``token_sections`` metadata into token positions."""
+    """Resolve explicit ``token_sections`` metadata into token positions.
+
+    Sections may be provided as token positions or character spans. Character
+    spans require tokenizer offsets from the capture engine; engines that cannot
+    provide offsets should pass ``allow_char_spans=False`` to fail early.
+    """
     raw_sections = metadata.get("token_sections") if isinstance(metadata, Mapping) else None
     if raw_sections is None:
         if require_sections:
@@ -150,7 +169,13 @@ def section_records_from_metadata(
     token_sections: Mapping[str, Sequence[int]] | None,
     allow_char_spans: bool,
 ) -> list[dict[str, Any]]:
-    """Resolve structured section records into prompt-level token positions."""
+    """Resolve structured section records into prompt-level token positions.
+
+    Section records are richer than ``token_sections`` because they preserve
+    fields such as ``role``, ``unit``, ``index``, and ``tags``. Projection
+    scoring uses these records to select and label repeated spans while still
+    relying on token positions for the actual activation pooling.
+    """
 
     raw_records = metadata.get("section_records") if isinstance(metadata, Mapping) else None
     if raw_records is None:

@@ -1,4 +1,9 @@
-"""Canonical dataset helpers for Assistant Axis vector prompts."""
+"""Canonical dataset helpers for Assistant Axis vector prompts.
+
+The library does not build this dataset from local Yora files at runtime. The
+source prompts are uploaded once to Hugging Face and then referenced through
+normal ``Dataset`` infrastructure so remote runs stay reproducible.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +23,9 @@ def assistant_axis_prompt_dataset(
 
     The dataset is intentionally compact: one row per role/trait source with
     nested ``instructions`` and ``questions`` columns. It is not pre-expanded
-    into every instruction/question prompt pair.
+    into every instruction/question prompt pair. Consumers that want concrete
+    prompt invocations should expand those nested columns in their own vector
+    generation spec.
     """
 
     return Dataset.from_huggingface(

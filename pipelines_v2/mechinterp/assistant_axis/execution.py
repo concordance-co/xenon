@@ -1,4 +1,11 @@
-"""Execution for Assistant Axis specs."""
+"""Execution for Assistant Axis specs.
+
+The functions here keep assistant-axis-specific semantics in
+``pipelines_v2.mechinterp`` while reusing the generic projection data model.
+Vector-producing operations return canonical ``coordinate_result`` payloads;
+scoring delegates to ``ProjectionSpec`` and only re-tags the result with
+assistant-axis metadata.
+"""
 
 from __future__ import annotations
 
@@ -27,6 +34,13 @@ from .specs import (
 
 
 def run_assistant_axis_precomputed_coordinate(spec: AssistantAxisPrecomputedCoordinateSpec) -> OperationExecutionResult:
+    """Download a released Assistant Axis artifact and normalize it for scoring.
+
+    The downloaded tensor or axis dictionary is converted into the canonical
+    coordinate payload shape used throughout projection operations:
+    ``{"kind": "coordinate_result", "layers": {"<layer>": {"vector": ...}}}``.
+    """
+
     from huggingface_hub import hf_hub_download
 
     config = assistant_axis_model_config(spec.model_id)
@@ -65,6 +79,14 @@ def run_assistant_axis_precomputed_coordinate(spec: AssistantAxisPrecomputedCoor
 
 
 def run_assistant_axis_vector(spec: AssistantAxisVectorSpec) -> OperationExecutionResult:
+    """Compute an Assistant Axis direction from captured activation features.
+
+    The feature source must already contain the token span requested by
+    ``spec.tokens``. The default is the generated response section, matching the
+    usual Assistant Axis setup where response activations are contrasted between
+    ordinary assistant answers and role-playing answers.
+    """
+
     if spec.role_by is None:
         raise SpecValidationError("AssistantAxisVectorSpec requires role_by")
     if spec.default_when is None:
@@ -170,6 +192,13 @@ def run_assistant_axis_vector(spec: AssistantAxisVectorSpec) -> OperationExecuti
 
 
 def run_assistant_axis_score(spec: AssistantAxisScoreSpec) -> OperationExecutionResult:
+    """Score selected sections against an Assistant Axis coordinate.
+
+    This function exists so assistant-axis workflows can use a domain-specific
+    spec while preserving the generic projection execution path, payload rows,
+    summaries, and optional emitted labels.
+    """
+
     projection = ProjectionSpec(
         feature=spec.feature,
         coordinates=[spec.axis],
@@ -203,6 +232,8 @@ def _role_allowed_keys(
     example_keys: Sequence[str],
     default_keys: set[str],
 ) -> set[str]:
+    """Return role-play example keys after role/default and score filtering."""
+
     feature_keys = {str(key) for key in example_keys}
     if spec.role_when is None:
         role_keys = feature_keys - default_keys
@@ -220,6 +251,8 @@ def _role_allowed_keys(
 
 
 def _normalize_vector(vector: np.ndarray, *, normalize: str) -> tuple[np.ndarray, float]:
+    """Normalize a computed assistant-axis vector and return its raw norm."""
+
     raw = np.asarray(vector, dtype=np.float32)
     norm = float(np.linalg.norm(raw))
     mode = str(normalize).strip().lower()

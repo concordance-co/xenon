@@ -15,7 +15,11 @@ from pipelines_v2.core.types import SpecValidationError
 
 @dataclass(frozen=True, slots=True)
 class ResolvedCoordinate:
-    """One named coordinate family resolved to concrete vectors."""
+    """One named coordinate family resolved to concrete vectors.
+
+    ``layers`` is keyed by integer layer index and each value is a rank-1
+    vector compatible with the feature width for that layer.
+    """
 
     name: str
     layers: dict[int, np.ndarray]
@@ -32,7 +36,12 @@ def load_coordinate_import_payload(
     name: str | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Materialize an external vector artifact into a canonical coordinate result."""
+    """Materialize an external vector artifact into a coordinate result.
+
+    The canonical payload stores vectors by layer as JSON-serializable lists and
+    keeps both the normalized ``vector`` used for scoring and the unnormalized
+    ``raw_vector`` for auditability.
+    """
 
     resolved_path = Path(path).expanduser()
     if not resolved_path.exists():
@@ -84,7 +93,12 @@ def resolve_coordinate(
     *,
     fallback_name: str | None = None,
 ) -> ResolvedCoordinate:
-    """Load a coordinate artifact or direction artifact into in-memory vectors."""
+    """Load a coordinate or legacy direction payload into in-memory vectors.
+
+    Projection scoring accepts any source that is already a mapping or exposes a
+    ``result()`` method. This allows operation results and artifact refs to use
+    the same resolution path.
+    """
 
     payload = source.result() if hasattr(source, "result") else source
     if not isinstance(payload, Mapping):
