@@ -20,6 +20,7 @@ from pipelines_v2.operations.execution.common import (
     feature_matrices,
     resolve_values_map,
 )
+from pipelines_v2.operations.common.vectors import normalize_vector
 from pipelines_v2.operations.execution.projections import run_projection
 from pipelines_v2.operations.projections import ProjectionSpec
 from pipelines_v2.operations.projections._coordinates import load_coordinate_import_payload
@@ -149,7 +150,7 @@ def run_assistant_axis_vector(spec: AssistantAxisVectorSpec) -> OperationExecuti
         default_mean = matrix[np.asarray(default_indices, dtype=np.int64)].mean(axis=0)
         role_mean = np.stack(role_vectors, axis=0).mean(axis=0)
         raw_axis = (default_mean - role_mean).astype(np.float32)
-        vector, norm = _normalize_vector(raw_axis, normalize=spec.normalize)
+        vector, norm = normalize_vector(raw_axis, normalize=spec.normalize, error_label="Assistant Axis")
         layers[str(layer)] = {
             "vector": vector.astype(np.float32).tolist(),
             "raw_vector": raw_axis.tolist(),
@@ -250,18 +251,3 @@ def _role_allowed_keys(
         for key in role_keys
         if key in score_values and str(score_values[key]) in allowed_scores
     }
-
-
-def _normalize_vector(vector: np.ndarray, *, normalize: str) -> tuple[np.ndarray, float]:
-    """Normalize a computed assistant-axis vector and return its raw norm."""
-
-    raw = np.asarray(vector, dtype=np.float32)
-    norm = float(np.linalg.norm(raw))
-    mode = str(normalize).strip().lower()
-    if mode in {"none", ""}:
-        return raw, norm
-    if mode == "l2":
-        if norm <= 0:
-            return raw, norm
-        return (raw / norm).astype(np.float32), norm
-    raise SpecValidationError(f"Unsupported Assistant Axis normalization mode: {normalize!r}")

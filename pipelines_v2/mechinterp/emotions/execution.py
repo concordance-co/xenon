@@ -14,6 +14,7 @@ from pipelines_v2.operations.execution.common import (
     feature_matrices,
     resolve_values_map,
 )
+from pipelines_v2.operations.common.vectors import coordinate_name_key, normalize_vector
 from pipelines_v2.operations.execution.projections import run_projection
 from pipelines_v2.operations.projections import ProjectionSpec
 
@@ -107,7 +108,7 @@ def run_emotion_vector_space(spec: EmotionVectorSpaceSpec) -> OperationExecution
             raw = (mean - global_mean).astype(np.float32)
             if layer_components.size:
                 raw = _project_out_components(raw, layer_components)
-            vector, norm = _normalize_vector(raw, normalize=spec.normalize)
+            vector, norm = normalize_vector(raw, normalize=spec.normalize, error_label="emotion vector")
             layer_payload["concepts"][concept] = {
                 "vector": vector.astype(np.float32).tolist(),
                 "raw_vector": raw.astype(np.float32).tolist(),
@@ -207,7 +208,7 @@ def run_emotion_direction(spec: EmotionDirectionSpec) -> OperationExecutionResul
             raise SpecValidationError("EmotionDirectionSpec source must be 'vector' or 'raw_vector'")
         residual_norm = float(spec.residual_norm_by_layer.get(int(layer), 1.0))
         raw = (base * float(spec.scale) * residual_norm).astype(np.float32)
-        unit, norm = _normalize_vector(raw, normalize="l2")
+        unit, norm = normalize_vector(raw, normalize="l2", error_label="emotion direction")
         layers[str(layer)] = {
             "vector": unit.astype(np.float32).tolist(),
             "raw_vector": raw.tolist(),
@@ -221,7 +222,7 @@ def run_emotion_direction(spec: EmotionDirectionSpec) -> OperationExecutionResul
     payload = {
         "kind": "direction_result",
         "feature": _feature_name(spec.vector_space),
-        "name": f"emotion__{_coordinate_key(spec.concept)}",
+        "name": f"emotion__{coordinate_name_key(spec.concept)}",
         "layers": layers,
         "metadata": {
             "source": "emotion_direction_spec",
@@ -351,7 +352,7 @@ def _load_vector_space_payload(
                 )
             layers.setdefault(str(layer), {"concepts": {}})
             raw = np.asarray(arrays[key], dtype=np.float32)
-            vector, norm = _normalize_vector(raw, normalize=normalize)
+            vector, norm = normalize_vector(raw, normalize=normalize, error_label="emotion vector")
             layers[str(layer)]["concepts"][str(concept)] = {
                 "vector": vector.tolist(),
                 "raw_vector": raw.tolist(),
@@ -410,7 +411,7 @@ def _coerce_vector_space_payload(
             raw = np.asarray(raw_vector, dtype=np.float32)
             if raw.ndim != 1:
                 raise SpecValidationError(f"Emotion vector {concept!r} at layer {layer_name!r} must be rank-1")
-            vector, norm = _normalize_vector(raw, normalize=normalize)
+            vector, norm = normalize_vector(raw, normalize=normalize, error_label="emotion vector")
             layer_payload["concepts"][str(concept)] = {
                 "vector": vector.tolist(),
                 "raw_vector": raw.tolist(),
@@ -496,7 +497,7 @@ def _coordinates_from_vector_space(
     coordinates: list[dict[str, Any]] = []
     names_by_concept: dict[str, str] = {}
     for concept in selected_concepts:
-        coordinate_name = f"emotion__{_coordinate_key(concept)}"
+        coordinate_name = f"emotion__{coordinate_name_key(concept)}"
         if coordinate_name in names_by_concept:
             raise SpecValidationError(
                 "Emotion concepts must map to unique projection coordinate names; "
@@ -607,12 +608,6 @@ def _vector_space_summary(vector_space: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _coordinate_key(value: str) -> str:
-    import re
-
-    return re.sub(r"[^a-zA-Z0-9]+", "_", str(value).strip()).strip("_").lower() or "emotion"
-
-
 def _project_out_components(vector: np.ndarray, components: np.ndarray) -> np.ndarray:
     if components.size == 0:
         return vector.astype(np.float32)
@@ -620,19 +615,6 @@ def _project_out_components(vector: np.ndarray, components: np.ndarray) -> np.nd
     if rows.ndim == 1:
         rows = rows[None, :]
     return (vector - (vector @ rows.T) @ rows).astype(np.float32)
-
-
-def _normalize_vector(vector: np.ndarray, *, normalize: str) -> tuple[np.ndarray, float]:
-    raw = np.asarray(vector, dtype=np.float32)
-    norm = float(np.linalg.norm(raw))
-    mode = str(normalize).strip().lower()
-    if mode in {"none", ""}:
-        return raw.astype(np.float32), norm
-    if mode == "l2":
-        if norm <= 0:
-            return raw.astype(np.float32), norm
-        return (raw / norm).astype(np.float32), norm
-    raise SpecValidationError(f"Unsupported emotion vector normalization mode: {normalize!r}")
 
 
 def _cosine_matrix(matrix: np.ndarray) -> np.ndarray:

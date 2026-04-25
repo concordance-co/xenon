@@ -62,7 +62,8 @@ from pipelines_v2.storage.base import Catalog
 from pipelines_v2.storage.features import write_capture_features
 from pipelines_v2.storage.local import LocalArtifactStore, NullCatalog
 from pipelines_v2.workflow.records import WorkflowStepContext
-from pipelines_v2.operations.interventions.runtime import patched_generation_plan_errors, rows_example_coverage
+from pipelines_v2.operations.interventions.runtime import rows_example_coverage
+from pipelines_v2.runtime.planning import spec_plan_errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,7 +112,7 @@ class LocalRunner:
             artifact_kinds = (spec.kind,)
         else:
             artifact_kinds = ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
-        errors = list(_spec_plan_errors(spec))
+        errors = list(spec_plan_errors(spec))
         errors.extend(_local_plan_errors(spec))
         return ExecutionPlan(
             spec_kind=spec.kind,
@@ -348,18 +349,6 @@ _ARTIFACT_BOUND_SPECS = (
     ProjectionCalibrationSpec,
     ReportSpec,
 )
-
-
-def _spec_plan_errors(spec: OperationSpec) -> list[str]:
-    errors: list[str] = []
-    engine = spec.bound_engine()
-    if engine is not None:
-        planning_errors = getattr(engine, "planning_errors", None)
-        if callable(planning_errors):
-            errors.extend(str(error) for error in planning_errors(spec))
-    if isinstance(spec, PatchedGenerationSpec):
-        errors.extend(patched_generation_plan_errors(spec))
-    return errors
 
 
 def _local_plan_errors(spec: OperationSpec) -> list[str]:

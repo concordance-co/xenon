@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
@@ -11,6 +10,7 @@ from typing import Any, Mapping
 import numpy as np
 
 from pipelines_v2.core.types import SpecValidationError
+from pipelines_v2.operations.common.vectors import coordinate_name_key, normalize_vector
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +64,7 @@ def load_coordinate_import_payload(
 
     payload_layers: dict[str, Any] = {}
     for layer, raw_vector in vectors_by_layer.items():
-        unit, norm = _normalize_vector(raw_vector, normalize=normalize)
+        unit, norm = normalize_vector(raw_vector, normalize=normalize, error_label="coordinate")
         payload_layers[str(layer)] = {
             "vector": unit.astype(np.float32).tolist(),
             "raw_vector": np.asarray(raw_vector, dtype=np.float32).tolist(),
@@ -134,12 +134,6 @@ def resolve_coordinate(
     )
 
 
-def coordinate_name_key(name: str) -> str:
-    """Return a label-safe coordinate key."""
-
-    return re.sub(r"[^a-zA-Z0-9]+", "_", str(name).strip()).strip("_").lower() or "coordinate"
-
-
 def _load_coordinate_tensor(*, path: Path, format: str) -> Any:
     normalized = str(format).strip().lower()
     if normalized == "torch_tensor_or_axis_dict":
@@ -166,16 +160,3 @@ def _load_coordinate_tensor(*, path: Path, format: str) -> Any:
             payload = payload["vector"]
         return np.asarray(payload)
     raise SpecValidationError(f"Unsupported coordinate import format: {format!r}")
-
-
-def _normalize_vector(vector: np.ndarray, *, normalize: str) -> tuple[np.ndarray, float]:
-    raw = np.asarray(vector, dtype=np.float32)
-    norm = float(np.linalg.norm(raw))
-    mode = str(normalize).strip().lower()
-    if mode in {"none", ""}:
-        return raw.astype(np.float32), norm
-    if mode == "l2":
-        if norm <= 0:
-            return raw.astype(np.float32), norm
-        return (raw / norm).astype(np.float32), norm
-    raise SpecValidationError(f"Unsupported coordinate normalization mode: {normalize!r}")

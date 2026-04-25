@@ -7,11 +7,11 @@ intervention mechanics to the existing projection and patching stacks.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Mapping, Sequence
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret, SpecValidationError
+from pipelines_v2.mechinterp._shared import hf_token_from_env, merge_runtime_secrets
 from pipelines_v2.operations.common._shared import (
     analysis_runtime_spec,
     runtime_secrets_from_refs,
@@ -89,7 +89,7 @@ class EmotionPrecomputedVectorSpaceSpec(OperationSpec):
             python_version=base.python_version,
             pip_packages=base.pip_packages,
             env=dict(base.env),
-            secrets=_merge_runtime_secrets(base.secrets, self.runtime_secrets()),
+            secrets=merge_runtime_secrets(base.secrets, self.runtime_secrets()),
             local_python_sources=base.local_python_sources,
         )
 
@@ -306,21 +306,7 @@ class EmotionGeometrySpec(OperationSpec):
         )
 
 
-def _hf_token(token_env_var: str | None) -> str | None:
-    if token_env_var is None:
-        return None
-    token = os.environ.get(token_env_var)
-    if not token:
-        raise RuntimeError(f"Missing required environment variable: {token_env_var}")
-    return token
-
-
-def _merge_runtime_secrets(*values: Sequence[RuntimeSecret]) -> tuple[RuntimeSecret, ...]:
-    merged: dict[str, RuntimeSecret] = {}
-    for value in values:
-        for secret in value:
-            merged.setdefault(secret.env_var, secret)
-    return tuple(merged.values())
+_hf_token = hf_token_from_env
 
 
 __all__ = [
