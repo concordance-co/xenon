@@ -29,6 +29,25 @@ projects/**/reports/pipelines_v2/report_*/
 # markdown/pdf lives under phase_*/reports/ and is NOT ignored.
 projects/**/phase_*/outputs/
 
+# MoReBench local/raw analysis payloads. Keep scripts, specs, docs, curated
+# reports, summaries, and charts in git; keep full prompts/responses,
+# annotation shards, batch logs, and replay/capture row dumps local.
+projects/MOREBENCH/phase_03/reports/experiment_02_behavior_recommendation_analysis/recommendation_snippets.json
+projects/MOREBENCH/phase_03/reports/experiment_02_contested_override_analysis/contested_override_pca_records.json
+projects/MOREBENCH/phase_03/reports/experiment_02_contested_override_analysis/contested_override_rows.json
+projects/MOREBENCH/phase_03/reports/experiment_02_generation_behavior_sanity_prompts_and_responses.md
+projects/MOREBENCH/phase_03/reports/experiment_02_name_only_repair_capture/repaired_capture_dataset.json
+projects/MOREBENCH/phase_03/reports/experiment_03_full_public_rubric_judge/batch_logs/
+projects/MOREBENCH/phase_03/reports/experiment_03_full_public_rubric_judge/batch_outputs/
+projects/MOREBENCH/phase_03/reports/experiment_03_full_public_rubric_judge/batches/
+projects/MOREBENCH/phase_03/reports/experiment_03_full_public_rubric_judge/manual_score_template.jsonl
+projects/MOREBENCH/phase_03/reports/experiment_03_full_public_rubric_judge/manual_scores_merged.jsonl
+projects/MOREBENCH/phase_03/reports/experiment_03_full_public_generation_labelpilot/label_rows.jsonl
+projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotation_packet/*.jsonl
+projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotation_packet/shards/
+projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/
+projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/process_supervision_annotations.jsonl
+
 # Local ingestion artifacts
 /data/
 

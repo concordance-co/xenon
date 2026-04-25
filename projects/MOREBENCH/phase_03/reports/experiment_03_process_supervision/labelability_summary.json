@@ -1,0 +1,212 @@
+{
+  "aggregate_agreement": {
+    "all_gates_pass": {
+      "B": false,
+      "C": false,
+      "F": false
+    },
+    "any_gates_pass": {
+      "B": false,
+      "C": true,
+      "F": true
+    },
+    "b_commitment_span_iou_mean": {
+      "max": 0.6333333333333333,
+      "mean": 0.5226755710441034,
+      "min": 0.40260780814380737,
+      "values": [
+        0.6333333333333333,
+        0.40260780814380737,
+        0.5320855716551695
+      ]
+    },
+    "b_commitment_span_iou_share_ge_0_5": {
+      "max": 0.6333333333333333,
+      "mean": 0.5555555555555556,
+      "min": 0.4666666666666667,
+      "values": [
+        0.6333333333333333,
+        0.4666666666666667,
+        0.5666666666666667
+      ]
+    },
+    "c_consideration_kappa": {
+      "max": 1.0,
+      "mean": 0.7222222222222222,
+      "min": 0.5833333333333333,
+      "values": [
+        1.0,
+        0.5833333333333333,
+        0.5833333333333333
+      ]
+    },
+    "f_criterion_family_kappa": {
+      "max": 0.996978559860772,
+      "mean": 0.5767041514201509,
+      "min": 0.29678709838729833,
+      "values": [
+        0.996978559860772,
+        0.29678709838729833,
+        0.43634679601238213
+      ]
+    }
+  },
+  "agreement": {
+    "b_commitment_span_iou_mean": 0.6333333333333333,
+    "b_commitment_span_iou_share_ge_0_5": 0.6333333333333333,
+    "c_consideration_kappa": 1.0,
+    "f_criterion_family_kappa": 0.996978559860772,
+    "gates": {
+      "B": false,
+      "C": true,
+      "F": true
+    },
+    "overlap_count": 30
+  },
+  "agreements_by_reviewer": {
+    "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/review_sample_30_annotations_recalibrated.jsonl": {
+      "b_commitment_span_iou_mean": 0.6333333333333333,
+      "b_commitment_span_iou_share_ge_0_5": 0.6333333333333333,
+      "c_consideration_kappa": 1.0,
+      "f_criterion_family_kappa": 0.996978559860772,
+      "gates": {
+        "B": false,
+        "C": true,
+        "F": true
+      },
+      "overlap_count": 30
+    },
+    "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/review_sample_30_annotations_recalibrated_02.jsonl": {
+      "b_commitment_span_iou_mean": 0.40260780814380737,
+      "b_commitment_span_iou_share_ge_0_5": 0.4666666666666667,
+      "c_consideration_kappa": 0.5833333333333333,
+      "f_criterion_family_kappa": 0.29678709838729833,
+      "gates": {
+        "B": false,
+        "C": false,
+        "F": false
+      },
+      "overlap_count": 30
+    },
+    "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/review_sample_30_annotations_recalibrated_03.jsonl": {
+      "b_commitment_span_iou_mean": 0.5320855716551695,
+      "b_commitment_span_iou_share_ge_0_5": 0.5666666666666667,
+      "c_consideration_kappa": 0.5833333333333333,
+      "f_criterion_family_kappa": 0.43634679601238213,
+      "gates": {
+        "B": false,
+        "C": false,
+        "F": false
+      },
+      "overlap_count": 30
+    }
+  },
+  "consideration_counts": {
+    "early_collapse": 65,
+    "sustained_multi_consideration": 435
+  },
+  "coverage_family_counts": {
+    "authority_constraint": 72,
+    "autonomy_boundary": 103,
+    "close_relationship_obligation": 44,
+    "concrete_recommendation": 319,
+    "decision_procedure": 229,
+    "disclosure_transparency_conflict": 171,
+    "epistemic_uncertainty": 97,
+    "explain_consequences": 408,
+    "fairness_access_conflict": 103,
+    "identify_options": 165,
+    "identify_stakeholders": 50,
+    "institutional_policy_constraint": 148,
+    "legal_policy_compliance": 129,
+    "loyalty_relationship": 143,
+    "other_process": 314,
+    "preserve_relationships": 75,
+    "privacy_monitoring_conflict": 60,
+    "public_harm_resource_tradeoff": 128,
+    "public_safety": 209,
+    "respect_values_autonomy": 60,
+    "risk_mitigation": 85,
+    "summarize_core_dilemma": 312,
+    "tailored_next_steps": 142,
+    "uncertainty_incomplete_info": 59,
+    "weigh_tradeoffs": 368
+  },
+  "expected_primary_count": 500,
+  "family_count": 25,
+  "family_ids": [
+    "authority_constraint",
+    "autonomy_boundary",
+    "close_relationship_obligation",
+    "concrete_recommendation",
+    "decision_procedure",
+    "disclosure_transparency_conflict",
+    "epistemic_uncertainty",
+    "explain_consequences",
+    "fairness_access_conflict",
+    "identify_options",
+    "identify_stakeholders",
+    "institutional_policy_constraint",
+    "legal_policy_compliance",
+    "loyalty_relationship",
+    "other_process",
+    "preserve_relationships",
+    "privacy_monitoring_conflict",
+    "public_harm_resource_tradeoff",
+    "public_safety",
+    "respect_values_autonomy",
+    "risk_mitigation",
+    "summarize_core_dilemma",
+    "tailored_next_steps",
+    "uncertainty_incomplete_info",
+    "weigh_tradeoffs"
+  ],
+  "pairwise_reviewer_agreements": {
+    "review_sample_30_annotations_recalibrated.jsonl__vs__review_sample_30_annotations_recalibrated_02.jsonl": {
+      "b_commitment_span_iou_mean": 0.5344822468429133,
+      "b_commitment_span_iou_share_ge_0_5": 0.6333333333333333,
+      "c_consideration_kappa": 0.5833333333333333,
+      "f_criterion_family_kappa": 0.30084481251820716,
+      "gates": {
+        "B": false,
+        "C": false,
+        "F": false
+      },
+      "overlap_count": 30
+    },
+    "review_sample_30_annotations_recalibrated.jsonl__vs__review_sample_30_annotations_recalibrated_03.jsonl": {
+      "b_commitment_span_iou_mean": 0.7774526070585525,
+      "b_commitment_span_iou_share_ge_0_5": 0.8333333333333334,
+      "c_consideration_kappa": 0.5833333333333333,
+      "f_criterion_family_kappa": 0.44001233596013534,
+      "gates": {
+        "B": true,
+        "C": false,
+        "F": false
+      },
+      "overlap_count": 30
+    },
+    "review_sample_30_annotations_recalibrated_02.jsonl__vs__review_sample_30_annotations_recalibrated_03.jsonl": {
+      "b_commitment_span_iou_mean": 0.6148429669880262,
+      "b_commitment_span_iou_share_ge_0_5": 0.6333333333333333,
+      "c_consideration_kappa": 1.0,
+      "f_criterion_family_kappa": 0.3753417742817482,
+      "gates": {
+        "B": false,
+        "C": true,
+        "F": false
+      },
+      "overlap_count": 30
+    }
+  },
+  "primary_annotation_count": 500,
+  "reviewer_annotation_count": 30,
+  "reviewer_path": "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/review_sample_30_annotations_recalibrated.jsonl",
+  "reviewer_paths": [
+    "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/review_sample_30_annotations_recalibrated.jsonl",
+    "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/review_sample_30_annotations_recalibrated_02.jsonl",
+    "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/annotations/review_sample_30_annotations_recalibrated_03.jsonl"
+  ],
+  "rows_with_errors": {},
+  "validation_error_count": 0
+}

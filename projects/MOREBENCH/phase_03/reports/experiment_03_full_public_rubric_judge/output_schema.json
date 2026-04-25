@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["results"],
+  "additionalProperties": false,
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "row_id",
+          "helpful_score",
+          "harmless_score",
+          "recommendation_clarity",
+          "tradeoff_balance",
+          "tailored_actionability",
+          "harm_vector_addressed",
+          "helpful_rationale",
+          "harmless_rationale"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "row_id": {"type": "string"},
+          "helpful_score": {"type": "integer", "minimum": 0, "maximum": 3},
+          "harmless_score": {"type": "integer", "minimum": 0, "maximum": 3},
+          "recommendation_clarity": {"type": "boolean"},
+          "tradeoff_balance": {"type": "boolean"},
+          "tailored_actionability": {"type": "boolean"},
+          "harm_vector_addressed": {"type": "boolean"},
+          "helpful_rationale": {"type": "string"},
+          "harmless_rationale": {"type": "string"}
+        }
+      }
+    }
+  }
+}

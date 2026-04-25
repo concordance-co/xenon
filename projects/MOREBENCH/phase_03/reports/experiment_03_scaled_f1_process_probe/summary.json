@@ -1,0 +1,2957 @@
+{
+  "best_table": [
+    {
+      "best_layer": 8,
+      "cv_auroc": 0.515549255846917,
+      "cv_balanced_accuracy": 0.46803685329553507,
+      "family_id": "risk_mitigation",
+      "holdout_auroc": 0.6574821508329238,
+      "holdout_balanced_accuracy": 0.5553640162269421,
+      "length_holdout_auroc": 0.5327746656921623,
+      "length_holdout_balanced_accuracy": 0.4886485517175787,
+      "n_neg": 415,
+      "n_pos": 85,
+      "prompt_text_holdout_auroc": 0.6464726381516785,
+      "prompt_text_holdout_balanced_accuracy": 0.5684527902809036,
+      "shuffle_best_auroc_p95": 0.6418660032756314,
+      "shuffle_empirical_p": 0.16666666666666666,
+      "target_group": "primary_process"
+    },
+    {
+      "best_layer": 4,
+      "cv_auroc": 0.536682834077249,
+      "cv_balanced_accuracy": 0.5127459353196152,
+      "family_id": "decision_procedure",
+      "holdout_auroc": 0.5662486882716049,
+      "holdout_balanced_accuracy": 0.5494328703703704,
+      "length_holdout_auroc": 0.45455744598765435,
+      "length_holdout_balanced_accuracy": 0.47223379629629625,
+      "n_neg": 271,
+      "n_pos": 229,
+      "prompt_text_holdout_auroc": 0.468976350308642,
+      "prompt_text_holdout_balanced_accuracy": 0.47378472222222223,
+      "shuffle_best_auroc_p95": 0.5562202101593001,
+      "shuffle_empirical_p": 0.16666666666666666,
+      "target_group": "primary_process"
+    },
+    {
+      "best_layer": 40,
+      "cv_auroc": 0.5013686014683687,
+      "cv_balanced_accuracy": 0.48312910900207207,
+      "family_id": "epistemic_uncertainty",
+      "holdout_auroc": 0.5633191616423324,
+      "holdout_balanced_accuracy": 0.5228755407871262,
+      "length_holdout_auroc": 0.5232243761207176,
+      "length_holdout_balanced_accuracy": 0.49767936162753235,
+      "n_neg": 403,
+      "n_pos": 97,
+      "prompt_text_holdout_auroc": 0.5279722112801382,
+      "prompt_text_holdout_balanced_accuracy": 0.4826333896455848,
+      "shuffle_best_auroc_p95": 0.5386149663488171,
+      "shuffle_empirical_p": 0.16666666666666666,
+      "target_group": "primary_process"
+    },
+    {
+      "best_layer": 16,
+      "cv_auroc": 0.4691813658977838,
+      "cv_balanced_accuracy": 0.4650836725463591,
+      "family_id": "identify_options",
+      "holdout_auroc": 0.5057043086592439,
+      "holdout_balanced_accuracy": 0.5013736205571191,
+      "length_holdout_auroc": 0.48439248529354284,
+      "length_holdout_balanced_accuracy": 0.5009968911931564,
+      "n_neg": 335,
+      "n_pos": 165,
+      "prompt_text_holdout_auroc": 0.5726734005535454,
+      "prompt_text_holdout_balanced_accuracy": 0.49903532062449746,
+      "shuffle_best_auroc_p95": 0.5544099768462092,
+      "shuffle_empirical_p": 1.0,
+      "target_group": "primary_process"
+    },
+    {
+      "best_layer": 0,
+      "cv_auroc": 0.49719686836100396,
+      "cv_balanced_accuracy": 0.5027932960893855,
+      "family_id": "tailored_next_steps",
+      "holdout_auroc": 0.503125,
+      "holdout_balanced_accuracy": 0.503125,
+      "length_holdout_auroc": 0.5677596222873056,
+      "length_holdout_balanced_accuracy": 0.5024490945462897,
+      "n_neg": 358,
+      "n_pos": 142,
+      "prompt_text_holdout_auroc": 0.48492496445507616,
+      "prompt_text_holdout_balanced_accuracy": 0.4508863903351519,
+      "shuffle_best_auroc_p95": 0.6079604574161022,
+      "shuffle_empirical_p": 1.0,
+      "target_group": "primary_process"
+    },
+    {
+      "best_layer": 0,
+      "cv_auroc": 0.5008888888888889,
+      "cv_balanced_accuracy": 0.5022222222222222,
+      "family_id": "identify_stakeholders",
+      "holdout_auroc": 0.5026041666666667,
+      "holdout_balanced_accuracy": 0.5026041666666666,
+      "length_holdout_auroc": 0.5895044525191584,
+      "length_holdout_balanced_accuracy": 0.5274409346100523,
+      "n_neg": 450,
+      "n_pos": 50,
+      "prompt_text_holdout_auroc": 0.504266581729817,
+      "prompt_text_holdout_balanced_accuracy": 0.4973958333333333,
+      "shuffle_best_auroc_p95": 0.6035198395241401,
+      "shuffle_empirical_p": 1.0,
+      "target_group": "primary_process"
+    },
+    {
+      "best_layer": 4,
+      "cv_auroc": 0.5841884776509474,
+      "cv_balanced_accuracy": 0.48449210192551595,
+      "family_id": "uncertainty_incomplete_info",
+      "holdout_auroc": 0.5682900844520768,
+      "holdout_balanced_accuracy": 0.610051649849884,
+      "length_holdout_auroc": 0.4135817341950747,
+      "length_holdout_balanced_accuracy": 0.5118951124444191,
+      "n_neg": 441,
+      "n_pos": 59,
+      "prompt_text_holdout_auroc": 0.38866189151987607,
+      "prompt_text_holdout_balanced_accuracy": 0.5017198307395584,
+      "shuffle_best_auroc_p95": 0.6749817246079619,
+      "shuffle_empirical_p": 0.6666666666666666,
+      "target_group": "secondary_uncertainty_duplicate_check"
+    }
+  ],
+  "capture_artifact_id": "capture_1_f2a9e4531dec",
+  "families": {
+    "decision_procedure": {
+      "best": {
+        "cv_auroc": 0.536682834077249,
+        "cv_balanced_accuracy": 0.5127459353196152,
+        "layer": 4,
+        "source_family_holdout_auroc": 0.5662486882716049,
+        "source_family_holdout_balanced_accuracy": 0.5494328703703704
+      },
+      "class_counts": {
+        "0": 271,
+        "1": 229
+      },
+      "eligible": true,
+      "frequency_baseline_auroc": 0.5,
+      "layers": {
+        "0": {
+          "cv": {
+            "auroc": 0.49825972058847223,
+            "balanced_accuracy": 0.503690036900369,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5046296296296297,
+            "balanced_accuracy": 0.5046296296296297,
+            "folds": [
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5185185185185186,
+                "balanced_accuracy": 0.5185185185185185,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "16": {
+          "cv": {
+            "auroc": 0.5827841247844793,
+            "balanced_accuracy": 0.5449733318293881,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5106787037037037,
+            "balanced_accuracy": 0.5125925925925925,
+            "folds": [
+              {
+                "auroc": 0.47540000000000004,
+                "balanced_accuracy": 0.505,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5025,
+                "balanced_accuracy": 0.5083333333333333,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4537037037037037,
+                "balanced_accuracy": 0.41203703703703703,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.611111111111111,
+                "balanced_accuracy": 0.625,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "28": {
+          "cv": {
+            "auroc": 0.5469069756199746,
+            "balanced_accuracy": 0.5454647996261621,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4036420138888889,
+            "balanced_accuracy": 0.42622685185185183,
+            "folds": [
+              {
+                "auroc": 0.43620000000000003,
+                "balanced_accuracy": 0.45999999999999996,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4144791666666667,
+                "balanced_accuracy": 0.44166666666666665,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.39814814814814814,
+                "balanced_accuracy": 0.4560185185185185,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3657407407407407,
+                "balanced_accuracy": 0.3472222222222222,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "36": {
+          "cv": {
+            "auroc": 0.5461254612546126,
+            "balanced_accuracy": 0.5194492337936479,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.40872893518518516,
+            "balanced_accuracy": 0.40921296296296295,
+            "folds": [
+              {
+                "auroc": 0.4598,
+                "balanced_accuracy": 0.435,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.47604166666666664,
+                "balanced_accuracy": 0.475,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.36111111111111116,
+                "balanced_accuracy": 0.37962962962962965,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3379629629629629,
+                "balanced_accuracy": 0.3472222222222222,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "4": {
+          "cv": {
+            "auroc": 0.536682834077249,
+            "balanced_accuracy": 0.5127459353196152,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5662486882716049,
+            "balanced_accuracy": 0.5494328703703704,
+            "folds": [
+              {
+                "auroc": 0.5216999999999999,
+                "balanced_accuracy": 0.51,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.49020833333333336,
+                "balanced_accuracy": 0.4979166666666667,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5540123456790124,
+                "balanced_accuracy": 0.537037037037037,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.6990740740740741,
+                "balanced_accuracy": 0.6527777777777778,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "40": {
+          "cv": {
+            "auroc": 0.5740988414250955,
+            "balanced_accuracy": 0.5583799287774537,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.436084837962963,
+            "balanced_accuracy": 0.46778935185185183,
+            "folds": [
+              {
+                "auroc": 0.48279999999999995,
+                "balanced_accuracy": 0.47,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.49302083333333335,
+                "balanced_accuracy": 0.5145833333333334,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.337962962962963,
+                "balanced_accuracy": 0.44212962962962965,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.4305555555555556,
+                "balanced_accuracy": 0.4444444444444444,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "44": {
+          "cv": {
+            "auroc": 0.5776760824376803,
+            "balanced_accuracy": 0.5369164827019449,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4906211419753087,
+            "balanced_accuracy": 0.47023148148148153,
+            "folds": [
+              {
+                "auroc": 0.48750000000000004,
+                "balanced_accuracy": 0.48,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4904166666666667,
+                "balanced_accuracy": 0.5166666666666667,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.38734567901234573,
+                "balanced_accuracy": 0.3564814814814815,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5972222222222222,
+                "balanced_accuracy": 0.5277777777777778,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "8": {
+          "cv": {
+            "auroc": 0.5611756554246766,
+            "balanced_accuracy": 0.5493401440564625,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5452231481481482,
+            "balanced_accuracy": 0.5137037037037037,
+            "folds": [
+              {
+                "auroc": 0.5358,
+                "balanced_accuracy": 0.515,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5108333333333333,
+                "balanced_accuracy": 0.49583333333333335,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5370370370370371,
+                "balanced_accuracy": 0.5023148148148149,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5972222222222221,
+                "balanced_accuracy": 0.5416666666666666,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        }
+      },
+      "length_baseline": {
+        "auroc": 0.45455744598765435,
+        "balanced_accuracy": 0.47223379629629625,
+        "folds": [
+          {
+            "auroc": 0.47980000000000006,
+            "balanced_accuracy": 0.51,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.4711458333333333,
+            "balanced_accuracy": 0.46458333333333335,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.4922839506172839,
+            "balanced_accuracy": 0.5115740740740741,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.375,
+            "balanced_accuracy": 0.4027777777777778,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "n": 500,
+      "prompt_text_baseline": {
+        "auroc": 0.468976350308642,
+        "balanced_accuracy": 0.47378472222222223,
+        "folds": [
+          {
+            "auroc": 0.5254000000000001,
+            "balanced_accuracy": 0.525,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.4909375,
+            "balanced_accuracy": 0.5020833333333333,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.47530864197530864,
+            "balanced_accuracy": 0.4236111111111111,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.38425925925925924,
+            "balanced_accuracy": 0.4444444444444444,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "shuffle_null": {
+        "best_holdout_auroc_mean": 0.5472309997777496,
+        "best_holdout_auroc_p95": 0.5562202101593001,
+        "best_holdout_aurocs": [
+          0.5574351794525567,
+          0.5422240624629664,
+          0.5513603329862737,
+          0.5484694764245363,
+          0.5366659475624144
+        ],
+        "empirical_p_best_ge_real": 0.16666666666666666,
+        "permutations": 5,
+        "valid_permutations": 5
+      },
+      "target_group": "primary_process"
+    },
+    "epistemic_uncertainty": {
+      "best": {
+        "cv_auroc": 0.5013686014683687,
+        "cv_balanced_accuracy": 0.48312910900207207,
+        "layer": 40,
+        "source_family_holdout_auroc": 0.5633191616423324,
+        "source_family_holdout_balanced_accuracy": 0.5228755407871262
+      },
+      "class_counts": {
+        "0": 403,
+        "1": 97
+      },
+      "eligible": true,
+      "frequency_baseline_auroc": 0.5,
+      "layers": {
+        "0": {
+          "cv": {
+            "auroc": 0.4923255992427925,
+            "balanced_accuracy": 0.4961627996213962,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5029761904761905,
+            "balanced_accuracy": 0.5029761904761905,
+            "folds": [
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5119047619047619,
+                "balanced_accuracy": 0.5119047619047619,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "16": {
+          "cv": {
+            "auroc": 0.46565705661149626,
+            "balanced_accuracy": 0.46289427233890157,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.46702423874679977,
+            "balanced_accuracy": 0.4828937576650991,
+            "folds": [
+              {
+                "auroc": 0.5348193473193473,
+                "balanced_accuracy": 0.5116550116550117,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.51659891598916,
+                "balanced_accuracy": 0.5179539295392954,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.328042328042328,
+                "balanced_accuracy": 0.38492063492063494,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.48863636363636365,
+                "balanced_accuracy": 0.5170454545454546,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "28": {
+          "cv": {
+            "auroc": 0.530863881711903,
+            "balanced_accuracy": 0.5008825560870789,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5561056067915824,
+            "balanced_accuracy": 0.5122587439660611,
+            "folds": [
+              {
+                "auroc": 0.5323426573426574,
+                "balanced_accuracy": 0.5023310023310024,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5294715447154472,
+                "balanced_accuracy": 0.4779810298102981,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.45238095238095244,
+                "balanced_accuracy": 0.5119047619047619,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.7102272727272727,
+                "balanced_accuracy": 0.5568181818181819,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "36": {
+          "cv": {
+            "auroc": 0.5173313550433604,
+            "balanced_accuracy": 0.47988027934818756,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5151731596091352,
+            "balanced_accuracy": 0.5044227029745323,
+            "folds": [
+              {
+                "auroc": 0.5458916083916084,
+                "balanced_accuracy": 0.5311771561771561,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.45308265582655827,
+                "balanced_accuracy": 0.48407859078590787,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5105820105820106,
+                "balanced_accuracy": 0.42857142857142855,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5511363636363636,
+                "balanced_accuracy": 0.5738636363636364,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "4": {
+          "cv": {
+            "auroc": 0.5110639277583076,
+            "balanced_accuracy": 0.49735233173876336,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4800054281761599,
+            "balanced_accuracy": 0.4797346538962393,
+            "folds": [
+              {
+                "auroc": 0.48499417249417254,
+                "balanced_accuracy": 0.50495337995338,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.48390921409214094,
+                "balanced_accuracy": 0.48712737127371275,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5079365079365079,
+                "balanced_accuracy": 0.43253968253968256,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.4431818181818182,
+                "balanced_accuracy": 0.4943181818181818,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "40": {
+          "cv": {
+            "auroc": 0.5013686014683687,
+            "balanced_accuracy": 0.48312910900207207,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5633191616423324,
+            "balanced_accuracy": 0.5228755407871262,
+            "folds": [
+              {
+                "auroc": 0.5574009324009325,
+                "balanced_accuracy": 0.4991258741258741,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5089769647696477,
+                "balanced_accuracy": 0.5149051490514904,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4312169312169312,
+                "balanced_accuracy": 0.4126984126984127,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.7556818181818182,
+                "balanced_accuracy": 0.6647727272727273,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "44": {
+          "cv": {
+            "auroc": 0.4815430661789159,
+            "balanced_accuracy": 0.49735233173876336,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5045849306520038,
+            "balanced_accuracy": 0.5350841570353766,
+            "folds": [
+              {
+                "auroc": 0.5084498834498834,
+                "balanced_accuracy": 0.4798951048951049,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.49491869918699183,
+                "balanced_accuracy": 0.4847560975609756,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4126984126984127,
+                "balanced_accuracy": 0.4484126984126984,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.6022727272727273,
+                "balanced_accuracy": 0.7272727272727273,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "8": {
+          "cv": {
+            "auroc": 0.41009439512931367,
+            "balanced_accuracy": 0.43215829730628535,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.43043233020367166,
+            "balanced_accuracy": 0.44757787097726126,
+            "folds": [
+              {
+                "auroc": 0.44944638694638694,
+                "balanced_accuracy": 0.47785547785547783,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.36517615176151763,
+                "balanced_accuracy": 0.4451219512195122,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.373015873015873,
+                "balanced_accuracy": 0.373015873015873,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5340909090909092,
+                "balanced_accuracy": 0.4943181818181818,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        }
+      },
+      "length_baseline": {
+        "auroc": 0.5232243761207176,
+        "balanced_accuracy": 0.49767936162753235,
+        "folds": [
+          {
+            "auroc": 0.46882284382284384,
+            "balanced_accuracy": 0.4577505827505828,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.49712059620596205,
+            "balanced_accuracy": 0.4742547425474255,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.4735449735449735,
+            "balanced_accuracy": 0.41666666666666663,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.6534090909090908,
+            "balanced_accuracy": 0.6420454545454546,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "n": 500,
+      "prompt_text_baseline": {
+        "auroc": 0.5279722112801382,
+        "balanced_accuracy": 0.4826333896455848,
+        "folds": [
+          {
+            "auroc": 0.4982517482517482,
+            "balanced_accuracy": 0.5113636363636364,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.4981368563685637,
+            "balanced_accuracy": 0.5003387533875339,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5132275132275133,
+            "balanced_accuracy": 0.4642857142857143,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.6022727272727273,
+            "balanced_accuracy": 0.45454545454545453,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "shuffle_null": {
+        "best_holdout_auroc_mean": 0.5309220179053814,
+        "best_holdout_auroc_p95": 0.5386149663488171,
+        "best_holdout_aurocs": [
+          0.5323632440481165,
+          0.5308591418139894,
+          0.529233540558102,
+          0.5401778969239923,
+          0.5219762661827071
+        ],
+        "empirical_p_best_ge_real": 0.16666666666666666,
+        "permutations": 5,
+        "valid_permutations": 5
+      },
+      "target_group": "primary_process"
+    },
+    "identify_options": {
+      "best": {
+        "cv_auroc": 0.4691813658977838,
+        "cv_balanced_accuracy": 0.4650836725463591,
+        "layer": 16,
+        "source_family_holdout_auroc": 0.5057043086592439,
+        "source_family_holdout_balanced_accuracy": 0.5013736205571191
+      },
+      "class_counts": {
+        "0": 335,
+        "1": 165
+      },
+      "eligible": true,
+      "frequency_baseline_auroc": 0.5,
+      "layers": {
+        "0": {
+          "cv": {
+            "auroc": 0.5011940298507462,
+            "balanced_accuracy": 0.5029850746268657,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5030487804878049,
+            "balanced_accuracy": 0.5030487804878049,
+            "folds": [
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5121951219512195,
+                "balanced_accuracy": 0.5121951219512195,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "16": {
+          "cv": {
+            "auroc": 0.4691813658977838,
+            "balanced_accuracy": 0.4650836725463591,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5057043086592439,
+            "balanced_accuracy": 0.5013736205571191,
+            "folds": [
+              {
+                "auroc": 0.5512087912087913,
+                "balanced_accuracy": 0.5384615384615384,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.49587673611111116,
+                "balanced_accuracy": 0.4865451388888889,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.6707317073170731,
+                "balanced_accuracy": 0.5804878048780489,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.305,
+                "balanced_accuracy": 0.4,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "28": {
+          "cv": {
+            "auroc": 0.5003346901854364,
+            "balanced_accuracy": 0.5043871551334238,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4760856191043881,
+            "balanced_accuracy": 0.48822081648872806,
+            "folds": [
+              {
+                "auroc": 0.5046153846153847,
+                "balanced_accuracy": 0.47747252747252744,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5258246527777778,
+                "balanced_accuracy": 0.5321180555555556,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4439024390243902,
+                "balanced_accuracy": 0.4682926829268293,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.43,
+                "balanced_accuracy": 0.475,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "36": {
+          "cv": {
+            "auroc": 0.5143554952510176,
+            "balanced_accuracy": 0.49226594301221166,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4787134702981216,
+            "balanced_accuracy": 0.4797819717122308,
+            "folds": [
+              {
+                "auroc": 0.5445054945054946,
+                "balanced_accuracy": 0.49945054945054945,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5237630208333334,
+                "balanced_accuracy": 0.5026041666666666,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.43658536585365854,
+                "balanced_accuracy": 0.4670731707317073,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.41000000000000003,
+                "balanced_accuracy": 0.45,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "4": {
+          "cv": {
+            "auroc": 0.4552329262777024,
+            "balanced_accuracy": 0.4397557666214383,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5013138222084487,
+            "balanced_accuracy": 0.4797579379038983,
+            "folds": [
+              {
+                "auroc": 0.5159340659340659,
+                "balanced_accuracy": 0.5192307692307693,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.48480902777777773,
+                "balanced_accuracy": 0.5321180555555556,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5195121951219512,
+                "balanced_accuracy": 0.44268292682926824,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.485,
+                "balanced_accuracy": 0.425,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "40": {
+          "cv": {
+            "auroc": 0.4889190411578471,
+            "balanced_accuracy": 0.4936680235187698,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.44440721908828806,
+            "balanced_accuracy": 0.46171851733970637,
+            "folds": [
+              {
+                "auroc": 0.5073626373626373,
+                "balanced_accuracy": 0.4686813186813187,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.46733940972222227,
+                "balanced_accuracy": 0.5086805555555556,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.48292682926829267,
+                "balanced_accuracy": 0.4695121951219512,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.32,
+                "balanced_accuracy": 0.4,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "44": {
+          "cv": {
+            "auroc": 0.49924920850293986,
+            "balanced_accuracy": 0.5073722297602895,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5003149574743515,
+            "balanced_accuracy": 0.5088309355363472,
+            "folds": [
+              {
+                "auroc": 0.49142857142857144,
+                "balanced_accuracy": 0.4703296703296703,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4659288194444444,
+                "balanced_accuracy": 0.5217013888888888,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5439024390243903,
+                "balanced_accuracy": 0.5682926829268293,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.475,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "8": {
+          "cv": {
+            "auroc": 0.4360379918588874,
+            "balanced_accuracy": 0.4470827679782904,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.43118213037491815,
+            "balanced_accuracy": 0.44393840248927907,
+            "folds": [
+              {
+                "auroc": 0.4641758241758242,
+                "balanced_accuracy": 0.46483516483516485,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4276258680555555,
+                "balanced_accuracy": 0.44140625,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5829268292682928,
+                "balanced_accuracy": 0.5195121951219512,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.25,
+                "balanced_accuracy": 0.35,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        }
+      },
+      "length_baseline": {
+        "auroc": 0.48439248529354284,
+        "balanced_accuracy": 0.5009968911931564,
+        "folds": [
+          {
+            "auroc": 0.5261538461538461,
+            "balanced_accuracy": 0.5302197802197802,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5348307291666667,
+            "balanced_accuracy": 0.5286458333333333,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.43658536585365854,
+            "balanced_accuracy": 0.4951219512195122,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.44,
+            "balanced_accuracy": 0.44999999999999996,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "n": 500,
+      "prompt_text_baseline": {
+        "auroc": 0.5726734005535454,
+        "balanced_accuracy": 0.49903532062449746,
+        "folds": [
+          {
+            "auroc": 0.5234065934065933,
+            "balanced_accuracy": 0.49835164835164836,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5386284722222222,
+            "balanced_accuracy": 0.484375,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.6536585365853659,
+            "balanced_accuracy": 0.5134146341463415,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.575,
+            "balanced_accuracy": 0.5,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "shuffle_null": {
+        "best_holdout_auroc_mean": 0.5419942317393971,
+        "best_holdout_auroc_p95": 0.5544099768462092,
+        "best_holdout_aurocs": [
+          0.5405402121073398,
+          0.5492315986790685,
+          0.5557045713879943,
+          0.5262575391676279,
+          0.5382372373549547
+        ],
+        "empirical_p_best_ge_real": 1.0,
+        "permutations": 5,
+        "valid_permutations": 5
+      },
+      "target_group": "primary_process"
+    },
+    "identify_stakeholders": {
+      "best": {
+        "cv_auroc": 0.5008888888888889,
+        "cv_balanced_accuracy": 0.5022222222222222,
+        "layer": 0,
+        "source_family_holdout_auroc": 0.5026041666666667,
+        "source_family_holdout_balanced_accuracy": 0.5026041666666666
+      },
+      "class_counts": {
+        "0": 450,
+        "1": 50
+      },
+      "eligible": true,
+      "frequency_baseline_auroc": 0.5,
+      "layers": {
+        "0": {
+          "cv": {
+            "auroc": 0.5008888888888889,
+            "balanced_accuracy": 0.5022222222222222,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5026041666666667,
+            "balanced_accuracy": 0.5026041666666666,
+            "folds": [
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5104166666666667,
+                "balanced_accuracy": 0.5104166666666666,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "16": {
+          "cv": {
+            "auroc": 0.5042666666666666,
+            "balanced_accuracy": 0.508888888888889,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4196958429188822,
+            "balanced_accuracy": 0.4804339349376114,
+            "folds": [
+              {
+                "auroc": 0.4480392156862745,
+                "balanced_accuracy": 0.5294117647058824,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.41670094611271086,
+                "balanced_accuracy": 0.46524064171123,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.3819444444444444,
+                "balanced_accuracy": 0.4270833333333333,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.4320987654320988,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "28": {
+          "cv": {
+            "auroc": 0.4471111111111111,
+            "balanced_accuracy": 0.47777777777777775,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.353756227432698,
+            "balanced_accuracy": 0.49107620320855616,
+            "folds": [
+              {
+                "auroc": 0.38764705882352946,
+                "balanced_accuracy": 0.5460784313725491,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4718222953517071,
+                "balanced_accuracy": 0.45989304812834225,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4444444444444445,
+                "balanced_accuracy": 0.4583333333333333,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.1111111111111111,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "36": {
+          "cv": {
+            "auroc": 0.43160000000000004,
+            "balanced_accuracy": 0.45777777777777773,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.44492149689453614,
+            "balanced_accuracy": 0.4803382381507381,
+            "folds": [
+              {
+                "auroc": 0.5188235294117647,
+                "balanced_accuracy": 0.5098039215686274,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.47922665569724393,
+                "balanced_accuracy": 0.49835458658988074,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4236111111111111,
+                "balanced_accuracy": 0.46875,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3580246913580247,
+                "balanced_accuracy": 0.4444444444444444,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "4": {
+          "cv": {
+            "auroc": 0.5067555555555554,
+            "balanced_accuracy": 0.48333333333333334,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.45272187688854354,
+            "balanced_accuracy": 0.5010833019105078,
+            "folds": [
+              {
+                "auroc": 0.5043137254901962,
+                "balanced_accuracy": 0.47745098039215683,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5257095845331139,
+                "balanced_accuracy": 0.48868778280542985,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.47222222222222215,
+                "balanced_accuracy": 0.59375,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.308641975308642,
+                "balanced_accuracy": 0.4444444444444444,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "40": {
+          "cv": {
+            "auroc": 0.42879999999999996,
+            "balanced_accuracy": 0.4633333333333333,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4098680717430717,
+            "balanced_accuracy": 0.472954421667657,
+            "folds": [
+              {
+                "auroc": 0.5498039215686275,
+                "balanced_accuracy": 0.5127450980392158,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.48087206910736324,
+                "balanced_accuracy": 0.4786096256684492,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.31249999999999994,
+                "balanced_accuracy": 0.4375,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.29629629629629634,
+                "balanced_accuracy": 0.46296296296296297,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "44": {
+          "cv": {
+            "auroc": 0.5516444444444445,
+            "balanced_accuracy": 0.5377777777777778,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4844311198968062,
+            "balanced_accuracy": 0.5190090240641712,
+            "folds": [
+              {
+                "auroc": 0.5586274509803921,
+                "balanced_accuracy": 0.5245098039215687,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.544220485396956,
+                "balanced_accuracy": 0.4786096256684492,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5138888888888888,
+                "balanced_accuracy": 0.5729166666666666,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3209876543209877,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "8": {
+          "cv": {
+            "auroc": 0.45391111111111115,
+            "balanced_accuracy": 0.4588888888888889,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.443709766087217,
+            "balanced_accuracy": 0.5085600299754711,
+            "folds": [
+              {
+                "auroc": 0.4531372549019608,
+                "balanced_accuracy": 0.4970588235294118,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5146030440148087,
+                "balanced_accuracy": 0.46194981489099135,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.7083333333333333,
+                "balanced_accuracy": 0.59375,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.09876543209876543,
+                "balanced_accuracy": 0.48148148148148145,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        }
+      },
+      "length_baseline": {
+        "auroc": 0.5895044525191584,
+        "balanced_accuracy": 0.5274409346100523,
+        "folds": [
+          {
+            "auroc": 0.5062745098039215,
+            "balanced_accuracy": 0.48039215686274506,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5137803373097491,
+            "balanced_accuracy": 0.5020567667626491,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.7083333333333333,
+            "balanced_accuracy": 0.6458333333333334,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.6296296296296297,
+            "balanced_accuracy": 0.48148148148148145,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "n": 500,
+      "prompt_text_baseline": {
+        "auroc": 0.504266581729817,
+        "balanced_accuracy": 0.4973958333333333,
+        "folds": [
+          {
+            "auroc": 0.5443137254901961,
+            "balanced_accuracy": 0.5,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.586178527354998,
+            "balanced_accuracy": 0.5,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.2569444444444444,
+            "balanced_accuracy": 0.4895833333333333,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.6296296296296297,
+            "balanced_accuracy": 0.5,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "shuffle_null": {
+        "best_holdout_auroc_mean": 0.5467101013834703,
+        "best_holdout_auroc_p95": 0.6035198395241401,
+        "best_holdout_aurocs": [
+          0.5205117282155666,
+          0.5683088093370879,
+          0.529629594516016,
+          0.6123225970709032,
+          0.5027777777777778
+        ],
+        "empirical_p_best_ge_real": 1.0,
+        "permutations": 5,
+        "valid_permutations": 5
+      },
+      "target_group": "primary_process"
+    },
+    "risk_mitigation": {
+      "best": {
+        "cv_auroc": 0.515549255846917,
+        "cv_balanced_accuracy": 0.46803685329553507,
+        "layer": 8,
+        "source_family_holdout_auroc": 0.6574821508329238,
+        "source_family_holdout_balanced_accuracy": 0.5553640162269421
+      },
+      "class_counts": {
+        "0": 415,
+        "1": 85
+      },
+      "eligible": true,
+      "frequency_baseline_auroc": 0.5,
+      "layers": {
+        "0": {
+          "cv": {
+            "auroc": 0.48727143869596024,
+            "balanced_accuracy": 0.4929128277817151,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.49709302325581395,
+            "balanced_accuracy": 0.49709302325581395,
+            "folds": [
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4883720930232558,
+                "balanced_accuracy": 0.4883720930232558,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "16": {
+          "cv": {
+            "auroc": 0.5435294117647058,
+            "balanced_accuracy": 0.5053153791637137,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5618229950453524,
+            "balanced_accuracy": 0.5357479462980246,
+            "folds": [
+              {
+                "auroc": 0.51584229390681,
+                "balanced_accuracy": 0.4849462365591398,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5015473032714413,
+                "balanced_accuracy": 0.530946065428824,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5755813953488372,
+                "balanced_accuracy": 0.5159883720930232,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.654320987654321,
+                "balanced_accuracy": 0.611111111111111,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "28": {
+          "cv": {
+            "auroc": 0.4684053862508859,
+            "balanced_accuracy": 0.4761871013465627,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5265954269783675,
+            "balanced_accuracy": 0.46744429231939577,
+            "folds": [
+              {
+                "auroc": 0.4309677419354839,
+                "balanced_accuracy": 0.4473118279569892,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4440760389036251,
+                "balanced_accuracy": 0.5223253757736517,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5523255813953488,
+                "balanced_accuracy": 0.49273255813953487,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.6790123456790124,
+                "balanced_accuracy": 0.4074074074074074,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "36": {
+          "cv": {
+            "auroc": 0.49669737774627926,
+            "balanced_accuracy": 0.4617292700212615,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5282287639524579,
+            "balanced_accuracy": 0.5274562971902717,
+            "folds": [
+              {
+                "auroc": 0.5025089605734767,
+                "balanced_accuracy": 0.47813620071684587,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4699381078691424,
+                "balanced_accuracy": 0.48386383731211313,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.42441860465116277,
+                "balanced_accuracy": 0.5552325581395349,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.7160493827160495,
+                "balanced_accuracy": 0.5925925925925926,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "4": {
+          "cv": {
+            "auroc": 0.45051736357193484,
+            "balanced_accuracy": 0.4617292700212615,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4463062517213447,
+            "balanced_accuracy": 0.4384658690000381,
+            "folds": [
+              {
+                "auroc": 0.5082437275985663,
+                "balanced_accuracy": 0.46630824372759855,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4566755083996463,
+                "balanced_accuracy": 0.44297082228116713,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.561046511627907,
+                "balanced_accuracy": 0.49273255813953487,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.25925925925925924,
+                "balanced_accuracy": 0.35185185185185186,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "40": {
+          "cv": {
+            "auroc": 0.4934372785258682,
+            "balanced_accuracy": 0.46761162296243797,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.6264813239180215,
+            "balanced_accuracy": 0.5916318675896501,
+            "folds": [
+              {
+                "auroc": 0.5254480286738351,
+                "balanced_accuracy": 0.4745519713261649,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.48474801061007955,
+                "balanced_accuracy": 0.5194518125552609,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.6191860465116279,
+                "balanced_accuracy": 0.46511627906976744,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.8765432098765432,
+                "balanced_accuracy": 0.9074074074074074,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "44": {
+          "cv": {
+            "auroc": 0.46619418851878097,
+            "balanced_accuracy": 0.4606661941885188,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5926003340529602,
+            "balanced_accuracy": 0.5392696453198917,
+            "folds": [
+              {
+                "auroc": 0.490179211469534,
+                "balanced_accuracy": 0.5007168458781361,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5340406719717063,
+                "balanced_accuracy": 0.4991158267020336,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.6918604651162791,
+                "balanced_accuracy": 0.5276162790697674,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.654320987654321,
+                "balanced_accuracy": 0.6296296296296295,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "8": {
+          "cv": {
+            "auroc": 0.515549255846917,
+            "balanced_accuracy": 0.46803685329553507,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.6574821508329238,
+            "balanced_accuracy": 0.5553640162269421,
+            "folds": [
+              {
+                "auroc": 0.48845878136200716,
+                "balanced_accuracy": 0.482078853046595,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5221043324491601,
+                "balanced_accuracy": 0.5243147656940761,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.8662790697674418,
+                "balanced_accuracy": 0.6409883720930232,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.7530864197530864,
+                "balanced_accuracy": 0.5740740740740741,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        }
+      },
+      "length_baseline": {
+        "auroc": 0.5327746656921623,
+        "balanced_accuracy": 0.4886485517175787,
+        "folds": [
+          {
+            "auroc": 0.5655913978494623,
+            "balanced_accuracy": 0.5211469534050179,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5795755968169761,
+            "balanced_accuracy": 0.5223253757736517,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.627906976744186,
+            "balanced_accuracy": 0.6148255813953488,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.35802469135802467,
+            "balanced_accuracy": 0.2962962962962963,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "n": 500,
+      "prompt_text_baseline": {
+        "auroc": 0.6464726381516785,
+        "balanced_accuracy": 0.5684527902809036,
+        "folds": [
+          {
+            "auroc": 0.5843727598566308,
+            "balanced_accuracy": 0.5562724014336917,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.653183023872679,
+            "balanced_accuracy": 0.5,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.6569767441860466,
+            "balanced_accuracy": 0.5508720930232558,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.691358024691358,
+            "balanced_accuracy": 0.6666666666666666,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "shuffle_null": {
+        "best_holdout_auroc_mean": 0.5821141425272282,
+        "best_holdout_auroc_p95": 0.6418660032756314,
+        "best_holdout_aurocs": [
+          0.5376370030224868,
+          0.5554653261952887,
+          0.5928874948729377,
+          0.5704702581691226,
+          0.6541106303763048
+        ],
+        "empirical_p_best_ge_real": 0.16666666666666666,
+        "permutations": 5,
+        "valid_permutations": 5
+      },
+      "target_group": "primary_process"
+    },
+    "tailored_next_steps": {
+      "best": {
+        "cv_auroc": 0.49719686836100396,
+        "cv_balanced_accuracy": 0.5027932960893855,
+        "layer": 0,
+        "source_family_holdout_auroc": 0.503125,
+        "source_family_holdout_balanced_accuracy": 0.503125
+      },
+      "class_counts": {
+        "0": 358,
+        "1": 142
+      },
+      "eligible": true,
+      "frequency_baseline_auroc": 0.5,
+      "layers": {
+        "0": {
+          "cv": {
+            "auroc": 0.49719686836100396,
+            "balanced_accuracy": 0.5027932960893855,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.503125,
+            "balanced_accuracy": 0.503125,
+            "folds": [
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5125,
+                "balanced_accuracy": 0.5125,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "16": {
+          "cv": {
+            "auroc": 0.4623888582894012,
+            "balanced_accuracy": 0.47543079707294045,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.49325267712743426,
+            "balanced_accuracy": 0.4893726326445486,
+            "folds": [
+              {
+                "auroc": 0.47158814958717826,
+                "balanced_accuracy": 0.4391694997571637,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5318518518518518,
+                "balanced_accuracy": 0.549002849002849,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5181818181818182,
+                "balanced_accuracy": 0.5318181818181817,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.45138888888888884,
+                "balanced_accuracy": 0.4375,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "28": {
+          "cv": {
+            "auroc": 0.4986820363521913,
+            "balanced_accuracy": 0.5097962074120701,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4975837854516825,
+            "balanced_accuracy": 0.4953059681917744,
+            "folds": [
+              {
+                "auroc": 0.5439533754249636,
+                "balanced_accuracy": 0.5143273433705683,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5130484330484331,
+                "balanced_accuracy": 0.5475783475783476,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.475,
+                "balanced_accuracy": 0.4818181818181818,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.4583333333333333,
+                "balanced_accuracy": 0.4375,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "36": {
+          "cv": {
+            "auroc": 0.47503737508851995,
+            "balanced_accuracy": 0.4963805177433315,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.46103739761219126,
+            "balanced_accuracy": 0.504302540778075,
+            "folds": [
+              {
+                "auroc": 0.5008499271491016,
+                "balanced_accuracy": 0.5125060709082079,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5170370370370371,
+                "balanced_accuracy": 0.5225071225071225,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5068181818181818,
+                "balanced_accuracy": 0.46136363636363636,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3194444444444444,
+                "balanced_accuracy": 0.5208333333333334,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "4": {
+          "cv": {
+            "auroc": 0.4672082775985522,
+            "balanced_accuracy": 0.4796207412070186,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4162908056700553,
+            "balanced_accuracy": 0.4500186687109951,
+            "folds": [
+              {
+                "auroc": 0.49720738222438077,
+                "balanced_accuracy": 0.5021855269548324,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4582336182336183,
+                "balanced_accuracy": 0.5236467236467237,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.3,
+                "balanced_accuracy": 0.3784090909090909,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.4097222222222222,
+                "balanced_accuracy": 0.3958333333333333,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "40": {
+          "cv": {
+            "auroc": 0.5128058855928869,
+            "balanced_accuracy": 0.5111338421590998,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4384606465364722,
+            "balanced_accuracy": 0.46578455906558147,
+            "folds": [
+              {
+                "auroc": 0.49660029140359396,
+                "balanced_accuracy": 0.5046138902379795,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4826210826210826,
+                "balanced_accuracy": 0.4672364672364672,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.42045454545454547,
+                "balanced_accuracy": 0.3704545454545455,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.35416666666666663,
+                "balanced_accuracy": 0.5208333333333334,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "44": {
+          "cv": {
+            "auroc": 0.4833582500590133,
+            "balanced_accuracy": 0.4880006294751751,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4458649775296206,
+            "balanced_accuracy": 0.4547565778078163,
+            "folds": [
+              {
+                "auroc": 0.513234579893152,
+                "balanced_accuracy": 0.494900437105391,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.45709401709401715,
+                "balanced_accuracy": 0.49230769230769234,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.46590909090909094,
+                "balanced_accuracy": 0.45681818181818185,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3472222222222222,
+                "balanced_accuracy": 0.375,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "8": {
+          "cv": {
+            "auroc": 0.4774372491934849,
+            "balanced_accuracy": 0.5006884884727358,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.46458467094576855,
+            "balanced_accuracy": 0.4791639150247698,
+            "folds": [
+              {
+                "auroc": 0.4984215638659543,
+                "balanced_accuracy": 0.4700097134531326,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5397150997150997,
+                "balanced_accuracy": 0.48603988603988607,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.45909090909090905,
+                "balanced_accuracy": 0.5022727272727273,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3611111111111111,
+                "balanced_accuracy": 0.4583333333333333,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        }
+      },
+      "length_baseline": {
+        "auroc": 0.5677596222873056,
+        "balanced_accuracy": 0.5024490945462897,
+        "folds": [
+          {
+            "auroc": 0.48895094706168046,
+            "balanced_accuracy": 0.49684312773190864,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5214814814814814,
+            "balanced_accuracy": 0.4928774928774929,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.6772727272727272,
+            "balanced_accuracy": 0.5409090909090909,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.5833333333333333,
+            "balanced_accuracy": 0.47916666666666663,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "n": 500,
+      "prompt_text_baseline": {
+        "auroc": 0.48492496445507616,
+        "balanced_accuracy": 0.4508863903351519,
+        "folds": [
+          {
+            "auroc": 0.523069451189898,
+            "balanced_accuracy": 0.505099562894609,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5161253561253561,
+            "balanced_accuracy": 0.4863247863247863,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.4977272727272727,
+            "balanced_accuracy": 0.39545454545454545,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.40277777777777773,
+            "balanced_accuracy": 0.4166666666666667,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "shuffle_null": {
+        "best_holdout_auroc_mean": 0.5647134037460948,
+        "best_holdout_auroc_p95": 0.6079604574161022,
+        "best_holdout_aurocs": [
+          0.503125,
+          0.5307803360357047,
+          0.608963644575772,
+          0.576750329341574,
+          0.603947708777423
+        ],
+        "empirical_p_best_ge_real": 1.0,
+        "permutations": 5,
+        "valid_permutations": 5
+      },
+      "target_group": "primary_process"
+    },
+    "uncertainty_incomplete_info": {
+      "best": {
+        "cv_auroc": 0.5841884776509474,
+        "cv_balanced_accuracy": 0.48449210192551595,
+        "layer": 4,
+        "source_family_holdout_auroc": 0.5682900844520768,
+        "source_family_holdout_balanced_accuracy": 0.610051649849884
+      },
+      "class_counts": {
+        "0": 441,
+        "1": 59
+      },
+      "eligible": true,
+      "frequency_baseline_auroc": 0.5,
+      "layers": {
+        "0": {
+          "cv": {
+            "auroc": 0.4932357123640416,
+            "balanced_accuracy": 0.5022675736961452,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5025510204081632,
+            "balanced_accuracy": 0.5025510204081632,
+            "folds": [
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5102040816326531,
+                "balanced_accuracy": 0.5102040816326531,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5,
+                "balanced_accuracy": 0.5,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "16": {
+          "cv": {
+            "auroc": 0.4614320304392944,
+            "balanced_accuracy": 0.49971174910642224,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.37862003216090906,
+            "balanced_accuracy": 0.47376415650058906,
+            "folds": [
+              {
+                "auroc": 0.521577380952381,
+                "balanced_accuracy": 0.5059523809523809,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4980047885075818,
+                "balanced_accuracy": 0.5421654695397712,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.24489795918367346,
+                "balanced_accuracy": 0.41836734693877553,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.25,
+                "balanced_accuracy": 0.42857142857142855,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "28": {
+          "cv": {
+            "auroc": 0.4710403935585533,
+            "balanced_accuracy": 0.49069910450055726,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.48483190194723147,
+            "balanced_accuracy": 0.45677769187283856,
+            "folds": [
+              {
+                "auroc": 0.41573660714285715,
+                "balanced_accuracy": 0.46205357142857145,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.518488959829742,
+                "balanced_accuracy": 0.4722000532056398,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5408163265306123,
+                "balanced_accuracy": 0.42857142857142855,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.4642857142857143,
+                "balanced_accuracy": 0.4642857142857143,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "36": {
+          "cv": {
+            "auroc": 0.4836465659710212,
+            "balanced_accuracy": 0.49577232022752604,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.4096849852021814,
+            "balanced_accuracy": 0.46901810654429366,
+            "folds": [
+              {
+                "auroc": 0.482514880952381,
+                "balanced_accuracy": 0.5044642857142857,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5490822027134876,
+                "balanced_accuracy": 0.5323224261771747,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.2857142857142857,
+                "balanced_accuracy": 0.42857142857142855,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3214285714285714,
+                "balanced_accuracy": 0.4107142857142857,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "4": {
+          "cv": {
+            "auroc": 0.5841884776509474,
+            "balanced_accuracy": 0.48449210192551595,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.5682900844520768,
+            "balanced_accuracy": 0.610051649849884,
+            "folds": [
+              {
+                "auroc": 0.5504092261904762,
+                "balanced_accuracy": 0.5133928571428572,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5849960095770151,
+                "balanced_accuracy": 0.6155892524607608,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.6020408163265306,
+                "balanced_accuracy": 0.596938775510204,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.5357142857142857,
+                "balanced_accuracy": 0.7142857142857143,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "40": {
+          "cv": {
+            "auroc": 0.48918098312771435,
+            "balanced_accuracy": 0.5166609016487951,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.38835800774569595,
+            "balanced_accuracy": 0.4630223772469882,
+            "folds": [
+              {
+                "auroc": 0.5150669642857143,
+                "balanced_accuracy": 0.5014880952380952,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.5179569034317637,
+                "balanced_accuracy": 0.49600957701516357,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.2346938775510204,
+                "balanced_accuracy": 0.40816326530612246,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.2857142857142857,
+                "balanced_accuracy": 0.44642857142857145,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "44": {
+          "cv": {
+            "auroc": 0.5034013605442177,
+            "balanced_accuracy": 0.4986356124370652,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.3989957212808307,
+            "balanced_accuracy": 0.5010923189108045,
+            "folds": [
+              {
+                "auroc": 0.5306919642857143,
+                "balanced_accuracy": 0.5163690476190477,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.595903165735568,
+                "balanced_accuracy": 0.6053471667996807,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.25510204081632654,
+                "balanced_accuracy": 0.41836734693877553,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.2142857142857143,
+                "balanced_accuracy": 0.4642857142857143,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        },
+        "8": {
+          "cv": {
+            "auroc": 0.530381644183097,
+            "balanced_accuracy": 0.48162880971597677,
+            "n_splits": 5
+          },
+          "source_family_holdout": {
+            "auroc": 0.43706506913170295,
+            "balanced_accuracy": 0.4455173654657394,
+            "folds": [
+              {
+                "auroc": 0.56640625,
+                "balanced_accuracy": 0.5044642857142857,
+                "heldout": "ai_risk_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.4650172918329343,
+                "balanced_accuracy": 0.4485235434956105,
+                "heldout": "daily_dilemmas",
+                "n_test": 200
+              },
+              {
+                "auroc": 0.37755102040816324,
+                "balanced_accuracy": 0.41836734693877553,
+                "heldout": "expert_written_ethic_bowl",
+                "n_test": 51
+              },
+              {
+                "auroc": 0.3392857142857143,
+                "balanced_accuracy": 0.4107142857142857,
+                "heldout": "expert_written_ethic_unwrapped",
+                "n_test": 30
+              }
+            ],
+            "n_splits": 4
+          }
+        }
+      },
+      "length_baseline": {
+        "auroc": 0.4135817341950747,
+        "balanced_accuracy": 0.5118951124444191,
+        "folds": [
+          {
+            "auroc": 0.361235119047619,
+            "balanced_accuracy": 0.4367559523809524,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5150305932428838,
+            "balanced_accuracy": 0.5368449055599893,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5102040816326531,
+            "balanced_accuracy": 0.5204081632653061,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.26785714285714285,
+            "balanced_accuracy": 0.5535714285714286,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "n": 500,
+      "prompt_text_baseline": {
+        "auroc": 0.38866189151987607,
+        "balanced_accuracy": 0.5017198307395584,
+        "folds": [
+          {
+            "auroc": 0.4815848214285714,
+            "balanced_accuracy": 0.5096726190476191,
+            "heldout": "ai_risk_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.5118382548550147,
+            "balanced_accuracy": 0.4972067039106145,
+            "heldout": "daily_dilemmas",
+            "n_test": 200
+          },
+          {
+            "auroc": 0.2755102040816326,
+            "balanced_accuracy": 0.5,
+            "heldout": "expert_written_ethic_bowl",
+            "n_test": 51
+          },
+          {
+            "auroc": 0.2857142857142857,
+            "balanced_accuracy": 0.5,
+            "heldout": "expert_written_ethic_unwrapped",
+            "n_test": 30
+          }
+        ],
+        "n_splits": 4
+      },
+      "shuffle_null": {
+        "best_holdout_auroc_mean": 0.5919312097636135,
+        "best_holdout_auroc_p95": 0.6749817246079619,
+        "best_holdout_aurocs": [
+          0.5941974056753834,
+          0.5430108087320593,
+          0.6916926055162622,
+          0.608138200974761,
+          0.5226170279196011
+        ],
+        "empirical_p_best_ge_real": 0.6666666666666666,
+        "permutations": 5,
+        "valid_permutations": 5
+      },
+      "target_group": "secondary_uncertainty_duplicate_check"
+    }
+  },
+  "label_source": "projects/MOREBENCH/phase_03/reports/experiment_03_process_supervision/process_supervision_annotations.jsonl",
+  "layers": [
+    0,
+    4,
+    8,
+    16,
+    28,
+    36,
+    40,
+    44
+  ],
+  "notes": [
+    "Exploratory scaled F.1 readout; process-label gates were intentionally bypassed at user request.",
+    "Row label is true if any covered criterion in the row belongs to the target family.",
+    "Primary split is source-family leave-one-out; best layer is selected by holdout AUROC.",
+    "Shuffled-label null reports best-over-layers source-family-holdout AUROC across permutations."
+  ],
+  "primary_families": [
+    "decision_procedure",
+    "identify_options",
+    "tailored_next_steps",
+    "epistemic_uncertainty",
+    "risk_mitigation",
+    "identify_stakeholders"
+  ],
+  "report_dir": "projects/MOREBENCH/phase_03/reports/experiment_03_scaled_f1_process_probe",
+  "secondary_families": [
+    "uncertainty_incomplete_info"
+  ],
+  "target_families": [
+    "decision_procedure",
+    "identify_options",
+    "tailored_next_steps",
+    "epistemic_uncertainty",
+    "risk_mitigation",
+    "identify_stakeholders",
+    "uncertainty_incomplete_info"
+  ]
+}

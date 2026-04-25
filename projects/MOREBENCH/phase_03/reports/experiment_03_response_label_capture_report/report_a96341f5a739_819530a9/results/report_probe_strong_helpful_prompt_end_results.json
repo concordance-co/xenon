@@ -1,0 +1,82 @@
+{
+  "kind": "probe_result",
+  "label": "strong_helpful",
+  "layers": [
+    {
+      "auroc": 0.496875,
+      "balanced_accuracy": 0.496875,
+      "cv_auroc": 0.4885288033598696,
+      "cv_balanced_accuracy": 0.4958210576902986,
+      "layer": 0,
+      "n": 500
+    },
+    {
+      "auroc": 0.574336441868127,
+      "balanced_accuracy": 0.5775920818290389,
+      "cv_auroc": 0.5318748824672476,
+      "cv_balanced_accuracy": 0.5234752084247477,
+      "layer": 4,
+      "n": 500
+    },
+    {
+      "auroc": 0.5358363847340202,
+      "balanced_accuracy": 0.5590115035733183,
+      "cv_auroc": 0.48868551369648344,
+      "cv_balanced_accuracy": 0.4963434254790112,
+      "layer": 8,
+      "n": 500
+    },
+    {
+      "auroc": 0.4703481550874761,
+      "balanced_accuracy": 0.4687713799271972,
+      "cv_auroc": 0.4900854593702334,
+      "cv_balanced_accuracy": 0.48909296057167934,
+      "layer": 16,
+      "n": 500
+    },
+    {
+      "auroc": 0.5820015691338947,
+      "balanced_accuracy": 0.5338799498150554,
+      "cv_auroc": 0.5630915815207171,
+      "cv_balanced_accuracy": 0.5342568795837773,
+      "layer": 28,
+      "n": 500
+    },
+    {
+      "auroc": 0.6122593520185449,
+      "balanced_accuracy": 0.5922926906258534,
+      "cv_auroc": 0.5652228420986649,
+      "cv_balanced_accuracy": 0.5462191019452977,
+      "layer": 36,
+      "n": 500
+    },
+    {
+      "auroc": 0.5490561794829896,
+      "balanced_accuracy": 0.5276005915227228,
+      "cv_auroc": 0.5530412252658852,
+      "cv_balanced_accuracy": 0.5435236841555402,
+      "layer": 40,
+      "n": 500
+    },
+    {
+      "auroc": 0.5684601031622886,
+      "balanced_accuracy": 0.5267944460425718,
+      "cv_auroc": 0.5652646315217619,
+      "cv_balanced_accuracy": 0.5473996531477883,
+      "layer": 44,
+      "n": 500
+    }
+  ],
+  "summary": {
+    "best_layer": 36,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.5922926906258534,
+    "capture_artifact_id": "capture_1_f2a9e4531dec",
+    "example_count": 500,
+    "group_count": null,
+    "label": "strong_helpful",
+    "split_mode": "source_family_holdout",
+    "view": "prompt_end"
+  },
+  "view": "prompt_end"
+}

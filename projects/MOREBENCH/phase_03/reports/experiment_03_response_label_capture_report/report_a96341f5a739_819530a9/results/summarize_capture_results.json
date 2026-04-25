@@ -1,0 +1,20 @@
+{
+  "capture_feature_artifact_id": "capture_1_f2a9e4531dec",
+  "capture_token_sections": [
+    "prompt_end",
+    "generated"
+  ],
+  "captured_layers": [
+    0,
+    4,
+    8,
+    16,
+    28,
+    36,
+    40,
+    44
+  ],
+  "kind": "transform_result",
+  "source_generation_artifact_id": "generation_run_1_d6e12a467208",
+  "workflow": "morebench_phase03_experiment03_response_label_capture"
+}

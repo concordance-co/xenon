@@ -1,0 +1,97 @@
+{
+  "columns": [
+    "auroc",
+    "balanced_accuracy",
+    "cv_auroc",
+    "cv_balanced_accuracy",
+    "layer",
+    "n"
+  ],
+  "headline_metrics": {
+    "best_layer": 36,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.6175595238095237,
+    "example_count": 90,
+    "group_count": null,
+    "split_mode": "source_family_holdout"
+  },
+  "result_kind": "probe_result",
+  "rows": [
+    {
+      "auroc": 0.5892857142857142,
+      "balanced_accuracy": 0.5962301587301587,
+      "cv_auroc": 0.6735778841041999,
+      "cv_balanced_accuracy": 0.6339712918660287,
+      "layer": 0,
+      "n": 90
+    },
+    {
+      "auroc": 0.5855654761904763,
+      "balanced_accuracy": 0.6101190476190477,
+      "cv_auroc": 0.7448165869218502,
+      "cv_balanced_accuracy": 0.6730462519936204,
+      "layer": 4,
+      "n": 90
+    },
+    {
+      "auroc": 0.515625,
+      "balanced_accuracy": 0.5828373015873016,
+      "cv_auroc": 0.6778309409888357,
+      "cv_balanced_accuracy": 0.6475279106858054,
+      "layer": 8,
+      "n": 90
+    },
+    {
+      "auroc": 0.6743551587301587,
+      "balanced_accuracy": 0.6145833333333333,
+      "cv_auroc": 0.7814992025518341,
+      "cv_balanced_accuracy": 0.7192982456140351,
+      "layer": 16,
+      "n": 90
+    },
+    {
+      "auroc": 0.6083829365079365,
+      "balanced_accuracy": 0.5828373015873016,
+      "cv_auroc": 0.7442849548112707,
+      "cv_balanced_accuracy": 0.6515151515151515,
+      "layer": 28,
+      "n": 90
+    },
+    {
+      "auroc": 0.6820436507936507,
+      "balanced_accuracy": 0.6175595238095237,
+      "cv_auroc": 0.7506645401382244,
+      "cv_balanced_accuracy": 0.6754385964912281,
+      "layer": 36,
+      "n": 90
+    },
+    {
+      "auroc": 0.6609623015873015,
+      "balanced_accuracy": 0.5932539682539683,
+      "cv_auroc": 0.7416267942583732,
+      "cv_balanced_accuracy": 0.6539074960127591,
+      "layer": 40,
+      "n": 90
+    },
+    {
+      "auroc": 0.6599702380952381,
+      "balanced_accuracy": 0.6140873015873016,
+      "cv_auroc": 0.7278043593833068,
+      "cv_balanced_accuracy": 0.6212121212121212,
+      "layer": 44,
+      "n": 90
+    }
+  ],
+  "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+  "summary": {
+    "best_layer": 36,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.6175595238095237,
+    "capture_artifact_id": "capture_1_f2a9e4531dec",
+    "example_count": 90,
+    "group_count": null,
+    "label": "helpful_harmless_off_diagonal",
+    "split_mode": "source_family_holdout",
+    "view": "generated_first_third"
+  }
+}

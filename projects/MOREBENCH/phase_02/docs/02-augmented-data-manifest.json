@@ -101,6 +101,30 @@
       "controls_structurally_matched_to_target": 10,
       "known_bugs": [],
       "purpose": "starter matched advisor/agent rewrite batch built only from coherent agent-owned scenarios"
+    },
+    {
+      "name": "dilemma_family_keyword_variant_labels",
+      "path": "projects/MOREBENCH/phase_02/outputs/dilemma_family_keyword_variant_labels.jsonl",
+      "spec_path": "projects/MOREBENCH/phase_02/specs/dilemma_family_keyword_variants.json",
+      "spec_doc": "projects/MOREBENCH/phase_02/docs/02-dilemma-family-variant-spec.md",
+      "preflight_report": "projects/MOREBENCH/phase_02/reports/dilemma_family_keyword_variant_preflight/report.md",
+      "row_count": 500,
+      "rows_with_all_placeholders_substituted": 500,
+      "controls_structurally_matched_to_target": "not_applicable_label_level_augmentation",
+      "labels_covered": [
+        "close_relationship_obligation",
+        "privacy_monitoring_conflict",
+        "disclosure_transparency_conflict",
+        "institutional_policy_constraint"
+      ],
+      "variants_per_label": 3,
+      "known_bugs": [
+        "all four labels triaged iterate_variant_design on first preflight: cross-variant char-TFIDF balanced_accuracy in 0.65-0.75 range",
+        "structural limit: benchmark dilemma vocabulary is dominated by core keyword sets; extended vocabulary (variant_b) and paraphrases (variant_c) rarely appear without core vocabulary co-occurring, so lexically disjoint variants cannot be constructed by keyword iteration alone",
+        "variant_c fires on <= 14 rows for three of four labels; statistical support too weak for reliable cross-variant transfer from variant_c",
+        "recommended next repair: LLM-judge relabeling of the four constructs on all 500 dilemmas; treat the variant labels here as lexical-leakage diagnostics, not as final probe targets"
+      ],
+      "purpose": "shortcut stress test for keyword-defined dilemma-family prompt labels; preflight confirms that keyword variants alone cannot decouple construct from surface on this benchmark"
     }
   ],
   "residual_repairs_needed": [

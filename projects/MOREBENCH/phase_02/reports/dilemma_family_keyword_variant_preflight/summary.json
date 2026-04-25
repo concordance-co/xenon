@@ -1,0 +1,492 @@
+{
+  "close_relationship_obligation": {
+    "agreement": {
+      "counts_true": {
+        "variant_a": 190,
+        "variant_b": 17,
+        "variant_c": 5
+      },
+      "intersection_count": 0,
+      "pairwise_agreement": {
+        "variant_a": {
+          "variant_a": 1.0,
+          "variant_b": 0.642,
+          "variant_c": 0.63
+        },
+        "variant_b": {
+          "variant_a": 0.642,
+          "variant_b": 1.0,
+          "variant_c": 0.956
+        },
+        "variant_c": {
+          "variant_a": 0.63,
+          "variant_b": 0.956,
+          "variant_c": 1.0
+        }
+      },
+      "union_count": 193
+    },
+    "construct": "dilemma tension involves kinship or intimate social ties",
+    "cross_variant": {
+      "variant_a->variant_a": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.9079456706281834,
+        "balanced_accuracy_vs_dst": 0.8426994906621392,
+        "dst_positives": 190,
+        "src_positives": 190,
+        "status": "ok"
+      },
+      "variant_a->variant_b": {
+        "agreement_rate": 0.642,
+        "auroc_vs_dst": 0.8083059310680794,
+        "balanced_accuracy_vs_dst": 0.7125806844476921,
+        "dst_positives": 17,
+        "src_positives": 190,
+        "status": "ok"
+      },
+      "variant_a->variant_c": {
+        "agreement_rate": 0.63,
+        "auroc_vs_dst": 0.8008080808080809,
+        "balanced_accuracy_vs_dst": 0.7252525252525253,
+        "dst_positives": 5,
+        "src_positives": 190,
+        "status": "ok"
+      },
+      "variant_b->variant_a": {
+        "agreement_rate": 0.642,
+        "auroc_vs_dst": 0.7853820033955856,
+        "balanced_accuracy_vs_dst": 0.5105263157894737,
+        "dst_positives": 190,
+        "src_positives": 17,
+        "status": "ok"
+      },
+      "variant_b->variant_b": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.8240165631469979,
+        "balanced_accuracy_vs_dst": 0.5263061746437705,
+        "dst_positives": 17,
+        "src_positives": 17,
+        "status": "ok"
+      },
+      "variant_b->variant_c": {
+        "agreement_rate": 0.956,
+        "auroc_vs_dst": 0.610909090909091,
+        "balanced_accuracy_vs_dst": 0.49595959595959593,
+        "dst_positives": 5,
+        "src_positives": 17,
+        "status": "ok"
+      },
+      "variant_c->variant_a": {
+        "src_positives": 5,
+        "status": "insufficient_src_support"
+      },
+      "variant_c->variant_b": {
+        "src_positives": 5,
+        "status": "insufficient_src_support"
+      },
+      "variant_c->variant_c": {
+        "src_positives": 5,
+        "status": "insufficient_src_support"
+      }
+    },
+    "triage": "iterate_variant_design",
+    "within_variant": {
+      "variant_a": {
+        "auroc": 0.9079456706281834,
+        "balanced_accuracy": 0.8426994906621392,
+        "folds": 5,
+        "negatives": 310,
+        "positives": 190,
+        "status": "ok"
+      },
+      "variant_b": {
+        "auroc": 0.8240165631469979,
+        "balanced_accuracy": 0.5263061746437705,
+        "folds": 5,
+        "negatives": 483,
+        "positives": 17,
+        "status": "ok"
+      },
+      "variant_c": {
+        "negatives": 495,
+        "positives": 5,
+        "status": "insufficient_support"
+      }
+    }
+  },
+  "disclosure_transparency_conflict": {
+    "agreement": {
+      "counts_true": {
+        "variant_a": 168,
+        "variant_b": 68,
+        "variant_c": 14
+      },
+      "intersection_count": 2,
+      "pairwise_agreement": {
+        "variant_a": {
+          "variant_a": 1.0,
+          "variant_b": 0.688,
+          "variant_c": 0.672
+        },
+        "variant_b": {
+          "variant_a": 0.688,
+          "variant_b": 1.0,
+          "variant_c": 0.852
+        },
+        "variant_c": {
+          "variant_a": 0.672,
+          "variant_b": 0.852,
+          "variant_c": 1.0
+        }
+      },
+      "union_count": 199
+    },
+    "construct": "dilemma tension involves whether to reveal or withhold information",
+    "cross_variant": {
+      "variant_a->variant_a": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.7785068846815837,
+        "balanced_accuracy_vs_dst": 0.6834122203098107,
+        "dst_positives": 168,
+        "src_positives": 168,
+        "status": "ok"
+      },
+      "variant_a->variant_b": {
+        "agreement_rate": 0.688,
+        "auroc_vs_dst": 0.7099673202614378,
+        "balanced_accuracy_vs_dst": 0.6695261437908497,
+        "dst_positives": 68,
+        "src_positives": 168,
+        "status": "ok"
+      },
+      "variant_a->variant_c": {
+        "agreement_rate": 0.672,
+        "auroc_vs_dst": 0.5238095238095238,
+        "balanced_accuracy_vs_dst": 0.5242504409171076,
+        "dst_positives": 14,
+        "src_positives": 168,
+        "status": "ok"
+      },
+      "variant_b->variant_a": {
+        "agreement_rate": 0.688,
+        "auroc_vs_dst": 0.6819061962134252,
+        "balanced_accuracy_vs_dst": 0.5368975903614458,
+        "dst_positives": 168,
+        "src_positives": 68,
+        "status": "ok"
+      },
+      "variant_b->variant_b": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.7927900326797386,
+        "balanced_accuracy_vs_dst": 0.6347358387799564,
+        "dst_positives": 68,
+        "src_positives": 68,
+        "status": "ok"
+      },
+      "variant_b->variant_c": {
+        "agreement_rate": 0.852,
+        "auroc_vs_dst": 0.6042034097589654,
+        "balanced_accuracy_vs_dst": 0.4609053497942387,
+        "dst_positives": 14,
+        "src_positives": 68,
+        "status": "ok"
+      },
+      "variant_c->variant_a": {
+        "agreement_rate": 0.672,
+        "auroc_vs_dst": 0.5215325588066552,
+        "balanced_accuracy_vs_dst": 0.5,
+        "dst_positives": 168,
+        "src_positives": 14,
+        "status": "ok"
+      },
+      "variant_c->variant_b": {
+        "agreement_rate": 0.852,
+        "auroc_vs_dst": 0.5678785403050108,
+        "balanced_accuracy_vs_dst": 0.5,
+        "dst_positives": 68,
+        "src_positives": 14,
+        "status": "ok"
+      },
+      "variant_c->variant_c": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.7382422104644326,
+        "balanced_accuracy_vs_dst": 0.5,
+        "dst_positives": 14,
+        "src_positives": 14,
+        "status": "ok"
+      }
+    },
+    "triage": "iterate_variant_design",
+    "within_variant": {
+      "variant_a": {
+        "auroc": 0.7785068846815837,
+        "balanced_accuracy": 0.6834122203098107,
+        "folds": 5,
+        "negatives": 332,
+        "positives": 168,
+        "status": "ok"
+      },
+      "variant_b": {
+        "auroc": 0.7927900326797386,
+        "balanced_accuracy": 0.6347358387799564,
+        "folds": 5,
+        "negatives": 432,
+        "positives": 68,
+        "status": "ok"
+      },
+      "variant_c": {
+        "auroc": 0.7382422104644326,
+        "balanced_accuracy": 0.5,
+        "folds": 5,
+        "negatives": 486,
+        "positives": 14,
+        "status": "ok"
+      }
+    }
+  },
+  "institutional_policy_constraint": {
+    "agreement": {
+      "counts_true": {
+        "variant_a": 231,
+        "variant_b": 97,
+        "variant_c": 18
+      },
+      "intersection_count": 5,
+      "pairwise_agreement": {
+        "variant_a": {
+          "variant_a": 1.0,
+          "variant_b": 0.64,
+          "variant_c": 0.558
+        },
+        "variant_b": {
+          "variant_a": 0.64,
+          "variant_b": 1.0,
+          "variant_c": 0.798
+        },
+        "variant_c": {
+          "variant_a": 0.558,
+          "variant_b": 0.798,
+          "variant_c": 1.0
+        }
+      },
+      "union_count": 256
+    },
+    "construct": "dilemma tension involves formal institutional rules, policies, or organizational structures",
+    "cross_variant": {
+      "variant_a->variant_a": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.8807834049469736,
+        "balanced_accuracy_vs_dst": 0.783026762580666,
+        "dst_positives": 231,
+        "src_positives": 231,
+        "status": "ok"
+      },
+      "variant_a->variant_b": {
+        "agreement_rate": 0.64,
+        "auroc_vs_dst": 0.7574889360722417,
+        "balanced_accuracy_vs_dst": 0.6936251311043462,
+        "dst_positives": 97,
+        "src_positives": 231,
+        "status": "ok"
+      },
+      "variant_a->variant_c": {
+        "agreement_rate": 0.558,
+        "auroc_vs_dst": 0.6913324112494236,
+        "balanced_accuracy_vs_dst": 0.6482249884739512,
+        "dst_positives": 18,
+        "src_positives": 231,
+        "status": "ok"
+      },
+      "variant_b->variant_a": {
+        "agreement_rate": 0.64,
+        "auroc_vs_dst": 0.7762113970292408,
+        "balanced_accuracy_vs_dst": 0.6152577286406282,
+        "dst_positives": 231,
+        "src_positives": 97,
+        "status": "ok"
+      },
+      "variant_b->variant_b": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.8523445294313269,
+        "balanced_accuracy_vs_dst": 0.7134506663937991,
+        "dst_positives": 97,
+        "src_positives": 97,
+        "status": "ok"
+      },
+      "variant_b->variant_c": {
+        "agreement_rate": 0.798,
+        "auroc_vs_dst": 0.7769709543568464,
+        "balanced_accuracy_vs_dst": 0.6597510373443983,
+        "dst_positives": 18,
+        "src_positives": 97,
+        "status": "ok"
+      },
+      "variant_c->variant_a": {
+        "agreement_rate": 0.558,
+        "auroc_vs_dst": 0.665057371377074,
+        "balanced_accuracy_vs_dst": 0.5024702682695248,
+        "dst_positives": 231,
+        "src_positives": 18,
+        "status": "ok"
+      },
+      "variant_c->variant_b": {
+        "agreement_rate": 0.798,
+        "auroc_vs_dst": 0.7122355529405746,
+        "balanced_accuracy_vs_dst": 0.5154639175257731,
+        "dst_positives": 97,
+        "src_positives": 18,
+        "status": "ok"
+      },
+      "variant_c->variant_c": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.6704702627939142,
+        "balanced_accuracy_vs_dst": 0.49688796680497926,
+        "dst_positives": 18,
+        "src_positives": 18,
+        "status": "ok"
+      }
+    },
+    "triage": "iterate_variant_design",
+    "within_variant": {
+      "variant_a": {
+        "auroc": 0.8807834049469736,
+        "balanced_accuracy": 0.783026762580666,
+        "folds": 5,
+        "negatives": 269,
+        "positives": 231,
+        "status": "ok"
+      },
+      "variant_b": {
+        "auroc": 0.8523445294313269,
+        "balanced_accuracy": 0.7134506663937991,
+        "folds": 5,
+        "negatives": 403,
+        "positives": 97,
+        "status": "ok"
+      },
+      "variant_c": {
+        "auroc": 0.6704702627939142,
+        "balanced_accuracy": 0.49688796680497926,
+        "folds": 5,
+        "negatives": 482,
+        "positives": 18,
+        "status": "ok"
+      }
+    }
+  },
+  "privacy_monitoring_conflict": {
+    "agreement": {
+      "counts_true": {
+        "variant_a": 175,
+        "variant_b": 23,
+        "variant_c": 3
+      },
+      "intersection_count": 0,
+      "pairwise_agreement": {
+        "variant_a": {
+          "variant_a": 1.0,
+          "variant_b": 0.664,
+          "variant_c": 0.656
+        },
+        "variant_b": {
+          "variant_a": 0.664,
+          "variant_b": 1.0,
+          "variant_c": 0.948
+        },
+        "variant_c": {
+          "variant_a": 0.656,
+          "variant_b": 0.948,
+          "variant_c": 1.0
+        }
+      },
+      "union_count": 183
+    },
+    "construct": "dilemma tension involves information or observational boundary violations",
+    "cross_variant": {
+      "variant_a->variant_a": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.8642285714285715,
+        "balanced_accuracy_vs_dst": 0.7683516483516484,
+        "dst_positives": 175,
+        "src_positives": 175,
+        "status": "ok"
+      },
+      "variant_a->variant_b": {
+        "agreement_rate": 0.664,
+        "auroc_vs_dst": 0.7848874304985872,
+        "balanced_accuracy_vs_dst": 0.747425029623553,
+        "dst_positives": 23,
+        "src_positives": 175,
+        "status": "ok"
+      },
+      "variant_a->variant_c": {
+        "agreement_rate": 0.656,
+        "auroc_vs_dst": 0.5405767940979209,
+        "balanced_accuracy_vs_dst": 0.48960429242119385,
+        "dst_positives": 3,
+        "src_positives": 175,
+        "status": "ok"
+      },
+      "variant_b->variant_a": {
+        "agreement_rate": 0.664,
+        "auroc_vs_dst": 0.6760967032967032,
+        "balanced_accuracy_vs_dst": 0.5096703296703297,
+        "dst_positives": 175,
+        "src_positives": 23,
+        "status": "ok"
+      },
+      "variant_b->variant_b": {
+        "agreement_rate": 1.0,
+        "auroc_vs_dst": 0.8765837207182572,
+        "balanced_accuracy_vs_dst": 0.6055509980858628,
+        "dst_positives": 23,
+        "src_positives": 23,
+        "status": "ok"
+      },
+      "variant_b->variant_c": {
+        "agreement_rate": 0.948,
+        "auroc_vs_dst": 0.266934942991281,
+        "balanced_accuracy_vs_dst": 0.4919517102615694,
+        "dst_positives": 3,
+        "src_positives": 23,
+        "status": "ok"
+      },
+      "variant_c->variant_a": {
+        "src_positives": 3,
+        "status": "insufficient_src_support"
+      },
+      "variant_c->variant_b": {
+        "src_positives": 3,
+        "status": "insufficient_src_support"
+      },
+      "variant_c->variant_c": {
+        "src_positives": 3,
+        "status": "insufficient_src_support"
+      }
+    },
+    "triage": "iterate_variant_design",
+    "within_variant": {
+      "variant_a": {
+        "auroc": 0.8642285714285715,
+        "balanced_accuracy": 0.7683516483516484,
+        "folds": 5,
+        "negatives": 325,
+        "positives": 175,
+        "status": "ok"
+      },
+      "variant_b": {
+        "auroc": 0.8765837207182572,
+        "balanced_accuracy": 0.6055509980858628,
+        "folds": 5,
+        "negatives": 477,
+        "positives": 23,
+        "status": "ok"
+      },
+      "variant_c": {
+        "negatives": 497,
+        "positives": 3,
+        "status": "insufficient_support"
+      }
+    }
+  }
+}

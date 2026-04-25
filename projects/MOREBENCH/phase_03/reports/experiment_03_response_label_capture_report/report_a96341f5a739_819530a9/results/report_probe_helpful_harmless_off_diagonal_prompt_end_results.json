@@ -1,0 +1,82 @@
+{
+  "kind": "probe_result",
+  "label": "helpful_harmless_off_diagonal",
+  "layers": [
+    {
+      "auroc": 0.5,
+      "balanced_accuracy": 0.5,
+      "cv_auroc": 0.5,
+      "cv_balanced_accuracy": 0.5,
+      "layer": 0,
+      "n": 90
+    },
+    {
+      "auroc": 0.5548115079365079,
+      "balanced_accuracy": 0.5600198412698413,
+      "cv_auroc": 0.630515683147262,
+      "cv_balanced_accuracy": 0.5645933014354068,
+      "layer": 4,
+      "n": 90
+    },
+    {
+      "auroc": 0.5753968253968254,
+      "balanced_accuracy": 0.5704365079365079,
+      "cv_auroc": 0.6555023923444977,
+      "cv_balanced_accuracy": 0.594896331738437,
+      "layer": 8,
+      "n": 90
+    },
+    {
+      "auroc": 0.6304563492063492,
+      "balanced_accuracy": 0.6408730158730158,
+      "cv_auroc": 0.6166932482721956,
+      "cv_balanced_accuracy": 0.5470494417862839,
+      "layer": 16,
+      "n": 90
+    },
+    {
+      "auroc": 0.6245039682539683,
+      "balanced_accuracy": 0.5868055555555556,
+      "cv_auroc": 0.6714513556618821,
+      "cv_balanced_accuracy": 0.6100478468899522,
+      "layer": 28,
+      "n": 90
+    },
+    {
+      "auroc": 0.597470238095238,
+      "balanced_accuracy": 0.5882936507936508,
+      "cv_auroc": 0.670388091440723,
+      "cv_balanced_accuracy": 0.6212121212121212,
+      "layer": 36,
+      "n": 90
+    },
+    {
+      "auroc": 0.5260416666666667,
+      "balanced_accuracy": 0.5238095238095237,
+      "cv_auroc": 0.6055289739500266,
+      "cv_balanced_accuracy": 0.5709728867623605,
+      "layer": 40,
+      "n": 90
+    },
+    {
+      "auroc": 0.5838293650793651,
+      "balanced_accuracy": 0.5620039682539683,
+      "cv_auroc": 0.6432748538011696,
+      "cv_balanced_accuracy": 0.5837320574162679,
+      "layer": 44,
+      "n": 90
+    }
+  ],
+  "summary": {
+    "best_layer": 16,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.6408730158730158,
+    "capture_artifact_id": "capture_1_f2a9e4531dec",
+    "example_count": 90,
+    "group_count": null,
+    "label": "helpful_harmless_off_diagonal",
+    "split_mode": "source_family_holdout",
+    "view": "prompt_end"
+  },
+  "view": "prompt_end"
+}

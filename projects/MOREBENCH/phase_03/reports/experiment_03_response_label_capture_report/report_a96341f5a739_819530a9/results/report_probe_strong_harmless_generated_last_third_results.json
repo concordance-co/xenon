@@ -1,0 +1,82 @@
+{
+  "kind": "probe_result",
+  "label": "strong_harmless",
+  "layers": [
+    {
+      "auroc": 0.6844231471168922,
+      "balanced_accuracy": 0.663826232994211,
+      "cv_auroc": 0.6370584689572031,
+      "cv_balanced_accuracy": 0.5753465943339361,
+      "layer": 0,
+      "n": 500
+    },
+    {
+      "auroc": 0.704939056321334,
+      "balanced_accuracy": 0.6447287446795709,
+      "cv_auroc": 0.628161543098252,
+      "cv_balanced_accuracy": 0.5981314044605184,
+      "layer": 4,
+      "n": 500
+    },
+    {
+      "auroc": 0.6499721993737533,
+      "balanced_accuracy": 0.5792736464623758,
+      "cv_auroc": 0.5866425557564798,
+      "cv_balanced_accuracy": 0.5413502109704641,
+      "layer": 8,
+      "n": 500
+    },
+    {
+      "auroc": 0.6310923313726224,
+      "balanced_accuracy": 0.6034990549816475,
+      "cv_auroc": 0.646534056660639,
+      "cv_balanced_accuracy": 0.6031946955997589,
+      "layer": 16,
+      "n": 500
+    },
+    {
+      "auroc": 0.625584787404221,
+      "balanced_accuracy": 0.5923602986422617,
+      "cv_auroc": 0.7182399035563594,
+      "cv_balanced_accuracy": 0.6415913200723328,
+      "layer": 28,
+      "n": 500
+    },
+    {
+      "auroc": 0.6475861798835835,
+      "balanced_accuracy": 0.615510739915736,
+      "cv_auroc": 0.7028089210367692,
+      "cv_balanced_accuracy": 0.6333936106088005,
+      "layer": 36,
+      "n": 500
+    },
+    {
+      "auroc": 0.6389503455937366,
+      "balanced_accuracy": 0.5800355896835047,
+      "cv_auroc": 0.6747438215792646,
+      "cv_balanced_accuracy": 0.626702833031947,
+      "layer": 40,
+      "n": 500
+    },
+    {
+      "auroc": 0.6264434832476728,
+      "balanced_accuracy": 0.5324845020679994,
+      "cv_auroc": 0.6593731163351417,
+      "cv_balanced_accuracy": 0.6139843279083785,
+      "layer": 44,
+      "n": 500
+    }
+  ],
+  "summary": {
+    "best_layer": 0,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.663826232994211,
+    "capture_artifact_id": "capture_1_f2a9e4531dec",
+    "example_count": 500,
+    "group_count": null,
+    "label": "strong_harmless",
+    "split_mode": "source_family_holdout",
+    "view": "generated_last_third"
+  },
+  "view": "generated_last_third"
+}

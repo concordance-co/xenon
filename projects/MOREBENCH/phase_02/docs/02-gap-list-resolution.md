@@ -1,11 +1,13 @@
 ---
 benchmark: morebench
 phase: 02
-version: v2
-frozen_date: 2026-04-23
+version: v3
+frozen_date: 2026-04-24
 input_artifacts:
   - projects/MOREBENCH/phase_01/docs/01-gap-list.md
   - projects/MOREBENCH/phase_02/outputs/action_locus_rewrite_pairs.jsonl
+  - projects/MOREBENCH/phase_02/outputs/dilemma_family_keyword_variant_labels.jsonl
+  - projects/MOREBENCH/phase_02/reports/dilemma_family_keyword_variant_preflight/report.md
 ---
 
 # MoReBench 02 Gap List Resolution
@@ -16,6 +18,7 @@ input_artifacts:
 - `action_locus` not probeable -> partially resolved with a 10-pair matched rewrite starter batch
 - response-side labels need fresh generations -> unresolved in this phase; next step remains generation capture
 - `stakeholder_tradeoff_density` needs gold validation -> unresolved in this phase; remains a phase 03 gate item
+- keyword-defined dilemma-family labels are tautological (`close_relationship_obligation`, `privacy_monitoring_conflict`, `disclosure_transparency_conflict`, `institutional_policy_constraint`) -> materialized three-variant keyword bank per label and ran cross-variant char-TFIDF preflight; all four labels triaged as `iterate_variant_design` with a structural-limit finding (core benchmark vocabulary monopolizes the constructs, so lexically disjoint variants cannot be constructed within the benchmark); handoff recommendation is LLM-judge relabeling for these four constructs rather than further keyword-variant iteration
 
 ## Materialized Data Snapshot
 

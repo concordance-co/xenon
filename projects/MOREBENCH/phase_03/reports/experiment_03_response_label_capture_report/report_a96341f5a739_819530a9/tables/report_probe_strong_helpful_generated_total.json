@@ -1,0 +1,97 @@
+{
+  "columns": [
+    "auroc",
+    "balanced_accuracy",
+    "cv_auroc",
+    "cv_balanced_accuracy",
+    "layer",
+    "n"
+  ],
+  "headline_metrics": {
+    "best_layer": 16,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.6100958182916448,
+    "example_count": 500,
+    "group_count": null,
+    "split_mode": "source_family_holdout"
+  },
+  "result_kind": "probe_result",
+  "rows": [
+    {
+      "auroc": 0.5351536388405074,
+      "balanced_accuracy": 0.5468606724721468,
+      "cv_auroc": 0.5641572118096909,
+      "cv_balanced_accuracy": 0.5563321423347751,
+      "layer": 0,
+      "n": 500
+    },
+    {
+      "auroc": 0.560527749868984,
+      "balanced_accuracy": 0.534714637002834,
+      "cv_auroc": 0.5730479115735807,
+      "cv_balanced_accuracy": 0.5312271464092437,
+      "layer": 4,
+      "n": 500
+    },
+    {
+      "auroc": 0.577162861277136,
+      "balanced_accuracy": 0.5625952351090363,
+      "cv_auroc": 0.5865354478781422,
+      "cv_balanced_accuracy": 0.5507741490628721,
+      "layer": 8,
+      "n": 500
+    },
+    {
+      "auroc": 0.6184233344510852,
+      "balanced_accuracy": 0.6100958182916448,
+      "cv_auroc": 0.6105225767358282,
+      "cv_balanced_accuracy": 0.580601349798366,
+      "layer": 16,
+      "n": 500
+    },
+    {
+      "auroc": 0.5475989332942056,
+      "balanced_accuracy": 0.5398184135253377,
+      "cv_auroc": 0.6095823147161453,
+      "cv_balanced_accuracy": 0.5484130466578909,
+      "layer": 28,
+      "n": 500
+    },
+    {
+      "auroc": 0.5877214604872787,
+      "balanced_accuracy": 0.56062320723741,
+      "cv_auroc": 0.6215758791449884,
+      "cv_balanced_accuracy": 0.5433565264631521,
+      "layer": 36,
+      "n": 500
+    },
+    {
+      "auroc": 0.6207256220965287,
+      "balanced_accuracy": 0.5826855537287392,
+      "cv_auroc": 0.6548820493533086,
+      "cv_balanced_accuracy": 0.5720031759961554,
+      "layer": 40,
+      "n": 500
+    },
+    {
+      "auroc": 0.5709712488087093,
+      "balanced_accuracy": 0.5512467275508238,
+      "cv_auroc": 0.6232370087130947,
+      "cv_balanced_accuracy": 0.5585260870473683,
+      "layer": 44,
+      "n": 500
+    }
+  ],
+  "step_name": "report_probe_strong_helpful_generated_total",
+  "summary": {
+    "best_layer": 16,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.6100958182916448,
+    "capture_artifact_id": "capture_1_f2a9e4531dec",
+    "example_count": 500,
+    "group_count": null,
+    "label": "strong_helpful",
+    "split_mode": "source_family_holdout",
+    "view": "generated_total"
+  }
+}

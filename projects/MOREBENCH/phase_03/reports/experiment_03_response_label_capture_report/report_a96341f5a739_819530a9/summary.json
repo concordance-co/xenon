@@ -1,0 +1,881 @@
+{
+  "example_count": 500,
+  "figures": {
+    "report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_total.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+      "title": "AUROC by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_total.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_total.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+      "title": "AUROC by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer",
+      "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_harmless_generated_first_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_first_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_first_third/auroc_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_first_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_first_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_first_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_first_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_first_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_first_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_harmless_generated_last_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_last_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_last_third/auroc_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_last_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_last_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_last_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_last_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_last_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_last_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_harmless_generated_middle_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_middle_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_middle_third/auroc_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_middle_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_middle_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_middle_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_middle_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_middle_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_middle_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_harmless_generated_total/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_total.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_total/auroc_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_total/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_total",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_total.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_total",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_harmless_generated_total/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_total.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_harmless_generated_total/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_harmless_generated_total/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_generated_total",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_harmless_prompt_end/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_prompt_end.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_prompt_end/auroc_by_layer",
+      "path": "assets/report_probe_strong_harmless_prompt_end/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_prompt_end",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_prompt_end.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_prompt_end",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_harmless_prompt_end/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_prompt_end.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_harmless_prompt_end/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_harmless_prompt_end/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_harmless_prompt_end",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_helpful_generated_first_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_first_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_first_third/auroc_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_first_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_first_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_first_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_first_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_first_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_first_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_helpful_generated_last_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_last_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_last_third/auroc_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_last_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_last_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_last_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_last_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_last_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_last_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_helpful_generated_middle_third/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_middle_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_middle_third/auroc_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_middle_third/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_middle_third",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_middle_third.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_middle_third",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_middle_third.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_middle_third",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_helpful_generated_total/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_total.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_total/auroc_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_total/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_total",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_total.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_total",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_helpful_generated_total/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_total.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_helpful_generated_total/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_helpful_generated_total/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_generated_total",
+      "title": "Probe metrics by layer"
+    },
+    "report_probe_strong_helpful_prompt_end/auroc_by_layer": {
+      "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_prompt_end.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_prompt_end/auroc_by_layer",
+      "path": "assets/report_probe_strong_helpful_prompt_end/auroc_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_prompt_end",
+      "title": "AUROC by layer"
+    },
+    "report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer": {
+      "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_prompt_end.",
+      "chart_kind": "probe_metric_by_layer",
+      "figure_id": "report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer",
+      "path": "assets/report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer.png",
+      "primary": true,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_prompt_end",
+      "title": "Balanced Accuracy by layer"
+    },
+    "report_probe_strong_helpful_prompt_end/probe_metrics_by_layer": {
+      "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_prompt_end.",
+      "chart_kind": "probe_metrics_by_layer",
+      "figure_id": "report_probe_strong_helpful_prompt_end/probe_metrics_by_layer",
+      "path": "assets/report_probe_strong_helpful_prompt_end/probe_metrics_by_layer.png",
+      "primary": false,
+      "result_kind": "probe_result",
+      "step_name": "report_probe_strong_helpful_prompt_end",
+      "title": "Probe metrics by layer"
+    }
+  },
+  "input_count": 17,
+  "step_summaries": {
+    "report_probe_helpful_harmless_off_diagonal_generated_first_third": {
+      "headline_metrics": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6175595238095237,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_first_third.json"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_last_third": {
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6284722222222222,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_last_third.json"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_middle_third": {
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.621031746031746,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_middle_third.json"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_total": {
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6453373015873016,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_total.json"
+    },
+    "report_probe_helpful_harmless_off_diagonal_prompt_end": {
+      "headline_metrics": {
+        "best_layer": 16,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6408730158730158,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer",
+      "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_prompt_end.json"
+    },
+    "report_probe_strong_harmless_generated_first_third": {
+      "headline_metrics": {
+        "best_layer": 0,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5506750126021369,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_harmless_generated_first_third",
+      "table_path": "tables/report_probe_strong_harmless_generated_first_third.json"
+    },
+    "report_probe_strong_harmless_generated_last_third": {
+      "headline_metrics": {
+        "best_layer": 0,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.663826232994211,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_harmless_generated_last_third",
+      "table_path": "tables/report_probe_strong_harmless_generated_last_third.json"
+    },
+    "report_probe_strong_harmless_generated_middle_third": {
+      "headline_metrics": {
+        "best_layer": 4,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6090817732512264,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_harmless_generated_middle_third",
+      "table_path": "tables/report_probe_strong_harmless_generated_middle_third.json"
+    },
+    "report_probe_strong_harmless_generated_total": {
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6142569585650821,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_harmless_generated_total",
+      "table_path": "tables/report_probe_strong_harmless_generated_total.json"
+    },
+    "report_probe_strong_harmless_prompt_end": {
+      "headline_metrics": {
+        "best_layer": 28,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5735146366440623,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_harmless_prompt_end",
+      "table_path": "tables/report_probe_strong_harmless_prompt_end.json"
+    },
+    "report_probe_strong_helpful_generated_first_third": {
+      "headline_metrics": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5592526406446845,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_helpful_generated_first_third",
+      "table_path": "tables/report_probe_strong_helpful_generated_first_third.json"
+    },
+    "report_probe_strong_helpful_generated_last_third": {
+      "headline_metrics": {
+        "best_layer": 8,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5898776693344356,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_helpful_generated_last_third",
+      "table_path": "tables/report_probe_strong_helpful_generated_last_third.json"
+    },
+    "report_probe_strong_helpful_generated_middle_third": {
+      "headline_metrics": {
+        "best_layer": 8,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5741081161753798,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_helpful_generated_middle_third",
+      "table_path": "tables/report_probe_strong_helpful_generated_middle_third.json"
+    },
+    "report_probe_strong_helpful_generated_total": {
+      "headline_metrics": {
+        "best_layer": 16,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6100958182916448,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_helpful_generated_total",
+      "table_path": "tables/report_probe_strong_helpful_generated_total.json"
+    },
+    "report_probe_strong_helpful_prompt_end": {
+      "headline_metrics": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5922926906258534,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "kind": "probe_result",
+      "primary_figure_id": "report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer",
+      "step_name": "report_probe_strong_helpful_prompt_end",
+      "table_path": "tables/report_probe_strong_helpful_prompt_end.json"
+    }
+  },
+  "tables": {
+    "report_probe_helpful_harmless_off_diagonal_generated_first_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_first_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_last_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_last_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_middle_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_middle_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third"
+    },
+    "report_probe_helpful_harmless_off_diagonal_generated_total": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_total.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total"
+    },
+    "report_probe_helpful_harmless_off_diagonal_prompt_end": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_helpful_harmless_off_diagonal_prompt_end.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end"
+    },
+    "report_probe_strong_harmless_generated_first_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_harmless_generated_first_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_harmless_generated_first_third"
+    },
+    "report_probe_strong_harmless_generated_last_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_harmless_generated_last_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_harmless_generated_last_third"
+    },
+    "report_probe_strong_harmless_generated_middle_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_harmless_generated_middle_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_harmless_generated_middle_third"
+    },
+    "report_probe_strong_harmless_generated_total": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_harmless_generated_total.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_harmless_generated_total"
+    },
+    "report_probe_strong_harmless_prompt_end": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_harmless_prompt_end.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_harmless_prompt_end"
+    },
+    "report_probe_strong_helpful_generated_first_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_helpful_generated_first_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_helpful_generated_first_third"
+    },
+    "report_probe_strong_helpful_generated_last_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_helpful_generated_last_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_helpful_generated_last_third"
+    },
+    "report_probe_strong_helpful_generated_middle_third": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_helpful_generated_middle_third.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_helpful_generated_middle_third"
+    },
+    "report_probe_strong_helpful_generated_total": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_helpful_generated_total.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_helpful_generated_total"
+    },
+    "report_probe_strong_helpful_prompt_end": {
+      "columns": [
+        "auroc",
+        "balanced_accuracy",
+        "cv_auroc",
+        "cv_balanced_accuracy",
+        "layer",
+        "n"
+      ],
+      "path": "tables/report_probe_strong_helpful_prompt_end.json",
+      "result_kind": "probe_result",
+      "rows": 8,
+      "step_name": "report_probe_strong_helpful_prompt_end"
+    }
+  },
+  "template": "default"
+}

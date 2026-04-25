@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MoReBench Experiment 03 Response Label Probe</title>
+  <style>
+    body { font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 40px; max-width: 1180px; }
+    h1, h2 { line-height: 1.15; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 28px; }
+    th, td { border-bottom: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+    th { background: #f5f5f5; }
+    img { max-width: 100%; border: 1px solid #e5e5e5; border-radius: 8px; margin: 12px 0 28px; }
+    code, pre { background: #f7f7f7; border-radius: 6px; }
+    pre { padding: 12px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>MoReBench Experiment 03 Response Label Probe</h1>
+  <p>Local chart report generated from <code>projects/MOREBENCH/phase_03/reports/experiment_03_response_label_probe/summary.json</code>. Primary metric is source-family-holdout balanced accuracy.</p>
+  <h2>Best Results</h2>
+  <table>
+    <thead><tr><th>Label</th><th>View</th><th>Layer</th><th>Holdout BA</th><th>Holdout AUROC</th><th>CV BA</th><th>CV AUROC</th></tr></thead>
+    <tbody><tr><td>Helpful/Harmless Off-Diagonal</td><td>generated_total</td><td>44</td><td>0.645</td><td>0.695</td><td>0.679</td><td>0.683</td></tr><tr><td>Strong Harmless</td><td>generated_last_third</td><td>0</td><td>0.664</td><td>0.684</td><td>0.575</td><td>0.637</td></tr><tr><td>Strong Helpful</td><td>generated_total</td><td>16</td><td>0.610</td><td>0.618</td><td>0.581</td><td>0.611</td></tr></tbody>
+  </table>
+  <img src="assets/best_balanced_accuracy.png" alt="Best balanced accuracy chart">
+  <h2>Layer/View Curves</h2>
+  <img src="assets/helpful_harmless_off_diagonal_layer_curves.png" alt="Off-diagonal layer curves">
+  <img src="assets/strong_helpful_layer_curves.png" alt="Strong helpful layer curves">
+  <img src="assets/strong_harmless_layer_curves.png" alt="Strong harmless layer curves">
+  <h2>Source-Family Fold Breakdown</h2>
+  <img src="assets/best_source_family_fold_breakdown.png" alt="Best fold breakdown">
+  <h2>Label Counts</h2>
+  <pre>{
+  &quot;helpful_harmless_off_diagonal&quot;: {
+    &quot;harmless_over_helpful&quot;: 57,
+    &quot;helpful_over_harmless&quot;: 33
+  },
+  &quot;strong_harmless&quot;: {
+    &quot;false&quot;: 105,
+    &quot;true&quot;: 395
+  },
+  &quot;strong_helpful&quot;: {
+    &quot;false&quot;: 129,
+    &quot;true&quot;: 371
+  }
+}</pre>
+</body>
+</html>

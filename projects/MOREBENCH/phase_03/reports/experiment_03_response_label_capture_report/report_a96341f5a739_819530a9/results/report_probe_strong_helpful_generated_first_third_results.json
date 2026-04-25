@@ -1,0 +1,82 @@
+{
+  "kind": "probe_result",
+  "label": "strong_helpful",
+  "layers": [
+    {
+      "auroc": 0.48967454569695956,
+      "balanced_accuracy": 0.4463684700405206,
+      "cv_auroc": 0.5337136170835162,
+      "cv_balanced_accuracy": 0.5199335548172758,
+      "layer": 0,
+      "n": 500
+    },
+    {
+      "auroc": 0.5420686917462626,
+      "balanced_accuracy": 0.5255004230271302,
+      "cv_auroc": 0.5261706262145052,
+      "cv_balanced_accuracy": 0.5040953634635074,
+      "layer": 4,
+      "n": 500
+    },
+    {
+      "auroc": 0.513662442710868,
+      "balanced_accuracy": 0.5000196681601343,
+      "cv_auroc": 0.5425729747800832,
+      "cv_balanced_accuracy": 0.5292003593890386,
+      "layer": 8,
+      "n": 500
+    },
+    {
+      "auroc": 0.5737489119013456,
+      "balanced_accuracy": 0.5581237824128815,
+      "cv_auroc": 0.5807058233561085,
+      "cv_balanced_accuracy": 0.5588604024321444,
+      "layer": 16,
+      "n": 500
+    },
+    {
+      "auroc": 0.5262521541139027,
+      "balanced_accuracy": 0.5075213826530376,
+      "cv_auroc": 0.5738732526797468,
+      "cv_balanced_accuracy": 0.5413401867987212,
+      "layer": 28,
+      "n": 500
+    },
+    {
+      "auroc": 0.5388018669749017,
+      "balanced_accuracy": 0.5592526406446845,
+      "cv_auroc": 0.5810401387408848,
+      "cv_balanced_accuracy": 0.5064564658684887,
+      "layer": 36,
+      "n": 500
+    },
+    {
+      "auroc": 0.5601335147917337,
+      "balanced_accuracy": 0.5569436774077725,
+      "cv_auroc": 0.5901711276875823,
+      "cv_balanced_accuracy": 0.5637497649344951,
+      "layer": 40,
+      "n": 500
+    },
+    {
+      "auroc": 0.48966260330338607,
+      "balanced_accuracy": 0.4915564933049953,
+      "cv_auroc": 0.5461250757433294,
+      "cv_balanced_accuracy": 0.5153889550554754,
+      "layer": 44,
+      "n": 500
+    }
+  ],
+  "summary": {
+    "best_layer": 36,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.5592526406446845,
+    "capture_artifact_id": "capture_1_f2a9e4531dec",
+    "example_count": 500,
+    "group_count": null,
+    "label": "strong_helpful",
+    "split_mode": "source_family_holdout",
+    "view": "generated_first_third"
+  },
+  "view": "generated_first_third"
+}

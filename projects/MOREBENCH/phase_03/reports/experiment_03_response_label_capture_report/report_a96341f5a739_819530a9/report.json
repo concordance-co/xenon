@@ -1,0 +1,2800 @@
+{
+  "inputs": [
+    {
+      "artifact_id": "capture_1_f2a9e4531dec",
+      "artifact_kind": "capture",
+      "created_at": "2026-04-24T21:00:58.282236+00:00",
+      "engine": {
+        "add_generation_prompt": true,
+        "async_scheduling": false,
+        "distributed_executor_backend": null,
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": true,
+        "enable_thinking": false,
+        "enforce_eager": false,
+        "extra": {},
+        "gpu_memory_utilization": 0.9,
+        "kind": "vllm",
+        "max_model_len": 16384,
+        "max_num_batched_tokens": null,
+        "max_num_seqs": 8,
+        "model_id": "Qwen/Qwen3-30B-A3B",
+        "model_path_root": "/models",
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 1
+      },
+      "example_coverage": {
+        "dataset_id": "b36278b9951bc885c9e0bb8e",
+        "dataset_name": "morebench_phase03_experiment03_response_label_capture",
+        "example_count": 500,
+        "example_key_count": 500,
+        "materialized": true
+      },
+      "feature_names": [
+        "generated_sequence_residual",
+        "prompt_end_residual"
+      ],
+      "has_generations": false,
+      "input_artifact_refs": [],
+      "label_names": [],
+      "name": "capture_response_label_residuals",
+      "primary_output": {
+        "bytes": 373165,
+        "format": "json",
+        "name": "manifest",
+        "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/capture_1_f2a9e4531dec/manifest.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-ornV5vmzD21qczGamOZ3yz",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "xenon-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "features": {
+          "count": 2,
+          "items": {
+            "generated_sequence_residual": {
+              "bytes": 12501348601,
+              "format": "residual_safetensors_v1",
+              "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/capture_1_f2a9e4531dec/features/generated_sequence_residual.metadata.json",
+              "store": "modal_volume"
+            },
+            "prompt_end_residual": {
+              "bytes": 12354015753,
+              "format": "residual_safetensors_v1",
+              "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/capture_1_f2a9e4531dec/features/prompt_end_residual.metadata.json",
+              "store": "modal_volume"
+            }
+          }
+        },
+        "manifest": {
+          "bytes": 373165,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/capture_1_f2a9e4531dec/manifest.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": null,
+      "workflow": {
+        "run_id": "wr_5e81c613af54_54fc9204",
+        "step_index": 0,
+        "step_name": "capture_response_label_residuals",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "5e81c613af5420a0bd28df622a0d563da6943b239928a8e8a13cc039e89eb544.capture_response_label_residuals"
+      }
+    },
+    {
+      "artifact_id": "transform_1_e40d6e62",
+      "artifact_kind": "transform",
+      "created_at": "2026-04-24T21:01:17.407318+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/summarize_capture_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "capture_1_f2a9e4531dec"
+      ],
+      "label_names": [],
+      "name": "summarize_capture",
+      "primary_output": {
+        "bytes": 387,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/transform_1_e40d6e62/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-59dxIgoBt6bBaKp7Pdn2ZL",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1900,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/transform_1_e40d6e62/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 387,
+          "format": "json",
+          "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/transform_1_e40d6e62/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "capture_feature_artifact_id": "capture_1_f2a9e4531dec",
+        "capture_token_sections": [
+          "prompt_end",
+          "generated"
+        ],
+        "captured_layers": [
+          0,
+          4,
+          8,
+          16,
+          28,
+          36,
+          40,
+          44
+        ],
+        "kind": "transform_result",
+        "source_generation_artifact_id": "generation_run_1_d6e12a467208",
+        "workflow": "morebench_phase03_experiment03_response_label_capture"
+      },
+      "workflow": {
+        "run_id": "wr_5e81c613af54_54fc9204",
+        "step_index": 1,
+        "step_name": "summarize_capture",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "5e81c613af5420a0bd28df622a0d563da6943b239928a8e8a13cc039e89eb544.summarize_capture"
+      }
+    },
+    {
+      "artifact_id": "transform_469a52e972f0_ba224958",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:32.766319+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_prompt_end_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 16,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6408730158730158,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+      "primary_output": {
+        "bytes": 2134,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_469a52e972f0_ba224958/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1696,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_469a52e972f0_ba224958/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2134,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_469a52e972f0_ba224958/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 16,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6408730158730158,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 90,
+        "group_count": null,
+        "label": "helpful_harmless_off_diagonal",
+        "split_mode": "source_family_holdout",
+        "view": "prompt_end"
+      },
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_prompt_end.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 2,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_helpful_harmless_off_diagonal_prompt_end"
+      }
+    },
+    {
+      "artifact_id": "transform_40dae0c3b937_80608250",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:31.482777+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_first_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6175595238095237,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+      "primary_output": {
+        "bytes": 2210,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_40dae0c3b937_80608250/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1718,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_40dae0c3b937_80608250/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2210,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_40dae0c3b937_80608250/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6175595238095237,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 90,
+        "group_count": null,
+        "label": "helpful_harmless_off_diagonal",
+        "split_mode": "source_family_holdout",
+        "view": "generated_first_third"
+      },
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_first_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 3,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_helpful_harmless_off_diagonal_generated_first_third"
+      }
+    },
+    {
+      "artifact_id": "transform_76e17851e357_81e9978a",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:32.121602+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_middle_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.621031746031746,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+      "primary_output": {
+        "bytes": 2216,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76e17851e357_81e9978a/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1720,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76e17851e357_81e9978a/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2216,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76e17851e357_81e9978a/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.621031746031746,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 90,
+        "group_count": null,
+        "label": "helpful_harmless_off_diagonal",
+        "split_mode": "source_family_holdout",
+        "view": "generated_middle_third"
+      },
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_middle_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 4,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_helpful_harmless_off_diagonal_generated_middle_third"
+      }
+    },
+    {
+      "artifact_id": "transform_8c94fbead150_7d0e57cf",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:31.795074+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_last_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6284722222222222,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+      "primary_output": {
+        "bytes": 2215,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_8c94fbead150_7d0e57cf/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1716,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_8c94fbead150_7d0e57cf/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2215,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_8c94fbead150_7d0e57cf/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6284722222222222,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 90,
+        "group_count": null,
+        "label": "helpful_harmless_off_diagonal",
+        "split_mode": "source_family_holdout",
+        "view": "generated_last_third"
+      },
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_last_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 5,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_helpful_harmless_off_diagonal_generated_last_third"
+      }
+    },
+    {
+      "artifact_id": "transform_6f8f2e0fc725_231c66f4",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_total.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_total.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_total.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer",
+          "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:32.451425+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_total_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6453373015873016,
+        "example_count": 90,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+      "primary_output": {
+        "bytes": 2205,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_6f8f2e0fc725_231c66f4/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1706,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_6f8f2e0fc725_231c66f4/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2205,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_6f8f2e0fc725_231c66f4/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6453373015873016,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 90,
+        "group_count": null,
+        "label": "helpful_harmless_off_diagonal",
+        "split_mode": "source_family_holdout",
+        "view": "generated_total"
+      },
+      "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_total.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 6,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_helpful_harmless_off_diagonal_generated_total"
+      }
+    },
+    {
+      "artifact_id": "transform_d67917336d3c_7f211e33",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_prompt_end.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_prompt_end",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_prompt_end.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_prompt_end/auroc_by_layer",
+          "path": "assets/report_probe_strong_helpful_prompt_end/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_prompt_end",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_prompt_end.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_helpful_prompt_end/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_helpful_prompt_end/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_prompt_end",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:35.997215+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_prompt_end_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5922926906258534,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_helpful_prompt_end",
+      "primary_output": {
+        "bytes": 2158,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d67917336d3c_7f211e33/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1666,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d67917336d3c_7f211e33/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2158,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d67917336d3c_7f211e33/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5922926906258534,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_helpful",
+        "split_mode": "source_family_holdout",
+        "view": "prompt_end"
+      },
+      "table_path": "tables/report_probe_strong_helpful_prompt_end.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 7,
+        "step_name": "report_probe_strong_helpful_prompt_end",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_helpful_prompt_end"
+      }
+    },
+    {
+      "artifact_id": "transform_d22ee5879406_ff552c1c",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_first_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_first_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_first_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_first_third/auroc_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_first_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_first_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_first_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_first_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:34.693417+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_first_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5592526406446845,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_helpful_generated_first_third",
+      "primary_output": {
+        "bytes": 2200,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d22ee5879406_ff552c1c/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1688,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d22ee5879406_ff552c1c/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2200,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d22ee5879406_ff552c1c/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 36,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5592526406446845,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_helpful",
+        "split_mode": "source_family_holdout",
+        "view": "generated_first_third"
+      },
+      "table_path": "tables/report_probe_strong_helpful_generated_first_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 8,
+        "step_name": "report_probe_strong_helpful_generated_first_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_helpful_generated_first_third"
+      }
+    },
+    {
+      "artifact_id": "transform_bb08318c8e19_ed32b76f",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_middle_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_middle_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_middle_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_middle_third/auroc_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_middle_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_middle_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_middle_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_middle_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:35.339509+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_middle_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 8,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5741081161753798,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_helpful_generated_middle_third",
+      "primary_output": {
+        "bytes": 2195,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_bb08318c8e19_ed32b76f/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1690,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_bb08318c8e19_ed32b76f/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2195,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_bb08318c8e19_ed32b76f/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 8,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5741081161753798,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_helpful",
+        "split_mode": "source_family_holdout",
+        "view": "generated_middle_third"
+      },
+      "table_path": "tables/report_probe_strong_helpful_generated_middle_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 9,
+        "step_name": "report_probe_strong_helpful_generated_middle_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_helpful_generated_middle_third"
+      }
+    },
+    {
+      "artifact_id": "transform_4713b9e99669_b482e85d",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_last_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_last_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_last_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_last_third/auroc_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_last_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_last_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_last_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_last_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:35.013027+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_last_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 8,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5898776693344356,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_helpful_generated_last_third",
+      "primary_output": {
+        "bytes": 2189,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_4713b9e99669_b482e85d/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1687,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_4713b9e99669_b482e85d/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2189,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_4713b9e99669_b482e85d/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 8,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5898776693344356,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_helpful",
+        "split_mode": "source_family_holdout",
+        "view": "generated_last_third"
+      },
+      "table_path": "tables/report_probe_strong_helpful_generated_last_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 10,
+        "step_name": "report_probe_strong_helpful_generated_last_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_helpful_generated_last_third"
+      }
+    },
+    {
+      "artifact_id": "transform_a0bec147cb22_3db5fbea",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_total.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_total",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_total.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_total/auroc_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_total/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_total",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_total.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_helpful_generated_total/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_helpful_generated_total/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_helpful_generated_total",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:35.657671+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_total_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 16,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6100958182916448,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_helpful_generated_total",
+      "primary_output": {
+        "bytes": 2181,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_a0bec147cb22_3db5fbea/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1677,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_a0bec147cb22_3db5fbea/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2181,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_a0bec147cb22_3db5fbea/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 16,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6100958182916448,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_helpful",
+        "split_mode": "source_family_holdout",
+        "view": "generated_total"
+      },
+      "table_path": "tables/report_probe_strong_helpful_generated_total.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 11,
+        "step_name": "report_probe_strong_helpful_generated_total",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_helpful_generated_total"
+      }
+    },
+    {
+      "artifact_id": "transform_5b52cb7ea253_8bd01cb3",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_prompt_end.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_prompt_end",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_prompt_end.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_prompt_end/auroc_by_layer",
+          "path": "assets/report_probe_strong_harmless_prompt_end/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_prompt_end",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_prompt_end.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_harmless_prompt_end/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_harmless_prompt_end/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_prompt_end",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:34.365082+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_prompt_end_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 28,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5735146366440623,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_harmless_prompt_end",
+      "primary_output": {
+        "bytes": 2154,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_5b52cb7ea253_8bd01cb3/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1669,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_5b52cb7ea253_8bd01cb3/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2154,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_5b52cb7ea253_8bd01cb3/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 28,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5735146366440623,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_harmless",
+        "split_mode": "source_family_holdout",
+        "view": "prompt_end"
+      },
+      "table_path": "tables/report_probe_strong_harmless_prompt_end.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 12,
+        "step_name": "report_probe_strong_harmless_prompt_end",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_harmless_prompt_end"
+      }
+    },
+    {
+      "artifact_id": "transform_da8a97388617_6eb8304a",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_first_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_first_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_first_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_first_third/auroc_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_first_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_first_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_first_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_first_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:33.078777+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_first_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 0,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5506750126021369,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_harmless_generated_first_third",
+      "primary_output": {
+        "bytes": 2197,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_da8a97388617_6eb8304a/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1691,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_da8a97388617_6eb8304a/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2197,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_da8a97388617_6eb8304a/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 0,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.5506750126021369,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_harmless",
+        "split_mode": "source_family_holdout",
+        "view": "generated_first_third"
+      },
+      "table_path": "tables/report_probe_strong_harmless_generated_first_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 13,
+        "step_name": "report_probe_strong_harmless_generated_first_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_harmless_generated_first_third"
+      }
+    },
+    {
+      "artifact_id": "transform_76ad273f18d3_6e0cdf9c",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_middle_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_middle_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_middle_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_middle_third/auroc_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_middle_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_middle_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_middle_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_middle_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:33.718324+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_middle_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 4,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6090817732512264,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_harmless_generated_middle_third",
+      "primary_output": {
+        "bytes": 2200,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76ad273f18d3_6e0cdf9c/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1693,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76ad273f18d3_6e0cdf9c/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2200,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76ad273f18d3_6e0cdf9c/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 4,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6090817732512264,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_harmless",
+        "split_mode": "source_family_holdout",
+        "view": "generated_middle_third"
+      },
+      "table_path": "tables/report_probe_strong_harmless_generated_middle_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 14,
+        "step_name": "report_probe_strong_harmless_generated_middle_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_harmless_generated_middle_third"
+      }
+    },
+    {
+      "artifact_id": "transform_1a7d61893d27_09a52df7",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_last_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_last_third",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_last_third.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_last_third/auroc_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_last_third/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_last_third",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_last_third.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_last_third",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:33.393827+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_last_third_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 0,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.663826232994211,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_harmless_generated_last_third",
+      "primary_output": {
+        "bytes": 2190,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_1a7d61893d27_09a52df7/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1689,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_1a7d61893d27_09a52df7/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2190,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_1a7d61893d27_09a52df7/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 0,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.663826232994211,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_harmless",
+        "split_mode": "source_family_holdout",
+        "view": "generated_last_third"
+      },
+      "table_path": "tables/report_probe_strong_harmless_generated_last_third.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 15,
+        "step_name": "report_probe_strong_harmless_generated_last_third",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_harmless_generated_last_third"
+      }
+    },
+    {
+      "artifact_id": "transform_fc724fb65cdd_7b93fbcf",
+      "artifact_kind": "transform",
+      "assets": [
+        {
+          "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_total.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer.png",
+          "primary": true,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_total",
+          "title": "Balanced Accuracy by layer"
+        },
+        {
+          "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_total.",
+          "chart_kind": "probe_metric_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_total/auroc_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_total/auroc_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_total",
+          "title": "AUROC by layer"
+        },
+        {
+          "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_total.",
+          "chart_kind": "probe_metrics_by_layer",
+          "figure_id": "report_probe_strong_harmless_generated_total/probe_metrics_by_layer",
+          "path": "assets/report_probe_strong_harmless_generated_total/probe_metrics_by_layer.png",
+          "primary": false,
+          "result_kind": "probe_result",
+          "step_name": "report_probe_strong_harmless_generated_total",
+          "title": "Probe metrics by layer"
+        }
+      ],
+      "created_at": "2026-04-24T21:47:34.043862+00:00",
+      "downloaded_result_path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_total_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": null,
+        "materialized": false
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "headline_metrics": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6142569585650821,
+        "example_count": 500,
+        "group_count": null,
+        "split_mode": "source_family_holdout"
+      },
+      "input_artifact_refs": [
+        "transform_1_e40d6e62"
+      ],
+      "label_names": [],
+      "name": "report_probe_strong_harmless_generated_total",
+      "primary_output": {
+        "bytes": 2184,
+        "format": "json",
+        "name": "result",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_fc724fb65cdd_7b93fbcf/result.json",
+        "store": "local"
+      },
+      "runtime": {
+        "runner_kind": "local",
+        "runtime_app_id": null,
+        "volume_mappings": []
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 1679,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_fc724fb65cdd_7b93fbcf/manifest.json",
+          "store": "local"
+        },
+        "result": {
+          "bytes": 2184,
+          "format": "json",
+          "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_fc724fb65cdd_7b93fbcf/result.json",
+          "store": "local"
+        }
+      },
+      "summary": {
+        "best_layer": 44,
+        "best_metric": "source_family_holdout_balanced_accuracy",
+        "best_value": 0.6142569585650821,
+        "capture_artifact_id": "capture_1_f2a9e4531dec",
+        "example_count": 500,
+        "group_count": null,
+        "label": "strong_harmless",
+        "split_mode": "source_family_holdout",
+        "view": "generated_total"
+      },
+      "table_path": "tables/report_probe_strong_harmless_generated_total.json",
+      "workflow": {
+        "run_id": "wr_1978c6512339_7ce43404",
+        "step_index": 16,
+        "step_name": "report_probe_strong_harmless_generated_total",
+        "workflow_name": "morebench_phase03_experiment03_response_label_capture",
+        "workflow_step_key": "1978c65123393e394d882875ae9627726a9c7e5e2b4a0de5176cb18d0259b8fc.report_probe_strong_harmless_generated_total"
+      }
+    }
+  ],
+  "kind": "report_result",
+  "local_results": [
+    {
+      "artifact_id": "transform_1_e40d6e62",
+      "artifact_kind": "transform",
+      "name": "summarize_capture",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/summarize_capture_results.json",
+      "source": {
+        "bytes": 387,
+        "format": "json",
+        "path": "/data/artifacts/morebench_phase_03_experiment03_response_labels/transform_1_e40d6e62/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "transform_469a52e972f0_ba224958",
+      "artifact_kind": "transform",
+      "name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_prompt_end_results.json",
+      "source": {
+        "bytes": 2134,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_469a52e972f0_ba224958/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_40dae0c3b937_80608250",
+      "artifact_kind": "transform",
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_first_third_results.json",
+      "source": {
+        "bytes": 2210,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_40dae0c3b937_80608250/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_76e17851e357_81e9978a",
+      "artifact_kind": "transform",
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_middle_third_results.json",
+      "source": {
+        "bytes": 2216,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76e17851e357_81e9978a/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_8c94fbead150_7d0e57cf",
+      "artifact_kind": "transform",
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_last_third_results.json",
+      "source": {
+        "bytes": 2215,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_8c94fbead150_7d0e57cf/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_6f8f2e0fc725_231c66f4",
+      "artifact_kind": "transform",
+      "name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_helpful_harmless_off_diagonal_generated_total_results.json",
+      "source": {
+        "bytes": 2205,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_6f8f2e0fc725_231c66f4/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_d67917336d3c_7f211e33",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_helpful_prompt_end",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_prompt_end_results.json",
+      "source": {
+        "bytes": 2158,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d67917336d3c_7f211e33/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_d22ee5879406_ff552c1c",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_helpful_generated_first_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_first_third_results.json",
+      "source": {
+        "bytes": 2200,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_d22ee5879406_ff552c1c/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_bb08318c8e19_ed32b76f",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_helpful_generated_middle_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_middle_third_results.json",
+      "source": {
+        "bytes": 2195,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_bb08318c8e19_ed32b76f/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_4713b9e99669_b482e85d",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_helpful_generated_last_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_last_third_results.json",
+      "source": {
+        "bytes": 2189,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_4713b9e99669_b482e85d/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_a0bec147cb22_3db5fbea",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_helpful_generated_total",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_helpful_generated_total_results.json",
+      "source": {
+        "bytes": 2181,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_a0bec147cb22_3db5fbea/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_5b52cb7ea253_8bd01cb3",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_harmless_prompt_end",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_prompt_end_results.json",
+      "source": {
+        "bytes": 2154,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_5b52cb7ea253_8bd01cb3/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_da8a97388617_6eb8304a",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_harmless_generated_first_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_first_third_results.json",
+      "source": {
+        "bytes": 2197,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_da8a97388617_6eb8304a/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_76ad273f18d3_6e0cdf9c",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_harmless_generated_middle_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_middle_third_results.json",
+      "source": {
+        "bytes": 2200,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_76ad273f18d3_6e0cdf9c/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_1a7d61893d27_09a52df7",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_harmless_generated_last_third",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_last_third_results.json",
+      "source": {
+        "bytes": 2190,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_1a7d61893d27_09a52df7/result.json",
+        "store": "local"
+      }
+    },
+    {
+      "artifact_id": "transform_fc724fb65cdd_7b93fbcf",
+      "artifact_kind": "transform",
+      "name": "report_probe_strong_harmless_generated_total",
+      "path": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report/report_a96341f5a739_819530a9/results/report_probe_strong_harmless_generated_total_results.json",
+      "source": {
+        "bytes": 2184,
+        "format": "json",
+        "path": "/Users/trentelmore/Projects/concordance/xenon/artifacts/morebench_phase_03_experiment03_response_labels/transform_fc724fb65cdd_7b93fbcf/result.json",
+        "store": "local"
+      }
+    }
+  ],
+  "output_dir": "projects/MOREBENCH/phase_03/reports/experiment_03_response_label_capture_report",
+  "summary": {
+    "example_count": 500,
+    "figures": {
+      "report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_first_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_first_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_last_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_last_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_middle_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_middle_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_total.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+        "title": "AUROC by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_generated_total.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_generated_total.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_generated_total/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+        "title": "AUROC by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_helpful_harmless_off_diagonal_prompt_end.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer",
+        "path": "assets/report_probe_helpful_harmless_off_diagonal_prompt_end/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_harmless_generated_first_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_first_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_first_third/auroc_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_first_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_first_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_first_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_first_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_first_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_first_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_first_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_harmless_generated_last_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_last_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_last_third/auroc_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_last_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_last_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_last_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_last_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_last_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_last_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_last_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_harmless_generated_middle_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_middle_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_middle_third/auroc_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_middle_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_middle_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_middle_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_middle_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_middle_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_middle_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_middle_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_harmless_generated_total/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_generated_total.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_total/auroc_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_total/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_total",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_generated_total.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_total",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_harmless_generated_total/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_generated_total.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_harmless_generated_total/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_harmless_generated_total/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_generated_total",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_harmless_prompt_end/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_harmless_prompt_end.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_prompt_end/auroc_by_layer",
+        "path": "assets/report_probe_strong_harmless_prompt_end/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_prompt_end",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_harmless_prompt_end.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_prompt_end",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_harmless_prompt_end/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_harmless_prompt_end.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_harmless_prompt_end/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_harmless_prompt_end/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_harmless_prompt_end",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_helpful_generated_first_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_first_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_first_third/auroc_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_first_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_first_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_first_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_first_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_first_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_first_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_first_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_helpful_generated_last_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_last_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_last_third/auroc_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_last_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_last_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_last_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_last_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_last_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_last_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_last_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_helpful_generated_middle_third/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_middle_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_middle_third/auroc_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_middle_third/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_middle_third",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_middle_third.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_middle_third",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_middle_third.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_middle_third/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_middle_third",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_helpful_generated_total/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_generated_total.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_total/auroc_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_total/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_total",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_generated_total.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_total",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_helpful_generated_total/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_generated_total.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_helpful_generated_total/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_helpful_generated_total/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_generated_total",
+        "title": "Probe metrics by layer"
+      },
+      "report_probe_strong_helpful_prompt_end/auroc_by_layer": {
+        "caption": "AUROC across captured layers for probe step report_probe_strong_helpful_prompt_end.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_prompt_end/auroc_by_layer",
+        "path": "assets/report_probe_strong_helpful_prompt_end/auroc_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_prompt_end",
+        "title": "AUROC by layer"
+      },
+      "report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer": {
+        "caption": "Balanced Accuracy across captured layers for probe step report_probe_strong_helpful_prompt_end.",
+        "chart_kind": "probe_metric_by_layer",
+        "figure_id": "report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer",
+        "path": "assets/report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer.png",
+        "primary": true,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_prompt_end",
+        "title": "Balanced Accuracy by layer"
+      },
+      "report_probe_strong_helpful_prompt_end/probe_metrics_by_layer": {
+        "caption": "Available probe metrics across captured layers for step report_probe_strong_helpful_prompt_end.",
+        "chart_kind": "probe_metrics_by_layer",
+        "figure_id": "report_probe_strong_helpful_prompt_end/probe_metrics_by_layer",
+        "path": "assets/report_probe_strong_helpful_prompt_end/probe_metrics_by_layer.png",
+        "primary": false,
+        "result_kind": "probe_result",
+        "step_name": "report_probe_strong_helpful_prompt_end",
+        "title": "Probe metrics by layer"
+      }
+    },
+    "input_count": 17,
+    "step_summaries": {
+      "report_probe_helpful_harmless_off_diagonal_generated_first_third": {
+        "headline_metrics": {
+          "best_layer": 36,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.6175595238095237,
+          "example_count": 90,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_first_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third",
+        "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_first_third.json"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_last_third": {
+        "headline_metrics": {
+          "best_layer": 44,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.6284722222222222,
+          "example_count": 90,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_last_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third",
+        "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_last_third.json"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_middle_third": {
+        "headline_metrics": {
+          "best_layer": 44,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.621031746031746,
+          "example_count": 90,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_middle_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third",
+        "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_middle_third.json"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_total": {
+        "headline_metrics": {
+          "best_layer": 44,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.6453373015873016,
+          "example_count": 90,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_generated_total/balanced_accuracy_by_layer",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total",
+        "table_path": "tables/report_probe_helpful_harmless_off_diagonal_generated_total.json"
+      },
+      "report_probe_helpful_harmless_off_diagonal_prompt_end": {
+        "headline_metrics": {
+          "best_layer": 16,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.6408730158730158,
+          "example_count": 90,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_helpful_harmless_off_diagonal_prompt_end/balanced_accuracy_by_layer",
+        "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end",
+        "table_path": "tables/report_probe_helpful_harmless_off_diagonal_prompt_end.json"
+      },
+      "report_probe_strong_harmless_generated_first_third": {
+        "headline_metrics": {
+          "best_layer": 0,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.5506750126021369,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_harmless_generated_first_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_harmless_generated_first_third",
+        "table_path": "tables/report_probe_strong_harmless_generated_first_third.json"
+      },
+      "report_probe_strong_harmless_generated_last_third": {
+        "headline_metrics": {
+          "best_layer": 0,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.663826232994211,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_harmless_generated_last_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_harmless_generated_last_third",
+        "table_path": "tables/report_probe_strong_harmless_generated_last_third.json"
+      },
+      "report_probe_strong_harmless_generated_middle_third": {
+        "headline_metrics": {
+          "best_layer": 4,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.6090817732512264,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_harmless_generated_middle_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_harmless_generated_middle_third",
+        "table_path": "tables/report_probe_strong_harmless_generated_middle_third.json"
+      },
+      "report_probe_strong_harmless_generated_total": {
+        "headline_metrics": {
+          "best_layer": 44,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.6142569585650821,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_harmless_generated_total/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_harmless_generated_total",
+        "table_path": "tables/report_probe_strong_harmless_generated_total.json"
+      },
+      "report_probe_strong_harmless_prompt_end": {
+        "headline_metrics": {
+          "best_layer": 28,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.5735146366440623,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_harmless_prompt_end/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_harmless_prompt_end",
+        "table_path": "tables/report_probe_strong_harmless_prompt_end.json"
+      },
+      "report_probe_strong_helpful_generated_first_third": {
+        "headline_metrics": {
+          "best_layer": 36,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.5592526406446845,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_helpful_generated_first_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_helpful_generated_first_third",
+        "table_path": "tables/report_probe_strong_helpful_generated_first_third.json"
+      },
+      "report_probe_strong_helpful_generated_last_third": {
+        "headline_metrics": {
+          "best_layer": 8,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.5898776693344356,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_helpful_generated_last_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_helpful_generated_last_third",
+        "table_path": "tables/report_probe_strong_helpful_generated_last_third.json"
+      },
+      "report_probe_strong_helpful_generated_middle_third": {
+        "headline_metrics": {
+          "best_layer": 8,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.5741081161753798,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_helpful_generated_middle_third/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_helpful_generated_middle_third",
+        "table_path": "tables/report_probe_strong_helpful_generated_middle_third.json"
+      },
+      "report_probe_strong_helpful_generated_total": {
+        "headline_metrics": {
+          "best_layer": 16,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.6100958182916448,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_helpful_generated_total/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_helpful_generated_total",
+        "table_path": "tables/report_probe_strong_helpful_generated_total.json"
+      },
+      "report_probe_strong_helpful_prompt_end": {
+        "headline_metrics": {
+          "best_layer": 36,
+          "best_metric": "source_family_holdout_balanced_accuracy",
+          "best_value": 0.5922926906258534,
+          "example_count": 500,
+          "group_count": null,
+          "split_mode": "source_family_holdout"
+        },
+        "kind": "probe_result",
+        "primary_figure_id": "report_probe_strong_helpful_prompt_end/balanced_accuracy_by_layer",
+        "step_name": "report_probe_strong_helpful_prompt_end",
+        "table_path": "tables/report_probe_strong_helpful_prompt_end.json"
+      }
+    },
+    "tables": {
+      "report_probe_helpful_harmless_off_diagonal_generated_first_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_first_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_first_third"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_last_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_last_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_last_third"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_middle_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_middle_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_middle_third"
+      },
+      "report_probe_helpful_harmless_off_diagonal_generated_total": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_helpful_harmless_off_diagonal_generated_total.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_generated_total"
+      },
+      "report_probe_helpful_harmless_off_diagonal_prompt_end": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_helpful_harmless_off_diagonal_prompt_end.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_helpful_harmless_off_diagonal_prompt_end"
+      },
+      "report_probe_strong_harmless_generated_first_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_harmless_generated_first_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_harmless_generated_first_third"
+      },
+      "report_probe_strong_harmless_generated_last_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_harmless_generated_last_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_harmless_generated_last_third"
+      },
+      "report_probe_strong_harmless_generated_middle_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_harmless_generated_middle_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_harmless_generated_middle_third"
+      },
+      "report_probe_strong_harmless_generated_total": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_harmless_generated_total.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_harmless_generated_total"
+      },
+      "report_probe_strong_harmless_prompt_end": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_harmless_prompt_end.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_harmless_prompt_end"
+      },
+      "report_probe_strong_helpful_generated_first_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_helpful_generated_first_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_helpful_generated_first_third"
+      },
+      "report_probe_strong_helpful_generated_last_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_helpful_generated_last_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_helpful_generated_last_third"
+      },
+      "report_probe_strong_helpful_generated_middle_third": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_helpful_generated_middle_third.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_helpful_generated_middle_third"
+      },
+      "report_probe_strong_helpful_generated_total": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_helpful_generated_total.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_helpful_generated_total"
+      },
+      "report_probe_strong_helpful_prompt_end": {
+        "columns": [
+          "auroc",
+          "balanced_accuracy",
+          "cv_auroc",
+          "cv_balanced_accuracy",
+          "layer",
+          "n"
+        ],
+        "path": "tables/report_probe_strong_helpful_prompt_end.json",
+        "result_kind": "probe_result",
+        "rows": 8,
+        "step_name": "report_probe_strong_helpful_prompt_end"
+      }
+    },
+    "template": "default"
+  },
+  "template": "default"
+}

@@ -1,11 +1,13 @@
 ---
 benchmark: morebench
 phase: 02
-version: v2
-frozen_date: 2026-04-23
+version: v3
+frozen_date: 2026-04-24
 input_artifacts:
   - projects/MOREBENCH/phase_01/docs/01-gap-list.md
   - projects/MOREBENCH/phase_02/outputs/theory_group_manifest.json
+  - projects/MOREBENCH/phase_03/reports/experiment_03_label_lexical_gate/report.md
+  - projects/MOREBENCH/phase_02/docs/02-dilemma-family-variant-spec.md
 ---
 
 # MoReBench 02 Augmentation Plan
@@ -30,6 +32,7 @@ This phase therefore reopens theory work as an anti-shortcut repair problem rath
 - `theory_not_prompt_exposed`: Inject explicit theory instructions with framework-specific anchors into matched dilemma groups. (`materialized`)
 - `theory_lexical_shortcuts`: Materialize name-only, alias-only, description-only, and name-plus-description theory families plus cheap-baseline preflight. (`materialized`)
 - `theory_training_distribution_variation`: Materialize style-diverse held-out variant banks for description-only theory prompts so prompt-side theory work can be tested under cross-variant transfer rather than a single fixed cue bank. (`materialized_for_review`)
+- `dilemma_family_keyword_shortcut_stress_test`: Materialize three keyword-variant banks per dilemma-family label (`close_relationship_obligation`, `privacy_monitoring_conflict`, `disclosure_transparency_conflict`, `institutional_policy_constraint`) so that cross-variant char-TFIDF transfer becomes a real anti-shortcut test. Spec: `projects/MOREBENCH/phase_02/docs/02-dilemma-family-variant-spec.md`. Preflight: `projects/MOREBENCH/phase_02/reports/dilemma_family_keyword_variant_preflight/report.md`. (`materialized_iterate_variant_design`)
 - `source_role_aliasing`: Materialize starter batch of 10 matched advisor/agent rewrite pairs. (`partially_materialized`)
 - `prompt_wrapper_imbalance`: Use a structurally matched neutral control with the same prompt skeleton minus the theory clause. (`materialized`)
 - `source_type_aliasing`: Rewrite prompts into matched canonical formats across long-case and expert-case structure. (`not_started`)

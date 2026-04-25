@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MoReBench Scaled F.1 Process Probe</title>
+  <style>
+    body { font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 40px; max-width: 1180px; }
+    h1, h2 { line-height: 1.15; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 28px; }
+    th, td { border-bottom: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+    th { background: #f5f5f5; }
+    img { max-width: 100%; border: 1px solid #e5e5e5; border-radius: 8px; margin: 12px 0 28px; }
+    code { background: #f7f7f7; border-radius: 6px; padding: 1px 4px; }
+  </style>
+</head>
+<body>
+  <h1>MoReBench Scaled F.1 Process Probe</h1>
+  <p>Exploratory collapsed criterion-family readout from prompt-final residuals. Gates were bypassed intentionally; this report is triage, not a confirmatory claim.</p>
+  <table>
+    <thead><tr><th>Family</th><th>Group</th><th>Pos/Neg</th><th>Best Layer</th><th>Holdout AUROC</th><th>Holdout BA</th><th>Text AUROC</th><th>Length AUROC</th><th>Null p95</th><th>Emp p</th></tr></thead>
+    <tbody><tr><td>risk_mitigation</td><td>primary_process</td><td>85/415</td><td>8</td><td>0.657</td><td>0.555</td><td>0.646</td><td>0.533</td><td>0.642</td><td>0.167</td></tr><tr><td>decision_procedure</td><td>primary_process</td><td>229/271</td><td>4</td><td>0.566</td><td>0.549</td><td>0.469</td><td>0.455</td><td>0.556</td><td>0.167</td></tr><tr><td>epistemic_uncertainty</td><td>primary_process</td><td>97/403</td><td>40</td><td>0.563</td><td>0.523</td><td>0.528</td><td>0.523</td><td>0.539</td><td>0.167</td></tr><tr><td>identify_options</td><td>primary_process</td><td>165/335</td><td>16</td><td>0.506</td><td>0.501</td><td>0.573</td><td>0.484</td><td>0.554</td><td>1.000</td></tr><tr><td>tailored_next_steps</td><td>primary_process</td><td>142/358</td><td>0</td><td>0.503</td><td>0.503</td><td>0.485</td><td>0.568</td><td>0.608</td><td>1.000</td></tr><tr><td>identify_stakeholders</td><td>primary_process</td><td>50/450</td><td>0</td><td>0.503</td><td>0.503</td><td>0.504</td><td>0.590</td><td>0.604</td><td>1.000</td></tr><tr><td>uncertainty_incomplete_info</td><td>secondary_uncertainty_duplicate_check</td><td>59/441</td><td>4</td><td>0.568</td><td>0.610</td><td>0.389</td><td>0.414</td><td>0.675</td><td>0.667</td></tr></tbody>
+  </table>
+  <h2>Best Holdout AUROC</h2>
+  <img src="assets/best_holdout_auroc.png" alt="Best holdout AUROC">
+  <h2>Layer Curves</h2>
+  <img src="assets/layer_curves.png" alt="Layer curves">
+</body>
+</html>

@@ -1,0 +1,82 @@
+{
+  "kind": "probe_result",
+  "label": "strong_harmless",
+  "layers": [
+    {
+      "auroc": 0.49715909090909094,
+      "balanced_accuracy": 0.49715909090909094,
+      "cv_auroc": 0.5,
+      "cv_balanced_accuracy": 0.5,
+      "layer": 0,
+      "n": 500
+    },
+    {
+      "auroc": 0.5692117022762184,
+      "balanced_accuracy": 0.5324234853026159,
+      "cv_auroc": 0.5674261603375528,
+      "cv_balanced_accuracy": 0.5213984327908379,
+      "layer": 4,
+      "n": 500
+    },
+    {
+      "auroc": 0.5256438875946153,
+      "balanced_accuracy": 0.5156697425531022,
+      "cv_auroc": 0.5849789029535866,
+      "cv_balanced_accuracy": 0.5698613622664256,
+      "layer": 8,
+      "n": 500
+    },
+    {
+      "auroc": 0.5674862369905642,
+      "balanced_accuracy": 0.5542550980468959,
+      "cv_auroc": 0.5924773960216998,
+      "cv_balanced_accuracy": 0.5644966847498493,
+      "layer": 16,
+      "n": 500
+    },
+    {
+      "auroc": 0.608578943730891,
+      "balanced_accuracy": 0.5735146366440623,
+      "cv_auroc": 0.5715732368896926,
+      "cv_balanced_accuracy": 0.5343580470162749,
+      "layer": 28,
+      "n": 500
+    },
+    {
+      "auroc": 0.5631568345873027,
+      "balanced_accuracy": 0.5699441660053383,
+      "cv_auroc": 0.5581675708257987,
+      "cv_balanced_accuracy": 0.5610006027727547,
+      "layer": 36,
+      "n": 500
+    },
+    {
+      "auroc": 0.46010885592465056,
+      "balanced_accuracy": 0.49574207782557506,
+      "cv_auroc": 0.5040144665461121,
+      "cv_balanced_accuracy": 0.5115129596142254,
+      "layer": 40,
+      "n": 500
+    },
+    {
+      "auroc": 0.4667864565061654,
+      "balanced_accuracy": 0.5306337973701271,
+      "cv_auroc": 0.48233875828812534,
+      "cv_balanced_accuracy": 0.49885473176612416,
+      "layer": 44,
+      "n": 500
+    }
+  ],
+  "summary": {
+    "best_layer": 28,
+    "best_metric": "source_family_holdout_balanced_accuracy",
+    "best_value": 0.5735146366440623,
+    "capture_artifact_id": "capture_1_f2a9e4531dec",
+    "example_count": 500,
+    "group_count": null,
+    "label": "strong_harmless",
+    "split_mode": "source_family_holdout",
+    "view": "prompt_end"
+  },
+  "view": "prompt_end"
+}
