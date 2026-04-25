@@ -1075,7 +1075,7 @@ def test_morebench_phase_02_workflow_builds_raw_dimension_probe_steps() -> None:
     assert workflow.steps[0].spec.kind == "transform"
     assert workflow.steps[1].spec.kind == "generation_run"
     assert workflow.steps[1].spec.generation.enabled is True
-    assert workflow.steps[1].spec.engine.max_num_seqs == 4
+    assert workflow.steps[1].spec.engine.max_num_seqs == module.MAX_NUM_SEQS
     assert workflow.steps[1].spec.engine.model_id == "Qwen/Qwen3-30B-A3B"
     assert workflow.steps[1].spec.engine.model_path_root == "/models"
     assert workflow.steps[1].spec.engine.resolved_model_path() == "/models/Qwen/Qwen3-30B-A3B"
@@ -6502,7 +6502,10 @@ def test_pipelines_v2_modal_smoke_file_builders() -> None:
     assert workflow.steps[1].runner == "analysis_cpu"
     assert workflow.steps[0].spec.engine.identity()["kind"] == "vllm"
     assert workflow.steps[0].spec.prompt_metadata_builder is not None
-    assert "." in workflow.steps[0].spec.runtime_spec().local_python_sources
+    local_sources = workflow.steps[0].spec.runtime_spec().local_python_sources
+    assert "." not in local_sources
+    assert "pipelines_v2" in local_sources
+    assert "scripts" in local_sources
     assert workflow.steps[0].spec.prompt_metadata_builder.import_path == (
         "scripts.pipelines_v2_orchestrator_smoke:build_prompt_metadata"
     )
@@ -6858,13 +6861,43 @@ def test_project_local_builder_import_fallback_works_with_legacy_source_relative
     assert "token_sections" in payload
 
 
-def test_synthetic_market_import_market_subspace_builder_returns_subspace_result() -> None:
+def _install_synthetic_market_basis_fixture(module: Any, tmp_path: Path) -> None:
+    basis_dir = tmp_path / "synthetic_market_basis"
+    basis_dir.mkdir()
+    basis_npz_path = basis_dir / "pca_basis.npz"
+    np.savez(
+        basis_npz_path,
+        market_mean_layer_4__mean=np.zeros((6,), dtype=np.float32),
+        market_mean_layer_4__scale=np.ones((6,), dtype=np.float32),
+        market_mean_layer_4__components=np.eye(6, dtype=np.float32)[:4],
+    )
+    basis_results_path = basis_dir / "results.json"
+    basis_results_path.write_text(
+        json.dumps(
+            {
+                "targets": {
+                    "leader_axis": {
+                        "state_key": "market_mean",
+                        "layer": 4,
+                        "pc_index": 2,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    module.BASIS_NPZ_PATH = basis_npz_path
+    module.BASIS_RESULTS_PATH = basis_results_path
+
+
+def test_synthetic_market_import_market_subspace_builder_returns_subspace_result(tmp_path: Path) -> None:
     module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
     spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_import", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+    _install_synthetic_market_basis_fixture(module, tmp_path)
 
     result = module.import_market_subspace(
         state_key="market_mean",
@@ -6878,13 +6911,14 @@ def test_synthetic_market_import_market_subspace_builder_returns_subspace_result
     assert payload["layers"]["4"]["component_count"] == 4
 
 
-def test_synthetic_market_import_market_direction_builder_returns_direction_result() -> None:
+def test_synthetic_market_import_market_direction_builder_returns_direction_result(tmp_path: Path) -> None:
     module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
     spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_direction", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+    _install_synthetic_market_basis_fixture(module, tmp_path)
 
     result = module.import_market_direction(
         target_name="leader_axis",
@@ -6902,13 +6936,14 @@ def test_synthetic_market_import_market_direction_builder_returns_direction_resu
     assert payload["layers"]["4"]["subspace_component_count"] == 4
 
 
-def test_synthetic_market_import_market_direction_accepts_operation_artifact_like_input() -> None:
+def test_synthetic_market_import_market_direction_accepts_operation_artifact_like_input(tmp_path: Path) -> None:
     module_path = Path("projects/DX_TERMINAL/synthetic_market/path_validation/specs/workflow_v2_smoke.py")
     spec = importlib.util.spec_from_file_location("synthetic_market_path_validation_v2_smoke_direction_artifact", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+    _install_synthetic_market_basis_fixture(module, tmp_path)
 
     class _ArtifactLike:
         def __init__(self, payload: dict[str, Any]) -> None:
