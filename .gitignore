@@ -21,8 +21,19 @@ wheels/
 tmp/
 /artifacts/
 
-# Generated local pipelines_v2 report materializations
-projects/**/reports/pipelines_v2/report_*/
+# Generated pipelines_v2 report materializations (any reports/ subdir).
+# Curated typst/md/pdf and assets/scripts/ stay; the report_<hex>_<hex>/
+# directories that pipelines_v2 emits do not.
+projects/**/reports/**/report_*/
+
+# Auto-generated review HTML rendered at the phase reports/ root.
+# (Reviews inside report_*/ are already ignored by the rule above.)
+projects/**/reports/*_review.html
+
+# Auto-generated dataset materializations. The jsonl/parquet siblings
+# are covered by the data-artifact rules below; csv is the same data
+# in a different shape.
+projects/**/dataset_exports/*.csv
 
 # Phase-level pipeline outputs: dataset jsonl, pipelines_v2 artifact
 # caches, and auto-generated report materializations. Curated
