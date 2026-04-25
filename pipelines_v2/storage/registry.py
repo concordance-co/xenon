@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from pipelines_v2.core.registry import load_from_kind_registry
 from pipelines_v2.storage.base import ArtifactStore
 from pipelines_v2.storage.base import Catalog
 from pipelines_v2.storage.local import FileCatalog, LocalArtifactStore, NullCatalog
@@ -26,22 +27,8 @@ _CATALOG_LOADERS: dict[str, CatalogLoader] = {
 
 
 def artifact_store_from_dict(payload: dict[str, Any]) -> ArtifactStore:
-    kind = str(payload.get("kind") or "").strip()
-    if not kind:
-        raise ValueError("Artifact store payload is missing 'kind'")
-    try:
-        loader = _ARTIFACT_STORE_LOADERS[kind]
-    except KeyError as exc:
-        raise ValueError(f"Unknown artifact store kind: {kind!r}") from exc
-    return loader(payload)
+    return load_from_kind_registry(payload, _ARTIFACT_STORE_LOADERS, missing_message="Artifact store payload is missing 'kind'", unknown_message="Unknown artifact store kind: {kind!r}")
 
 
 def catalog_from_dict(payload: dict[str, Any]) -> Catalog:
-    kind = str(payload.get("kind") or "").strip()
-    if not kind:
-        raise ValueError("Catalog payload is missing 'kind'")
-    try:
-        loader = _CATALOG_LOADERS[kind]
-    except KeyError as exc:
-        raise ValueError(f"Unknown catalog kind: {kind!r}") from exc
-    return loader(payload)
+    return load_from_kind_registry(payload, _CATALOG_LOADERS, missing_message="Catalog payload is missing 'kind'", unknown_message="Unknown catalog kind: {kind!r}")

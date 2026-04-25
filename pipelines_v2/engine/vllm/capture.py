@@ -10,6 +10,7 @@ from pipelines_v2.data.datasets import Example
 from pipelines_v2.engine.base import EngineCaptureResult
 from pipelines_v2.engine.prompt_metadata import rebase_section_records, rebase_token_sections
 from pipelines_v2.engine.prompt_metadata import resolve_prompt_metadata, section_records_from_metadata, token_sections_from_metadata
+from pipelines_v2.engine.routing import requested_topk_from_gate_k, routing_record_payload
 from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord
 
 if TYPE_CHECKING:
@@ -929,71 +930,19 @@ def _routing_records(
     observed_topk_weights: Any | None = None,
 ) -> dict[str, Any]:
     token_records: dict[str, Any] = {}
-    topk_from_gate_k = _requested_topk_from_gate_k(requested, fallback=8)
+    topk_from_gate_k = requested_topk_from_gate_k(requested, fallback=8)
     for record in requested:
         token_records.update(
-            _routing_record(
+            routing_record_payload(
                 record,
                 logits,
                 topk_from_gate_k=topk_from_gate_k,
+                fallback_top_k=8,
                 observed_topk_ids=observed_topk_ids,
                 observed_topk_weights=observed_topk_weights,
             )
         )
     return token_records
-
-
-def _routing_record(
-    record: RoutingRecord,
-    logits: Any,
-    *,
-    topk_from_gate_k: int,
-    observed_topk_ids: Any | None = None,
-    observed_topk_weights: Any | None = None,
-) -> dict[str, Any]:
-    import numpy as np
-
-    if record.kind == "gate_logits":
-        return {"gate_logits": logits.astype(_float_dtype(record.params.get("dtype", "float16")))}
-    if record.kind == "gate_probs":
-        return {"gate_probs": _softmax(logits).astype(_float_dtype(record.params.get("dtype", "float16")))}
-    if record.kind == "routing_decisions":
-        if observed_topk_ids is not None:
-            expert_ids = np.asarray(observed_topk_ids, dtype=np.int64)
-            expert_weights = (
-                np.asarray(observed_topk_weights, dtype=np.float32)
-                if observed_topk_weights is not None
-                else np.ones(expert_ids.shape[0], dtype=np.float32)
-            )
-            return {
-                "routing_decisions": {
-                    "source": "observed",
-                    "expert_ids": expert_ids,
-                    "weights": expert_weights,
-                }
-            }
-        if record.params.get("required", True):
-            raise RuntimeError("Observed routing decisions are not exposed by the current vLLM MoE hook")
-        return {"routing_decisions": {"source": "not_observed", "expert_ids": [], "weights": []}}
-    if record.kind == "topk_from_gate":
-        k = int(record.params["k"])
-        indices = np.argsort(logits)[::-1][:k].astype(np.int64)
-        values = logits[indices].astype(np.float32)
-        payload: dict[str, Any] = {
-            "source": "derived_from_gate_logits",
-            "expert_ids": indices,
-        }
-        if record.params.get("include_weights", True):
-            payload["weights"] = _normalize(values)
-        return {"topk_from_gate": payload}
-    if record.kind == "expert_load":
-        source = str(record.params.get("source") or "topk_from_gate")
-        if source == "routing_decisions" and observed_topk_ids is not None:
-            topk = np.asarray(observed_topk_ids, dtype=np.int64)
-        else:
-            topk = np.argsort(logits)[::-1][:topk_from_gate_k if source == "topk_from_gate" else 8]
-        return {"expert_load": {"source": source, "counts": {str(int(idx)): 1 for idx in topk}}}
-    raise ValueError(f"Unsupported routing record: {record.kind}")
 
 
 def _reasoning_text(request_output: Any, completion: Any) -> str:
@@ -1051,45 +1000,6 @@ def _extract_reasoning_from_text(reasoning_parser: Any, raw_text: str) -> tuple[
     if not reasoning_text:
         return "", raw_text
     return reasoning_text, output_text
-
-
-def _softmax(values: Any) -> Any:
-    import numpy as np
-
-    shifted = values.astype(np.float32) - np.max(values)
-    exps = np.exp(shifted)
-    return (exps / np.sum(exps)).astype(np.float32)
-
-
-def _normalize(values: Any) -> Any:
-    import numpy as np
-
-    if values.size == 0:
-        return np.asarray([], dtype=np.float32)
-    shifted = values.astype(np.float32) - np.min(values) + np.float32(1e-6)
-    return (shifted / np.sum(shifted)).astype(np.float32)
-
-
-def _float_dtype(name: str) -> Any:
-    import numpy as np
-
-    normalized = str(name).lower()
-    if normalized == "float16":
-        return np.float16
-    if normalized in {"float32", "bfloat16"}:
-        return np.float32
-    raise ValueError(f"Unsupported routing dtype: {name}")
-
-
-def _requested_topk_from_gate_k(
-    requested: list[RoutingRecord] | tuple[RoutingRecord, ...],
-    *,
-    fallback: int,
-) -> int:
-    for record in requested:
-        if record.kind == "topk_from_gate":
-            return int(record.params["k"])
-    return int(fallback)
 
 
 def _iter_batches(items: list[Example], batch_size: int) -> list[list[Example]]:

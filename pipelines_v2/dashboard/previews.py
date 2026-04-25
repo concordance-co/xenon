@@ -27,8 +27,7 @@ from pipelines_v2.dashboard.models import (
 from pipelines_v2.core.types import stable_hash
 from pipelines_v2.data.datasets import Dataset, Example
 from pipelines_v2.storage.artifacts import ArtifactManifest, artifact_from_manifest
-from pipelines_v2.storage.local import LocalArtifactStore
-from pipelines_v2.storage.modal import ModalVolumeStore
+from pipelines_v2.storage.inference import artifact_store_from_manifest
 from pipelines_v2.workflow.records import WorkflowRunRecord
 from pipelines_v2.workflow.specs import WorkflowSpec, WorkflowStep
 
@@ -382,7 +381,7 @@ def _bind_artifact_dataset_step_refs(
     manifest = artifact_manifests_by_step.get(step_name)
     if manifest is None:
         raise RuntimeError(f"artifact-backed dataset source step {step_name!r} has no recorded artifact manifest")
-    store = _artifact_store_from_manifest(manifest, local_cache_root=local_cache_root)
+    store = artifact_store_from_manifest(manifest, local_cache_root=local_cache_root, purpose="dataset preview")
     fetch["artifact"] = artifact_from_manifest(manifest, store=store)
     return Dataset(
         examples=(),
@@ -403,51 +402,6 @@ def _artifact_source_step_name(value: Any) -> str | None:
     if kind == "step_ref" and step is not None:
         return str(step)
     return None
-
-
-def _artifact_store_from_manifest(manifest: ArtifactManifest, *, local_cache_root: Path | None) -> Any:
-    ref = _first_storage_ref(manifest.storage_refs)
-    if ref is None:
-        raise RuntimeError(f"Artifact {manifest.artifact_id!r} has no storage refs to infer a store from")
-    store_kind = str(ref.get("store") or "").strip()
-    path = ref.get("path")
-    if not path:
-        raise RuntimeError(f"Artifact {manifest.artifact_id!r} storage ref is missing a path")
-    root = _infer_artifact_root(path, manifest.artifact_id)
-    if store_kind == "modal_volume":
-        name = ref.get("name")
-        if not name:
-            raise RuntimeError(f"Artifact {manifest.artifact_id!r} Modal ref is missing a volume name")
-        return ModalVolumeStore(name=str(name), root=str(root), local_cache_root=local_cache_root)
-    if store_kind in {"local", "local_path"}:
-        return LocalArtifactStore(root=root)
-    raise RuntimeError(f"Unsupported artifact store kind for dataset preview: {store_kind!r}")
-
-
-def _first_storage_ref(value: Any) -> Mapping[str, Any] | None:
-    if isinstance(value, Mapping):
-        if "store" in value and "path" in value:
-            return value
-        for child in value.values():
-            found = _first_storage_ref(child)
-            if found is not None:
-                return found
-    return None
-
-
-def _infer_artifact_root(path: str | Path, artifact_id: str) -> Path:
-    resolved = Path(path)
-    parts = resolved.parts
-    try:
-        index = parts.index(artifact_id)
-    except ValueError:
-        return resolved.parent
-    if index == 0:
-        return resolved.parent
-    root = Path(parts[0])
-    for part in parts[1:index]:
-        root /= part
-    return root
 
 
 def _precheck_deferred_source(dataset: Dataset) -> None:

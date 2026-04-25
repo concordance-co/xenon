@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -34,6 +35,26 @@ def analysis_runtime_spec(
             tuple(str(item) for item in extra_pip_packages),
         ),
         local_python_sources=("pipelines_v2",),
+    )
+
+
+def analysis_runtime_spec_for_refs(
+    *values: Any,
+    extra_pip_packages: Sequence[str] = (),
+    local_python_sources: Sequence[str] = (),
+) -> Any:
+    """Build an analysis runtime extended by packages/sources required by refs."""
+
+    runtime_spec = analysis_runtime_spec(extra_pip_packages=extra_pip_packages)
+    from pipelines_v2.engine.base import PythonRuntimeSpec
+
+    if not isinstance(runtime_spec, PythonRuntimeSpec):
+        return runtime_spec
+    packages = runtime_pip_packages_from_refs(*values)
+    return replace(
+        runtime_spec,
+        pip_packages=merge_string_tuples(runtime_spec.pip_packages, packages),
+        local_python_sources=merge_string_tuples(runtime_spec.local_python_sources, local_python_sources),
     )
 
 

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import Any, ClassVar, Mapping
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret, SpecValidationError
 from pipelines_v2.operations.common._shared import (
-    analysis_runtime_spec,
-    merge_string_tuples,
-    runtime_pip_packages_from_refs,
+    analysis_runtime_spec_for_refs,
     runtime_secrets_from_refs,
     spec_value_from_dict,
 )
@@ -35,11 +33,7 @@ class LabelMapSpec(OperationSpec):
         return runtime_secrets_from_refs(self.source)
 
     def runtime_spec(self) -> Any | None:
-        runtime_spec = analysis_runtime_spec()
-        packages = runtime_pip_packages_from_refs(self.source)
-        if not packages:
-            return runtime_spec
-        return replace(runtime_spec, pip_packages=merge_string_tuples(runtime_spec.pip_packages, packages))
+        return analysis_runtime_spec_for_refs(self.source)
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "LabelMapSpec":
@@ -67,11 +61,7 @@ class LabelFieldsSpec(OperationSpec):
         return runtime_secrets_from_refs(self.source)
 
     def runtime_spec(self) -> Any | None:
-        runtime_spec = analysis_runtime_spec()
-        packages = runtime_pip_packages_from_refs(self.source)
-        if not packages:
-            return runtime_spec
-        return replace(runtime_spec, pip_packages=merge_string_tuples(runtime_spec.pip_packages, packages))
+        return analysis_runtime_spec_for_refs(self.source)
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "LabelFieldsSpec":

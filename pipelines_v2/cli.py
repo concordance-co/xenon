@@ -20,7 +20,9 @@ from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
 from pipelines_v2.storage.artifacts import InlineOperationArtifact, artifact_from_manifest
 from pipelines_v2.storage.composite import iter_catalogs_depth_first
+from pipelines_v2.storage.inference import artifact_store_from_manifest
 from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
+from pipelines_v2.reporting.workflow import resolve_report_step
 from pipelines_v2.api import (
     CompositeCatalog,
     Dataset,
@@ -46,6 +48,9 @@ from pipelines_v2.api import (
 from pipelines_v2.workflow.records import WorkflowRunRecord
 
 _LOG = logging.getLogger("pipelines_v2.cli")
+
+# Backward-compatible private alias for tests and existing internal callers.
+_resolve_report_step = resolve_report_step
 
 
 def load_python_workflow_file(
@@ -178,7 +183,7 @@ def _workflow_report(ns: argparse.Namespace) -> int:
     if run is None:
         raise RuntimeError(f"Unknown workflow run id: {ns.run_id}")
     workflow = WorkflowSpec.from_dict(run.workflow_payload)
-    report_step = _resolve_report_step(workflow, step_name=ns.step)
+    report_step = resolve_report_step(workflow, step_name=ns.step, selector_label="--step")
     report_spec = _build_report_spec_from_run(
         run=run,
         report_step=report_step,
@@ -746,21 +751,6 @@ def _workflow_slice_for_step(
     return WorkflowSpec(name=workflow.name, schema_version=workflow.schema_version, steps=steps)
 
 
-def _resolve_report_step(workflow: WorkflowSpec, *, step_name: str | None) -> WorkflowStep:
-    report_steps = [step for step in workflow.ordered_steps() if isinstance(step.spec, ReportSpec)]
-    if not report_steps:
-        raise RuntimeError("Workflow run does not contain any report steps")
-    if step_name is None:
-        if len(report_steps) == 1:
-            return report_steps[0]
-        names = [step.name for step in report_steps]
-        raise RuntimeError(f"Workflow run contains multiple report steps; choose one with --step: {names}")
-    for step in report_steps:
-        if step.name == step_name:
-            return step
-    raise RuntimeError(f"Workflow run does not contain report step {step_name!r}")
-
-
 def _build_report_spec_from_run(
     *,
     run: WorkflowRunRecord,
@@ -803,7 +793,7 @@ def _resolve_report_input_from_source_run(
     manifest = workflow_catalog.load_artifact(record.artifact_id)
     if manifest is None:
         raise RuntimeError(f"Could not load artifact manifest {record.artifact_id!r} for report input step {value.step!r}")
-    store = _artifact_store_from_manifest(manifest, local_cache_root=local_cache_root)
+    store = artifact_store_from_manifest(manifest, local_cache_root=local_cache_root, purpose="report regeneration")
     return artifact_from_manifest(manifest, store=store)
 
 
@@ -820,53 +810,8 @@ def _report_artifact_store_for_run(
     if report_record is not None and report_record.artifact_id:
         manifest = workflow_catalog.load_artifact(report_record.artifact_id)
         if manifest is not None:
-            return _artifact_store_from_manifest(manifest, local_cache_root=local_cache_root)
+            return artifact_store_from_manifest(manifest, local_cache_root=local_cache_root, purpose="report regeneration")
     return LocalArtifactStore(fallback_root)
-
-
-def _artifact_store_from_manifest(manifest: Any, *, local_cache_root: Path | None) -> Any:
-    ref = _first_storage_ref(manifest.storage_refs)
-    if ref is None:
-        raise RuntimeError(f"Artifact {manifest.artifact_id!r} has no storage refs to infer a store from")
-    store_kind = str(ref.get("store") or "").strip()
-    path = ref.get("path")
-    if not path:
-        raise RuntimeError(f"Artifact {manifest.artifact_id!r} storage ref is missing a path")
-    root = _infer_artifact_root(path, manifest.artifact_id)
-    if store_kind == "modal_volume":
-        name = ref.get("name")
-        if not name:
-            raise RuntimeError(f"Artifact {manifest.artifact_id!r} Modal ref is missing a volume name")
-        return ModalVolumeStore(name=str(name), root=str(root), local_cache_root=local_cache_root)
-    if store_kind in {"local", "local_path"}:
-        return LocalArtifactStore(root=root)
-    raise RuntimeError(f"Unsupported artifact store kind for report regeneration: {store_kind!r}")
-
-
-def _first_storage_ref(value: Any) -> Mapping[str, Any] | None:
-    if isinstance(value, Mapping):
-        if "store" in value and "path" in value:
-            return value
-        for child in value.values():
-            found = _first_storage_ref(child)
-            if found is not None:
-                return found
-    return None
-
-
-def _infer_artifact_root(path: str | Path, artifact_id: str) -> Path:
-    resolved = Path(path)
-    parts = resolved.parts
-    try:
-        index = parts.index(artifact_id)
-    except ValueError:
-        return resolved.parent
-    if index == 0:
-        return resolved.parent
-    root = Path(parts[0])
-    for part in parts[1:index]:
-        root /= part
-    return root
 
 
 def _forced_steps_for_rerun(

@@ -11,43 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
-from pipelines_v2.mechinterp.assistant_axis import (
-    AssistantAxisPrecomputedCoordinateSpec,
-    AssistantAxisScoreSpec,
-    AssistantAxisVectorSpec,
-)
-from pipelines_v2.mechinterp.emotions import (
-    EmotionDirectionSpec,
-    EmotionGeometrySpec,
-    EmotionPrecomputedVectorSpaceSpec,
-    EmotionScoreSpec,
-    EmotionVectorSpaceSpec,
-)
-from pipelines_v2.operations.specs import (
-    ActivationBankSpec,
-    BasisSpec,
-    CaptureSpec,
-    CentroidSpec,
-    CoordinateImportSpec,
-    DirectionSpec,
-    ExplicitPathMaskSpec,
-    GenerationRunSpec,
-    GeometrySpec,
-    LabelFieldsSpec,
-    LabelMapSpec,
-    PatchComparisonSpec,
-    PairDeltaSpec,
-    PatchedGenerationSpec,
-    ProbeSpec,
-    ProjectionCalibrationSpec,
-    ProjectionSpec,
-    ReportSpec,
-    ResidualizedProbeSpec,
-    SubspaceSpec,
-    TextBaselineSpec,
-    TransferProbeSpec,
-    TransformSpec,
-)
+from pipelines_v2.operations.specs import CaptureSpec, GenerationRunSpec, PatchedGenerationSpec, ReportSpec
+from pipelines_v2.runtime.artifacts import ARTIFACT_BOUND_SPECS as _ARTIFACT_BOUND_SPECS
 from pipelines_v2.runtime.base import ExecutionPlan
 from pipelines_v2.runtime.env import applied_runtime_env, merged_runtime_env
 from pipelines_v2.storage.artifacts import (
@@ -317,38 +282,6 @@ class LocalRunner:
         storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
         self.catalog.record_artifact(manifest)
         return OperationArtifact(_manifest=manifest, store=self.artifacts)
-
-
-_ARTIFACT_BOUND_SPECS = (
-    ProbeSpec,
-    TransferProbeSpec,
-    TextBaselineSpec,
-    ResidualizedProbeSpec,
-    DirectionSpec,
-    BasisSpec,
-    CentroidSpec,
-    GeometrySpec,
-    SubspaceSpec,
-    ActivationBankSpec,
-    ExplicitPathMaskSpec,
-    PairDeltaSpec,
-    LabelMapSpec,
-    LabelFieldsSpec,
-    TransformSpec,
-    PatchComparisonSpec,
-    CoordinateImportSpec,
-    ProjectionSpec,
-    AssistantAxisPrecomputedCoordinateSpec,
-    AssistantAxisVectorSpec,
-    AssistantAxisScoreSpec,
-    EmotionPrecomputedVectorSpaceSpec,
-    EmotionVectorSpaceSpec,
-    EmotionScoreSpec,
-    EmotionDirectionSpec,
-    EmotionGeometrySpec,
-    ProjectionCalibrationSpec,
-    ReportSpec,
-)
 
 
 def _local_plan_errors(spec: OperationSpec) -> list[str]:

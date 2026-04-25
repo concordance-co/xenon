@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from pipelines_v2.core.registry import load_from_kind_registry
 from pipelines_v2.core.types import OperationSpec
 from pipelines_v2.operations.capture import CaptureSpec
 from pipelines_v2.operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
@@ -106,11 +107,4 @@ _OPERATION_LOADERS: dict[str, OperationLoader] = {
 
 
 def operation_spec_from_dict(payload: dict[str, Any]) -> OperationSpec:
-    kind = str(payload.get("kind") or "").strip()
-    if not kind:
-        raise ValueError("Operation spec payload is missing 'kind'")
-    try:
-        loader = _OPERATION_LOADERS[kind]
-    except KeyError as exc:
-        raise ValueError(f"Unknown operation spec kind: {kind!r}") from exc
-    return loader(payload)
+    return load_from_kind_registry(payload, _OPERATION_LOADERS, missing_message="Operation spec payload is missing 'kind'", unknown_message="Unknown operation spec kind: {kind!r}")

@@ -25,6 +25,12 @@ from pipelines_v2.engine.prompt_metadata import (
     section_records_from_metadata,
     token_sections_from_metadata,
 )
+from pipelines_v2.engine.routing import (
+    normalize_routing_weights,
+    requested_topk_from_gate_k,
+    routing_record_payload,
+    routing_topk,
+)
 from pipelines_v2.operations.interventions import (
     ActivationPatchSpec,
     AddDirectionPatch,
@@ -655,102 +661,27 @@ class ToyEngine:
             dtype=np.float32,
         )
 
-    def _routing_record(
-        self,
-        record: RoutingRecord,
-        gate_logits: npt.NDArray[np.float32],
-        *,
-        topk_from_gate_k: int,
-    ) -> dict[str, Any]:
-        if record.kind == "gate_logits":
-            return {"gate_logits": gate_logits.astype(_float_dtype(record.params.get("dtype", "float16")))}
-        if record.kind == "gate_probs":
-            return {"gate_probs": _softmax(gate_logits).astype(_float_dtype(record.params.get("dtype", "float16")))}
-        if record.kind == "routing_decisions":
-            top = _topk(gate_logits, self.top_k)
-            return {
-                "routing_decisions": {
-                    "source": "observed",
-                    "expert_ids": top.indices,
-                    "weights": _normalize(top.values),
-                }
-            }
-        if record.kind == "topk_from_gate":
-            k = int(record.params["k"])
-            top = _topk(gate_logits, k)
-            payload: dict[str, Any] = {
-                "source": "derived_from_gate_logits",
-                "expert_ids": top.indices,
-            }
-            if record.params.get("include_weights", True):
-                payload["weights"] = _normalize(top.values)
-            return {"topk_from_gate": payload}
-        if record.kind == "expert_load":
-            source = str(record.params.get("source") or "topk_from_gate")
-            if source == "topk_from_gate":
-                top = _topk(gate_logits, topk_from_gate_k)
-            else:
-                top = _topk(gate_logits, self.top_k)
-            return {"expert_load": {"source": source, "counts": {str(int(idx)): 1 for idx in top.indices}}}
-        raise ValueError(f"Unsupported routing record: {record.kind}")
-
     def _routing_records(
         self,
         requested: tuple[RoutingRecord, ...],
         gate_logits: npt.NDArray[np.float32],
     ) -> dict[str, Any]:
         token_records: dict[str, Any] = {}
-        topk_from_gate_k = _requested_topk_from_gate_k(requested, fallback=self.top_k)
+        topk_from_gate_k = requested_topk_from_gate_k(requested, fallback=self.top_k)
+        observed = routing_topk(gate_logits, self.top_k)
+        observed_weights = normalize_routing_weights(observed.values)
         for record in requested:
-            token_records.update(self._routing_record(record, gate_logits, topk_from_gate_k=topk_from_gate_k))
+            token_records.update(
+                routing_record_payload(
+                    record,
+                    gate_logits,
+                    topk_from_gate_k=topk_from_gate_k,
+                    fallback_top_k=self.top_k,
+                    observed_topk_ids=observed.indices,
+                    observed_topk_weights=observed_weights,
+                )
+            )
         return token_records
-
-
-@dataclass(frozen=True, slots=True)
-class TopKResult:
-    indices: npt.NDArray[np.int64]
-    values: npt.NDArray[np.float32]
-
-
-def _softmax(values: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.float32]:
-    shifted = values.astype(np.float32) - np.max(values)
-    exps = np.exp(shifted)
-    return (exps / np.sum(exps)).astype(np.float32)
-
-
-def _float_dtype(name: str) -> Any:
-    normalized = str(name).lower()
-    if normalized == "float16":
-        return np.float16
-    if normalized in {"float32", "bfloat16"}:
-        return np.float32
-    raise ValueError(f"Unsupported routing dtype: {name}")
-
-
-def _requested_topk_from_gate_k(requested: tuple[RoutingRecord, ...], *, fallback: int) -> int:
-    for record in requested:
-        if record.kind == "topk_from_gate":
-            return int(record.params["k"])
-    return int(fallback)
-
-
-def _topk(values: npt.NDArray[np.floating[Any]], k: int) -> TopKResult:
-    if k <= 0:
-        return TopKResult(
-            indices=np.asarray([], dtype=np.int64),
-            values=np.asarray([], dtype=np.float32),
-        )
-    bounded_k = min(k, int(values.shape[-1]))
-    indices = np.argsort(values)[::-1][:bounded_k].astype(np.int64)
-    return TopKResult(indices=indices, values=values[indices].astype(np.float32))
-
-
-def _normalize(values: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.float32]:
-    if values.size == 0:
-        return np.asarray([], dtype=np.float32)
-    shifted = values.astype(np.float32) - np.min(values) + np.float32(1e-6)
-    total = np.sum(shifted)
-    return (shifted / total).astype(np.float32)
 
 
 def _toy_token_sections(example: Example, builder: Any | None) -> dict[str, list[int]]:

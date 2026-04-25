@@ -14,10 +14,10 @@ the report's own output directory.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Mapping
 
+from pipelines_v2.dashboard.json import read_json_object_optional
 from pipelines_v2.dashboard.models import (
     ReportDetail,
     ReportFigure,
@@ -112,13 +112,7 @@ def safe_asset_path(root: Path, relative: str) -> Path:
 
 
 def _read_json_optional(path: Path) -> dict[str, Any] | None:
-    if not path.is_file():
-        return None
-    with path.open("r", encoding="utf-8") as handle:
-        payload = json.load(handle)
-    if not isinstance(payload, dict):
-        return None
-    return payload
+    return read_json_object_optional(path)
 
 
 def _collect_figures(assets_manifest: Mapping[str, Any]) -> list[ReportFigure]:

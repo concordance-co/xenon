@@ -34,13 +34,7 @@ class GeometrySpec(OperationSpec):
     kind: ClassVar[str] = "geometry"
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
-        return runtime_secrets_from_refs(
-            self.feature,
-            self.rows,
-            self.label,
-            self.color_by,
-            self.subset,
-        )
+        return runtime_secrets_from_refs(self.feature, self.rows, self.label, self.color_by, self.subset)
 
     def runtime_spec(self) -> Any | None:
         return analysis_runtime_spec()

@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import Any, ClassVar, Sequence
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret
 from pipelines_v2.operations.common._shared import (
-    analysis_runtime_spec,
-    merge_string_tuples,
+    analysis_runtime_spec_for_refs,
     row_selector_from_dict,
-    runtime_pip_packages_from_refs,
     runtime_secrets_from_refs,
     spec_value_from_dict,
 )
@@ -33,26 +31,10 @@ class ResidualizedProbeSpec(OperationSpec):
     kind: ClassVar[str] = "residualized_probe"
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
-        return runtime_secrets_from_refs(
-            self.feature,
-            self.rows,
-            self.labels,
-            self.residualize_against,
-            self.group_by,
-        )
+        return runtime_secrets_from_refs(self.feature, self.rows, self.labels, self.residualize_against, self.group_by)
 
     def runtime_spec(self) -> Any | None:
-        runtime_spec = analysis_runtime_spec()
-        packages = runtime_pip_packages_from_refs(
-            self.feature,
-            self.rows,
-            self.labels,
-            self.residualize_against,
-            self.group_by,
-        )
-        if not packages:
-            return runtime_spec
-        return replace(runtime_spec, pip_packages=merge_string_tuples(runtime_spec.pip_packages, packages))
+        return analysis_runtime_spec_for_refs(self.feature, self.rows, self.labels, self.residualize_against, self.group_by)
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ResidualizedProbeSpec":

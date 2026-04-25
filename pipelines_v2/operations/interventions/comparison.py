@@ -8,8 +8,7 @@ from typing import Any, ClassVar
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret, SpecValidationError
 from pipelines_v2.operations.common._shared import (
-    analysis_runtime_spec,
-    merge_string_tuples,
+    analysis_runtime_spec_for_refs,
     runtime_secrets_from_refs,
     spec_value_from_dict,
 )
@@ -43,24 +42,15 @@ class PatchComparisonSpec(OperationSpec):
         return runtime_secrets_from_refs(self.baseline, self.variants)
 
     def runtime_spec(self) -> Any | None:
-        runtime_spec = analysis_runtime_spec()
-        from pipelines_v2.engine.base import PythonRuntimeSpec
-
-        if not isinstance(runtime_spec, PythonRuntimeSpec):
-            return runtime_spec
-        local_python_sources = tuple(runtime_spec.local_python_sources)
         row_builder = self.row_evaluator
-        if row_builder is not None and hasattr(row_builder, "local_python_sources"):
-            local_python_sources = merge_string_tuples(
-                local_python_sources,
-                tuple(row_builder.local_python_sources),
-            )
-        return PythonRuntimeSpec(
-            python_version=runtime_spec.python_version,
-            pip_packages=runtime_spec.pip_packages,
-            env=dict(runtime_spec.env),
-            secrets=runtime_spec.secrets,
-            local_python_sources=local_python_sources,
+        return analysis_runtime_spec_for_refs(
+            self.baseline,
+            self.variants,
+            local_python_sources=(
+                tuple(row_builder.local_python_sources)
+                if row_builder is not None and hasattr(row_builder, "local_python_sources")
+                else ()
+            ),
         )
 
     @classmethod

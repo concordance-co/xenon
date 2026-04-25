@@ -182,14 +182,7 @@ class PatchedGenerationSpec(OperationSpec):
         return caps
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
-        return runtime_secrets_from_refs(
-            self.dataset,
-            self.patch,
-            self.select_when,
-            self.pair_by,
-            self.target_when,
-            self.donor_when,
-        )
+        return runtime_secrets_from_refs(self.dataset, self.patch, self.select_when, self.pair_by, self.target_when, self.donor_when)
 
     def bound_engine(self) -> "Engine | None":
         return self.engine

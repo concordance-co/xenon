@@ -11,46 +11,16 @@ from typing import Any
 
 from pipelines_v2.core.types import OperationSpec, stable_hash, utc_now_iso
 from pipelines_v2.data.datasets import Dataset
-from pipelines_v2.mechinterp.assistant_axis import (
-    AssistantAxisPrecomputedCoordinateSpec,
-    AssistantAxisScoreSpec,
-    AssistantAxisVectorSpec,
-)
-from pipelines_v2.mechinterp.emotions import (
-    EmotionDirectionSpec,
-    EmotionGeometrySpec,
-    EmotionPrecomputedVectorSpaceSpec,
-    EmotionScoreSpec,
-    EmotionVectorSpaceSpec,
-)
 from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.operations.specs import (
-    ActivationBankSpec,
-    BasisSpec,
     CaptureSpec,
-    CentroidSpec,
-    CoordinateImportSpec,
-    DirectionSpec,
-    ExplicitPathMaskSpec,
     GenerationRunSpec,
-    GeometrySpec,
-    LabelFieldsSpec,
-    LabelMapSpec,
-    PatchComparisonSpec,
-    PairDeltaSpec,
     PatchedGenerationSpec,
-    ProbeSpec,
-    ProjectionCalibrationSpec,
-    ProjectionSpec,
     ReportSpec,
     MoERoutingSite,
     ResidualSite,
-    ResidualizedProbeSpec,
-    SubspaceSpec,
-    TextBaselineSpec,
-    TransferProbeSpec,
-    TransformSpec,
 )
+from pipelines_v2.runtime.artifacts import ARTIFACT_BOUND_SPECS as _ARTIFACT_BOUND_SPECS
 from pipelines_v2.storage import ArtifactManifest, artifact_store_from_dict
 from pipelines_v2.storage.artifacts import ArtifactLabelRef, CaptureArtifact, FeatureLayerRef, FeatureRef, OperationArtifact
 from pipelines_v2.storage.features import load_feature_payload, write_capture_features
@@ -842,35 +812,3 @@ def _input_artifact_ids(spec: OperationSpec) -> list[str]:
 
     visit(spec)
     return sorted(set(artifact_ids))
-
-
-_ARTIFACT_BOUND_SPECS = (
-    ProbeSpec,
-    TransferProbeSpec,
-    TextBaselineSpec,
-    ResidualizedProbeSpec,
-    DirectionSpec,
-    BasisSpec,
-    CentroidSpec,
-    GeometrySpec,
-    SubspaceSpec,
-    ActivationBankSpec,
-    ExplicitPathMaskSpec,
-    PairDeltaSpec,
-    LabelMapSpec,
-    LabelFieldsSpec,
-    TransformSpec,
-    PatchComparisonSpec,
-    CoordinateImportSpec,
-    ProjectionSpec,
-    ProjectionCalibrationSpec,
-    AssistantAxisPrecomputedCoordinateSpec,
-    AssistantAxisVectorSpec,
-    AssistantAxisScoreSpec,
-    EmotionPrecomputedVectorSpaceSpec,
-    EmotionVectorSpaceSpec,
-    EmotionScoreSpec,
-    EmotionDirectionSpec,
-    EmotionGeometrySpec,
-    ReportSpec,
-)

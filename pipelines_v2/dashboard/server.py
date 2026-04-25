@@ -44,7 +44,7 @@ from pipelines_v2.dashboard.reports import (
     safe_asset_path,
 )
 from pipelines_v2.dashboard.step_detail import build_step_detail_from_run_detail
-from pipelines_v2.operations.reports import ReportSpec
+from pipelines_v2.reporting.workflow import resolve_report_step
 from pipelines_v2.runtime.local import LocalRunner
 from pipelines_v2.workflow.records import WorkflowStepContext, WorkflowStepRecord
 from pipelines_v2.workflow.specs import WorkflowSpec, WorkflowStep
@@ -572,7 +572,7 @@ def create_app(
         bundle = _load_run_bundle(runtime_state, dash, run_id)
         try:
             workflow = WorkflowSpec.from_dict(dict(bundle.run.workflow_payload))
-            report_step = _resolve_report_step(workflow, step_name=step_name)
+            report_step = resolve_report_step(workflow, step_name=step_name)
             report_spec = _build_report_spec_from_run(
                 run=bundle.run,
                 report_step=report_step,
@@ -1133,21 +1133,6 @@ def _put_server_cache(
 def _live_server_cache_entries(cache: dict[Any, tuple[float, Any]]) -> int:
     now = time_mod.perf_counter()
     return sum(1 for expiry, _value in cache.values() if expiry > now)
-
-
-def _resolve_report_step(workflow: WorkflowSpec, *, step_name: str | None) -> WorkflowStep:
-    report_steps = [step for step in workflow.ordered_steps() if isinstance(step.spec, ReportSpec)]
-    if not report_steps:
-        raise RuntimeError("Workflow run does not contain any report steps")
-    if step_name is None:
-        if len(report_steps) == 1:
-            return report_steps[0]
-        names = [step.name for step in report_steps]
-        raise RuntimeError(f"Workflow run contains multiple report steps; choose one with step_name: {names}")
-    for step in report_steps:
-        if step.name == step_name:
-            return step
-    raise RuntimeError(f"Workflow run does not contain report step {step_name!r}")
 
 
 def _build_run_report_status(catalog: Any, run_detail: RunDetail) -> RunReportStatus:

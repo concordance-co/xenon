@@ -7,43 +7,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pipelines_v2.core.types import OperationSpec
-from pipelines_v2.mechinterp.assistant_axis import (
-    AssistantAxisPrecomputedCoordinateSpec,
-    AssistantAxisScoreSpec,
-    AssistantAxisVectorSpec,
-)
-from pipelines_v2.mechinterp.emotions import (
-    EmotionDirectionSpec,
-    EmotionGeometrySpec,
-    EmotionPrecomputedVectorSpaceSpec,
-    EmotionScoreSpec,
-    EmotionVectorSpaceSpec,
-)
-from pipelines_v2.operations.specs import (
-    ActivationBankSpec,
-    BasisSpec,
-    CaptureSpec,
-    CentroidSpec,
-    CoordinateImportSpec,
-    DirectionSpec,
-    ExplicitPathMaskSpec,
-    GenerationRunSpec,
-    GeometrySpec,
-    LabelFieldsSpec,
-    LabelMapSpec,
-    PatchComparisonSpec,
-    PairDeltaSpec,
-    PatchedGenerationSpec,
-    ProbeSpec,
-    ProjectionCalibrationSpec,
-    ProjectionSpec,
-    ReportSpec,
-    ResidualizedProbeSpec,
-    SubspaceSpec,
-    TextBaselineSpec,
-    TransferProbeSpec,
-    TransformSpec,
-)
+from pipelines_v2.operations.specs import CaptureSpec, GenerationRunSpec, PatchedGenerationSpec
+from pipelines_v2.runtime.artifacts import ARTIFACT_BOUND_SPECS as _ARTIFACT_BOUND_SPECS
 from pipelines_v2.runtime.base import ExecutionPlan
 from pipelines_v2.runtime.modal_worker import run_on_modal
 from pipelines_v2.runtime.planning import spec_plan_errors
@@ -247,35 +212,3 @@ class ModalRunner:
                 f"{missing}"
             )
         return errors
-
-
-_ARTIFACT_BOUND_SPECS = (
-    ProbeSpec,
-    TransferProbeSpec,
-    TextBaselineSpec,
-    ResidualizedProbeSpec,
-    DirectionSpec,
-    BasisSpec,
-    CentroidSpec,
-    GeometrySpec,
-    SubspaceSpec,
-    ActivationBankSpec,
-    ExplicitPathMaskSpec,
-    PairDeltaSpec,
-    LabelMapSpec,
-    LabelFieldsSpec,
-    TransformSpec,
-    PatchComparisonSpec,
-    CoordinateImportSpec,
-    ProjectionSpec,
-    ProjectionCalibrationSpec,
-    AssistantAxisPrecomputedCoordinateSpec,
-    AssistantAxisVectorSpec,
-    AssistantAxisScoreSpec,
-    EmotionPrecomputedVectorSpaceSpec,
-    EmotionVectorSpaceSpec,
-    EmotionScoreSpec,
-    EmotionDirectionSpec,
-    EmotionGeometrySpec,
-    ReportSpec,
-)

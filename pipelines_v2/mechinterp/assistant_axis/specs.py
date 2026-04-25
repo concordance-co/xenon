@@ -262,13 +262,7 @@ class AssistantAxisVectorSpec(OperationSpec):
         return None
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
-        return runtime_secrets_from_refs(
-            self.feature,
-            self.role_by,
-            self.default_when,
-            self.role_when,
-            self.score_by,
-        )
+        return runtime_secrets_from_refs(self.feature, self.role_by, self.default_when, self.role_when, self.score_by)
 
     def runtime_spec(self) -> Any | None:
         return analysis_runtime_spec()
