@@ -21,6 +21,14 @@ The active landmarks still kept in this repo are:
   - additional prompt-confusion follow-up experiments
 - [Phase 12](./phase_12/Index.md)
   - three-family geometry, strict family checkpoint, and real-transfer bridge work
+- [Phase 13](./phase_13/Index.md)
+  - coarse real-signal discovery over production prompt sections
+- [Phase 14](./phase_14/PHASE.md)
+  - mid-prompt synthetic probe/direction geometry before the next real-transfer pass
+- [Phase 15](./phase_15/PHASE.md)
+  - real-transfer comparison for Phase 14 section-local direction banks
+- [Phase 16](./phase_16/PHASE.md)
+  - Phase 13 split audit for cleaner real-data complaint/control buckets
 
 Older prompt-confusion phases were moved to the archive repo.
 
@@ -45,6 +53,10 @@ projects/DX_TERMINAL/prompt_confusion/phase_04/specs/arch2_target.py
 projects/DX_TERMINAL/prompt_confusion/phase_05/specs/workflow.py
 projects/DX_TERMINAL/prompt_confusion/phase_06/specs/workflow.py
 projects/DX_TERMINAL/prompt_confusion/phase_09/specs/workflow.py
+projects/DX_TERMINAL/prompt_confusion/phase_13/specs/workflow.py
+projects/DX_TERMINAL/prompt_confusion/phase_14/specs/workflow.py
+projects/DX_TERMINAL/prompt_confusion/phase_15/specs/workflow.py
+projects/DX_TERMINAL/prompt_confusion/phase_16/specs/workflow.py
 ```
 
 JSON snapshots still exist for reviewability in some phases, but the Python

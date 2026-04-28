@@ -35,7 +35,7 @@ Decision points that trigger `methodology/CHECKS.md`:
 - designing an intervention
 - closing a phase
 
-Phase closure writes a `PHASE.md` per `methodology/templates/PHASE.md`. The next phase's premise inherits from the closing phase's open threads.
+Each phase has a canonical `PHASE.md` per `methodology/templates/PHASE.md`. It starts as the phase's premise/design/orientation surface, stays current as work runs, and becomes the closure artifact when the phase ends. The next phase's premise inherits from the closing phase's open threads.
 
 ## Canonical execution model
 
@@ -87,7 +87,7 @@ methodology/             research substrate
   CHECKS.md              decision-point triggers
   ROSTER.md              method catalog (29 families)
   templates/
-    PHASE.md             phase exit artifact shape
+    PHASE.md             canonical phase orientation/design/closure shape
     REAL_DATA.md         project real-data living doc shape
   archive/               historical methodology references
 
@@ -116,8 +116,7 @@ projects/
     [<subproject>/]
       <phase>/
         specs/workflow.py
-        Index.md         phase orientation
-        PHASE.md         phase exit artifact (when closed)
+        PHASE.md         canonical phase orientation/design/closure artifact
         reports/         local report sources and assets
 ```
 
@@ -125,7 +124,7 @@ projects/
 
 **New project.** Create `projects/<name>/` with `project_spec.json` and a `REAL_DATA.md` based on the template. Add subprojects only when one project has multiple distinct research questions.
 
-**New phase.** A new phase begins when a loopback is triggered or the subproject commits to a meaningfully new direction. See `methodology/FLYWHEEL.md`. Create the phase directory with `specs/workflow.py` and an `Index.md`. Close it with `PHASE.md` when the direction shifts again.
+**New phase.** A new phase begins when a loopback is triggered or the subproject commits to a meaningfully new direction. See `methodology/FLYWHEEL.md`. Create the phase directory with `specs/workflow.py` and a `PHASE.md` initialized from `methodology/templates/PHASE.md`. Keep `PHASE.md` current as the phase runs; finalize the same file when the direction shifts again.
 
 ## Conventions
 

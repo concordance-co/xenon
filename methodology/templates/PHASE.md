@@ -1,6 +1,12 @@
 # Phase Template
 
-Every phase closes with a document following this shape. This is the exit artifact. The next phase's premise is built from it.
+Every phase has a `PHASE.md` following this shape. It is the canonical
+orientation, design, running-state, and closure artifact for the phase.
+
+Initialize it when the phase starts. Early sections may say "not run yet" or
+name planned datasets, loci, controls, and success criteria. Keep it current as
+work runs. When the phase closes, finalize the same file so the next phase's
+premise can inherit from its open threads.
 
 File: `projects/<project>/[<subproject>/]<phase>/PHASE.md` (subproject optional)
 
@@ -8,15 +14,21 @@ File: `projects/<project>/[<subproject>/]<phase>/PHASE.md` (subproject optional)
 
 ## Premise
 
-What we believed coming in. The specific hypothesis or direction this phase was exploring.
+What we believed coming in. The specific hypothesis or direction this phase is
+exploring. For a new phase, include the intended measurement loci, design
+rationale, and success / failure criteria.
 
 ## What we ran
 
-Run ids, datasets, loci, sites. Enough to reproduce or re-enter.
+Run ids, datasets, loci, sites. Enough to reproduce or re-enter. Before runs
+exist, state the planned workflow, data source, controls, and execution
+sequence.
 
 ## Primary result
 
-The headline numbers or observations. Tables, not prose, where possible.
+The headline numbers or observations. Tables, not prose, where possible. Before
+runs exist, state the planned primary readout and what would count as a useful
+result.
 
 ## Qualitative inspection
 
@@ -48,7 +60,8 @@ Preferred phrasing for the current state:
 
 ## Artifacts
 
-Paths to reports, review JSONs, result files, prereg docs.
+Paths to workflows, reports, review JSONs, result files, prereg docs, and other
+phase-local orientation artifacts.
 
 ## Open threads
 
