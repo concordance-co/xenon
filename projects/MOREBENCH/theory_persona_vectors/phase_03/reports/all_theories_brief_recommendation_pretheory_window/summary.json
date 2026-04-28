@@ -1,0 +1,705 @@
+{
+  "capture_artifact_id": "capture_1_1d7271d73617",
+  "cutoff_words": 16,
+  "generation_rows_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/report_6aa730c32d87_8c1df9a2/results/generate_natural_responses_results.json",
+  "layer": 32,
+  "rows": [
+    {
+      "all_gap": 0.4189867809414864,
+      "all_n": 30,
+      "cos_filtered_to_all": 0.8628018498420715,
+      "cos_filtered_to_removed": 0.5609531402587891,
+      "cos_removed_to_all": 0.902503252029419,
+      "filter_removed_n": 12,
+      "filter_removed_rate": 0.4,
+      "filtered_gap": 0.3346657752990725,
+      "filtered_n": 18,
+      "filtered_null_p95": 0.23232278227806072,
+      "filtered_real_median": 0.5669885575771332,
+      "kept_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_001",
+          "neg_first_word": null,
+          "pos_first_word": 17
+        },
+        {
+          "dilemma_id": "deont_pilot_005",
+          "neg_first_word": null,
+          "pos_first_word": 21
+        },
+        {
+          "dilemma_id": "deont_pilot_009",
+          "neg_first_word": null,
+          "pos_first_word": 27
+        },
+        {
+          "dilemma_id": "deont_pilot_011",
+          "neg_first_word": null,
+          "pos_first_word": 47
+        },
+        {
+          "dilemma_id": "deont_pilot_014",
+          "neg_first_word": null,
+          "pos_first_word": 23
+        },
+        {
+          "dilemma_id": "deont_pilot_015",
+          "neg_first_word": 35,
+          "pos_first_word": 22
+        },
+        {
+          "dilemma_id": "deont_pilot_016",
+          "neg_first_word": 30,
+          "pos_first_word": 21
+        },
+        {
+          "dilemma_id": "deont_pilot_017",
+          "neg_first_word": null,
+          "pos_first_word": 24
+        },
+        {
+          "dilemma_id": "deont_pilot_018",
+          "neg_first_word": 66,
+          "pos_first_word": 21
+        },
+        {
+          "dilemma_id": "deont_pilot_019",
+          "neg_first_word": null,
+          "pos_first_word": 30
+        },
+        {
+          "dilemma_id": "deont_pilot_020",
+          "neg_first_word": null,
+          "pos_first_word": 18
+        },
+        {
+          "dilemma_id": "deont_pilot_021",
+          "neg_first_word": null,
+          "pos_first_word": 27
+        },
+        {
+          "dilemma_id": "deont_pilot_022",
+          "neg_first_word": null,
+          "pos_first_word": 38
+        },
+        {
+          "dilemma_id": "deont_pilot_023",
+          "neg_first_word": null,
+          "pos_first_word": 18
+        },
+        {
+          "dilemma_id": "deont_pilot_026",
+          "neg_first_word": null,
+          "pos_first_word": 26
+        },
+        {
+          "dilemma_id": "deont_pilot_027",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_028",
+          "neg_first_word": null,
+          "pos_first_word": 31
+        },
+        {
+          "dilemma_id": "deont_pilot_029",
+          "neg_first_word": null,
+          "pos_first_word": 18
+        }
+      ],
+      "negative_condition": "N_neutral_01",
+      "pattern": "\\b(duty|duties|right|rights|promise|promises|obligation|obligations|constraint|constraints)\\b",
+      "positive_condition": "P_deont_01",
+      "removed_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_002",
+          "neg_first_word": null,
+          "pos_first_word": 9
+        },
+        {
+          "dilemma_id": "deont_pilot_003",
+          "neg_first_word": null,
+          "pos_first_word": 8
+        },
+        {
+          "dilemma_id": "deont_pilot_004",
+          "neg_first_word": 24,
+          "pos_first_word": 8
+        },
+        {
+          "dilemma_id": "deont_pilot_006",
+          "neg_first_word": null,
+          "pos_first_word": 9
+        },
+        {
+          "dilemma_id": "deont_pilot_007",
+          "neg_first_word": null,
+          "pos_first_word": 16
+        },
+        {
+          "dilemma_id": "deont_pilot_008",
+          "neg_first_word": null,
+          "pos_first_word": 10
+        },
+        {
+          "dilemma_id": "deont_pilot_010",
+          "neg_first_word": null,
+          "pos_first_word": 8
+        },
+        {
+          "dilemma_id": "deont_pilot_012",
+          "neg_first_word": null,
+          "pos_first_word": 13
+        },
+        {
+          "dilemma_id": "deont_pilot_013",
+          "neg_first_word": null,
+          "pos_first_word": 8
+        },
+        {
+          "dilemma_id": "deont_pilot_024",
+          "neg_first_word": null,
+          "pos_first_word": 10
+        },
+        {
+          "dilemma_id": "deont_pilot_025",
+          "neg_first_word": 83,
+          "pos_first_word": 9
+        },
+        {
+          "dilemma_id": "deont_pilot_030",
+          "neg_first_word": null,
+          "pos_first_word": 14
+        }
+      ],
+      "removed_gap": 0.297012335062027,
+      "removed_null_p95": 0.4214821696281433,
+      "removed_real_median": 0.7184945046901703,
+      "theory": "deont"
+    },
+    {
+      "all_gap": 0.3633260875940323,
+      "all_n": 30,
+      "cos_filtered_to_all": 0.9841133952140808,
+      "cos_filtered_to_removed": 0.3289888799190521,
+      "cos_removed_to_all": 0.49142053723335266,
+      "filter_removed_n": 3,
+      "filter_removed_rate": 0.1,
+      "filtered_gap": 0.3431627735495568,
+      "filtered_n": 27,
+      "filtered_null_p95": 0.20788839608430856,
+      "filtered_real_median": 0.5510511696338654,
+      "kept_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_002",
+          "neg_first_word": 27,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_003",
+          "neg_first_word": null,
+          "pos_first_word": 52
+        },
+        {
+          "dilemma_id": "deont_pilot_004",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_006",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_008",
+          "neg_first_word": null,
+          "pos_first_word": 101
+        },
+        {
+          "dilemma_id": "deont_pilot_009",
+          "neg_first_word": null,
+          "pos_first_word": 58
+        },
+        {
+          "dilemma_id": "deont_pilot_010",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_011",
+          "neg_first_word": null,
+          "pos_first_word": 83
+        },
+        {
+          "dilemma_id": "deont_pilot_012",
+          "neg_first_word": null,
+          "pos_first_word": 24
+        },
+        {
+          "dilemma_id": "deont_pilot_013",
+          "neg_first_word": null,
+          "pos_first_word": 22
+        },
+        {
+          "dilemma_id": "deont_pilot_014",
+          "neg_first_word": 59,
+          "pos_first_word": 19
+        },
+        {
+          "dilemma_id": "deont_pilot_015",
+          "neg_first_word": null,
+          "pos_first_word": 33
+        },
+        {
+          "dilemma_id": "deont_pilot_016",
+          "neg_first_word": null,
+          "pos_first_word": 31
+        },
+        {
+          "dilemma_id": "deont_pilot_017",
+          "neg_first_word": null,
+          "pos_first_word": 57
+        },
+        {
+          "dilemma_id": "deont_pilot_018",
+          "neg_first_word": null,
+          "pos_first_word": 46
+        },
+        {
+          "dilemma_id": "deont_pilot_019",
+          "neg_first_word": null,
+          "pos_first_word": 73
+        },
+        {
+          "dilemma_id": "deont_pilot_020",
+          "neg_first_word": null,
+          "pos_first_word": 81
+        },
+        {
+          "dilemma_id": "deont_pilot_021",
+          "neg_first_word": null,
+          "pos_first_word": 81
+        },
+        {
+          "dilemma_id": "deont_pilot_022",
+          "neg_first_word": null,
+          "pos_first_word": 43
+        },
+        {
+          "dilemma_id": "deont_pilot_023",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_024",
+          "neg_first_word": null,
+          "pos_first_word": 70
+        },
+        {
+          "dilemma_id": "deont_pilot_025",
+          "neg_first_word": null,
+          "pos_first_word": 61
+        },
+        {
+          "dilemma_id": "deont_pilot_026",
+          "neg_first_word": null,
+          "pos_first_word": 27
+        },
+        {
+          "dilemma_id": "deont_pilot_027",
+          "neg_first_word": null,
+          "pos_first_word": 71
+        },
+        {
+          "dilemma_id": "deont_pilot_028",
+          "neg_first_word": 33,
+          "pos_first_word": 40
+        },
+        {
+          "dilemma_id": "deont_pilot_029",
+          "neg_first_word": null,
+          "pos_first_word": 63
+        },
+        {
+          "dilemma_id": "deont_pilot_030",
+          "neg_first_word": null,
+          "pos_first_word": null
+        }
+      ],
+      "negative_condition": "N_neutral_01",
+      "pattern": "\\b(welfare|maximize|maximizes|maximizing|benefit|benefits|outcome|outcomes|consequence|consequences|aggregate)\\b",
+      "positive_condition": "P_util_01",
+      "removed_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_001",
+          "neg_first_word": null,
+          "pos_first_word": 13
+        },
+        {
+          "dilemma_id": "deont_pilot_005",
+          "neg_first_word": 11,
+          "pos_first_word": 14
+        },
+        {
+          "dilemma_id": "deont_pilot_007",
+          "neg_first_word": null,
+          "pos_first_word": 15
+        }
+      ],
+      "removed_gap": NaN,
+      "removed_null_p95": NaN,
+      "removed_real_median": NaN,
+      "theory": "util"
+    },
+    {
+      "all_gap": 0.43879339396953604,
+      "all_n": 30,
+      "cos_filtered_to_all": 0.9145631194114685,
+      "cos_filtered_to_removed": 0.4802727699279785,
+      "cos_removed_to_all": 0.7939846515655518,
+      "filter_removed_n": 8,
+      "filter_removed_rate": 0.26666666666666666,
+      "filtered_gap": 0.33765611127018935,
+      "filtered_n": 22,
+      "filtered_null_p95": 0.24108573719859117,
+      "filtered_real_median": 0.5787418484687805,
+      "kept_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_004",
+          "neg_first_word": null,
+          "pos_first_word": 25
+        },
+        {
+          "dilemma_id": "deont_pilot_006",
+          "neg_first_word": null,
+          "pos_first_word": 33
+        },
+        {
+          "dilemma_id": "deont_pilot_008",
+          "neg_first_word": null,
+          "pos_first_word": 60
+        },
+        {
+          "dilemma_id": "deont_pilot_010",
+          "neg_first_word": null,
+          "pos_first_word": 22
+        },
+        {
+          "dilemma_id": "deont_pilot_011",
+          "neg_first_word": null,
+          "pos_first_word": 61
+        },
+        {
+          "dilemma_id": "deont_pilot_012",
+          "neg_first_word": null,
+          "pos_first_word": 35
+        },
+        {
+          "dilemma_id": "deont_pilot_013",
+          "neg_first_word": null,
+          "pos_first_word": 57
+        },
+        {
+          "dilemma_id": "deont_pilot_014",
+          "neg_first_word": null,
+          "pos_first_word": 27
+        },
+        {
+          "dilemma_id": "deont_pilot_015",
+          "neg_first_word": null,
+          "pos_first_word": 24
+        },
+        {
+          "dilemma_id": "deont_pilot_016",
+          "neg_first_word": null,
+          "pos_first_word": 20
+        },
+        {
+          "dilemma_id": "deont_pilot_017",
+          "neg_first_word": null,
+          "pos_first_word": 21
+        },
+        {
+          "dilemma_id": "deont_pilot_018",
+          "neg_first_word": null,
+          "pos_first_word": 109
+        },
+        {
+          "dilemma_id": "deont_pilot_019",
+          "neg_first_word": null,
+          "pos_first_word": 69
+        },
+        {
+          "dilemma_id": "deont_pilot_020",
+          "neg_first_word": null,
+          "pos_first_word": 95
+        },
+        {
+          "dilemma_id": "deont_pilot_022",
+          "neg_first_word": null,
+          "pos_first_word": 70
+        },
+        {
+          "dilemma_id": "deont_pilot_023",
+          "neg_first_word": null,
+          "pos_first_word": 69
+        },
+        {
+          "dilemma_id": "deont_pilot_024",
+          "neg_first_word": null,
+          "pos_first_word": 63
+        },
+        {
+          "dilemma_id": "deont_pilot_025",
+          "neg_first_word": null,
+          "pos_first_word": 26
+        },
+        {
+          "dilemma_id": "deont_pilot_026",
+          "neg_first_word": null,
+          "pos_first_word": 38
+        },
+        {
+          "dilemma_id": "deont_pilot_027",
+          "neg_first_word": null,
+          "pos_first_word": 23
+        },
+        {
+          "dilemma_id": "deont_pilot_028",
+          "neg_first_word": null,
+          "pos_first_word": 29
+        },
+        {
+          "dilemma_id": "deont_pilot_029",
+          "neg_first_word": null,
+          "pos_first_word": 75
+        }
+      ],
+      "negative_condition": "N_neutral_01",
+      "pattern": "\\b(virtue|virtues|character|honest|honesty|courage|courageous|prudent|prudence|integrity)\\b",
+      "positive_condition": "P_virtue_01",
+      "removed_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_001",
+          "neg_first_word": null,
+          "pos_first_word": 15
+        },
+        {
+          "dilemma_id": "deont_pilot_002",
+          "neg_first_word": null,
+          "pos_first_word": 16
+        },
+        {
+          "dilemma_id": "deont_pilot_003",
+          "neg_first_word": 8,
+          "pos_first_word": 9
+        },
+        {
+          "dilemma_id": "deont_pilot_005",
+          "neg_first_word": 3,
+          "pos_first_word": 8
+        },
+        {
+          "dilemma_id": "deont_pilot_007",
+          "neg_first_word": null,
+          "pos_first_word": 11
+        },
+        {
+          "dilemma_id": "deont_pilot_009",
+          "neg_first_word": null,
+          "pos_first_word": 9
+        },
+        {
+          "dilemma_id": "deont_pilot_021",
+          "neg_first_word": 62,
+          "pos_first_word": 8
+        },
+        {
+          "dilemma_id": "deont_pilot_030",
+          "neg_first_word": null,
+          "pos_first_word": 5
+        }
+      ],
+      "removed_gap": 0.24533290788531315,
+      "removed_null_p95": 0.25165893509984005,
+      "removed_real_median": 0.4969918429851532,
+      "theory": "virtue"
+    },
+    {
+      "all_gap": 0.42348307371139526,
+      "all_n": 30,
+      "cos_filtered_to_all": 0.9977771043777466,
+      "cos_filtered_to_removed": 0.3349223732948303,
+      "cos_removed_to_all": 0.396968811750412,
+      "filter_removed_n": 1,
+      "filter_removed_rate": 0.03333333333333333,
+      "filtered_gap": 0.42984759435057646,
+      "filtered_n": 29,
+      "filtered_null_p95": 0.17810953035950655,
+      "filtered_real_median": 0.607957124710083,
+      "kept_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_001",
+          "neg_first_word": null,
+          "pos_first_word": 69
+        },
+        {
+          "dilemma_id": "deont_pilot_002",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_003",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_004",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_005",
+          "neg_first_word": null,
+          "pos_first_word": 67
+        },
+        {
+          "dilemma_id": "deont_pilot_006",
+          "neg_first_word": null,
+          "pos_first_word": 58
+        },
+        {
+          "dilemma_id": "deont_pilot_007",
+          "neg_first_word": null,
+          "pos_first_word": 67
+        },
+        {
+          "dilemma_id": "deont_pilot_008",
+          "neg_first_word": null,
+          "pos_first_word": 90
+        },
+        {
+          "dilemma_id": "deont_pilot_009",
+          "neg_first_word": null,
+          "pos_first_word": 94
+        },
+        {
+          "dilemma_id": "deont_pilot_010",
+          "neg_first_word": null,
+          "pos_first_word": 67
+        },
+        {
+          "dilemma_id": "deont_pilot_011",
+          "neg_first_word": null,
+          "pos_first_word": 101
+        },
+        {
+          "dilemma_id": "deont_pilot_012",
+          "neg_first_word": null,
+          "pos_first_word": 58
+        },
+        {
+          "dilemma_id": "deont_pilot_013",
+          "neg_first_word": null,
+          "pos_first_word": 69
+        },
+        {
+          "dilemma_id": "deont_pilot_014",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_015",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_016",
+          "neg_first_word": null,
+          "pos_first_word": 38
+        },
+        {
+          "dilemma_id": "deont_pilot_017",
+          "neg_first_word": null,
+          "pos_first_word": 80
+        },
+        {
+          "dilemma_id": "deont_pilot_018",
+          "neg_first_word": 20,
+          "pos_first_word": 40
+        },
+        {
+          "dilemma_id": "deont_pilot_019",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_020",
+          "neg_first_word": null,
+          "pos_first_word": 57
+        },
+        {
+          "dilemma_id": "deont_pilot_021",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_022",
+          "neg_first_word": null,
+          "pos_first_word": 39
+        },
+        {
+          "dilemma_id": "deont_pilot_023",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_025",
+          "neg_first_word": null,
+          "pos_first_word": 97
+        },
+        {
+          "dilemma_id": "deont_pilot_026",
+          "neg_first_word": null,
+          "pos_first_word": 58
+        },
+        {
+          "dilemma_id": "deont_pilot_027",
+          "neg_first_word": null,
+          "pos_first_word": 58
+        },
+        {
+          "dilemma_id": "deont_pilot_028",
+          "neg_first_word": null,
+          "pos_first_word": null
+        },
+        {
+          "dilemma_id": "deont_pilot_029",
+          "neg_first_word": null,
+          "pos_first_word": 55
+        },
+        {
+          "dilemma_id": "deont_pilot_030",
+          "neg_first_word": null,
+          "pos_first_word": null
+        }
+      ],
+      "negative_condition": "N_neutral_01",
+      "pattern": "\\b(justified|justify|justifiable|reject|rejected|reasonable|reasonably|agree|agreement)\\b",
+      "positive_condition": "P_contract_01",
+      "removed_dilemmas": [
+        {
+          "dilemma_id": "deont_pilot_024",
+          "neg_first_word": 15,
+          "pos_first_word": 74
+        }
+      ],
+      "removed_gap": NaN,
+      "removed_null_p95": NaN,
+      "removed_real_median": NaN,
+      "theory": "contract"
+    }
+  ],
+  "trials": 128
+}

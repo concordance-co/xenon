@@ -1,0 +1,263 @@
+{
+  "generation_rows_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_natural_prompt_behavior_smoke/report_6cd6f6de0d8f_03e7ab12/results/generate_natural_responses_results.json",
+  "n_rows": 120,
+  "note": "Quick lexical smoke on 8-dilemma behavior batch. Includes length-finished rows as provisional text. LOO split is by dilemma.",
+  "tasks": [
+    {
+      "accuracy": 0.875,
+      "balanced_accuracy": 0.875,
+      "chance_balanced_accuracy": 0.25,
+      "classes": [
+        "contractualism",
+        "deontology",
+        "utilitarian",
+        "virtue_ethics"
+      ],
+      "loo_dilemmas": 8,
+      "n": 32,
+      "n_pred": 32,
+      "name": "primary_theory_4way_from_response_text",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.825,
+      "auroc": 0.94140625,
+      "balanced_accuracy": 0.5625,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "neutral_short",
+        "theory_prime"
+      ],
+      "loo_dilemmas": 8,
+      "n": 40,
+      "n_pred": 40,
+      "name": "any_primary_theory_vs_neutral_short",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.8,
+      "auroc": 0.96484375,
+      "balanced_accuracy": 0.5,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "generic_moral",
+        "theory_prime"
+      ],
+      "loo_dilemmas": 8,
+      "n": 40,
+      "n_pred": 40,
+      "name": "any_primary_theory_vs_generic_moral",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.6875,
+      "auroc": 0.984375,
+      "balanced_accuracy": 0.6875,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "N_generic_moral_01",
+        "N_neutral_01"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "generic_moral_vs_neutral_short",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.9375,
+      "auroc": 0.96875,
+      "balanced_accuracy": 0.9375,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "N_neutral_01",
+        "N_neutral_02"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "neutral_length_matched_vs_neutral_short",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.875,
+      "auroc": 1.0,
+      "balanced_accuracy": 0.875,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "neutral_short",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "deontology_primary_vs_neutral_short",
+      "status": "ok"
+    },
+    {
+      "accuracy": 1.0,
+      "auroc": 1.0,
+      "balanced_accuracy": 1.0,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "generic_moral",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "deontology_primary_vs_generic_moral",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.8125,
+      "auroc": 1.0,
+      "balanced_accuracy": 0.8125,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "anti",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "deontology_primary_vs_anti",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.8125,
+      "auroc": 0.90625,
+      "balanced_accuracy": 0.8125,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "neutral_short",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "utilitarian_primary_vs_neutral_short",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.8125,
+      "auroc": 0.984375,
+      "balanced_accuracy": 0.8125,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "generic_moral",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "utilitarian_primary_vs_generic_moral",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.9375,
+      "auroc": 1.0,
+      "balanced_accuracy": 0.9375,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "anti",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "utilitarian_primary_vs_anti",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.875,
+      "auroc": 0.953125,
+      "balanced_accuracy": 0.875,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "neutral_short",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "virtue_ethics_primary_vs_neutral_short",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.875,
+      "auroc": 0.96875,
+      "balanced_accuracy": 0.875,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "generic_moral",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "virtue_ethics_primary_vs_generic_moral",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.6875,
+      "auroc": 0.984375,
+      "balanced_accuracy": 0.6875,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "anti",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "virtue_ethics_primary_vs_anti",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.875,
+      "auroc": 1.0,
+      "balanced_accuracy": 0.875,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "neutral_short",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "contractualism_primary_vs_neutral_short",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.875,
+      "auroc": 0.953125,
+      "balanced_accuracy": 0.875,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "generic_moral",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "contractualism_primary_vs_generic_moral",
+      "status": "ok"
+    },
+    {
+      "accuracy": 0.5625,
+      "auroc": 0.921875,
+      "balanced_accuracy": 0.5625,
+      "chance_balanced_accuracy": 0.5,
+      "classes": [
+        "anti",
+        "positive"
+      ],
+      "loo_dilemmas": 8,
+      "n": 16,
+      "n_pred": 16,
+      "name": "contractualism_primary_vs_anti",
+      "status": "ok"
+    }
+  ]
+}

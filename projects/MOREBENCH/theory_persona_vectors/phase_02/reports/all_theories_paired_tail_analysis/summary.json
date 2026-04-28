@@ -1,0 +1,2735 @@
+{
+  "analyses": [
+    {
+      "cross_theory_cosines": {
+        "anti": {
+          "contract": {
+            "contract": 0.9999998807907104,
+            "deont": 0.6457915306091309,
+            "util": 0.6350167393684387,
+            "virtue": 0.7508861422538757
+          },
+          "deont": {
+            "contract": 0.6457915306091309,
+            "deont": 1.0000001192092896,
+            "util": 0.3448748290538788,
+            "virtue": 0.7258801460266113
+          },
+          "util": {
+            "contract": 0.6350167393684387,
+            "deont": 0.3448748290538788,
+            "util": 1.0000001192092896,
+            "virtue": 0.4406084716320038
+          },
+          "virtue": {
+            "contract": 0.7508861422538757,
+            "deont": 0.7258801460266113,
+            "util": 0.4406084716320038,
+            "virtue": 1.0
+          }
+        },
+        "neutral_length_matched": {
+          "contract": {
+            "contract": 1.0,
+            "deont": 0.8294358253479004,
+            "util": 0.7979090809822083,
+            "virtue": 0.8704870343208313
+          },
+          "deont": {
+            "contract": 0.8294358253479004,
+            "deont": 0.9999999403953552,
+            "util": 0.7086566090583801,
+            "virtue": 0.8375449776649475
+          },
+          "util": {
+            "contract": 0.7979090809822083,
+            "deont": 0.7086566090583801,
+            "util": 1.0000001192092896,
+            "virtue": 0.6393148303031921
+          },
+          "virtue": {
+            "contract": 0.8704870343208313,
+            "deont": 0.8375449776649475,
+            "util": 0.6393148303031921,
+            "virtue": 1.0
+          }
+        },
+        "neutral_short": {
+          "contract": {
+            "contract": 1.0,
+            "deont": 0.8581271171569824,
+            "util": 0.8371575474739075,
+            "virtue": 0.894565224647522
+          },
+          "deont": {
+            "contract": 0.8581271171569824,
+            "deont": 1.0,
+            "util": 0.7544950246810913,
+            "virtue": 0.8683122396469116
+          },
+          "util": {
+            "contract": 0.8371575474739075,
+            "deont": 0.7544950246810913,
+            "util": 1.0,
+            "virtue": 0.7111204862594604
+          },
+          "virtue": {
+            "contract": 0.894565224647522,
+            "deont": 0.8683122396469116,
+            "util": 0.7111204862594604,
+            "virtue": 1.0000001192092896
+          }
+        }
+      },
+      "filter_mode": "none",
+      "layer": 32,
+      "min_tokens": 0,
+      "n_trials": 256,
+      "rows": [
+        {
+          "construction": "deont_neutral_short",
+          "direction_norm": 3.060360908508301,
+          "gap_mean_minus_null_p95": 0.3403562791645527,
+          "gap_median_minus_null_p95": 0.34345854818820953,
+          "mean_neg_tokens": 10.333333333333334,
+          "mean_pos_tokens": 12.9,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.8719437159597874,
+            "median": 0.8750459849834442,
+            "p05": 0.8261010497808456,
+            "p95": 0.9004817605018616
+          },
+          "sign_flip_null": {
+            "mean": -0.00563976587545767,
+            "median": -0.014536631293594837,
+            "p05": -0.5067149251699448,
+            "p95": 0.5315874367952347
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_neutral_length_matched",
+          "direction_norm": 2.809950351715088,
+          "gap_mean_minus_null_p95": 0.4408441612031311,
+          "gap_median_minus_null_p95": 0.44933347404003143,
+          "mean_neg_tokens": 11.733333333333333,
+          "mean_pos_tokens": 12.9,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.8160776773001999,
+            "median": 0.8245669901371002,
+            "p05": 0.7573342770338058,
+            "p95": 0.8568389564752579
+          },
+          "sign_flip_null": {
+            "mean": -0.008015892287269732,
+            "median": -0.02173580601811409,
+            "p05": -0.36144687235355377,
+            "p95": 0.3752335160970688
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_anti",
+          "direction_norm": 3.153982639312744,
+          "gap_mean_minus_null_p95": 0.43857004190795124,
+          "gap_median_minus_null_p95": 0.442262701690197,
+          "mean_neg_tokens": 7.066666666666666,
+          "mean_pos_tokens": 12.9,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.7805438309442252,
+            "median": 0.784236490726471,
+            "p05": 0.715542197227478,
+            "p95": 0.8351633846759796
+          },
+          "sign_flip_null": {
+            "mean": -0.0072339168323196645,
+            "median": -0.0171476099640131,
+            "p05": -0.369245246052742,
+            "p95": 0.34197378903627396
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_util",
+          "direction_norm": 2.023327112197876,
+          "gap_mean_minus_null_p95": 0.4078263167757541,
+          "gap_median_minus_null_p95": 0.414229080080986,
+          "mean_neg_tokens": 10.066666666666666,
+          "mean_pos_tokens": 12.9,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.6843831811565906,
+            "median": 0.6907859444618225,
+            "p05": 0.5953760743141174,
+            "p95": 0.7476655393838882
+          },
+          "sign_flip_null": {
+            "mean": 0.009538700103803421,
+            "median": 0.011995574459433556,
+            "p05": -0.29747167229652405,
+            "p95": 0.2765568643808365
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_virtue",
+          "direction_norm": 1.7512197494506836,
+          "gap_mean_minus_null_p95": 0.3306816089898348,
+          "gap_median_minus_null_p95": 0.34110312163829803,
+          "mean_neg_tokens": 14.433333333333334,
+          "mean_pos_tokens": 12.9,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.6023497600108385,
+            "median": 0.6127712726593018,
+            "p05": 0.4976484999060631,
+            "p95": 0.6652212589979172
+          },
+          "sign_flip_null": {
+            "mean": 0.0010303975554961653,
+            "median": -0.008519435534253716,
+            "p05": -0.2676301598548889,
+            "p95": 0.2716681510210037
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_contract",
+          "direction_norm": 1.6751446723937988,
+          "gap_mean_minus_null_p95": 0.2772781577077694,
+          "gap_median_minus_null_p95": 0.29319415986537933,
+          "mean_neg_tokens": 13.366666666666667,
+          "mean_pos_tokens": 12.9,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.5498221393791027,
+            "median": 0.5657381415367126,
+            "p05": 0.4011891260743141,
+            "p95": 0.6415193974971771
+          },
+          "sign_flip_null": {
+            "mean": 0.011059696208747027,
+            "median": 0.006558009190484881,
+            "p05": -0.2736508697271347,
+            "p95": 0.2725439816713333
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "util_neutral_short",
+          "direction_norm": 2.5532610416412354,
+          "gap_mean_minus_null_p95": 0.347360641695559,
+          "gap_median_minus_null_p95": 0.3521347641944885,
+          "mean_neg_tokens": 10.333333333333334,
+          "mean_pos_tokens": 10.066666666666666,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.8067238042131066,
+            "median": 0.8114979267120361,
+            "p05": 0.7414931654930115,
+            "p95": 0.8489169180393219
+          },
+          "sign_flip_null": {
+            "mean": -0.0014017739447780286,
+            "median": -0.0001308026312472066,
+            "p05": -0.4510757401585579,
+            "p95": 0.4593631625175476
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_neutral_length_matched",
+          "direction_norm": 2.3953518867492676,
+          "gap_mean_minus_null_p95": 0.415284764720127,
+          "gap_median_minus_null_p95": 0.42420194298028946,
+          "mean_neg_tokens": 11.733333333333333,
+          "mean_pos_tokens": 10.066666666666666,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.7606818422209471,
+            "median": 0.7695990204811096,
+            "p05": 0.6778470724821091,
+            "p95": 0.8119577467441559
+          },
+          "sign_flip_null": {
+            "mean": 0.0011704035478032893,
+            "median": -0.015067020896822214,
+            "p05": -0.3041093796491623,
+            "p95": 0.34539707750082016
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_anti",
+          "direction_norm": 2.326333522796631,
+          "gap_mean_minus_null_p95": 0.3474714776966721,
+          "gap_median_minus_null_p95": 0.3587542548775673,
+          "mean_neg_tokens": 7.2,
+          "mean_pos_tokens": 10.066666666666666,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.6594214385841042,
+            "median": 0.6707042157649994,
+            "p05": 0.5410613566637039,
+            "p95": 0.7362845689058304
+          },
+          "sign_flip_null": {
+            "mean": 0.00971400325806826,
+            "median": -0.00323858461342752,
+            "p05": -0.26311730593442917,
+            "p95": 0.3119499608874321
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_deont",
+          "direction_norm": 2.023327112197876,
+          "gap_mean_minus_null_p95": 0.4078263167757541,
+          "gap_median_minus_null_p95": 0.414229080080986,
+          "mean_neg_tokens": 12.9,
+          "mean_pos_tokens": 10.066666666666666,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.6843831811565906,
+            "median": 0.6907859444618225,
+            "p05": 0.5953760743141174,
+            "p95": 0.7476655393838882
+          },
+          "sign_flip_null": {
+            "mean": 0.009538700103803421,
+            "median": 0.011995574459433556,
+            "p05": -0.29747167229652405,
+            "p95": 0.2765568643808365
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_virtue",
+          "direction_norm": 2.48258376121521,
+          "gap_mean_minus_null_p95": 0.42210139031521976,
+          "gap_median_minus_null_p95": 0.42685791850090027,
+          "mean_neg_tokens": 14.433333333333334,
+          "mean_pos_tokens": 10.066666666666666,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.7152532755862921,
+            "median": 0.7200098037719727,
+            "p05": 0.6508266478776932,
+            "p95": 0.7685752660036087
+          },
+          "sign_flip_null": {
+            "mean": -0.0011308819191526709,
+            "median": -0.003990919911302626,
+            "p05": -0.2927481010556221,
+            "p95": 0.2931518852710724
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_contract",
+          "direction_norm": 1.758903980255127,
+          "gap_mean_minus_null_p95": 0.32563453493639827,
+          "gap_median_minus_null_p95": 0.33402226865291595,
+          "mean_neg_tokens": 13.366666666666667,
+          "mean_pos_tokens": 10.066666666666666,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.5995781826786697,
+            "median": 0.6079659163951874,
+            "p05": 0.47702062129974365,
+            "p95": 0.6797627061605453
+          },
+          "sign_flip_null": {
+            "mean": 0.005526597194148053,
+            "median": 7.636490045115352e-05,
+            "p05": -0.2895238697528839,
+            "p95": 0.2739436477422714
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "virtue_neutral_short",
+          "direction_norm": 3.5305402278900146,
+          "gap_mean_minus_null_p95": 0.3220540382899344,
+          "gap_median_minus_null_p95": 0.32571175694465637,
+          "mean_neg_tokens": 10.333333333333334,
+          "mean_pos_tokens": 14.433333333333334,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.8707888522185385,
+            "median": 0.8744465708732605,
+            "p05": 0.8367217928171158,
+            "p95": 0.8939282894134521
+          },
+          "sign_flip_null": {
+            "mean": -0.006519584066609241,
+            "median": -0.00296409975271672,
+            "p05": -0.459420382976532,
+            "p95": 0.5487348139286041
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_neutral_length_matched",
+          "direction_norm": 3.1959104537963867,
+          "gap_mean_minus_null_p95": 0.419879479566589,
+          "gap_median_minus_null_p95": 0.42335354536771774,
+          "mean_neg_tokens": 11.733333333333333,
+          "mean_pos_tokens": 14.433333333333334,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.8437194435391575,
+            "median": 0.8471935093402863,
+            "p05": 0.8054013401269913,
+            "p95": 0.8747024834156036
+          },
+          "sign_flip_null": {
+            "mean": -0.01338241040639332,
+            "median": -0.029569655656814575,
+            "p05": -0.3992364928126335,
+            "p95": 0.4238399639725685
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_anti",
+          "direction_norm": 2.905576467514038,
+          "gap_mean_minus_null_p95": 0.4117726804688573,
+          "gap_median_minus_null_p95": 0.41942107677459717,
+          "mean_neg_tokens": 8.866666666666667,
+          "mean_pos_tokens": 14.433333333333334,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.781282645650208,
+            "median": 0.7889310419559479,
+            "p05": 0.7139770835638046,
+            "p95": 0.8234258890151978
+          },
+          "sign_flip_null": {
+            "mean": 0.004907932669311776,
+            "median": 0.029328569769859314,
+            "p05": -0.37764445692300797,
+            "p95": 0.3695099651813507
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_deont",
+          "direction_norm": 1.7512197494506836,
+          "gap_mean_minus_null_p95": 0.3306816089898348,
+          "gap_median_minus_null_p95": 0.34110312163829803,
+          "mean_neg_tokens": 12.9,
+          "mean_pos_tokens": 14.433333333333334,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.6023497600108385,
+            "median": 0.6127712726593018,
+            "p05": 0.4976484999060631,
+            "p95": 0.6652212589979172
+          },
+          "sign_flip_null": {
+            "mean": 0.0010303975554961653,
+            "median": -0.008519435534253716,
+            "p05": -0.2676301598548889,
+            "p95": 0.2716681510210037
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_util",
+          "direction_norm": 2.48258376121521,
+          "gap_mean_minus_null_p95": 0.42210139031521976,
+          "gap_median_minus_null_p95": 0.42685791850090027,
+          "mean_neg_tokens": 10.066666666666666,
+          "mean_pos_tokens": 14.433333333333334,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.7152532755862921,
+            "median": 0.7200098037719727,
+            "p05": 0.6508266478776932,
+            "p95": 0.7685752660036087
+          },
+          "sign_flip_null": {
+            "mean": -0.0011308819191526709,
+            "median": -0.003990919911302626,
+            "p05": -0.2927481010556221,
+            "p95": 0.2931518852710724
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_contract",
+          "direction_norm": 1.5786758661270142,
+          "gap_mean_minus_null_p95": 0.3417957238852978,
+          "gap_median_minus_null_p95": 0.34762750938534737,
+          "mean_neg_tokens": 13.366666666666667,
+          "mean_pos_tokens": 14.433333333333334,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.5763230547308922,
+            "median": 0.5821548402309418,
+            "p05": 0.5000922903418541,
+            "p95": 0.6345899999141693
+          },
+          "sign_flip_null": {
+            "mean": 0.0035231524973369233,
+            "median": -0.005840990459546447,
+            "p05": -0.18591219559311867,
+            "p95": 0.2345273308455944
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "contract_neutral_short",
+          "direction_norm": 3.206794261932373,
+          "gap_mean_minus_null_p95": 0.3840753377880901,
+          "gap_median_minus_null_p95": 0.3880667984485626,
+          "mean_neg_tokens": 10.333333333333334,
+          "mean_pos_tokens": 13.366666666666667,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.8548598231282085,
+            "median": 0.858851283788681,
+            "p05": 0.8097140789031982,
+            "p95": 0.883988618850708
+          },
+          "sign_flip_null": {
+            "mean": 0.005857609767190297,
+            "median": -0.00045509194023907185,
+            "p05": -0.4306805804371834,
+            "p95": 0.4707844853401184
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_neutral_length_matched",
+          "direction_norm": 2.9157614707946777,
+          "gap_mean_minus_null_p95": 0.424945876467973,
+          "gap_median_minus_null_p95": 0.4317867010831833,
+          "mean_neg_tokens": 11.733333333333333,
+          "mean_pos_tokens": 13.366666666666667,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.8269194369204342,
+            "median": 0.8337602615356445,
+            "p05": 0.7656406164169312,
+            "p95": 0.8628988713026047
+          },
+          "sign_flip_null": {
+            "mean": -0.004947432773406035,
+            "median": -0.024242838844656944,
+            "p05": -0.37507107108831406,
+            "p95": 0.40197356045246124
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_anti",
+          "direction_norm": 2.8734359741210938,
+          "gap_mean_minus_null_p95": 0.4632877502590418,
+          "gap_median_minus_null_p95": 0.46917326748371124,
+          "mean_neg_tokens": 8.033333333333333,
+          "mean_pos_tokens": 13.366666666666667,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.7632733527570963,
+            "median": 0.7691588699817657,
+            "p05": 0.6950141340494156,
+            "p95": 0.8148671835660934
+          },
+          "sign_flip_null": {
+            "mean": -0.004515195613748801,
+            "median": -0.005683370865881443,
+            "p05": -0.3464501425623894,
+            "p95": 0.2999856024980545
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_deont",
+          "direction_norm": 1.6751446723937988,
+          "gap_mean_minus_null_p95": 0.2772781577077694,
+          "gap_median_minus_null_p95": 0.29319415986537933,
+          "mean_neg_tokens": 12.9,
+          "mean_pos_tokens": 13.366666666666667,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.5498221393791027,
+            "median": 0.5657381415367126,
+            "p05": 0.4011891260743141,
+            "p95": 0.6415193974971771
+          },
+          "sign_flip_null": {
+            "mean": 0.011059696208747027,
+            "median": 0.006558009190484881,
+            "p05": -0.2736508697271347,
+            "p95": 0.2725439816713333
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_util",
+          "direction_norm": 1.758903980255127,
+          "gap_mean_minus_null_p95": 0.32563453493639827,
+          "gap_median_minus_null_p95": 0.33402226865291595,
+          "mean_neg_tokens": 10.066666666666666,
+          "mean_pos_tokens": 13.366666666666667,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.5995781826786697,
+            "median": 0.6079659163951874,
+            "p05": 0.47702062129974365,
+            "p95": 0.6797627061605453
+          },
+          "sign_flip_null": {
+            "mean": 0.005526597194148053,
+            "median": 7.636490045115352e-05,
+            "p05": -0.2895238697528839,
+            "p95": 0.2739436477422714
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_virtue",
+          "direction_norm": 1.5786758661270142,
+          "gap_mean_minus_null_p95": 0.3417957238852978,
+          "gap_median_minus_null_p95": 0.34762750938534737,
+          "mean_neg_tokens": 14.433333333333334,
+          "mean_pos_tokens": 13.366666666666667,
+          "n_pairs": 30,
+          "real_split_half": {
+            "mean": 0.5763230547308922,
+            "median": 0.5821548402309418,
+            "p05": 0.5000922903418541,
+            "p95": 0.6345899999141693
+          },
+          "sign_flip_null": {
+            "mean": 0.0035231524973369233,
+            "median": -0.005840990459546447,
+            "p05": -0.18591219559311867,
+            "p95": 0.2345273308455944
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        }
+      ],
+      "site": "generated_sequence_residual"
+    },
+    {
+      "cross_theory_cosines": {
+        "anti": {
+          "contract": {
+            "contract": 1.0000001192092896,
+            "deont": 0.7384461164474487,
+            "util": 0.751461386680603,
+            "virtue": 0.8069567084312439
+          },
+          "deont": {
+            "contract": 0.7384461164474487,
+            "deont": 0.9999998807907104,
+            "util": 0.5844992399215698,
+            "virtue": 0.7844948768615723
+          },
+          "util": {
+            "contract": 0.751461386680603,
+            "deont": 0.5844992399215698,
+            "util": 1.0,
+            "virtue": 0.6535528302192688
+          },
+          "virtue": {
+            "contract": 0.8069567084312439,
+            "deont": 0.7844948768615723,
+            "util": 0.6535528302192688,
+            "virtue": 1.0
+          }
+        },
+        "neutral_length_matched": {
+          "contract": {
+            "contract": 1.0,
+            "deont": 0.8106780052185059,
+            "util": 0.8387438058853149,
+            "virtue": 0.8738776445388794
+          },
+          "deont": {
+            "contract": 0.8106780052185059,
+            "deont": 1.0000001192092896,
+            "util": 0.7050273418426514,
+            "virtue": 0.8585936427116394
+          },
+          "util": {
+            "contract": 0.8387438058853149,
+            "deont": 0.7050273418426514,
+            "util": 1.0,
+            "virtue": 0.7510093450546265
+          },
+          "virtue": {
+            "contract": 0.8738776445388794,
+            "deont": 0.8585936427116394,
+            "util": 0.7510093450546265,
+            "virtue": 1.0
+          }
+        },
+        "neutral_short": {
+          "contract": {
+            "contract": 1.0000001192092896,
+            "deont": 0.8576140403747559,
+            "util": 0.8624706864356995,
+            "virtue": 0.9056389331817627
+          },
+          "deont": {
+            "contract": 0.8576140403747559,
+            "deont": 1.0,
+            "util": 0.7834952473640442,
+            "virtue": 0.8851633667945862
+          },
+          "util": {
+            "contract": 0.8624706864356995,
+            "deont": 0.7834952473640442,
+            "util": 1.0,
+            "virtue": 0.7971423268318176
+          },
+          "virtue": {
+            "contract": 0.9056389331817627,
+            "deont": 0.8851633667945862,
+            "util": 0.7971423268318176,
+            "virtue": 0.9999998807907104
+          }
+        }
+      },
+      "filter_mode": "pos",
+      "layer": 32,
+      "min_tokens": 10,
+      "n_trials": 256,
+      "rows": [
+        {
+          "construction": "deont_neutral_short",
+          "direction_norm": 3.5918617248535156,
+          "gap_mean_minus_null_p95": 0.29644795157946646,
+          "gap_median_minus_null_p95": 0.3028210252523422,
+          "mean_neg_tokens": 12.470588235294118,
+          "mean_pos_tokens": 17.88235294117647,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.8232338468078524,
+            "median": 0.8296069204807281,
+            "p05": 0.7689454555511475,
+            "p95": 0.86219821870327
+          },
+          "sign_flip_null": {
+            "mean": 0.01056995264843863,
+            "median": -0.007749443873763084,
+            "p05": -0.4693548008799553,
+            "p95": 0.5267858952283859
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_neutral_length_matched",
+          "direction_norm": 3.1465070247650146,
+          "gap_mean_minus_null_p95": 0.3548930021934211,
+          "gap_median_minus_null_p95": 0.3559113219380379,
+          "mean_neg_tokens": 13.235294117647058,
+          "mean_pos_tokens": 17.88235294117647,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.7546283858828247,
+            "median": 0.7556467056274414,
+            "p05": 0.689325600862503,
+            "p95": 0.8056847006082535
+          },
+          "sign_flip_null": {
+            "mean": 0.020673054631174637,
+            "median": 0.03570646792650223,
+            "p05": -0.4236031398177147,
+            "p95": 0.39973538368940353
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_anti",
+          "direction_norm": 4.054633140563965,
+          "gap_mean_minus_null_p95": 0.3356107259169221,
+          "gap_median_minus_null_p95": 0.3388714864850044,
+          "mean_neg_tokens": 7.647058823529412,
+          "mean_pos_tokens": 17.88235294117647,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.768202037550509,
+            "median": 0.7714627981185913,
+            "p05": 0.6945584118366241,
+            "p95": 0.833434984087944
+          },
+          "sign_flip_null": {
+            "mean": 0.009575682157674237,
+            "median": 0.028610173612833023,
+            "p05": -0.46100348979234695,
+            "p95": 0.4325913116335869
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_util",
+          "direction_norm": 2.4650933742523193,
+          "gap_mean_minus_null_p95": 0.2529636410763487,
+          "gap_median_minus_null_p95": 0.254023440182209,
+          "mean_neg_tokens": 12.0,
+          "mean_pos_tokens": 17.88235294117647,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.6103585673263296,
+            "median": 0.6114183664321899,
+            "p05": 0.5279973298311234,
+            "p95": 0.6845720410346985
+          },
+          "sign_flip_null": {
+            "mean": 0.00908987490967661,
+            "median": 0.00034293403223273344,
+            "p05": -0.2964295819401741,
+            "p95": 0.3573949262499809
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_virtue",
+          "direction_norm": 1.6058528423309326,
+          "gap_mean_minus_null_p95": 0.19465483853127807,
+          "gap_median_minus_null_p95": 0.19819306582212448,
+          "mean_neg_tokens": 15.470588235294118,
+          "mean_pos_tokens": 17.88235294117647,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.36195681372191757,
+            "median": 0.365495041012764,
+            "p05": 0.2721756845712662,
+            "p95": 0.4319235533475876
+          },
+          "sign_flip_null": {
+            "mean": 0.005133321548612457,
+            "median": 0.008103222586214542,
+            "p05": -0.16274556517601013,
+            "p95": 0.1673019751906395
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_contract",
+          "direction_norm": 1.9395434856414795,
+          "gap_mean_minus_null_p95": 0.22559406387154013,
+          "gap_median_minus_null_p95": 0.23076887801289558,
+          "mean_neg_tokens": 14.117647058823529,
+          "mean_pos_tokens": 17.88235294117647,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.4627186075085774,
+            "median": 0.46789342164993286,
+            "p05": 0.3583047017455101,
+            "p95": 0.5481259077787399
+          },
+          "sign_flip_null": {
+            "mean": 0.0036406375567423765,
+            "median": 0.004632038529962301,
+            "p05": -0.220605731010437,
+            "p95": 0.23712454363703728
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "util_neutral_short",
+          "direction_norm": 3.3329663276672363,
+          "gap_mean_minus_null_p95": 0.2858268602285534,
+          "gap_median_minus_null_p95": 0.29353025555610657,
+          "mean_neg_tokens": 13.461538461538462,
+          "mean_pos_tokens": 14.538461538461538,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.7421672625932842,
+            "median": 0.7498706579208374,
+            "p05": 0.6810619831085205,
+            "p95": 0.7853176295757294
+          },
+          "sign_flip_null": {
+            "mean": 0.01391399408765892,
+            "median": 0.0351815028116107,
+            "p05": -0.5414320528507233,
+            "p95": 0.45634040236473083
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_neutral_length_matched",
+          "direction_norm": 2.7867796421051025,
+          "gap_mean_minus_null_p95": 0.2569367295363918,
+          "gap_median_minus_null_p95": 0.26023833453655243,
+          "mean_neg_tokens": 13.384615384615385,
+          "mean_pos_tokens": 14.538461538461538,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.6101501440862194,
+            "median": 0.61345174908638,
+            "p05": 0.5313449949026108,
+            "p95": 0.6763503104448318
+          },
+          "sign_flip_null": {
+            "mean": 0.006039605641944945,
+            "median": 0.018789542838931084,
+            "p05": -0.4062356501817703,
+            "p95": 0.3532134145498276
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_anti",
+          "direction_norm": 3.4907045364379883,
+          "gap_mean_minus_null_p95": 0.28985364048276097,
+          "gap_median_minus_null_p95": 0.29983440041542053,
+          "mean_neg_tokens": 7.769230769230769,
+          "mean_pos_tokens": 14.538461538461538,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.5998016676167026,
+            "median": 0.6097824275493622,
+            "p05": 0.49260106682777405,
+            "p95": 0.6800405085086823
+          },
+          "sign_flip_null": {
+            "mean": 0.00035897774773729907,
+            "median": 0.014305332209914923,
+            "p05": -0.3401654213666916,
+            "p95": 0.30994802713394165
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_deont",
+          "direction_norm": 2.127450704574585,
+          "gap_mean_minus_null_p95": 0.11846988525940105,
+          "gap_median_minus_null_p95": 0.12574344128370285,
+          "mean_neg_tokens": 16.615384615384617,
+          "mean_pos_tokens": 14.538461538461538,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.38811495777918026,
+            "median": 0.39538851380348206,
+            "p05": 0.2447286620736122,
+            "p95": 0.5189290940761566
+          },
+          "sign_flip_null": {
+            "mean": 0.0005056090210473485,
+            "median": 0.006474873051047325,
+            "p05": -0.2892722859978676,
+            "p95": 0.2696450725197792
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_virtue",
+          "direction_norm": 2.118974208831787,
+          "gap_mean_minus_null_p95": 0.18257516529411077,
+          "gap_median_minus_null_p95": 0.19105716049671173,
+          "mean_neg_tokens": 17.0,
+          "mean_pos_tokens": 14.538461538461538,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.4263303270563483,
+            "median": 0.4348123222589493,
+            "p05": 0.31546664237976074,
+            "p95": 0.5106031745672226
+          },
+          "sign_flip_null": {
+            "mean": -0.0004132955116915582,
+            "median": -0.005569069879129529,
+            "p05": -0.23668349906802177,
+            "p95": 0.24375516176223755
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_contract",
+          "direction_norm": 1.4153238534927368,
+          "gap_mean_minus_null_p95": 0.15352508472278714,
+          "gap_median_minus_null_p95": 0.17126891016960144,
+          "mean_neg_tokens": 15.461538461538462,
+          "mean_pos_tokens": 14.538461538461538,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.3299166117794812,
+            "median": 0.34766043722629547,
+            "p05": 0.22372391447424889,
+            "p95": 0.4039355665445328
+          },
+          "sign_flip_null": {
+            "mean": 0.0038265006826350145,
+            "median": -5.359208444133401e-06,
+            "p05": -0.1768024079501629,
+            "p95": 0.17639152705669403
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "virtue_neutral_short",
+          "direction_norm": 4.371554851531982,
+          "gap_mean_minus_null_p95": 0.32446027593687177,
+          "gap_median_minus_null_p95": 0.32681314647197723,
+          "mean_neg_tokens": 11.45,
+          "mean_pos_tokens": 18.35,
+          "n_pairs": 20,
+          "real_split_half": {
+            "mean": 0.8564592530019581,
+            "median": 0.8588121235370636,
+            "p05": 0.8210427761077881,
+            "p95": 0.8826498240232468
+          },
+          "sign_flip_null": {
+            "mean": -0.006352896625685389,
+            "median": 0.00948114087805152,
+            "p05": -0.5206930637359619,
+            "p95": 0.5319989770650864
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_neutral_length_matched",
+          "direction_norm": 3.699516773223877,
+          "gap_mean_minus_null_p95": 0.40584405115805566,
+          "gap_median_minus_null_p95": 0.40852613002061844,
+          "mean_neg_tokens": 13.35,
+          "mean_pos_tokens": 18.35,
+          "n_pairs": 20,
+          "real_split_half": {
+            "mean": 0.8106051792856306,
+            "median": 0.8132872581481934,
+            "p05": 0.7628424316644669,
+            "p95": 0.8440480083227158
+          },
+          "sign_flip_null": {
+            "mean": -0.01473171268742135,
+            "median": -0.01086355745792389,
+            "p05": -0.4908909648656845,
+            "p95": 0.4047611281275749
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_anti",
+          "direction_norm": 3.54744553565979,
+          "gap_mean_minus_null_p95": 0.32338657951913774,
+          "gap_median_minus_null_p95": 0.32943566143512726,
+          "mean_neg_tokens": 9.75,
+          "mean_pos_tokens": 18.35,
+          "n_pairs": 20,
+          "real_split_half": {
+            "mean": 0.7401012626942247,
+            "median": 0.7461503446102142,
+            "p05": 0.6760287433862686,
+            "p95": 0.7940697520971298
+          },
+          "sign_flip_null": {
+            "mean": -0.0022503448702764217,
+            "median": -0.010969852562993765,
+            "p05": -0.40262797474861145,
+            "p95": 0.416714683175087
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_deont",
+          "direction_norm": 2.2397704124450684,
+          "gap_mean_minus_null_p95": 0.23408704646863043,
+          "gap_median_minus_null_p95": 0.24178876727819443,
+          "mean_neg_tokens": 15.4,
+          "mean_pos_tokens": 18.35,
+          "n_pairs": 20,
+          "real_split_half": {
+            "mean": 0.5619861523155123,
+            "median": 0.5696878731250763,
+            "p05": 0.45496147125959396,
+            "p95": 0.639021098613739
+          },
+          "sign_flip_null": {
+            "mean": 0.008371881243292023,
+            "median": 0.017853066325187683,
+            "p05": -0.28829197585582733,
+            "p95": 0.32789910584688187
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_util",
+          "direction_norm": 3.0674688816070557,
+          "gap_mean_minus_null_p95": 0.3599419442471117,
+          "gap_median_minus_null_p95": 0.36769425868988037,
+          "mean_neg_tokens": 11.55,
+          "mean_pos_tokens": 18.35,
+          "n_pairs": 20,
+          "real_split_half": {
+            "mean": 0.7034944442566484,
+            "median": 0.7112467586994171,
+            "p05": 0.6312865763902664,
+            "p95": 0.7573995143175125
+          },
+          "sign_flip_null": {
+            "mean": -0.010577150290600912,
+            "median": -0.01971110887825489,
+            "p05": -0.35625289380550385,
+            "p95": 0.34355250000953674
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_contract",
+          "direction_norm": 1.867108702659607,
+          "gap_mean_minus_null_p95": 0.2938108950620517,
+          "gap_median_minus_null_p95": 0.30386853218078613,
+          "mean_neg_tokens": 16.05,
+          "mean_pos_tokens": 18.35,
+          "n_pairs": 20,
+          "real_split_half": {
+            "mean": 0.5211062043672428,
+            "median": 0.5311638414859772,
+            "p05": 0.4316358044743538,
+            "p95": 0.5809909254312515
+          },
+          "sign_flip_null": {
+            "mean": -0.0015577996823878948,
+            "median": 0.0026037733150587883,
+            "p05": -0.2700420990586281,
+            "p95": 0.22729530930519104
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "contract_neutral_short",
+          "direction_norm": 3.494097948074341,
+          "gap_mean_minus_null_p95": 0.36333921435289085,
+          "gap_median_minus_null_p95": 0.36784905195236206,
+          "mean_neg_tokens": 11.380952380952381,
+          "mean_pos_tokens": 16.238095238095237,
+          "n_pairs": 21,
+          "real_split_half": {
+            "mean": 0.8052923071663827,
+            "median": 0.8098021447658539,
+            "p05": 0.7542466968297958,
+            "p95": 0.8413201123476028
+          },
+          "sign_flip_null": {
+            "mean": -0.016326098598085537,
+            "median": -0.0030206834198907018,
+            "p05": -0.43448370695114136,
+            "p95": 0.4419530928134918
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_neutral_length_matched",
+          "direction_norm": 3.0517313480377197,
+          "gap_mean_minus_null_p95": 0.3504970190115273,
+          "gap_median_minus_null_p95": 0.358511783182621,
+          "mean_neg_tokens": 13.380952380952381,
+          "mean_pos_tokens": 16.238095238095237,
+          "n_pairs": 21,
+          "real_split_half": {
+            "mean": 0.7565734726376832,
+            "median": 0.7645882368087769,
+            "p05": 0.678771361708641,
+            "p95": 0.8035932183265686
+          },
+          "sign_flip_null": {
+            "mean": -0.017122559041126806,
+            "median": -0.012219153810292482,
+            "p05": -0.4031112566590309,
+            "p95": 0.40607645362615585
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_anti",
+          "direction_norm": 3.4855079650878906,
+          "gap_mean_minus_null_p95": 0.3873982897493988,
+          "gap_median_minus_null_p95": 0.39559000730514526,
+          "mean_neg_tokens": 8.523809523809524,
+          "mean_pos_tokens": 16.238095238095237,
+          "n_pairs": 21,
+          "real_split_half": {
+            "mean": 0.7404171696398407,
+            "median": 0.7486088871955872,
+            "p05": 0.6623338460922241,
+            "p95": 0.7867641896009445
+          },
+          "sign_flip_null": {
+            "mean": 0.0018170793520795314,
+            "median": 0.014600278344005346,
+            "p05": -0.3601124435663223,
+            "p95": 0.3530188798904419
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_deont",
+          "direction_norm": 1.9393079280853271,
+          "gap_mean_minus_null_p95": 0.14620377507526428,
+          "gap_median_minus_null_p95": 0.1740020588040352,
+          "mean_neg_tokens": 14.142857142857142,
+          "mean_pos_tokens": 16.238095238095237,
+          "n_pairs": 21,
+          "real_split_half": {
+            "mean": 0.4381511473329738,
+            "median": 0.4659494310617447,
+            "p05": 0.21226904541254044,
+            "p95": 0.555948480963707
+          },
+          "sign_flip_null": {
+            "mean": -0.005208853653471124,
+            "median": -0.011598159093409777,
+            "p05": -0.2999808117747307,
+            "p95": 0.2919473722577095
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_util",
+          "direction_norm": 2.125964879989624,
+          "gap_mean_minus_null_p95": 0.23190653615165502,
+          "gap_median_minus_null_p95": 0.2466844767332077,
+          "mean_neg_tokens": 11.095238095238095,
+          "mean_pos_tokens": 16.238095238095237,
+          "n_pairs": 21,
+          "real_split_half": {
+            "mean": 0.5791187464492396,
+            "median": 0.5938966870307922,
+            "p05": 0.4361759424209595,
+            "p95": 0.6789731085300446
+          },
+          "sign_flip_null": {
+            "mean": 0.016714239420821286,
+            "median": 0.02152674924582243,
+            "p05": -0.2859693020582199,
+            "p95": 0.34721221029758453
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_virtue",
+          "direction_norm": 1.4867348670959473,
+          "gap_mean_minus_null_p95": 0.2494138787733391,
+          "gap_median_minus_null_p95": 0.2528555430471897,
+          "mean_neg_tokens": 15.80952380952381,
+          "mean_pos_tokens": 16.238095238095237,
+          "n_pairs": 21,
+          "real_split_half": {
+            "mean": 0.40676192671526223,
+            "median": 0.41020359098911285,
+            "p05": 0.3309874087572098,
+            "p95": 0.47468655556440353
+          },
+          "sign_flip_null": {
+            "mean": -0.006413820067137976,
+            "median": -0.009571906179189682,
+            "p05": -0.15160565078258514,
+            "p95": 0.15734804794192314
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        }
+      ],
+      "site": "generated_sequence_residual"
+    },
+    {
+      "cross_theory_cosines": {
+        "anti": {
+          "contract": {
+            "contract": 1.0,
+            "deont": 0.558577299118042,
+            "virtue": 0.7407094836235046
+          },
+          "deont": {
+            "contract": 0.558577299118042,
+            "deont": 1.0,
+            "virtue": 0.7279624342918396
+          },
+          "virtue": {
+            "contract": 0.7407094836235046,
+            "deont": 0.7279624342918396,
+            "virtue": 1.0
+          }
+        },
+        "neutral_length_matched": {
+          "contract": {
+            "contract": 1.0,
+            "deont": 0.5120192766189575,
+            "virtue": 0.6939812302589417
+          },
+          "deont": {
+            "contract": 0.5120192766189575,
+            "deont": 1.0,
+            "virtue": 0.741202712059021
+          },
+          "virtue": {
+            "contract": 0.6939812302589417,
+            "deont": 0.741202712059021,
+            "virtue": 1.0
+          }
+        },
+        "neutral_short": {
+          "contract": {
+            "contract": 0.9999998807907104,
+            "deont": 0.7205762267112732,
+            "virtue": 0.8174434304237366
+          },
+          "deont": {
+            "contract": 0.7205762267112732,
+            "deont": 1.0,
+            "virtue": 0.8615285158157349
+          },
+          "virtue": {
+            "contract": 0.8174434304237366,
+            "deont": 0.8615285158157349,
+            "virtue": 0.9999998807907104
+          }
+        }
+      },
+      "filter_mode": "pos",
+      "layer": 32,
+      "min_tokens": 20,
+      "n_trials": 256,
+      "rows": [
+        {
+          "construction": "deont_neutral_short",
+          "direction_norm": 5.294849872589111,
+          "gap_mean_minus_null_p95": 0.005603960482403636,
+          "gap_median_minus_null_p95": 0.051148951053619385,
+          "mean_neg_tokens": 12.6,
+          "mean_pos_tokens": 27.6,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.66774349543266,
+            "median": 0.7132884860038757,
+            "p05": 0.3566732406616211,
+            "p95": 0.7730494737625122
+          },
+          "sign_flip_null": {
+            "mean": -0.013003357947354743,
+            "median": -0.007426165975630283,
+            "p05": -0.6697312593460083,
+            "p95": 0.6621395349502563
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_neutral_length_matched",
+          "direction_norm": 4.517577171325684,
+          "gap_mean_minus_null_p95": 0.036090158158913255,
+          "gap_median_minus_null_p95": 0.0430479422211647,
+          "mean_neg_tokens": 11.0,
+          "mean_pos_tokens": 27.6,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.5029967876616865,
+            "median": 0.509954571723938,
+            "p05": 0.3527621626853943,
+            "p95": 0.5822997093200684
+          },
+          "sign_flip_null": {
+            "mean": -0.004539014270449115,
+            "median": 0.006653156480751932,
+            "p05": -0.4840894341468811,
+            "p95": 0.4669066295027733
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_anti",
+          "direction_norm": 5.226649284362793,
+          "gap_mean_minus_null_p95": 0.009455020306631923,
+          "gap_median_minus_null_p95": 0.008036375045776367,
+          "mean_neg_tokens": 7.8,
+          "mean_pos_tokens": 27.6,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.5918153475504369,
+            "median": 0.5903967022895813,
+            "p05": 0.4966018795967102,
+            "p95": 0.6780250668525696
+          },
+          "sign_flip_null": {
+            "mean": -0.01311815390818083,
+            "median": -0.04808136634528637,
+            "p05": -0.5469745844602585,
+            "p95": 0.5823603272438049
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_util",
+          "direction_norm": 3.719040632247925,
+          "gap_mean_minus_null_p95": 0.017675871960818768,
+          "gap_median_minus_null_p95": 0.009098462760448456,
+          "mean_neg_tokens": 14.2,
+          "mean_pos_tokens": 27.6,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.3962744800373912,
+            "median": 0.3876970708370209,
+            "p05": 0.2875362038612366,
+            "p95": 0.48517319560050964
+          },
+          "sign_flip_null": {
+            "mean": -0.006064834141625397,
+            "median": -0.0021205254015512764,
+            "p05": -0.385559506714344,
+            "p95": 0.3785986080765724
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_virtue",
+          "direction_norm": 2.4638893604278564,
+          "gap_mean_minus_null_p95": -0.13040444241050864,
+          "gap_median_minus_null_p95": -0.12445002049207687,
+          "mean_neg_tokens": 20.2,
+          "mean_pos_tokens": 27.6,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.049293883283098694,
+            "median": 0.05524830520153046,
+            "p05": -0.09114570915699005,
+            "p95": 0.17844201624393463
+          },
+          "sign_flip_null": {
+            "mean": -0.00873470966507739,
+            "median": -0.009158968925476074,
+            "p05": -0.18371298909187317,
+            "p95": 0.17969832569360733
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_contract",
+          "direction_norm": 3.5831298828125,
+          "gap_mean_minus_null_p95": 0.009677038411609828,
+          "gap_median_minus_null_p95": -0.010333120822906494,
+          "mean_neg_tokens": 13.4,
+          "mean_pos_tokens": 27.6,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.41236098192166537,
+            "median": 0.39235082268714905,
+            "p05": 0.31406378746032715,
+            "p95": 0.4965308606624603
+          },
+          "sign_flip_null": {
+            "mean": 0.0029586319069494493,
+            "median": -0.002689904533326626,
+            "p05": -0.40268394351005554,
+            "p95": 0.40268394351005554
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "util_neutral_short",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_neutral_length_matched",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_anti",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_deont",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_virtue",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_contract",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "virtue_neutral_short",
+          "direction_norm": 5.822043418884277,
+          "gap_mean_minus_null_p95": 0.19271311722695827,
+          "gap_median_minus_null_p95": 0.19511258602142334,
+          "mean_neg_tokens": 11.125,
+          "mean_pos_tokens": 23.25,
+          "n_pairs": 8,
+          "real_split_half": {
+            "mean": 0.7926877494901419,
+            "median": 0.7950872182846069,
+            "p05": 0.7428587675094604,
+            "p95": 0.82498699426651
+          },
+          "sign_flip_null": {
+            "mean": -0.010905627670808826,
+            "median": -0.004881401197053492,
+            "p05": -0.6647538393735886,
+            "p95": 0.5999746322631836
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_neutral_length_matched",
+          "direction_norm": 4.367458343505859,
+          "gap_mean_minus_null_p95": 0.1615255232900381,
+          "gap_median_minus_null_p95": 0.1664736568927765,
+          "mean_neg_tokens": 17.0,
+          "mean_pos_tokens": 23.25,
+          "n_pairs": 8,
+          "real_split_half": {
+            "mean": 0.6732474621385336,
+            "median": 0.678195595741272,
+            "p05": 0.5932303667068481,
+            "p95": 0.7261305898427963
+          },
+          "sign_flip_null": {
+            "mean": 0.013374181750918979,
+            "median": 0.015542898792773485,
+            "p05": -0.5374784171581268,
+            "p95": 0.5117219388484955
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_anti",
+          "direction_norm": 5.453610897064209,
+          "gap_mean_minus_null_p95": 0.2192887244746089,
+          "gap_median_minus_null_p95": 0.22483833879232407,
+          "mean_neg_tokens": 7.125,
+          "mean_pos_tokens": 23.25,
+          "n_pairs": 8,
+          "real_split_half": {
+            "mean": 0.7128948522731662,
+            "median": 0.7184444665908813,
+            "p05": 0.6576878428459167,
+            "p95": 0.7492184638977051
+          },
+          "sign_flip_null": {
+            "mean": -0.00983914089390936,
+            "median": -0.015199674293398857,
+            "p05": -0.495899960398674,
+            "p95": 0.4936061277985573
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_deont",
+          "direction_norm": 2.9589016437530518,
+          "gap_mean_minus_null_p95": -0.015797401782037923,
+          "gap_median_minus_null_p95": 0.019066475331783295,
+          "mean_neg_tokens": 18.5,
+          "mean_pos_tokens": 23.25,
+          "n_pairs": 8,
+          "real_split_half": {
+            "mean": 0.33530330378198414,
+            "median": 0.37016718089580536,
+            "p05": 0.07699733227491379,
+            "p95": 0.46539507806301117
+          },
+          "sign_flip_null": {
+            "mean": 0.0018016444882960059,
+            "median": -0.004488096805289388,
+            "p05": -0.37911752611398697,
+            "p95": 0.35110070556402206
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_util",
+          "direction_norm": 3.6832151412963867,
+          "gap_mean_minus_null_p95": 0.16209552972577512,
+          "gap_median_minus_null_p95": 0.16021330654621124,
+          "mean_neg_tokens": 12.375,
+          "mean_pos_tokens": 23.25,
+          "n_pairs": 8,
+          "real_split_half": {
+            "mean": 0.46585964947007596,
+            "median": 0.4639774262905121,
+            "p05": 0.36617227643728256,
+            "p95": 0.5443292111158371
+          },
+          "sign_flip_null": {
+            "mean": -0.010279504688412544,
+            "median": -0.009931350126862526,
+            "p05": -0.3443535715341568,
+            "p95": 0.30376411974430084
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_contract",
+          "direction_norm": 2.7769412994384766,
+          "gap_mean_minus_null_p95": 0.07822822709567845,
+          "gap_median_minus_null_p95": 0.08539683371782303,
+          "mean_neg_tokens": 18.25,
+          "mean_pos_tokens": 23.25,
+          "n_pairs": 8,
+          "real_split_half": {
+            "mean": 0.36595864524133503,
+            "median": 0.3731272518634796,
+            "p05": 0.276707224547863,
+            "p95": 0.4522213339805603
+          },
+          "sign_flip_null": {
+            "mean": 0.003244007931698434,
+            "median": 0.00411224749404937,
+            "p05": -0.288190022110939,
+            "p95": 0.2877304181456566
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "contract_neutral_short",
+          "direction_norm": 4.138242244720459,
+          "gap_mean_minus_null_p95": 0.0329675026005134,
+          "gap_median_minus_null_p95": 0.021042466163635254,
+          "mean_neg_tokens": 12.4,
+          "mean_pos_tokens": 25.0,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.5201374239986762,
+            "median": 0.5082123875617981,
+            "p05": 0.45887213945388794,
+            "p95": 0.5943681597709656
+          },
+          "sign_flip_null": {
+            "mean": -0.007389218019852706,
+            "median": -0.04823365807533264,
+            "p05": -0.4971715956926346,
+            "p95": 0.48716992139816284
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_neutral_length_matched",
+          "direction_norm": 2.924309015274048,
+          "gap_mean_minus_null_p95": -0.05079050347558223,
+          "gap_median_minus_null_p95": -0.07644537836313248,
+          "mean_neg_tokens": 20.8,
+          "mean_pos_tokens": 25.0,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.27220856412895955,
+            "median": 0.2465536892414093,
+            "p05": 0.10936719924211502,
+            "p95": 0.4772833585739136
+          },
+          "sign_flip_null": {
+            "mean": 0.01854905560003317,
+            "median": 0.025480941869318485,
+            "p05": -0.3075123429298401,
+            "p95": 0.3229990676045418
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_anti",
+          "direction_norm": 4.35003662109375,
+          "gap_mean_minus_null_p95": -0.004035295685753226,
+          "gap_median_minus_null_p95": -0.004003643989562988,
+          "mean_neg_tokens": 10.0,
+          "mean_pos_tokens": 25.0,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.4403753860387951,
+            "median": 0.44040703773498535,
+            "p05": 0.3476465940475464,
+            "p95": 0.5028627514839172
+          },
+          "sign_flip_null": {
+            "mean": 0.021215717696577485,
+            "median": 0.028975512832403183,
+            "p05": -0.43849483132362366,
+            "p95": 0.44441068172454834
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_deont",
+          "direction_norm": 3.3556923866271973,
+          "gap_mean_minus_null_p95": -0.04588424606481567,
+          "gap_median_minus_null_p95": 0.02025695890188217,
+          "mean_neg_tokens": 13.4,
+          "mean_pos_tokens": 25.0,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.30567212210735306,
+            "median": 0.3718133270740509,
+            "p05": 0.13463467359542847,
+            "p95": 0.42519110441207886
+          },
+          "sign_flip_null": {
+            "mean": -0.006185555412230315,
+            "median": -0.002170099411159754,
+            "p05": -0.3686666190624237,
+            "p95": 0.35155636817216873
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_util",
+          "direction_norm": 2.8989086151123047,
+          "gap_mean_minus_null_p95": -0.0005161621811566874,
+          "gap_median_minus_null_p95": 0.010401953011751175,
+          "mean_neg_tokens": 15.4,
+          "mean_pos_tokens": 25.0,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.14935501951549668,
+            "median": 0.16027313470840454,
+            "p05": 0.05314409360289574,
+            "p95": 0.2076728641986847
+          },
+          "sign_flip_null": {
+            "mean": -0.007476824137675919,
+            "median": -0.007959573995321989,
+            "p05": -0.1749894954264164,
+            "p95": 0.14987118169665337
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_virtue",
+          "direction_norm": 2.389526605606079,
+          "gap_mean_minus_null_p95": 0.022159387124702334,
+          "gap_median_minus_null_p95": 0.033918242901563644,
+          "mean_neg_tokens": 22.6,
+          "mean_pos_tokens": 25.0,
+          "n_pairs": 5,
+          "real_split_half": {
+            "mean": 0.19668131391517818,
+            "median": 0.2084401696920395,
+            "p05": 0.1355588436126709,
+            "p95": 0.23573604226112366
+          },
+          "sign_flip_null": {
+            "mean": -0.006243663292480051,
+            "median": -0.0047596541699022055,
+            "p05": -0.17344379052519798,
+            "p95": 0.17452192679047585
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        }
+      ],
+      "site": "generated_sequence_residual"
+    },
+    {
+      "cross_theory_cosines": {
+        "anti": {
+          "contract": {
+            "contract": 1.0,
+            "deont": 0.28530827164649963,
+            "virtue": 0.6176119446754456
+          },
+          "deont": {
+            "contract": 0.28530827164649963,
+            "deont": 0.9999999403953552,
+            "virtue": 0.4181455671787262
+          },
+          "virtue": {
+            "contract": 0.6176119446754456,
+            "deont": 0.4181455671787262,
+            "virtue": 1.0
+          }
+        },
+        "neutral_length_matched": {
+          "contract": {
+            "contract": 1.0000001192092896,
+            "deont": 0.7372003197669983,
+            "util": 0.8094941973686218,
+            "virtue": 0.8073774576187134
+          },
+          "deont": {
+            "contract": 0.7372003197669983,
+            "deont": 1.0,
+            "util": 0.6454330086708069,
+            "virtue": 0.8481411933898926
+          },
+          "util": {
+            "contract": 0.8094941973686218,
+            "deont": 0.6454330086708069,
+            "util": 1.0000001192092896,
+            "virtue": 0.6846953630447388
+          },
+          "virtue": {
+            "contract": 0.8073774576187134,
+            "deont": 0.8481411933898926,
+            "util": 0.6846953630447388,
+            "virtue": 0.9999999403953552
+          }
+        },
+        "neutral_short": {
+          "contract": {
+            "contract": 1.0,
+            "deont": 0.8361466526985168,
+            "util": 0.8629676699638367,
+            "virtue": 0.8553453683853149
+          },
+          "deont": {
+            "contract": 0.8361466526985168,
+            "deont": 0.9999999403953552,
+            "util": 0.7588199377059937,
+            "virtue": 0.8703368902206421
+          },
+          "util": {
+            "contract": 0.8629676699638367,
+            "deont": 0.7588199377059937,
+            "util": 1.0000001192092896,
+            "virtue": 0.7484802007675171
+          },
+          "virtue": {
+            "contract": 0.8553453683853149,
+            "deont": 0.8703368902206421,
+            "util": 0.7484802007675171,
+            "virtue": 1.0000001192092896
+          }
+        }
+      },
+      "filter_mode": "both",
+      "layer": 32,
+      "min_tokens": 10,
+      "n_trials": 256,
+      "rows": [
+        {
+          "construction": "deont_neutral_short",
+          "direction_norm": 3.3797831535339355,
+          "gap_mean_minus_null_p95": 0.31152156996540725,
+          "gap_median_minus_null_p95": 0.3137373849749565,
+          "mean_neg_tokens": 14.333333333333334,
+          "mean_pos_tokens": 16.25,
+          "n_pairs": 12,
+          "real_split_half": {
+            "mean": 0.7461919363122433,
+            "median": 0.7484077513217926,
+            "p05": 0.6943600922822952,
+            "p95": 0.79820616543293
+          },
+          "sign_flip_null": {
+            "mean": -0.001076479996299895,
+            "median": 0.008519790600985289,
+            "p05": -0.4645213186740875,
+            "p95": 0.4346703663468361
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_neutral_length_matched",
+          "direction_norm": 3.086467742919922,
+          "gap_mean_minus_null_p95": 0.2759944007266313,
+          "gap_median_minus_null_p95": 0.2768625169992447,
+          "mean_neg_tokens": 13.8,
+          "mean_pos_tokens": 18.533333333333335,
+          "n_pairs": 15,
+          "real_split_half": {
+            "mean": 0.7027570561040193,
+            "median": 0.7036251723766327,
+            "p05": 0.6319994181394577,
+            "p95": 0.7625513821840286
+          },
+          "sign_flip_null": {
+            "mean": 0.012258585310519265,
+            "median": -0.006605526898056269,
+            "p05": -0.3612976372241974,
+            "p95": 0.426762655377388
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_anti",
+          "direction_norm": 2.556913375854492,
+          "gap_mean_minus_null_p95": -0.011074230307713151,
+          "gap_median_minus_null_p95": 0.0,
+          "mean_neg_tokens": 12.5,
+          "mean_pos_tokens": 21.5,
+          "n_pairs": 4,
+          "real_split_half": {
+            "mean": 0.3388831166084856,
+            "median": 0.34995734691619873,
+            "p05": 0.31689342856407166,
+            "p95": 0.3500584661960602
+          },
+          "sign_flip_null": {
+            "mean": 0.012784253995050676,
+            "median": 0.0,
+            "p05": -0.34995734691619873,
+            "p95": 0.34995734691619873
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_util",
+          "direction_norm": 2.1883034706115723,
+          "gap_mean_minus_null_p95": 0.09990289027336985,
+          "gap_median_minus_null_p95": 0.108339324593544,
+          "mean_neg_tokens": 14.454545454545455,
+          "mean_pos_tokens": 18.181818181818183,
+          "n_pairs": 11,
+          "real_split_half": {
+            "mean": 0.42186283285263926,
+            "median": 0.4302992671728134,
+            "p05": 0.24073147028684616,
+            "p95": 0.5477864444255829
+          },
+          "sign_flip_null": {
+            "mean": 0.0036515838427249037,
+            "median": -0.01289061876013875,
+            "p05": -0.3330491706728935,
+            "p95": 0.3219599425792694
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_virtue",
+          "direction_norm": 1.7009319067001343,
+          "gap_mean_minus_null_p95": 0.12937876069918275,
+          "gap_median_minus_null_p95": 0.1376364529132843,
+          "mean_neg_tokens": 17.285714285714285,
+          "mean_pos_tokens": 19.142857142857142,
+          "n_pairs": 14,
+          "real_split_half": {
+            "mean": 0.32642878079786897,
+            "median": 0.3346864730119705,
+            "p05": 0.22011369466781616,
+            "p95": 0.3953901380300522
+          },
+          "sign_flip_null": {
+            "mean": 0.0055628376931053936,
+            "median": -0.004985224222764373,
+            "p05": -0.15753952786326408,
+            "p95": 0.19705002009868622
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_contract",
+          "direction_norm": 1.8979681730270386,
+          "gap_mean_minus_null_p95": 0.24818940664408728,
+          "gap_median_minus_null_p95": 0.2620757073163986,
+          "mean_neg_tokens": 14.5,
+          "mean_pos_tokens": 16.6875,
+          "n_pairs": 16,
+          "real_split_half": {
+            "mean": 0.4450774362194352,
+            "median": 0.4589637368917465,
+            "p05": 0.31743526458740234,
+            "p95": 0.5315624624490738
+          },
+          "sign_flip_null": {
+            "mean": -0.0007519787104683928,
+            "median": 0.005874041700735688,
+            "p05": -0.21183892711997032,
+            "p95": 0.1968880295753479
+          },
+          "status": "ok",
+          "theory": "deontology"
+        },
+        {
+          "construction": "util_neutral_short",
+          "direction_norm": 2.8924853801727295,
+          "gap_mean_minus_null_p95": 0.19184892834164202,
+          "gap_median_minus_null_p95": 0.19152413308620453,
+          "mean_neg_tokens": 14.9,
+          "mean_pos_tokens": 14.3,
+          "n_pairs": 10,
+          "real_split_half": {
+            "mean": 0.6580937898252159,
+            "median": 0.6577689945697784,
+            "p05": 0.6159577071666718,
+            "p95": 0.7048926502466202
+          },
+          "sign_flip_null": {
+            "mean": 0.003132215302827035,
+            "median": -0.025226191617548466,
+            "p05": -0.38273919373750687,
+            "p95": 0.4662448614835739
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_neutral_length_matched",
+          "direction_norm": 2.562446117401123,
+          "gap_mean_minus_null_p95": 0.19868669426068664,
+          "gap_median_minus_null_p95": 0.207027405500412,
+          "mean_neg_tokens": 14.181818181818182,
+          "mean_pos_tokens": 14.454545454545455,
+          "n_pairs": 11,
+          "real_split_half": {
+            "mean": 0.5175952366553247,
+            "median": 0.52593594789505,
+            "p05": 0.4224467948079109,
+            "p95": 0.6029238104820251
+          },
+          "sign_flip_null": {
+            "mean": 0.0005554759355845817,
+            "median": -0.0030030696652829647,
+            "p05": -0.3000350296497345,
+            "p95": 0.31890854239463806
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_anti",
+          "n_pairs": 3,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_deont",
+          "direction_norm": 2.1883034706115723,
+          "gap_mean_minus_null_p95": 0.09990289027336985,
+          "gap_median_minus_null_p95": 0.108339324593544,
+          "mean_neg_tokens": 18.181818181818183,
+          "mean_pos_tokens": 14.454545454545455,
+          "n_pairs": 11,
+          "real_split_half": {
+            "mean": 0.42186283285263926,
+            "median": 0.4302992671728134,
+            "p05": 0.24073147028684616,
+            "p95": 0.5477864444255829
+          },
+          "sign_flip_null": {
+            "mean": 0.0036515838427249037,
+            "median": -0.01289061876013875,
+            "p05": -0.3330491706728935,
+            "p95": 0.3219599425792694
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_virtue",
+          "direction_norm": 2.1400506496429443,
+          "gap_mean_minus_null_p95": 0.15574353688862175,
+          "gap_median_minus_null_p95": 0.1585613414645195,
+          "mean_neg_tokens": 18.727272727272727,
+          "mean_pos_tokens": 15.363636363636363,
+          "n_pairs": 11,
+          "real_split_half": {
+            "mean": 0.42697209620382637,
+            "median": 0.4297899007797241,
+            "p05": 0.3385707512497902,
+            "p95": 0.51151442527771
+          },
+          "sign_flip_null": {
+            "mean": 0.006622103671560353,
+            "median": 0.014563263393938541,
+            "p05": -0.2448972500860691,
+            "p95": 0.2712285593152046
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_contract",
+          "direction_norm": 1.4094281196594238,
+          "gap_mean_minus_null_p95": 0.15332971542375162,
+          "gap_median_minus_null_p95": 0.1403278261423111,
+          "mean_neg_tokens": 16.0,
+          "mean_pos_tokens": 14.416666666666666,
+          "n_pairs": 12,
+          "real_split_half": {
+            "mean": 0.32050956814782694,
+            "median": 0.3075076788663864,
+            "p05": 0.24222292751073837,
+            "p95": 0.40788237005472183
+          },
+          "sign_flip_null": {
+            "mean": -0.01374097139046171,
+            "median": -0.02751100156456232,
+            "p05": -0.1550518348813057,
+            "p95": 0.16717985272407532
+          },
+          "status": "ok",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "virtue_neutral_short",
+          "direction_norm": 4.113023281097412,
+          "gap_mean_minus_null_p95": 0.2833033867646009,
+          "gap_median_minus_null_p95": 0.28943486511707306,
+          "mean_neg_tokens": 13.461538461538462,
+          "mean_pos_tokens": 17.53846153846154,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.7935329296160489,
+            "median": 0.7996644079685211,
+            "p05": 0.748121902346611,
+            "p95": 0.8312865793704987
+          },
+          "sign_flip_null": {
+            "mean": 0.00595494892388615,
+            "median": 0.00322277209488675,
+            "p05": -0.5866879522800446,
+            "p95": 0.5102295428514481
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_neutral_length_matched",
+          "direction_norm": 3.5926260948181152,
+          "gap_mean_minus_null_p95": 0.3489953866228461,
+          "gap_median_minus_null_p95": 0.35100775957107544,
+          "mean_neg_tokens": 14.294117647058824,
+          "mean_pos_tokens": 18.294117647058822,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.7705883970484138,
+            "median": 0.7726007699966431,
+            "p05": 0.7224657237529755,
+            "p95": 0.8079712688922882
+          },
+          "sign_flip_null": {
+            "mean": -0.008104839982479461,
+            "median": -0.015705450903624296,
+            "p05": -0.46523893624544144,
+            "p95": 0.4215930104255676
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_anti",
+          "direction_norm": 2.6381876468658447,
+          "gap_mean_minus_null_p95": 0.060247897781664506,
+          "gap_median_minus_null_p95": 0.04791300743818283,
+          "mean_neg_tokens": 12.88888888888889,
+          "mean_pos_tokens": 15.666666666666666,
+          "n_pairs": 9,
+          "real_split_half": {
+            "mean": 0.30093435166054405,
+            "median": 0.2885994613170624,
+            "p05": 0.16245915740728378,
+            "p95": 0.42333248257637024
+          },
+          "sign_flip_null": {
+            "mean": -0.0037704620881413575,
+            "median": 0.011122065596282482,
+            "p05": -0.2613960728049278,
+            "p95": 0.24068645387887955
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_deont",
+          "direction_norm": 1.7009319067001343,
+          "gap_mean_minus_null_p95": 0.12937876069918275,
+          "gap_median_minus_null_p95": 0.1376364529132843,
+          "mean_neg_tokens": 19.142857142857142,
+          "mean_pos_tokens": 17.285714285714285,
+          "n_pairs": 14,
+          "real_split_half": {
+            "mean": 0.32642878079786897,
+            "median": 0.3346864730119705,
+            "p05": 0.22011369466781616,
+            "p95": 0.3953901380300522
+          },
+          "sign_flip_null": {
+            "mean": 0.0055628376931053936,
+            "median": -0.004985224222764373,
+            "p05": -0.15753952786326408,
+            "p95": 0.19705002009868622
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_util",
+          "direction_norm": 2.1400506496429443,
+          "gap_mean_minus_null_p95": 0.15574353688862175,
+          "gap_median_minus_null_p95": 0.1585613414645195,
+          "mean_neg_tokens": 15.363636363636363,
+          "mean_pos_tokens": 18.727272727272727,
+          "n_pairs": 11,
+          "real_split_half": {
+            "mean": 0.42697209620382637,
+            "median": 0.4297899007797241,
+            "p05": 0.3385707512497902,
+            "p95": 0.51151442527771
+          },
+          "sign_flip_null": {
+            "mean": 0.006622103671560353,
+            "median": 0.014563263393938541,
+            "p05": -0.2448972500860691,
+            "p95": 0.2712285593152046
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_contract",
+          "direction_norm": 1.5031015872955322,
+          "gap_mean_minus_null_p95": 0.23272649105638266,
+          "gap_median_minus_null_p95": 0.23343097791075706,
+          "mean_neg_tokens": 17.41176470588235,
+          "mean_pos_tokens": 17.764705882352942,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.3908609999343753,
+            "median": 0.3915654867887497,
+            "p05": 0.31994711607694626,
+            "p95": 0.45103879272937775
+          },
+          "sign_flip_null": {
+            "mean": 0.006759543777207,
+            "median": 0.0026841501239687204,
+            "p05": -0.13710840046405792,
+            "p95": 0.15813450887799263
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "contract_neutral_short",
+          "direction_norm": 3.3966593742370605,
+          "gap_mean_minus_null_p95": 0.25510754622519016,
+          "gap_median_minus_null_p95": 0.2544441372156143,
+          "mean_neg_tokens": 14.0,
+          "mean_pos_tokens": 14.538461538461538,
+          "n_pairs": 13,
+          "real_split_half": {
+            "mean": 0.7637692485004663,
+            "median": 0.7631058394908905,
+            "p05": 0.722295418381691,
+            "p95": 0.8058898150920868
+          },
+          "sign_flip_null": {
+            "mean": 0.00927026333511094,
+            "median": 0.01778620481491089,
+            "p05": -0.5111782252788544,
+            "p95": 0.5086617022752762
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_neutral_length_matched",
+          "direction_norm": 2.699256658554077,
+          "gap_mean_minus_null_p95": 0.32521055778488517,
+          "gap_median_minus_null_p95": 0.32995177060365677,
+          "mean_neg_tokens": 15.1875,
+          "mean_pos_tokens": 15.5,
+          "n_pairs": 16,
+          "real_split_half": {
+            "mean": 0.6547555713914335,
+            "median": 0.6594967842102051,
+            "p05": 0.5847936421632767,
+            "p95": 0.7075189501047134
+          },
+          "sign_flip_null": {
+            "mean": -0.02995037707114534,
+            "median": -0.032605113461613655,
+            "p05": -0.3579004555940628,
+            "p95": 0.3295450136065483
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_anti",
+          "direction_norm": 3.544442653656006,
+          "gap_mean_minus_null_p95": -0.017050886410288513,
+          "gap_median_minus_null_p95": 0.006197415292263031,
+          "mean_neg_tokens": 12.5,
+          "mean_pos_tokens": 17.5,
+          "n_pairs": 6,
+          "real_split_half": {
+            "mean": 0.47944505338091403,
+            "median": 0.5026933550834656,
+            "p05": 0.2562255561351776,
+            "p95": 0.5674483776092529
+          },
+          "sign_flip_null": {
+            "mean": 0.00905437558731137,
+            "median": 0.009214551886543632,
+            "p05": -0.44564586877822876,
+            "p95": 0.49649593979120255
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_deont",
+          "direction_norm": 1.8979681730270386,
+          "gap_mean_minus_null_p95": 0.24818940664408728,
+          "gap_median_minus_null_p95": 0.2620757073163986,
+          "mean_neg_tokens": 16.6875,
+          "mean_pos_tokens": 14.5,
+          "n_pairs": 16,
+          "real_split_half": {
+            "mean": 0.4450774362194352,
+            "median": 0.4589637368917465,
+            "p05": 0.31743526458740234,
+            "p95": 0.5315624624490738
+          },
+          "sign_flip_null": {
+            "mean": -0.0007519787104683928,
+            "median": 0.005874041700735688,
+            "p05": -0.21183892711997032,
+            "p95": 0.1968880295753479
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_util",
+          "direction_norm": 1.4094281196594238,
+          "gap_mean_minus_null_p95": 0.15332971542375162,
+          "gap_median_minus_null_p95": 0.1403278261423111,
+          "mean_neg_tokens": 14.416666666666666,
+          "mean_pos_tokens": 16.0,
+          "n_pairs": 12,
+          "real_split_half": {
+            "mean": 0.32050956814782694,
+            "median": 0.3075076788663864,
+            "p05": 0.24222292751073837,
+            "p95": 0.40788237005472183
+          },
+          "sign_flip_null": {
+            "mean": -0.01374097139046171,
+            "median": -0.02751100156456232,
+            "p05": -0.1550518348813057,
+            "p95": 0.16717985272407532
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_virtue",
+          "direction_norm": 1.5031015872955322,
+          "gap_mean_minus_null_p95": 0.23272649105638266,
+          "gap_median_minus_null_p95": 0.23343097791075706,
+          "mean_neg_tokens": 17.764705882352942,
+          "mean_pos_tokens": 17.41176470588235,
+          "n_pairs": 17,
+          "real_split_half": {
+            "mean": 0.3908609999343753,
+            "median": 0.3915654867887497,
+            "p05": 0.31994711607694626,
+            "p95": 0.45103879272937775
+          },
+          "sign_flip_null": {
+            "mean": 0.006759543777207,
+            "median": 0.0026841501239687204,
+            "p05": -0.13710840046405792,
+            "p95": 0.15813450887799263
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        }
+      ],
+      "site": "generated_sequence_residual"
+    },
+    {
+      "cross_theory_cosines": {
+        "anti": {},
+        "neutral_length_matched": {},
+        "neutral_short": {}
+      },
+      "filter_mode": "both",
+      "layer": 32,
+      "min_tokens": 20,
+      "n_trials": 256,
+      "rows": [
+        {
+          "construction": "deont_neutral_short",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_neutral_length_matched",
+          "n_pairs": 0,
+          "status": "too_few_pairs",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_anti",
+          "n_pairs": 0,
+          "status": "too_few_pairs",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_util",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_virtue",
+          "n_pairs": 3,
+          "status": "too_few_pairs",
+          "theory": "deontology"
+        },
+        {
+          "construction": "deont_alt_contract",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "deontology"
+        },
+        {
+          "construction": "util_neutral_short",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_neutral_length_matched",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_anti",
+          "n_pairs": 0,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_deont",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_virtue",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "util_alt_contract",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "utilitarian"
+        },
+        {
+          "construction": "virtue_neutral_short",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_neutral_length_matched",
+          "n_pairs": 3,
+          "status": "too_few_pairs",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_anti",
+          "n_pairs": 0,
+          "status": "too_few_pairs",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_deont",
+          "n_pairs": 3,
+          "status": "too_few_pairs",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_util",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "virtue_alt_contract",
+          "direction_norm": 2.6220102310180664,
+          "gap_mean_minus_null_p95": -0.006908351322636008,
+          "gap_median_minus_null_p95": 0.0,
+          "mean_neg_tokens": 26.0,
+          "mean_pos_tokens": 23.5,
+          "n_pairs": 4,
+          "real_split_half": {
+            "mean": 0.15497230575419962,
+            "median": 0.16188065707683563,
+            "p05": 0.12746988236904144,
+            "p95": 0.17605671286582947
+          },
+          "sign_flip_null": {
+            "mean": 0.008328749216161668,
+            "median": 0.019917305558919907,
+            "p05": -0.16188065707683563,
+            "p95": 0.16188065707683563
+          },
+          "status": "ok",
+          "theory": "virtue_ethics"
+        },
+        {
+          "construction": "contract_neutral_short",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_neutral_length_matched",
+          "n_pairs": 3,
+          "status": "too_few_pairs",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_anti",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_deont",
+          "n_pairs": 1,
+          "status": "too_few_pairs",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_util",
+          "n_pairs": 2,
+          "status": "too_few_pairs",
+          "theory": "contractualism"
+        },
+        {
+          "construction": "contract_alt_virtue",
+          "direction_norm": 2.6220102310180664,
+          "gap_mean_minus_null_p95": -0.006908351322636008,
+          "gap_median_minus_null_p95": 0.0,
+          "mean_neg_tokens": 23.5,
+          "mean_pos_tokens": 26.0,
+          "n_pairs": 4,
+          "real_split_half": {
+            "mean": 0.15497230575419962,
+            "median": 0.16188065707683563,
+            "p05": 0.12746988236904144,
+            "p95": 0.17605671286582947
+          },
+          "sign_flip_null": {
+            "mean": 0.008328749216161668,
+            "median": 0.019917305558919907,
+            "p05": -0.16188065707683563,
+            "p95": 0.16188065707683563
+          },
+          "status": "ok",
+          "theory": "contractualism"
+        }
+      ],
+      "site": "generated_sequence_residual"
+    }
+  ],
+  "capture_artifact_id": "capture_1_c2684db0530c",
+  "generation_rows_path": "projects/MOREBENCH/theory_persona_vectors/phase_02/reports/all_theories_pole_pilot_report/report_0a6a1bb7ed4a_f2f091e0/results/generate_terse_responses_results.json",
+  "n_trials": 256,
+  "primary_layer": 32,
+  "primary_site": "generated_sequence_residual",
+  "token_distribution": {
+    "by_condition": {
+      "N_anti_contract_01": {
+        "max": 20,
+        "mean": 8.033333333333333,
+        "median": 7.5,
+        "min": 4,
+        "n": 30,
+        "share_ge_20": 0.03333333333333333
+      },
+      "N_anti_deont_01": {
+        "max": 16,
+        "mean": 7.066666666666666,
+        "median": 7.0,
+        "min": 4,
+        "n": 30,
+        "share_ge_20": 0.0
+      },
+      "N_anti_util_01": {
+        "max": 13,
+        "mean": 7.2,
+        "median": 7.0,
+        "min": 4,
+        "n": 30,
+        "share_ge_20": 0.0
+      },
+      "N_anti_virtue_01": {
+        "max": 24,
+        "mean": 8.866666666666667,
+        "median": 8.0,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.03333333333333333
+      },
+      "N_neutral_01": {
+        "max": 24,
+        "mean": 10.333333333333334,
+        "median": 9.5,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.06666666666666667
+      },
+      "N_neutral_02": {
+        "max": 37,
+        "mean": 11.733333333333333,
+        "median": 10.0,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.13333333333333333
+      },
+      "P_contract_01": {
+        "max": 33,
+        "mean": 13.366666666666667,
+        "median": 12.0,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.16666666666666666
+      },
+      "P_contract_02": {
+        "max": 31,
+        "mean": 13.1,
+        "median": 11.0,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.23333333333333334
+      },
+      "P_deont_01": {
+        "max": 37,
+        "mean": 12.9,
+        "median": 10.0,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.16666666666666666
+      },
+      "P_deont_02": {
+        "max": 25,
+        "mean": 11.166666666666666,
+        "median": 10.0,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.03333333333333333
+      },
+      "P_util_01": {
+        "max": 21,
+        "mean": 10.066666666666666,
+        "median": 8.0,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.06666666666666667
+      },
+      "P_util_02": {
+        "max": 20,
+        "mean": 10.5,
+        "median": 10.5,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.03333333333333333
+      },
+      "P_virtue_01": {
+        "max": 27,
+        "mean": 14.433333333333334,
+        "median": 14.5,
+        "min": 5,
+        "n": 30,
+        "share_ge_20": 0.26666666666666666
+      },
+      "P_virtue_02": {
+        "max": 16,
+        "mean": 7.333333333333333,
+        "median": 6.5,
+        "min": 4,
+        "n": 30,
+        "share_ge_20": 0.0
+      }
+    },
+    "overall": {
+      "mean": 10.435714285714285,
+      "median": 9.0,
+      "n": 420,
+      "p10": 5.0,
+      "p90": 18.100000000000023,
+      "share_lt_10": 0.5523809523809524,
+      "share_lt_20": 0.9119047619047619
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "condition_means": [
+    {
+      "care_compassion": 1.0,
+      "condition_id": "P_deont_01",
+      "fairness_justice": 0.0,
+      "harm_welfare": 1.0,
+      "honesty_truthfulness": 0.0,
+      "legality_compliance": 0.0,
+      "loyalty_trust": 2.0,
+      "n": 1,
+      "public_interest_social_impact": 0.0,
+      "responsibility_accountability": 2.0,
+      "rights_autonomy": 1.0,
+      "virtue_character": 0.0
+    },
+    {
+      "care_compassion": 0.0,
+      "condition_id": "P_deont_02",
+      "fairness_justice": 0.0,
+      "harm_welfare": 0.0,
+      "honesty_truthfulness": 0.0,
+      "legality_compliance": 0.0,
+      "loyalty_trust": 2.0,
+      "n": 1,
+      "public_interest_social_impact": 0.0,
+      "responsibility_accountability": 0.0,
+      "rights_autonomy": 0.0,
+      "virtue_character": 1.0
+    },
+    {
+      "care_compassion": 0.0,
+      "condition_id": "P_util_01",
+      "fairness_justice": 0.0,
+      "harm_welfare": 2.0,
+      "honesty_truthfulness": 0.0,
+      "legality_compliance": 0.0,
+      "loyalty_trust": 0.0,
+      "n": 1,
+      "public_interest_social_impact": 1.0,
+      "responsibility_accountability": 0.0,
+      "rights_autonomy": 0.0,
+      "virtue_character": 0.0
+    },
+    {
+      "care_compassion": 0.0,
+      "condition_id": "P_util_02",
+      "fairness_justice": 0.0,
+      "harm_welfare": 2.0,
+      "honesty_truthfulness": 0.0,
+      "legality_compliance": 0.0,
+      "loyalty_trust": 0.0,
+      "n": 1,
+      "public_interest_social_impact": 0.0,
+      "responsibility_accountability": 0.0,
+      "rights_autonomy": 0.0,
+      "virtue_character": 0.0
+    },
+    {
+      "care_compassion": 1.0,
+      "condition_id": "P_virtue_01",
+      "fairness_justice": 2.0,
+      "harm_welfare": 0.0,
+      "honesty_truthfulness": 0.0,
+      "legality_compliance": 0.0,
+      "loyalty_trust": 2.0,
+      "n": 1,
+      "public_interest_social_impact": 0.0,
+      "responsibility_accountability": 1.0,
+      "rights_autonomy": 0.0,
+      "virtue_character": 2.0
+    }
+  ],
+  "dimensions": [
+    "harm_welfare",
+    "rights_autonomy",
+    "fairness_justice",
+    "honesty_truthfulness",
+    "responsibility_accountability",
+    "loyalty_trust",
+    "legality_compliance",
+    "public_interest_social_impact",
+    "virtue_character",
+    "care_compassion"
+  ],
+  "distributions": {
+    "care_compassion": {
+      "0": 3,
+      "1": 2,
+      "2": 0
+    },
+    "fairness_justice": {
+      "0": 4,
+      "1": 0,
+      "2": 1
+    },
+    "harm_welfare": {
+      "0": 2,
+      "1": 1,
+      "2": 2
+    },
+    "honesty_truthfulness": {
+      "0": 5,
+      "1": 0,
+      "2": 0
+    },
+    "legality_compliance": {
+      "0": 5,
+      "1": 0,
+      "2": 0
+    },
+    "loyalty_trust": {
+      "0": 2,
+      "1": 0,
+      "2": 3
+    },
+    "public_interest_social_impact": {
+      "0": 4,
+      "1": 1,
+      "2": 0
+    },
+    "responsibility_accountability": {
+      "0": 3,
+      "1": 1,
+      "2": 1
+    },
+    "rights_autonomy": {
+      "0": 4,
+      "1": 1,
+      "2": 0
+    },
+    "virtue_character": {
+      "0": 3,
+      "1": 1,
+      "2": 1
+    }
+  },
+  "schema_version": "2026-04-27",
+  "scorer_counts": {
+    "keyword_baseline": 5
+  },
+  "total_loaded_rows": 540,
+  "total_scored_rows": 5
+}

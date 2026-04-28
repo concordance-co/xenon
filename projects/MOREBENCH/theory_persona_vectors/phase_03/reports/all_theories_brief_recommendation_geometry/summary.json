@@ -1,0 +1,2207 @@
+{
+  "capture_artifact_id": "capture_1_1d7271d73617",
+  "cross_locus": [
+    {
+      "construction": "contract_alt_deont",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.42450562641024603,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_util",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.4525007329881192,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_virtue",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.3874346263706685,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_anti",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.23562798947095875,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_generic_moral",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.16689478754997256,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_length",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.25811855345964435,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_short",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.29547170773148546,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_positive_variant",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.3894646629691125,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "contract"
+    },
+    {
+      "construction": "deont_alt_contract",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.42450562641024603,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_util",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.47950890064239515,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_virtue",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.49384431764483455,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_anti",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.46430482827126995,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_generic_moral",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.41308383569121376,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_length",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.44888729974627495,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_short",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.44357085302472116,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_positive_variant",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.5313811376690867,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "deont"
+    },
+    {
+      "construction": "util_alt_contract",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.4525007329881192,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_deont",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.47950890064239515,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_virtue",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.508547603338957,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "util_anti",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.3439306803047658,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "util_generic_moral",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.37085625156760216,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_length",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.37310083024203783,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_short",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.34021502472460274,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "util_positive_variant",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.44402794986963273,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "util"
+    },
+    {
+      "construction": "virtue_alt_contract",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.3874346263706685,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_deont",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.49384431764483455,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_util",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.508547603338957,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_anti",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.47655407749116424,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_generic_moral",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.348293660208583,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_length",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.45194366797804836,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_short",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.47538121342659,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_positive_variant",
+      "cross_locus_cosine": NaN,
+      "generated_gap": 0.4965615697205067,
+      "layer": 0,
+      "prompt_gap": NaN,
+      "theory": "virtue"
+    },
+    {
+      "construction": "contract_alt_deont",
+      "cross_locus_cosine": 0.04410312697291374,
+      "generated_gap": 0.42863600477576264,
+      "layer": 4,
+      "prompt_gap": 0.08320353627204913,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_util",
+      "cross_locus_cosine": 0.054938044399023056,
+      "generated_gap": 0.48724924623966215,
+      "layer": 4,
+      "prompt_gap": 0.17118464708328274,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_virtue",
+      "cross_locus_cosine": 0.11992092430591583,
+      "generated_gap": 0.40964606776833534,
+      "layer": 4,
+      "prompt_gap": 0.13095310926437376,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_anti",
+      "cross_locus_cosine": 0.04129905626177788,
+      "generated_gap": 0.3770815819501877,
+      "layer": 4,
+      "prompt_gap": 0.06731462180614478,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_generic_moral",
+      "cross_locus_cosine": 0.07089773565530777,
+      "generated_gap": 0.29957870766520506,
+      "layer": 4,
+      "prompt_gap": 0.14183475077152263,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_length",
+      "cross_locus_cosine": 0.11255982518196106,
+      "generated_gap": 0.42438222989439967,
+      "layer": 4,
+      "prompt_gap": 0.04535353183746338,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_short",
+      "cross_locus_cosine": 0.1357608586549759,
+      "generated_gap": 0.4283461064100267,
+      "layer": 4,
+      "prompt_gap": 0.04638000428676614,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_positive_variant",
+      "cross_locus_cosine": 0.05503260716795921,
+      "generated_gap": 0.46492681726813323,
+      "layer": 4,
+      "prompt_gap": 0.06464755237102515,
+      "theory": "contract"
+    },
+    {
+      "construction": "deont_alt_contract",
+      "cross_locus_cosine": 0.04410312697291374,
+      "generated_gap": 0.42863600477576264,
+      "layer": 4,
+      "prompt_gap": 0.08320353627204913,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_util",
+      "cross_locus_cosine": 0.08019302040338516,
+      "generated_gap": 0.47910065054893497,
+      "layer": 4,
+      "prompt_gap": 0.16770656406879436,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_virtue",
+      "cross_locus_cosine": 0.06361417472362518,
+      "generated_gap": 0.4609826624393463,
+      "layer": 4,
+      "prompt_gap": 0.1535616040229798,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_anti",
+      "cross_locus_cosine": 0.027381297200918198,
+      "generated_gap": 0.5093063473701478,
+      "layer": 4,
+      "prompt_gap": 0.055747959017753645,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_generic_moral",
+      "cross_locus_cosine": 0.07400764524936676,
+      "generated_gap": 0.4746864080429078,
+      "layer": 4,
+      "prompt_gap": 0.10544492006301898,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_length",
+      "cross_locus_cosine": 0.07575315237045288,
+      "generated_gap": 0.5074104949831963,
+      "layer": 4,
+      "prompt_gap": 0.04295042455196385,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_short",
+      "cross_locus_cosine": 0.13483470678329468,
+      "generated_gap": 0.5154230952262879,
+      "layer": 4,
+      "prompt_gap": 0.04773535430431386,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_positive_variant",
+      "cross_locus_cosine": 0.06738005578517914,
+      "generated_gap": 0.5029501497745514,
+      "layer": 4,
+      "prompt_gap": 0.06554920673370379,
+      "theory": "deont"
+    },
+    {
+      "construction": "util_alt_contract",
+      "cross_locus_cosine": 0.054938044399023056,
+      "generated_gap": 0.48724924623966215,
+      "layer": 4,
+      "prompt_gap": 0.17118464708328274,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_deont",
+      "cross_locus_cosine": 0.08019302040338516,
+      "generated_gap": 0.47910065054893497,
+      "layer": 4,
+      "prompt_gap": 0.16770656406879436,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_virtue",
+      "cross_locus_cosine": 0.12342853099107742,
+      "generated_gap": 0.5146250382065773,
+      "layer": 4,
+      "prompt_gap": 0.0965038686990739,
+      "theory": "util"
+    },
+    {
+      "construction": "util_anti",
+      "cross_locus_cosine": 0.052952855825424194,
+      "generated_gap": 0.452228718996048,
+      "layer": 4,
+      "prompt_gap": 0.03373239338397982,
+      "theory": "util"
+    },
+    {
+      "construction": "util_generic_moral",
+      "cross_locus_cosine": 0.08350730687379837,
+      "generated_gap": 0.3702546864748003,
+      "layer": 4,
+      "prompt_gap": 0.10645249783992772,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_length",
+      "cross_locus_cosine": 0.10364915430545807,
+      "generated_gap": 0.4313772067427636,
+      "layer": 4,
+      "prompt_gap": 0.05715283751487743,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_short",
+      "cross_locus_cosine": 0.129529669880867,
+      "generated_gap": 0.39056252166628846,
+      "layer": 4,
+      "prompt_gap": 0.045974057912826605,
+      "theory": "util"
+    },
+    {
+      "construction": "util_positive_variant",
+      "cross_locus_cosine": 0.05121003836393356,
+      "generated_gap": 0.4236541375517846,
+      "layer": 4,
+      "prompt_gap": 0.05775344967842111,
+      "theory": "util"
+    },
+    {
+      "construction": "virtue_alt_contract",
+      "cross_locus_cosine": 0.11992092430591583,
+      "generated_gap": 0.40964606776833534,
+      "layer": 4,
+      "prompt_gap": 0.13095310926437376,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_deont",
+      "cross_locus_cosine": 0.06361417472362518,
+      "generated_gap": 0.4609826624393463,
+      "layer": 4,
+      "prompt_gap": 0.1535616040229798,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_util",
+      "cross_locus_cosine": 0.12342853099107742,
+      "generated_gap": 0.5146250382065773,
+      "layer": 4,
+      "prompt_gap": 0.0965038686990739,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_anti",
+      "cross_locus_cosine": 0.08311111479997635,
+      "generated_gap": 0.46908802241086967,
+      "layer": 4,
+      "prompt_gap": 0.03731194734573373,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_generic_moral",
+      "cross_locus_cosine": 0.10598219931125641,
+      "generated_gap": 0.4258547201752665,
+      "layer": 4,
+      "prompt_gap": 0.07810830175876637,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_length",
+      "cross_locus_cosine": 0.11441917717456818,
+      "generated_gap": 0.44825845062732717,
+      "layer": 4,
+      "prompt_gap": 0.05278337001800548,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_short",
+      "cross_locus_cosine": 0.16080176830291748,
+      "generated_gap": 0.5035865604877473,
+      "layer": 4,
+      "prompt_gap": 0.05084791183471682,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_positive_variant",
+      "cross_locus_cosine": 0.02529147081077099,
+      "generated_gap": 0.4462361559271813,
+      "layer": 4,
+      "prompt_gap": 0.04949755370616915,
+      "theory": "virtue"
+    },
+    {
+      "construction": "contract_alt_deont",
+      "cross_locus_cosine": 0.14421343803405762,
+      "generated_gap": 0.5200289770960809,
+      "layer": 16,
+      "prompt_gap": 0.1360922157764436,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_util",
+      "cross_locus_cosine": 0.13224610686302185,
+      "generated_gap": 0.489182335138321,
+      "layer": 16,
+      "prompt_gap": 0.20258249044418342,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_virtue",
+      "cross_locus_cosine": 0.15509940683841705,
+      "generated_gap": 0.5207315295934678,
+      "layer": 16,
+      "prompt_gap": 0.22256401181221008,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_anti",
+      "cross_locus_cosine": 0.1453627198934555,
+      "generated_gap": 0.4905268870294094,
+      "layer": 16,
+      "prompt_gap": 0.15544891655445103,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_generic_moral",
+      "cross_locus_cosine": 0.10278771817684174,
+      "generated_gap": 0.4843536637723446,
+      "layer": 16,
+      "prompt_gap": 0.20292793810367582,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_length",
+      "cross_locus_cosine": 0.1486201137304306,
+      "generated_gap": 0.5131785079836847,
+      "layer": 16,
+      "prompt_gap": 0.13284085988998418,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_short",
+      "cross_locus_cosine": 0.18655408918857574,
+      "generated_gap": 0.5024956479668621,
+      "layer": 16,
+      "prompt_gap": 0.14983064532279966,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_positive_variant",
+      "cross_locus_cosine": 0.15251575410366058,
+      "generated_gap": 0.5072045966982841,
+      "layer": 16,
+      "prompt_gap": 0.166333803534508,
+      "theory": "contract"
+    },
+    {
+      "construction": "deont_alt_contract",
+      "cross_locus_cosine": 0.14421343803405762,
+      "generated_gap": 0.5200289770960809,
+      "layer": 16,
+      "prompt_gap": 0.1360922157764436,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_util",
+      "cross_locus_cosine": 0.0791650041937828,
+      "generated_gap": 0.5232478722929955,
+      "layer": 16,
+      "prompt_gap": 0.20648102760314946,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_virtue",
+      "cross_locus_cosine": 0.06743364036083221,
+      "generated_gap": 0.49059766530990606,
+      "layer": 16,
+      "prompt_gap": 0.22941565513610862,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_anti",
+      "cross_locus_cosine": 0.10998163372278214,
+      "generated_gap": 0.48735082745552083,
+      "layer": 16,
+      "prompt_gap": 0.1350148081779481,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_generic_moral",
+      "cross_locus_cosine": 0.08653007447719574,
+      "generated_gap": 0.5013714343309403,
+      "layer": 16,
+      "prompt_gap": 0.1763395518064499,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_length",
+      "cross_locus_cosine": 0.09017767012119293,
+      "generated_gap": 0.4506704151630405,
+      "layer": 16,
+      "prompt_gap": 0.13811417520046243,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_short",
+      "cross_locus_cosine": 0.1215062141418457,
+      "generated_gap": 0.5000638246536255,
+      "layer": 16,
+      "prompt_gap": 0.1851209789514543,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_positive_variant",
+      "cross_locus_cosine": 0.03255663067102432,
+      "generated_gap": 0.4528619259595872,
+      "layer": 16,
+      "prompt_gap": 0.19140311181545266,
+      "theory": "deont"
+    },
+    {
+      "construction": "util_alt_contract",
+      "cross_locus_cosine": 0.13224610686302185,
+      "generated_gap": 0.489182335138321,
+      "layer": 16,
+      "prompt_gap": 0.20258249044418342,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_deont",
+      "cross_locus_cosine": 0.0791650041937828,
+      "generated_gap": 0.5232478722929955,
+      "layer": 16,
+      "prompt_gap": 0.20648102760314946,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_virtue",
+      "cross_locus_cosine": 0.1332283318042755,
+      "generated_gap": 0.4969780862331391,
+      "layer": 16,
+      "prompt_gap": 0.2105099320411684,
+      "theory": "util"
+    },
+    {
+      "construction": "util_anti",
+      "cross_locus_cosine": 0.09251284599304199,
+      "generated_gap": 0.48891913890838634,
+      "layer": 16,
+      "prompt_gap": 0.12537587881088263,
+      "theory": "util"
+    },
+    {
+      "construction": "util_generic_moral",
+      "cross_locus_cosine": 0.1092597246170044,
+      "generated_gap": 0.512924050539732,
+      "layer": 16,
+      "prompt_gap": 0.1856047809123993,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_length",
+      "cross_locus_cosine": 0.10103660821914673,
+      "generated_gap": 0.4896174296736717,
+      "layer": 16,
+      "prompt_gap": 0.13599867522716524,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_short",
+      "cross_locus_cosine": 0.13962756097316742,
+      "generated_gap": 0.49341853260994,
+      "layer": 16,
+      "prompt_gap": 0.16125222742557532,
+      "theory": "util"
+    },
+    {
+      "construction": "util_positive_variant",
+      "cross_locus_cosine": 0.02650015614926815,
+      "generated_gap": 0.431705614924431,
+      "layer": 16,
+      "prompt_gap": 0.17697758078575143,
+      "theory": "util"
+    },
+    {
+      "construction": "virtue_alt_contract",
+      "cross_locus_cosine": 0.15509940683841705,
+      "generated_gap": 0.5207315295934678,
+      "layer": 16,
+      "prompt_gap": 0.22256401181221008,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_deont",
+      "cross_locus_cosine": 0.06743364036083221,
+      "generated_gap": 0.49059766530990606,
+      "layer": 16,
+      "prompt_gap": 0.22941565513610862,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_util",
+      "cross_locus_cosine": 0.1332283318042755,
+      "generated_gap": 0.4969780862331391,
+      "layer": 16,
+      "prompt_gap": 0.2105099320411684,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_anti",
+      "cross_locus_cosine": 0.09987298399209976,
+      "generated_gap": 0.5204047679901124,
+      "layer": 16,
+      "prompt_gap": 0.15431198775768284,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_generic_moral",
+      "cross_locus_cosine": 0.0834285095334053,
+      "generated_gap": 0.4976791694760323,
+      "layer": 16,
+      "prompt_gap": 0.20418669879436502,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_length",
+      "cross_locus_cosine": 0.11749247461557388,
+      "generated_gap": 0.5431201919913292,
+      "layer": 16,
+      "prompt_gap": 0.1312123477458954,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_short",
+      "cross_locus_cosine": 0.13763049244880676,
+      "generated_gap": 0.5683782182633877,
+      "layer": 16,
+      "prompt_gap": 0.1596775859594346,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_positive_variant",
+      "cross_locus_cosine": -0.02086103893816471,
+      "generated_gap": 0.44203576594591165,
+      "layer": 16,
+      "prompt_gap": 0.14080001413822196,
+      "theory": "virtue"
+    },
+    {
+      "construction": "contract_alt_deont",
+      "cross_locus_cosine": 0.11093765497207642,
+      "generated_gap": 0.519684155285359,
+      "layer": 24,
+      "prompt_gap": 0.1191953301429749,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_util",
+      "cross_locus_cosine": 0.08639443665742874,
+      "generated_gap": 0.5181511603295804,
+      "layer": 24,
+      "prompt_gap": 0.19132055938243864,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_virtue",
+      "cross_locus_cosine": 0.07676257938146591,
+      "generated_gap": 0.5207049906253814,
+      "layer": 24,
+      "prompt_gap": 0.2296263158321381,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_anti",
+      "cross_locus_cosine": 0.07689218968153,
+      "generated_gap": 0.5183682084083558,
+      "layer": 24,
+      "prompt_gap": 0.10117039978504194,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_generic_moral",
+      "cross_locus_cosine": 0.046178992837667465,
+      "generated_gap": 0.47114771753549584,
+      "layer": 24,
+      "prompt_gap": 0.18334332704544087,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_length",
+      "cross_locus_cosine": 0.07480740547180176,
+      "generated_gap": 0.4754702150821689,
+      "layer": 24,
+      "prompt_gap": 0.09984654784202585,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_short",
+      "cross_locus_cosine": 0.11294061690568924,
+      "generated_gap": 0.5381943389773373,
+      "layer": 24,
+      "prompt_gap": 0.1054042905569077,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_positive_variant",
+      "cross_locus_cosine": 0.04637520760297775,
+      "generated_gap": 0.4217243924736978,
+      "layer": 24,
+      "prompt_gap": 0.12728059589862828,
+      "theory": "contract"
+    },
+    {
+      "construction": "deont_alt_contract",
+      "cross_locus_cosine": 0.11093765497207642,
+      "generated_gap": 0.519684155285359,
+      "layer": 24,
+      "prompt_gap": 0.1191953301429749,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_util",
+      "cross_locus_cosine": 0.08310791850090027,
+      "generated_gap": 0.5114052772521973,
+      "layer": 24,
+      "prompt_gap": 0.20754182636737828,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_virtue",
+      "cross_locus_cosine": 0.13274359703063965,
+      "generated_gap": 0.4817459478974344,
+      "layer": 24,
+      "prompt_gap": 0.23853575587272646,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_anti",
+      "cross_locus_cosine": 0.08424445241689682,
+      "generated_gap": 0.5273040279746055,
+      "layer": 24,
+      "prompt_gap": 0.11621654629707345,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_generic_moral",
+      "cross_locus_cosine": 0.10582524538040161,
+      "generated_gap": 0.5329427435994148,
+      "layer": 24,
+      "prompt_gap": 0.19652404785156263,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_length",
+      "cross_locus_cosine": 0.10435381531715393,
+      "generated_gap": 0.4867672726511957,
+      "layer": 24,
+      "prompt_gap": 0.1324694246053696,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_short",
+      "cross_locus_cosine": 0.1447591930627823,
+      "generated_gap": 0.5380547344684601,
+      "layer": 24,
+      "prompt_gap": 0.13656776845455176,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_positive_variant",
+      "cross_locus_cosine": 0.05623362958431244,
+      "generated_gap": 0.4871808454394344,
+      "layer": 24,
+      "prompt_gap": 0.15326476991176607,
+      "theory": "deont"
+    },
+    {
+      "construction": "util_alt_contract",
+      "cross_locus_cosine": 0.08639443665742874,
+      "generated_gap": 0.5181511603295804,
+      "layer": 24,
+      "prompt_gap": 0.19132055938243864,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_deont",
+      "cross_locus_cosine": 0.08310791850090027,
+      "generated_gap": 0.5114052772521973,
+      "layer": 24,
+      "prompt_gap": 0.20754182636737828,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_virtue",
+      "cross_locus_cosine": 0.12273931503295898,
+      "generated_gap": 0.493637028336525,
+      "layer": 24,
+      "prompt_gap": 0.27026101052761076,
+      "theory": "util"
+    },
+    {
+      "construction": "util_anti",
+      "cross_locus_cosine": 0.056449368596076965,
+      "generated_gap": 0.41582600325346003,
+      "layer": 24,
+      "prompt_gap": 0.11880116760730752,
+      "theory": "util"
+    },
+    {
+      "construction": "util_generic_moral",
+      "cross_locus_cosine": 0.05682380124926567,
+      "generated_gap": 0.5008267268538475,
+      "layer": 24,
+      "prompt_gap": 0.19128588438034055,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_length",
+      "cross_locus_cosine": 0.06573911011219025,
+      "generated_gap": 0.5556410171091557,
+      "layer": 24,
+      "prompt_gap": 0.13709453940391547,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_short",
+      "cross_locus_cosine": 0.087961845099926,
+      "generated_gap": 0.4678107723593713,
+      "layer": 24,
+      "prompt_gap": 0.1467151820659638,
+      "theory": "util"
+    },
+    {
+      "construction": "util_positive_variant",
+      "cross_locus_cosine": 0.025134986266493797,
+      "generated_gap": 0.44327616244554546,
+      "layer": 24,
+      "prompt_gap": 0.1743777364492417,
+      "theory": "util"
+    },
+    {
+      "construction": "virtue_alt_contract",
+      "cross_locus_cosine": 0.07676257938146591,
+      "generated_gap": 0.5207049906253814,
+      "layer": 24,
+      "prompt_gap": 0.2296263158321381,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_deont",
+      "cross_locus_cosine": 0.13274359703063965,
+      "generated_gap": 0.4817459478974344,
+      "layer": 24,
+      "prompt_gap": 0.23853575587272646,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_util",
+      "cross_locus_cosine": 0.12273931503295898,
+      "generated_gap": 0.493637028336525,
+      "layer": 24,
+      "prompt_gap": 0.27026101052761076,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_anti",
+      "cross_locus_cosine": 0.07010983675718307,
+      "generated_gap": 0.5577103309333326,
+      "layer": 24,
+      "prompt_gap": 0.11477121710777294,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_generic_moral",
+      "cross_locus_cosine": 0.06648896634578705,
+      "generated_gap": 0.5290066264569759,
+      "layer": 24,
+      "prompt_gap": 0.2475698709487919,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_length",
+      "cross_locus_cosine": 0.1032797247171402,
+      "generated_gap": 0.49146270751953136,
+      "layer": 24,
+      "prompt_gap": 0.14964543879032133,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_short",
+      "cross_locus_cosine": 0.15287670493125916,
+      "generated_gap": 0.5189948260784151,
+      "layer": 24,
+      "prompt_gap": 0.1424911499023439,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_positive_variant",
+      "cross_locus_cosine": -0.0036189607344567776,
+      "generated_gap": 0.4545870423316959,
+      "layer": 24,
+      "prompt_gap": 0.133897277712822,
+      "theory": "virtue"
+    },
+    {
+      "construction": "contract_alt_deont",
+      "cross_locus_cosine": 0.16092675924301147,
+      "generated_gap": 0.39816632717847833,
+      "layer": 32,
+      "prompt_gap": 0.09164328873157501,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_util",
+      "cross_locus_cosine": 0.159281387925148,
+      "generated_gap": 0.44600575864315056,
+      "layer": 32,
+      "prompt_gap": 0.12518752217292806,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_virtue",
+      "cross_locus_cosine": 0.17330391705036163,
+      "generated_gap": 0.42294628620147706,
+      "layer": 32,
+      "prompt_gap": 0.15718580186367037,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_anti",
+      "cross_locus_cosine": 0.14652343094348907,
+      "generated_gap": 0.3897591218352318,
+      "layer": 32,
+      "prompt_gap": 0.06302950680255892,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_generic_moral",
+      "cross_locus_cosine": 0.10450829565525055,
+      "generated_gap": 0.37255485802888877,
+      "layer": 32,
+      "prompt_gap": 0.11439176499843606,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_length",
+      "cross_locus_cosine": 0.11331325024366379,
+      "generated_gap": 0.38682392984628705,
+      "layer": 32,
+      "prompt_gap": 0.066984835267067,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_short",
+      "cross_locus_cosine": 0.13207349181175232,
+      "generated_gap": 0.40803942531347287,
+      "layer": 32,
+      "prompt_gap": 0.0690662652254106,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_positive_variant",
+      "cross_locus_cosine": 0.13020926713943481,
+      "generated_gap": 0.41946821212768565,
+      "layer": 32,
+      "prompt_gap": 0.07979497909545896,
+      "theory": "contract"
+    },
+    {
+      "construction": "deont_alt_contract",
+      "cross_locus_cosine": 0.16092675924301147,
+      "generated_gap": 0.39816632717847833,
+      "layer": 32,
+      "prompt_gap": 0.09164328873157501,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_util",
+      "cross_locus_cosine": 0.22062242031097412,
+      "generated_gap": 0.3684113964438439,
+      "layer": 32,
+      "prompt_gap": 0.10920608043670665,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_virtue",
+      "cross_locus_cosine": 0.1492559164762497,
+      "generated_gap": 0.43276385068893436,
+      "layer": 32,
+      "prompt_gap": 0.131480595469475,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_anti",
+      "cross_locus_cosine": 0.20150882005691528,
+      "generated_gap": 0.3471492707729342,
+      "layer": 32,
+      "prompt_gap": 0.0653517097234727,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_generic_moral",
+      "cross_locus_cosine": 0.11818630993366241,
+      "generated_gap": 0.40720633715391163,
+      "layer": 32,
+      "prompt_gap": 0.11654037237167358,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_length",
+      "cross_locus_cosine": 0.13374170660972595,
+      "generated_gap": 0.37017313539981844,
+      "layer": 32,
+      "prompt_gap": 0.06836774945259094,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_short",
+      "cross_locus_cosine": 0.14825233817100525,
+      "generated_gap": 0.35989258587360384,
+      "layer": 32,
+      "prompt_gap": 0.0781265020370484,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_positive_variant",
+      "cross_locus_cosine": 0.12460033595561981,
+      "generated_gap": 0.3648205295205119,
+      "layer": 32,
+      "prompt_gap": 0.12109560072422032,
+      "theory": "deont"
+    },
+    {
+      "construction": "util_alt_contract",
+      "cross_locus_cosine": 0.159281387925148,
+      "generated_gap": 0.44600575864315056,
+      "layer": 32,
+      "prompt_gap": 0.12518752217292806,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_deont",
+      "cross_locus_cosine": 0.22062242031097412,
+      "generated_gap": 0.3684113964438439,
+      "layer": 32,
+      "prompt_gap": 0.10920608043670665,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_virtue",
+      "cross_locus_cosine": 0.258379727602005,
+      "generated_gap": 0.3656370878219607,
+      "layer": 32,
+      "prompt_gap": 0.1631803005933763,
+      "theory": "util"
+    },
+    {
+      "construction": "util_anti",
+      "cross_locus_cosine": 0.20364561676979065,
+      "generated_gap": 0.38241398632526413,
+      "layer": 32,
+      "prompt_gap": 0.08335343599319467,
+      "theory": "util"
+    },
+    {
+      "construction": "util_generic_moral",
+      "cross_locus_cosine": 0.16941648721694946,
+      "generated_gap": 0.4762073233723641,
+      "layer": 32,
+      "prompt_gap": 0.11163271367549898,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_length",
+      "cross_locus_cosine": 0.12155603617429733,
+      "generated_gap": 0.46621253639459637,
+      "layer": 32,
+      "prompt_gap": 0.08660098612308509,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_short",
+      "cross_locus_cosine": 0.14408180117607117,
+      "generated_gap": 0.4380942001938824,
+      "layer": 32,
+      "prompt_gap": 0.08357144594192512,
+      "theory": "util"
+    },
+    {
+      "construction": "util_positive_variant",
+      "cross_locus_cosine": 0.06560031324625015,
+      "generated_gap": 0.43326236307621,
+      "layer": 32,
+      "prompt_gap": 0.13291388154029848,
+      "theory": "util"
+    },
+    {
+      "construction": "virtue_alt_contract",
+      "cross_locus_cosine": 0.17330391705036163,
+      "generated_gap": 0.42294628620147706,
+      "layer": 32,
+      "prompt_gap": 0.15718580186367037,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_deont",
+      "cross_locus_cosine": 0.1492559164762497,
+      "generated_gap": 0.43276385068893436,
+      "layer": 32,
+      "prompt_gap": 0.131480595469475,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_util",
+      "cross_locus_cosine": 0.258379727602005,
+      "generated_gap": 0.3656370878219607,
+      "layer": 32,
+      "prompt_gap": 0.1631803005933763,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_anti",
+      "cross_locus_cosine": 0.21842163801193237,
+      "generated_gap": 0.368927562236786,
+      "layer": 32,
+      "prompt_gap": 0.05807079970836637,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_generic_moral",
+      "cross_locus_cosine": 0.14120931923389435,
+      "generated_gap": 0.41321194171905534,
+      "layer": 32,
+      "prompt_gap": 0.1590091794729237,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_length",
+      "cross_locus_cosine": 0.1947195678949356,
+      "generated_gap": 0.3684081226587297,
+      "layer": 32,
+      "prompt_gap": 0.08616398274898529,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_short",
+      "cross_locus_cosine": 0.1994297057390213,
+      "generated_gap": 0.44520100802183177,
+      "layer": 32,
+      "prompt_gap": 0.08632101118564606,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_positive_variant",
+      "cross_locus_cosine": 0.06203041598200798,
+      "generated_gap": 0.4321630254387857,
+      "layer": 32,
+      "prompt_gap": 0.08733689486980445,
+      "theory": "virtue"
+    },
+    {
+      "construction": "contract_alt_deont",
+      "cross_locus_cosine": 0.13683173060417175,
+      "generated_gap": 0.4540977373719216,
+      "layer": 40,
+      "prompt_gap": 0.15267774462699923,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_util",
+      "cross_locus_cosine": 0.16115731000900269,
+      "generated_gap": 0.5183657288551331,
+      "layer": 40,
+      "prompt_gap": 0.2381389945745469,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_alt_virtue",
+      "cross_locus_cosine": 0.1716153621673584,
+      "generated_gap": 0.4574307918548584,
+      "layer": 40,
+      "prompt_gap": 0.2396922320127488,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_anti",
+      "cross_locus_cosine": 0.1630612462759018,
+      "generated_gap": 0.4794169485569001,
+      "layer": 40,
+      "prompt_gap": 0.07774534523487109,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_generic_moral",
+      "cross_locus_cosine": 0.12360191345214844,
+      "generated_gap": 0.4736425325274468,
+      "layer": 40,
+      "prompt_gap": 0.19170234501361882,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_length",
+      "cross_locus_cosine": 0.11315467208623886,
+      "generated_gap": 0.46174131631851223,
+      "layer": 40,
+      "prompt_gap": 0.0938002824783325,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_neutral_short",
+      "cross_locus_cosine": 0.08848174661397934,
+      "generated_gap": 0.4713395074009901,
+      "layer": 40,
+      "prompt_gap": 0.10142509043216708,
+      "theory": "contract"
+    },
+    {
+      "construction": "contract_positive_variant",
+      "cross_locus_cosine": 0.09132906794548035,
+      "generated_gap": 0.5130711257457734,
+      "layer": 40,
+      "prompt_gap": 0.11760241091251389,
+      "theory": "contract"
+    },
+    {
+      "construction": "deont_alt_contract",
+      "cross_locus_cosine": 0.13683173060417175,
+      "generated_gap": 0.4540977373719216,
+      "layer": 40,
+      "prompt_gap": 0.15267774462699923,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_util",
+      "cross_locus_cosine": 0.19647371768951416,
+      "generated_gap": 0.47635260671377194,
+      "layer": 40,
+      "prompt_gap": 0.2274104237556458,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_alt_virtue",
+      "cross_locus_cosine": 0.10438355803489685,
+      "generated_gap": 0.47392552793025994,
+      "layer": 40,
+      "prompt_gap": 0.22518358528614046,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_anti",
+      "cross_locus_cosine": 0.12233518064022064,
+      "generated_gap": 0.4517030507326127,
+      "layer": 40,
+      "prompt_gap": 0.11611937582492837,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_generic_moral",
+      "cross_locus_cosine": 0.1356131136417389,
+      "generated_gap": 0.49176556169986735,
+      "layer": 40,
+      "prompt_gap": 0.20325213670730602,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_length",
+      "cross_locus_cosine": 0.04956630617380142,
+      "generated_gap": 0.40509637743234644,
+      "layer": 40,
+      "prompt_gap": 0.12270886003971115,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_neutral_short",
+      "cross_locus_cosine": 0.03452764078974724,
+      "generated_gap": 0.4183683380484583,
+      "layer": 40,
+      "prompt_gap": 0.13898449838161475,
+      "theory": "deont"
+    },
+    {
+      "construction": "deont_positive_variant",
+      "cross_locus_cosine": 0.12644606828689575,
+      "generated_gap": 0.46600114703178414,
+      "layer": 40,
+      "prompt_gap": 0.1748015016317369,
+      "theory": "deont"
+    },
+    {
+      "construction": "util_alt_contract",
+      "cross_locus_cosine": 0.16115731000900269,
+      "generated_gap": 0.5183657288551331,
+      "layer": 40,
+      "prompt_gap": 0.2381389945745469,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_deont",
+      "cross_locus_cosine": 0.19647371768951416,
+      "generated_gap": 0.47635260671377194,
+      "layer": 40,
+      "prompt_gap": 0.2274104237556458,
+      "theory": "util"
+    },
+    {
+      "construction": "util_alt_virtue",
+      "cross_locus_cosine": 0.234347403049469,
+      "generated_gap": 0.42034829407930385,
+      "layer": 40,
+      "prompt_gap": 0.24808439314365405,
+      "theory": "util"
+    },
+    {
+      "construction": "util_anti",
+      "cross_locus_cosine": 0.2200508564710617,
+      "generated_gap": 0.5067995652556421,
+      "layer": 40,
+      "prompt_gap": 0.15373736321926135,
+      "theory": "util"
+    },
+    {
+      "construction": "util_generic_moral",
+      "cross_locus_cosine": 0.1836443841457367,
+      "generated_gap": 0.5088101401925087,
+      "layer": 40,
+      "prompt_gap": 0.22017345428466806,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_length",
+      "cross_locus_cosine": 0.09663700312376022,
+      "generated_gap": 0.48020029217004806,
+      "layer": 40,
+      "prompt_gap": 0.1339624971151352,
+      "theory": "util"
+    },
+    {
+      "construction": "util_neutral_short",
+      "cross_locus_cosine": 0.0734415203332901,
+      "generated_gap": 0.4865728989243508,
+      "layer": 40,
+      "prompt_gap": 0.11550806462764762,
+      "theory": "util"
+    },
+    {
+      "construction": "util_positive_variant",
+      "cross_locus_cosine": 0.09707364439964294,
+      "generated_gap": 0.48758186101913464,
+      "layer": 40,
+      "prompt_gap": 0.18040217459201813,
+      "theory": "util"
+    },
+    {
+      "construction": "virtue_alt_contract",
+      "cross_locus_cosine": 0.1716153621673584,
+      "generated_gap": 0.4574307918548584,
+      "layer": 40,
+      "prompt_gap": 0.2396922320127488,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_deont",
+      "cross_locus_cosine": 0.10438355803489685,
+      "generated_gap": 0.47392552793025994,
+      "layer": 40,
+      "prompt_gap": 0.22518358528614046,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_alt_util",
+      "cross_locus_cosine": 0.234347403049469,
+      "generated_gap": 0.42034829407930385,
+      "layer": 40,
+      "prompt_gap": 0.24808439314365405,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_anti",
+      "cross_locus_cosine": 0.16109564900398254,
+      "generated_gap": 0.4630287721753121,
+      "layer": 40,
+      "prompt_gap": 0.11420153379440312,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_generic_moral",
+      "cross_locus_cosine": 0.16493600606918335,
+      "generated_gap": 0.4277059540152561,
+      "layer": 40,
+      "prompt_gap": 0.19233732521533975,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_length",
+      "cross_locus_cosine": 0.12202413380146027,
+      "generated_gap": 0.389074444770813,
+      "layer": 40,
+      "prompt_gap": 0.12661164104938516,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_neutral_short",
+      "cross_locus_cosine": 0.09944182634353638,
+      "generated_gap": 0.42143640667200133,
+      "layer": 40,
+      "prompt_gap": 0.11366053819656396,
+      "theory": "virtue"
+    },
+    {
+      "construction": "virtue_positive_variant",
+      "cross_locus_cosine": 0.12346161156892776,
+      "generated_gap": 0.41256888359785093,
+      "layer": 40,
+      "prompt_gap": 0.1472709804773331,
+      "theory": "virtue"
+    }
+  ],
+  "cross_theory": [
+    {
+      "layer": 0,
+      "matrix": {
+        "contract": {
+          "contract": NaN,
+          "deont": NaN,
+          "util": NaN,
+          "virtue": NaN
+        },
+        "deont": {
+          "contract": NaN,
+          "deont": NaN,
+          "util": NaN,
+          "virtue": NaN
+        },
+        "util": {
+          "contract": NaN,
+          "deont": NaN,
+          "util": NaN,
+          "virtue": NaN
+        },
+        "virtue": {
+          "contract": NaN,
+          "deont": NaN,
+          "util": NaN,
+          "virtue": NaN
+        }
+      },
+      "site": "prompt_end_residual"
+    },
+    {
+      "layer": 4,
+      "matrix": {
+        "contract": {
+          "contract": 1.0,
+          "deont": 0.9223310351371765,
+          "util": 0.9529588222503662,
+          "virtue": 0.932017982006073
+        },
+        "deont": {
+          "contract": 0.9223310351371765,
+          "deont": 0.9999998807907104,
+          "util": 0.9349814653396606,
+          "virtue": 0.9531292915344238
+        },
+        "util": {
+          "contract": 0.9529588222503662,
+          "deont": 0.9349814653396606,
+          "util": 1.0,
+          "virtue": 0.9141567945480347
+        },
+        "virtue": {
+          "contract": 0.932017982006073,
+          "deont": 0.9531292915344238,
+          "util": 0.9141567945480347,
+          "virtue": 1.0
+        }
+      },
+      "site": "prompt_end_residual"
+    },
+    {
+      "layer": 16,
+      "matrix": {
+        "contract": {
+          "contract": 1.0,
+          "deont": 0.7024065256118774,
+          "util": 0.8324549794197083,
+          "virtue": 0.8199430108070374
+        },
+        "deont": {
+          "contract": 0.7024065256118774,
+          "deont": 0.9999998807907104,
+          "util": 0.789752721786499,
+          "virtue": 0.8408918976783752
+        },
+        "util": {
+          "contract": 0.8324549794197083,
+          "deont": 0.789752721786499,
+          "util": 1.0,
+          "virtue": 0.8383752107620239
+        },
+        "virtue": {
+          "contract": 0.8199430108070374,
+          "deont": 0.8408918976783752,
+          "util": 0.8383752107620239,
+          "virtue": 1.0
+        }
+      },
+      "site": "prompt_end_residual"
+    },
+    {
+      "layer": 24,
+      "matrix": {
+        "contract": {
+          "contract": 1.0000001192092896,
+          "deont": 0.7417382597923279,
+          "util": 0.8590832948684692,
+          "virtue": 0.8587120771408081
+        },
+        "deont": {
+          "contract": 0.7417382597923279,
+          "deont": 0.9999999403953552,
+          "util": 0.8128597140312195,
+          "virtue": 0.8451069593429565
+        },
+        "util": {
+          "contract": 0.8590832948684692,
+          "deont": 0.8128597140312195,
+          "util": 1.0,
+          "virtue": 0.8676211833953857
+        },
+        "virtue": {
+          "contract": 0.8587120771408081,
+          "deont": 0.8451069593429565,
+          "util": 0.8676211833953857,
+          "virtue": 0.9999999403953552
+        }
+      },
+      "site": "prompt_end_residual"
+    },
+    {
+      "layer": 32,
+      "matrix": {
+        "contract": {
+          "contract": 1.0000001192092896,
+          "deont": 0.772585391998291,
+          "util": 0.8687946200370789,
+          "virtue": 0.8689224720001221
+        },
+        "deont": {
+          "contract": 0.772585391998291,
+          "deont": 1.0,
+          "util": 0.8198486566543579,
+          "virtue": 0.8653503060340881
+        },
+        "util": {
+          "contract": 0.8687946200370789,
+          "deont": 0.8198486566543579,
+          "util": 1.0,
+          "virtue": 0.8640697598457336
+        },
+        "virtue": {
+          "contract": 0.8689224720001221,
+          "deont": 0.8653503060340881,
+          "util": 0.8640697598457336,
+          "virtue": 1.0
+        }
+      },
+      "site": "prompt_end_residual"
+    },
+    {
+      "layer": 40,
+      "matrix": {
+        "contract": {
+          "contract": 1.0,
+          "deont": 0.7844874262809753,
+          "util": 0.892135500907898,
+          "virtue": 0.8871170878410339
+        },
+        "deont": {
+          "contract": 0.7844874262809753,
+          "deont": 1.0000001192092896,
+          "util": 0.8543726205825806,
+          "virtue": 0.8787969946861267
+        },
+        "util": {
+          "contract": 0.892135500907898,
+          "deont": 0.8543726205825806,
+          "util": 0.9999998807907104,
+          "virtue": 0.8957013487815857
+        },
+        "virtue": {
+          "contract": 0.8871170878410339,
+          "deont": 0.8787969946861267,
+          "util": 0.8957013487815857,
+          "virtue": 0.9999999403953552
+        }
+      },
+      "site": "prompt_end_residual"
+    },
+    {
+      "layer": 0,
+      "matrix": {
+        "contract": {
+          "contract": 1.0,
+          "deont": 0.5836026668548584,
+          "util": 0.3883528411388397,
+          "virtue": 0.5702147483825684
+        },
+        "deont": {
+          "contract": 0.5836026668548584,
+          "deont": 1.0,
+          "util": 0.33550265431404114,
+          "virtue": 0.5036368370056152
+        },
+        "util": {
+          "contract": 0.3883528411388397,
+          "deont": 0.33550265431404114,
+          "util": 1.0,
+          "virtue": 0.29965436458587646
+        },
+        "virtue": {
+          "contract": 0.5702147483825684,
+          "deont": 0.5036368370056152,
+          "util": 0.29965436458587646,
+          "virtue": 1.0000001192092896
+        }
+      },
+      "site": "generated_sequence_residual"
+    },
+    {
+      "layer": 4,
+      "matrix": {
+        "contract": {
+          "contract": 0.9999999403953552,
+          "deont": 0.7346956729888916,
+          "util": 0.5577728748321533,
+          "virtue": 0.7025274634361267
+        },
+        "deont": {
+          "contract": 0.7346956729888916,
+          "deont": 1.0,
+          "util": 0.4279039204120636,
+          "virtue": 0.6839430928230286
+        },
+        "util": {
+          "contract": 0.5577728748321533,
+          "deont": 0.4279039204120636,
+          "util": 1.0,
+          "virtue": 0.3959568440914154
+        },
+        "virtue": {
+          "contract": 0.7025274634361267,
+          "deont": 0.6839430928230286,
+          "util": 0.3959568440914154,
+          "virtue": 0.9999999403953552
+        }
+      },
+      "site": "generated_sequence_residual"
+    },
+    {
+      "layer": 16,
+      "matrix": {
+        "contract": {
+          "contract": 1.0,
+          "deont": 0.6676764488220215,
+          "util": 0.6119111180305481,
+          "virtue": 0.664207935333252
+        },
+        "deont": {
+          "contract": 0.6676764488220215,
+          "deont": 1.0000001192092896,
+          "util": 0.4465968906879425,
+          "virtue": 0.710408091545105
+        },
+        "util": {
+          "contract": 0.6119111180305481,
+          "deont": 0.4465968906879425,
+          "util": 1.0,
+          "virtue": 0.40041497349739075
+        },
+        "virtue": {
+          "contract": 0.664207935333252,
+          "deont": 0.710408091545105,
+          "util": 0.40041497349739075,
+          "virtue": 1.0000001192092896
+        }
+      },
+      "site": "generated_sequence_residual"
+    },
+    {
+      "layer": 24,
+      "matrix": {
+        "contract": {
+          "contract": 1.0,
+          "deont": 0.6915960311889648,
+          "util": 0.6657648682594299,
+          "virtue": 0.6780279874801636
+        },
+        "deont": {
+          "contract": 0.6915960311889648,
+          "deont": 1.0,
+          "util": 0.519875705242157,
+          "virtue": 0.736323893070221
+        },
+        "util": {
+          "contract": 0.6657648682594299,
+          "deont": 0.519875705242157,
+          "util": 1.0000001192092896,
+          "virtue": 0.41651636362075806
+        },
+        "virtue": {
+          "contract": 0.6780279874801636,
+          "deont": 0.736323893070221,
+          "util": 0.41651636362075806,
+          "virtue": 1.0
+        }
+      },
+      "site": "generated_sequence_residual"
+    },
+    {
+      "layer": 32,
+      "matrix": {
+        "contract": {
+          "contract": 1.0000001192092896,
+          "deont": 0.6695241928100586,
+          "util": 0.6397247910499573,
+          "virtue": 0.6416062116622925
+        },
+        "deont": {
+          "contract": 0.6695241928100586,
+          "deont": 1.0000001192092896,
+          "util": 0.4298098683357239,
+          "virtue": 0.7172697186470032
+        },
+        "util": {
+          "contract": 0.6397247910499573,
+          "deont": 0.4298098683357239,
+          "util": 1.0,
+          "virtue": 0.3424893617630005
+        },
+        "virtue": {
+          "contract": 0.6416062116622925,
+          "deont": 0.7172697186470032,
+          "util": 0.3424893617630005,
+          "virtue": 0.9999999403953552
+        }
+      },
+      "site": "generated_sequence_residual"
+    },
+    {
+      "layer": 40,
+      "matrix": {
+        "contract": {
+          "contract": 0.9999999403953552,
+          "deont": 0.6331170797348022,
+          "util": 0.6161670088768005,
+          "virtue": 0.6024149656295776
+        },
+        "deont": {
+          "contract": 0.6331170797348022,
+          "deont": 1.0000001192092896,
+          "util": 0.4008418321609497,
+          "virtue": 0.6794387698173523
+        },
+        "util": {
+          "contract": 0.6161670088768005,
+          "deont": 0.4008418321609497,
+          "util": 1.0000001192092896,
+          "virtue": 0.30537688732147217
+        },
+        "virtue": {
+          "contract": 0.6024149656295776,
+          "deont": 0.6794387698173523,
+          "util": 0.30537688732147217,
+          "virtue": 0.9999999403953552
+        }
+      },
+      "site": "generated_sequence_residual"
+    }
+  ],
+  "generation_rows_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/report_6aa730c32d87_8c1df9a2/results/generate_natural_responses_results.json",
+  "generic_alignment": [
+    {
+      "cosine_to_generic": NaN,
+      "layer": 0,
+      "site": "prompt_end_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": NaN,
+      "layer": 0,
+      "site": "prompt_end_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": NaN,
+      "layer": 0,
+      "site": "prompt_end_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": NaN,
+      "layer": 0,
+      "site": "prompt_end_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.8858624696731567,
+      "layer": 4,
+      "site": "prompt_end_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.9309149384498596,
+      "layer": 4,
+      "site": "prompt_end_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.8803581595420837,
+      "layer": 4,
+      "site": "prompt_end_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.9090167880058289,
+      "layer": 4,
+      "site": "prompt_end_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.7276788353919983,
+      "layer": 16,
+      "site": "prompt_end_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.783076286315918,
+      "layer": 16,
+      "site": "prompt_end_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.8147324919700623,
+      "layer": 16,
+      "site": "prompt_end_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.7854865193367004,
+      "layer": 16,
+      "site": "prompt_end_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.7627047896385193,
+      "layer": 24,
+      "site": "prompt_end_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.7962994575500488,
+      "layer": 24,
+      "site": "prompt_end_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.8490044474601746,
+      "layer": 24,
+      "site": "prompt_end_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.8182531595230103,
+      "layer": 24,
+      "site": "prompt_end_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.8017478585243225,
+      "layer": 32,
+      "site": "prompt_end_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.7737523317337036,
+      "layer": 32,
+      "site": "prompt_end_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.851003885269165,
+      "layer": 32,
+      "site": "prompt_end_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.8122638463973999,
+      "layer": 32,
+      "site": "prompt_end_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.8275684118270874,
+      "layer": 40,
+      "site": "prompt_end_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.8357069492340088,
+      "layer": 40,
+      "site": "prompt_end_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.8646895289421082,
+      "layer": 40,
+      "site": "prompt_end_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.8647327423095703,
+      "layer": 40,
+      "site": "prompt_end_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.5502074360847473,
+      "layer": 0,
+      "site": "generated_sequence_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.44089946150779724,
+      "layer": 0,
+      "site": "generated_sequence_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.6701948046684265,
+      "layer": 0,
+      "site": "generated_sequence_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.6828272938728333,
+      "layer": 0,
+      "site": "generated_sequence_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.6259437799453735,
+      "layer": 4,
+      "site": "generated_sequence_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.5837683081626892,
+      "layer": 4,
+      "site": "generated_sequence_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.672970712184906,
+      "layer": 4,
+      "site": "generated_sequence_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.7149301767349243,
+      "layer": 4,
+      "site": "generated_sequence_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.5358030200004578,
+      "layer": 16,
+      "site": "generated_sequence_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.4400375485420227,
+      "layer": 16,
+      "site": "generated_sequence_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.6202632188796997,
+      "layer": 16,
+      "site": "generated_sequence_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.6043190360069275,
+      "layer": 16,
+      "site": "generated_sequence_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.549170970916748,
+      "layer": 24,
+      "site": "generated_sequence_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.4449320137500763,
+      "layer": 24,
+      "site": "generated_sequence_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.6199911236763,
+      "layer": 24,
+      "site": "generated_sequence_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.6053189039230347,
+      "layer": 24,
+      "site": "generated_sequence_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.5369807481765747,
+      "layer": 32,
+      "site": "generated_sequence_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.4360189437866211,
+      "layer": 32,
+      "site": "generated_sequence_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.5892874598503113,
+      "layer": 32,
+      "site": "generated_sequence_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.6175610423088074,
+      "layer": 32,
+      "site": "generated_sequence_residual",
+      "theory": "contract"
+    },
+    {
+      "cosine_to_generic": 0.5083718299865723,
+      "layer": 40,
+      "site": "generated_sequence_residual",
+      "theory": "deont"
+    },
+    {
+      "cosine_to_generic": 0.4409128725528717,
+      "layer": 40,
+      "site": "generated_sequence_residual",
+      "theory": "util"
+    },
+    {
+      "cosine_to_generic": 0.5479640960693359,
+      "layer": 40,
+      "site": "generated_sequence_residual",
+      "theory": "virtue"
+    },
+    {
+      "cosine_to_generic": 0.5863044261932373,
+      "layer": 40,
+      "site": "generated_sequence_residual",
+      "theory": "contract"
+    }
+  ],
+  "layers": [
+    0,
+    4,
+    16,
+    24,
+    32,
+    40
+  ],
+  "sites": [
+    "prompt_end_residual",
+    "generated_sequence_residual"
+  ],
+  "trials": 128
+}

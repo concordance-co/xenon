@@ -1,0 +1,76 @@
+{
+  "compliance": {
+    "banned_leaks": 3,
+    "format_ok": 150,
+    "total_rows": 150
+  },
+  "direct_rows": [
+    {
+      "auroc": 0.6244444444444445,
+      "balanced_accuracy": 0.6166666666666667,
+      "n_pairs": 30,
+      "task": "deont01_vs_deont02"
+    },
+    {
+      "auroc": 0.7666666666666667,
+      "balanced_accuracy": 0.6666666666666667,
+      "n_pairs": 30,
+      "task": "deont01_vs_generic"
+    },
+    {
+      "auroc": 0.85,
+      "balanced_accuracy": 0.8333333333333334,
+      "n_pairs": 30,
+      "task": "deont02_vs_generic"
+    },
+    {
+      "auroc": 0.7666666666666667,
+      "balanced_accuracy": 0.7166666666666667,
+      "n_pairs": 30,
+      "task": "deont01_vs_neutral"
+    },
+    {
+      "auroc": 0.6955555555555556,
+      "balanced_accuracy": 0.6833333333333333,
+      "n_pairs": 30,
+      "task": "deont02_vs_neutral"
+    }
+  ],
+  "generation_rows_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/deont_prompt_isolation_report/report_4b6e5c6c9407_f2313986/results/generate_natural_responses_results.json",
+  "overlap_rows": [
+    {
+      "n_pairs": 30,
+      "pair": "deont01_vs_deont02",
+      "rate": 0.3333333333333333,
+      "same_recommendation_count": 10
+    },
+    {
+      "n_pairs": 30,
+      "pair": "deont01_vs_generic",
+      "rate": 0.1,
+      "same_recommendation_count": 3
+    },
+    {
+      "n_pairs": 30,
+      "pair": "deont02_vs_generic",
+      "rate": 0.1,
+      "same_recommendation_count": 3
+    }
+  ],
+  "transfer_rows": [
+    {
+      "auroc": 0.7844444444444445,
+      "balanced_accuracy": 0.65,
+      "eval_task": "deont02_vs_generic",
+      "n_pairs": 30,
+      "train_task": "deont01_vs_generic"
+    },
+    {
+      "auroc": 0.6822222222222222,
+      "balanced_accuracy": 0.7,
+      "eval_task": "deont02_vs_neutral",
+      "n_pairs": 30,
+      "train_task": "deont01_vs_neutral"
+    }
+  ]
+}

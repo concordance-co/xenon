@@ -1,0 +1,100 @@
+{
+  "content_distributions": {
+    "care_compassion": {
+      "0": 327,
+      "1": 144,
+      "2": 69
+    },
+    "fairness_justice": {
+      "0": 333,
+      "1": 55,
+      "2": 152
+    },
+    "harm_welfare": {
+      "0": 43,
+      "1": 132,
+      "2": 365
+    },
+    "honesty_truthfulness": {
+      "0": 337,
+      "1": 65,
+      "2": 138
+    },
+    "legality_compliance": {
+      "0": 375,
+      "1": 82,
+      "2": 83
+    },
+    "loyalty_trust": {
+      "0": 318,
+      "1": 92,
+      "2": 130
+    },
+    "public_interest_social_impact": {
+      "0": 252,
+      "1": 183,
+      "2": 105
+    },
+    "responsibility_accountability": {
+      "0": 146,
+      "1": 137,
+      "2": 257
+    },
+    "rights_autonomy": {
+      "0": 301,
+      "1": 123,
+      "2": 116
+    },
+    "virtue_character": {
+      "0": 400,
+      "1": 66,
+      "2": 74
+    }
+  },
+  "content_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/model_judged_labels/content_scores.jsonl",
+  "content_rows": 540,
+  "process_distributions": {
+    "conditional_recommendation": {
+      "0": 366,
+      "1": 76,
+      "2": 98
+    },
+    "consequence_forecasting": {
+      "0": 37,
+      "1": 368,
+      "2": 135
+    },
+    "moral_uncertainty": {
+      "0": 439,
+      "1": 82,
+      "2": 19
+    },
+    "priority_resolution": {
+      "0": 0,
+      "1": 218,
+      "2": 322
+    },
+    "procedural_escalation": {
+      "0": 363,
+      "1": 69,
+      "2": 108
+    },
+    "risk_mitigation": {
+      "0": 158,
+      "1": 107,
+      "2": 275
+    },
+    "stakeholder_identification": {
+      "0": 8,
+      "1": 89,
+      "2": 443
+    },
+    "tradeoff_acknowledged": {
+      "0": 2,
+      "1": 73,
+      "2": 465
+    }
+  },
+  "process_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/model_judged_labels/process_scores.jsonl",
+  "process_rows": 540
+}

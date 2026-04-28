@@ -1,0 +1,342 @@
+{
+  "correlation_matrix": [
+    [
+      0.9999999999999999,
+      0.09549304984838658,
+      0.015453482250605074,
+      0.06280393499042565,
+      -0.04732846338676909,
+      -0.1267561277826231
+    ],
+    [
+      0.09549304984838658,
+      0.9999999999999999,
+      0.015255566886048176,
+      0.0030014980454139747,
+      0.0967617964492685,
+      0.2353908206532085
+    ],
+    [
+      0.015453482250605076,
+      0.015255566886048177,
+      1.0,
+      0.24542304118708852,
+      0.07071231698689223,
+      0.16442072296844942
+    ],
+    [
+      0.06280393499042565,
+      0.0030014980454139747,
+      0.24542304118708852,
+      1.0,
+      0.18261939064434912,
+      0.15713663041088963
+    ],
+    [
+      -0.0473284633867691,
+      0.0967617964492685,
+      0.07071231698689223,
+      0.18261939064434912,
+      0.9999999999999999,
+      0.20115553832725996
+    ],
+    [
+      -0.1267561277826231,
+      0.23539082065320846,
+      0.16442072296844942,
+      0.15713663041088963,
+      0.20115553832725996,
+      1.0
+    ]
+  ],
+  "explained_variance_ratio_l32": [
+    0.09455645829439163,
+    0.06944802403450012,
+    0.05166349560022354,
+    0.03683284670114517,
+    0.03279883787035942
+  ],
+  "features": [
+    "rights_autonomy",
+    "fairness_justice",
+    "honesty_truthfulness",
+    "responsibility_accountability",
+    "loyalty_trust",
+    "virtue_character"
+  ],
+  "survivors_alpha_ge_0_5": [],
+  "top_pc2_candidates": [
+    {
+      "alpha": null,
+      "corr_pc1_len_resid": 0.16478448317545646,
+      "corr_pc2_len_resid": 0.32723401337887986,
+      "corr_pc3_len_resid": -0.34207692119779576,
+      "features": [
+        "virtue_character"
+      ],
+      "k": 1,
+      "mean_interitem_r": null
+    },
+    {
+      "alpha": 0.024494022099626422,
+      "corr_pc1_len_resid": 0.10138295159980214,
+      "corr_pc2_len_resid": 0.32609457829909505,
+      "corr_pc3_len_resid": -0.2363926486221274,
+      "features": [
+        "rights_autonomy",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 3,
+      "mean_interitem_r": 0.009023649052622595
+    },
+    {
+      "alpha": 0.3313505259903893,
+      "corr_pc1_len_resid": 0.1348759197936891,
+      "corr_pc2_len_resid": 0.3225987516426301,
+      "corr_pc3_len_resid": -0.23702081106798487,
+      "features": [
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 2,
+      "mean_interitem_r": 0.20115553832725996
+    },
+    {
+      "alpha": 0.23889805143241089,
+      "corr_pc1_len_resid": 0.06018245931399569,
+      "corr_pc2_len_resid": 0.3179288728432452,
+      "corr_pc3_len_resid": -0.19845552010833742,
+      "features": [
+        "rights_autonomy",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 4,
+      "mean_interitem_r": 0.07160515053392202
+    },
+    {
+      "alpha": 0.39545456333569823,
+      "corr_pc1_len_resid": 0.08173586642670276,
+      "corr_pc2_len_resid": 0.30883010029211533,
+      "corr_pc3_len_resid": -0.1926197221698224,
+      "features": [
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 3,
+      "mean_interitem_r": 0.18030385312749955
+    },
+    {
+      "alpha": 0.31790393776031,
+      "corr_pc1_len_resid": 0.005151139984728601,
+      "corr_pc2_len_resid": 0.3079936415968654,
+      "corr_pc3_len_resid": -0.19880096498223676,
+      "features": [
+        "rights_autonomy",
+        "fairness_justice",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 5,
+      "mean_interitem_r": 0.08602780681998098
+    },
+    {
+      "alpha": 0.393992097491203,
+      "corr_pc1_len_resid": 0.020623780049295375,
+      "corr_pc2_len_resid": 0.30146323605189,
+      "corr_pc3_len_resid": -0.19490438328586435,
+      "features": [
+        "fairness_justice",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 4,
+      "mean_interitem_r": 0.14601094575506496
+    },
+    {
+      "alpha": 0.16049251965059463,
+      "corr_pc1_len_resid": 0.029919603256663388,
+      "corr_pc2_len_resid": 0.3002126348989071,
+      "corr_pc3_len_resid": -0.1908521041561222,
+      "features": [
+        "rights_autonomy",
+        "honesty_truthfulness",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 4,
+      "mean_interitem_r": 0.04627624489396909
+    },
+    {
+      "alpha": 0.2490551807935645,
+      "corr_pc1_len_resid": 0.025139518662408707,
+      "corr_pc2_len_resid": 0.29781715939206643,
+      "corr_pc3_len_resid": -0.2182834606287958,
+      "features": [
+        "rights_autonomy",
+        "fairness_justice",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 4,
+      "mean_interitem_r": 0.07578610235145522
+    },
+    {
+      "alpha": 0.37303980644152307,
+      "corr_pc1_len_resid": -0.03169033509274989,
+      "corr_pc2_len_resid": 0.29592038524391273,
+      "corr_pc3_len_resid": -0.17420889663247047,
+      "features": [
+        "rights_autonomy",
+        "fairness_justice",
+        "honesty_truthfulness",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 6,
+      "mean_interitem_r": 0.09143621323192622
+    },
+    {
+      "alpha": 0.340764565392416,
+      "corr_pc1_len_resid": 0.007992137617854726,
+      "corr_pc2_len_resid": 0.2944284336989935,
+      "corr_pc3_len_resid": -0.16530055152112805,
+      "features": [
+        "rights_autonomy",
+        "honesty_truthfulness",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 5,
+      "mean_interitem_r": 0.09256404665965674
+    },
+    {
+      "alpha": 0.38202270079637424,
+      "corr_pc1_len_resid": 0.04470239384471149,
+      "corr_pc2_len_resid": 0.29306441322355425,
+      "corr_pc3_len_resid": -0.21733594214832402,
+      "features": [
+        "fairness_justice",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 3,
+      "mean_interitem_r": 0.17776938514324567
+    },
+    {
+      "alpha": 0.2753503331216407,
+      "corr_pc1_len_resid": -0.019898429210111337,
+      "corr_pc2_len_resid": 0.2915427017849142,
+      "corr_pc3_len_resid": -0.19134992286180358,
+      "features": [
+        "rights_autonomy",
+        "fairness_justice",
+        "honesty_truthfulness",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 5,
+      "mean_interitem_r": 0.07205587032007263
+    },
+    {
+      "alpha": 0.3272417748956135,
+      "corr_pc1_len_resid": 0.049925277842029804,
+      "corr_pc2_len_resid": 0.2900243936178616,
+      "corr_pc3_len_resid": -0.18451272811998673,
+      "features": [
+        "honesty_truthfulness",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 3,
+      "mean_interitem_r": 0.14542952609420054
+    },
+    {
+      "alpha": 0.4315133567410163,
+      "corr_pc1_len_resid": -0.019743818141322995,
+      "corr_pc2_len_resid": 0.2876690271399215,
+      "corr_pc3_len_resid": -0.1686038324944426,
+      "features": [
+        "fairness_justice",
+        "honesty_truthfulness",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 5,
+      "mean_interitem_r": 0.13718773225588682
+    },
+    {
+      "alpha": 0.2686923123818814,
+      "corr_pc1_len_resid": 0.07332795368394252,
+      "corr_pc2_len_resid": 0.2872658395251622,
+      "corr_pc3_len_resid": -0.2275714695976628,
+      "features": [
+        "responsibility_accountability",
+        "virtue_character"
+      ],
+      "k": 2,
+      "mean_interitem_r": 0.15713663041088963
+    },
+    {
+      "alpha": -0.2878644901084364,
+      "corr_pc1_len_resid": 0.09254507250230158,
+      "corr_pc2_len_resid": 0.28480261333892065,
+      "corr_pc3_len_resid": -0.2805124602789363,
+      "features": [
+        "rights_autonomy",
+        "virtue_character"
+      ],
+      "k": 2,
+      "mean_interitem_r": -0.1267561277826231
+    },
+    {
+      "alpha": 0.3593669384747429,
+      "corr_pc1_len_resid": -0.005669056848438502,
+      "corr_pc2_len_resid": 0.28408669832558514,
+      "corr_pc3_len_resid": -0.1870007797950352,
+      "features": [
+        "fairness_justice",
+        "honesty_truthfulness",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 4,
+      "mean_interitem_r": 0.1306161270451878
+    },
+    {
+      "alpha": 0.44792409523582055,
+      "corr_pc1_len_resid": 0.023069111738896718,
+      "corr_pc2_len_resid": 0.2831720092599068,
+      "corr_pc3_len_resid": -0.1575684192820635,
+      "features": [
+        "honesty_truthfulness",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "k": 4,
+      "mean_interitem_r": 0.17024460675415484
+    },
+    {
+      "alpha": 0.09545314215148182,
+      "corr_pc1_len_resid": 0.04245711853442878,
+      "corr_pc2_len_resid": 0.2823584287099166,
+      "corr_pc3_len_resid": -0.21878498990799217,
+      "features": [
+        "rights_autonomy",
+        "responsibility_accountability",
+        "virtue_character"
+      ],
+      "k": 3,
+      "mean_interitem_r": 0.031061479206230726
+    }
+  ]
+}

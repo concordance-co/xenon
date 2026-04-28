@@ -1,0 +1,66 @@
+{
+  "basis": "L32 first16 all18, positive-vs-neutral-only projected out",
+  "label": "procedural_minus_decisive",
+  "rows": [
+    {
+      "both_text_resid_corr": 0.07284120996587615,
+      "label_text_resid_corr": 0.009062478591631309,
+      "pc": 1,
+      "pc_text_resid_corr": 0.05930624330913733,
+      "raw_corr": -0.2530112300667782,
+      "text_predicts_label_r2": -0.3495122194290161,
+      "text_predicts_pc_r2": 0.2349877953529358,
+      "text_scope": "prefix16"
+    },
+    {
+      "both_text_resid_corr": 0.2476959973047695,
+      "label_text_resid_corr": 0.17457577735910243,
+      "pc": 2,
+      "pc_text_resid_corr": 0.05588627186748103,
+      "raw_corr": 0.19560022735152038,
+      "text_predicts_label_r2": -0.3495122194290161,
+      "text_predicts_pc_r2": -0.02787327766418457,
+      "text_scope": "prefix16"
+    },
+    {
+      "both_text_resid_corr": -0.005289431245616686,
+      "label_text_resid_corr": 0.046151281821512076,
+      "pc": 3,
+      "pc_text_resid_corr": -0.0013956169370819298,
+      "raw_corr": 0.2111905143236814,
+      "text_predicts_label_r2": -0.3495122194290161,
+      "text_predicts_pc_r2": -0.16484522819519043,
+      "text_scope": "prefix16"
+    },
+    {
+      "both_text_resid_corr": -0.020380309115467156,
+      "label_text_resid_corr": -0.09638183328180717,
+      "pc": 1,
+      "pc_text_resid_corr": -0.008591119456545507,
+      "raw_corr": -0.2530112300667782,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": 0.016146957874298096,
+      "text_scope": "full_response"
+    },
+    {
+      "both_text_resid_corr": 0.0005442287657629355,
+      "label_text_resid_corr": 0.059539605220943675,
+      "pc": 2,
+      "pc_text_resid_corr": -0.03178850844735211,
+      "raw_corr": 0.19560022735152038,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": -0.05839872360229492,
+      "text_scope": "full_response"
+    },
+    {
+      "both_text_resid_corr": -0.014095912700344096,
+      "label_text_resid_corr": 0.05186178727774266,
+      "pc": 3,
+      "pc_text_resid_corr": -0.0041095816980812805,
+      "raw_corr": 0.2111905143236814,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": 0.22861456871032715,
+      "text_scope": "full_response"
+    }
+  ]
+}

@@ -1,0 +1,1550 @@
+{
+  "behavioral_divergence": {
+    "all_converge_count": 1,
+    "all_diverge_count": 1,
+    "avg_conditions_per_dilemma": 6.0,
+    "n_dilemmas_evaluated": 30,
+    "pair_avg_jaccard": {
+      "P_deont_01_vs_P_deont_02": 0.4522784631474409,
+      "P_deont_vs_N_alt_util": 0.4943408034707991,
+      "P_deont_vs_N_anti": 0.36979312302754264,
+      "P_deont_vs_N_neutral_length_matched": 0.33785740912195233,
+      "P_deont_vs_N_neutral_short": 0.36864921530036704
+    },
+    "pair_diverged_share": {
+      "P_deont_01_vs_P_deont_02": 0.7,
+      "P_deont_vs_N_alt_util": 0.6666666666666666,
+      "P_deont_vs_N_anti": 0.7,
+      "P_deont_vs_N_neutral_length_matched": 0.8666666666666667,
+      "P_deont_vs_N_neutral_short": 0.8333333333333334
+    }
+  },
+  "capture_artifact_id": "capture_1_88c42755786d",
+  "captured_layers": [
+    0,
+    4,
+    16,
+    24,
+    32,
+    40
+  ],
+  "directions": {
+    "generated_sequence_residual": {
+      "layers": {
+        "0": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.3214528560638428,
+              "deont_neutral_short": 0.3286949694156647,
+              "deont_util": 0.5359073281288147
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.3214528560638428,
+              "deont_neutral_length_matched": 1.0,
+              "deont_neutral_short": 0.9759914875030518,
+              "deont_util": 0.4137789011001587
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.3286949694156647,
+              "deont_neutral_length_matched": 0.9759914875030518,
+              "deont_neutral_short": 1.0,
+              "deont_util": 0.4496573507785797
+            },
+            "deont_util": {
+              "deont_anti": 0.5359073281288147,
+              "deont_neutral_length_matched": 0.4137789011001587,
+              "deont_neutral_short": 0.4496573507785797,
+              "deont_util": 1.0000001192092896
+            }
+          },
+          "cross_neutral_cosine": 0.9759914875030518,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.9051299691200256,
+            "neutral_short_p1_vs_p2": 0.8921670317649841
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 0.0632767304778099,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 0.09586790949106216,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 0.09948846697807312,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 0.08923342823982239,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 0.09368692338466644,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 0.04368998855352402,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.46400758624076843,
+                "mean_abs_cos": 0.1355026196106337,
+                "n_trials": 64,
+                "p95_abs_cos": 0.29923419952392577
+              },
+              "split_half_cosine": -0.01676061749458313
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.7529874444007874,
+                "mean_abs_cos": 0.198663261551701,
+                "n_trials": 64,
+                "p95_abs_cos": 0.4787778049707411
+              },
+              "split_half_cosine": 0.5475654602050781
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.7069308757781982,
+                "mean_abs_cos": 0.19610146723425714,
+                "n_trials": 64,
+                "p95_abs_cos": 0.41403530836105334
+              },
+              "split_half_cosine": 0.49855589866638184
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.7045608162879944,
+                "mean_abs_cos": 0.19780376361995877,
+                "n_trials": 64,
+                "p95_abs_cos": 0.455922059714794
+              },
+              "split_half_cosine": 0.4911208152770996
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6624613404273987,
+                "mean_abs_cos": 0.18841098515258636,
+                "n_trials": 64,
+                "p95_abs_cos": 0.4296940565109253
+              },
+              "split_half_cosine": 0.4314276874065399
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.5069646239280701,
+                "mean_abs_cos": 0.12713253270703717,
+                "n_trials": 64,
+                "p95_abs_cos": 0.30208166539669007
+              },
+              "split_half_cosine": -0.3040073812007904
+            }
+          }
+        },
+        "16": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0000001192092896,
+              "deont_neutral_length_matched": 0.3535737991333008,
+              "deont_neutral_short": 0.3894832730293274,
+              "deont_util": 0.5604521632194519
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.3535737991333008,
+              "deont_neutral_length_matched": 1.0,
+              "deont_neutral_short": 0.9614465236663818,
+              "deont_util": 0.29004910588264465
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.3894832730293274,
+              "deont_neutral_length_matched": 0.9614465236663818,
+              "deont_neutral_short": 1.0000001192092896,
+              "deont_util": 0.33163246512413025
+            },
+            "deont_util": {
+              "deont_anti": 0.5604521632194519,
+              "deont_neutral_length_matched": 0.29004910588264465,
+              "deont_neutral_short": 0.33163246512413025,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.9614465236663818,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8828279972076416,
+            "neutral_short_p1_vs_p2": 0.8760694265365601
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 1.3189940452575684,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 1.7011301517486572,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 1.8115756511688232,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 1.6362411975860596,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 1.767985463142395,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 0.9434412717819214,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.5294638276100159,
+                "mean_abs_cos": 0.16550842915512476,
+                "n_trials": 64,
+                "p95_abs_cos": 0.3638427570462226
+              },
+              "split_half_cosine": 0.22144171595573425
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.6774844527244568,
+                "mean_abs_cos": 0.2568753271771129,
+                "n_trials": 64,
+                "p95_abs_cos": 0.6078118890523908
+              },
+              "split_half_cosine": 0.47444748878479004
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6870412826538086,
+                "mean_abs_cos": 0.2659904916654341,
+                "n_trials": 64,
+                "p95_abs_cos": 0.6066787749528884
+              },
+              "split_half_cosine": 0.49491509795188904
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.6216228008270264,
+                "mean_abs_cos": 0.24727252130105626,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5543586730957031
+              },
+              "split_half_cosine": 0.4653414487838745
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6838783621788025,
+                "mean_abs_cos": 0.25629472701621125,
+                "n_trials": 64,
+                "p95_abs_cos": 0.584158107638359
+              },
+              "split_half_cosine": 0.5095847249031067
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.47629454731941223,
+                "mean_abs_cos": 0.14224706324603176,
+                "n_trials": 64,
+                "p95_abs_cos": 0.3367959350347518
+              },
+              "split_half_cosine": -0.05101560801267624
+            }
+          }
+        },
+        "24": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.3335559070110321,
+              "deont_neutral_short": 0.37772583961486816,
+              "deont_util": 0.5639387369155884
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.3335559070110321,
+              "deont_neutral_length_matched": 1.0000001192092896,
+              "deont_neutral_short": 0.9523778557777405,
+              "deont_util": 0.3568570017814636
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.37772583961486816,
+              "deont_neutral_length_matched": 0.9523778557777405,
+              "deont_neutral_short": 1.0,
+              "deont_util": 0.41675588488578796
+            },
+            "deont_util": {
+              "deont_anti": 0.5639387369155884,
+              "deont_neutral_length_matched": 0.3568570017814636,
+              "deont_neutral_short": 0.41675588488578796,
+              "deont_util": 1.0000001192092896
+            }
+          },
+          "cross_neutral_cosine": 0.9523778557777405,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8865037560462952,
+            "neutral_short_p1_vs_p2": 0.8856841921806335
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 1.7809494733810425,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 2.231353998184204,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 2.386080503463745,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 2.194948434829712,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 2.3844282627105713,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 1.191161036491394,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.5223272442817688,
+                "mean_abs_cos": 0.20150817755984463,
+                "n_trials": 64,
+                "p95_abs_cos": 0.4610041096806526
+              },
+              "split_half_cosine": 0.34651893377304077
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.6914354562759399,
+                "mean_abs_cos": 0.23046675636578584,
+                "n_trials": 64,
+                "p95_abs_cos": 0.6057125687599181
+              },
+              "split_half_cosine": 0.6030237674713135
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.7356353402137756,
+                "mean_abs_cos": 0.23189788169111125,
+                "n_trials": 64,
+                "p95_abs_cos": 0.556817853450775
+              },
+              "split_half_cosine": 0.671036958694458
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.6773413419723511,
+                "mean_abs_cos": 0.22652410332466388,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5457267910242081
+              },
+              "split_half_cosine": 0.5733830332756042
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.7185036540031433,
+                "mean_abs_cos": 0.22899163806869183,
+                "n_trials": 64,
+                "p95_abs_cos": 0.59325475692749
+              },
+              "split_half_cosine": 0.6669186353683472
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.48764434456825256,
+                "mean_abs_cos": 0.1465932320588763,
+                "n_trials": 64,
+                "p95_abs_cos": 0.3436096206307411
+              },
+              "split_half_cosine": 0.016733702272176743
+            }
+          }
+        },
+        "32": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 0.9999998807907104,
+              "deont_neutral_length_matched": 0.4876914918422699,
+              "deont_neutral_short": 0.5144633650779724,
+              "deont_util": 0.6553685665130615
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.4876914918422699,
+              "deont_neutral_length_matched": 1.0,
+              "deont_neutral_short": 0.9473367929458618,
+              "deont_util": 0.5147692561149597
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.5144633650779724,
+              "deont_neutral_length_matched": 0.9473367929458618,
+              "deont_neutral_short": 1.0,
+              "deont_util": 0.5556042194366455
+            },
+            "deont_util": {
+              "deont_anti": 0.6553685665130615,
+              "deont_neutral_length_matched": 0.5147692561149597,
+              "deont_neutral_short": 0.5556042194366455,
+              "deont_util": 0.9999998807907104
+            }
+          },
+          "cross_neutral_cosine": 0.9473367929458618,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.853592038154602,
+            "neutral_short_p1_vs_p2": 0.8561184406280518
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 3.201978921890259,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 3.1247599124908447,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 3.302741050720215,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 3.1051292419433594,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 3.3502109050750732,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 2.080425500869751,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.5803488492965698,
+                "mean_abs_cos": 0.21071402973211661,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5235542118549346
+              },
+              "split_half_cosine": 0.663272500038147
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.6512168049812317,
+                "mean_abs_cos": 0.28809510193241294,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5828019738197326
+              },
+              "split_half_cosine": 0.7070137858390808
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6311824321746826,
+                "mean_abs_cos": 0.26520002297183964,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5554565697908401
+              },
+              "split_half_cosine": 0.7505225539207458
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.6141904592514038,
+                "mean_abs_cos": 0.28236017779272515,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5789453089237213
+              },
+              "split_half_cosine": 0.6946806907653809
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6180300116539001,
+                "mean_abs_cos": 0.2683235955009877,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5576481491327285
+              },
+              "split_half_cosine": 0.7390926480293274
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.5432053804397583,
+                "mean_abs_cos": 0.17399261263926746,
+                "n_trials": 64,
+                "p95_abs_cos": 0.38736416250467287
+              },
+              "split_half_cosine": 0.34743109345436096
+            }
+          }
+        },
+        "4": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.4554527997970581,
+              "deont_neutral_short": 0.491675466299057,
+              "deont_util": 0.6147759556770325
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.4554527997970581,
+              "deont_neutral_length_matched": 1.0000001192092896,
+              "deont_neutral_short": 0.9746102094650269,
+              "deont_util": 0.43642541766166687
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.491675466299057,
+              "deont_neutral_length_matched": 0.9746102094650269,
+              "deont_neutral_short": 1.0000001192092896,
+              "deont_util": 0.4939355254173279
+            },
+            "deont_util": {
+              "deont_anti": 0.6147759556770325,
+              "deont_neutral_length_matched": 0.43642541766166687,
+              "deont_neutral_short": 0.4939355254173279,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.9746102094650269,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.9101369380950928,
+            "neutral_short_p1_vs_p2": 0.9035106897354126
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 0.423301637172699,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 0.6491658091545105,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 0.6772649884223938,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 0.6197881698608398,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 0.6561806797981262,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 0.2743833363056183,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.5515235066413879,
+                "mean_abs_cos": 0.1606612038322055,
+                "n_trials": 64,
+                "p95_abs_cos": 0.41669106781482695
+              },
+              "split_half_cosine": 0.2981347143650055
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.6278323531150818,
+                "mean_abs_cos": 0.26567895644984674,
+                "n_trials": 64,
+                "p95_abs_cos": 0.549663910269737
+              },
+              "split_half_cosine": 0.7799582481384277
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6203004121780396,
+                "mean_abs_cos": 0.2630268347711535,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5568590581417082
+              },
+              "split_half_cosine": 0.719976007938385
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.6020485758781433,
+                "mean_abs_cos": 0.2526860283978749,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5232127219438553
+              },
+              "split_half_cosine": 0.7564834356307983
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6056340932846069,
+                "mean_abs_cos": 0.25141369851189665,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5402681082487105
+              },
+              "split_half_cosine": 0.6896094679832458
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.5237988233566284,
+                "mean_abs_cos": 0.142418916006136,
+                "n_trials": 64,
+                "p95_abs_cos": 0.36050149798393244
+              },
+              "split_half_cosine": 0.17547304928302765
+            }
+          }
+        },
+        "40": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.5457729697227478,
+              "deont_neutral_short": 0.5740994215011597,
+              "deont_util": 0.681555986404419
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.5457729697227478,
+              "deont_neutral_length_matched": 1.0,
+              "deont_neutral_short": 0.9578797817230225,
+              "deont_util": 0.548907458782196
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.5740994215011597,
+              "deont_neutral_length_matched": 0.9578797817230225,
+              "deont_neutral_short": 1.0000001192092896,
+              "deont_util": 0.5673636198043823
+            },
+            "deont_util": {
+              "deont_anti": 0.681555986404419,
+              "deont_neutral_length_matched": 0.548907458782196,
+              "deont_neutral_short": 0.5673636198043823,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.9578797817230225,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8382575511932373,
+            "neutral_short_p1_vs_p2": 0.8373960852622986
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 5.8187103271484375,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 5.786306858062744,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 5.92278528213501,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 5.717434883117676,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 5.944627285003662,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 3.8009769916534424,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.5747474431991577,
+                "mean_abs_cos": 0.19630152541958523,
+                "n_trials": 64,
+                "p95_abs_cos": 0.46966978609561916
+              },
+              "split_half_cosine": 0.5759151577949524
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.6350058913230896,
+                "mean_abs_cos": 0.24322525713796495,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5487592369318008
+              },
+              "split_half_cosine": 0.5775044560432434
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.6208958625793457,
+                "mean_abs_cos": 0.24519128072279273,
+                "n_trials": 64,
+                "p95_abs_cos": 0.513464343547821
+              },
+              "split_half_cosine": 0.6270008087158203
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.603396475315094,
+                "mean_abs_cos": 0.23615766652073944,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5638593643903732
+              },
+              "split_half_cosine": 0.5386766791343689
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.5994961261749268,
+                "mean_abs_cos": 0.24160101360757835,
+                "n_trials": 64,
+                "p95_abs_cos": 0.49107859134674064
+              },
+              "split_half_cosine": 0.6043623685836792
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.45157209038734436,
+                "mean_abs_cos": 0.14200640315539204,
+                "n_trials": 64,
+                "p95_abs_cos": 0.4039965897798534
+              },
+              "split_half_cosine": 0.23826634883880615
+            }
+          }
+        }
+      },
+      "site": "generated_sequence_residual"
+    },
+    "prompt_end_residual": {
+      "layers": {
+        "0": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": NaN,
+              "deont_neutral_length_matched": NaN,
+              "deont_neutral_short": NaN,
+              "deont_util": NaN
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": NaN,
+              "deont_neutral_length_matched": NaN,
+              "deont_neutral_short": NaN,
+              "deont_util": NaN
+            },
+            "deont_neutral_short": {
+              "deont_anti": NaN,
+              "deont_neutral_length_matched": NaN,
+              "deont_neutral_short": NaN,
+              "deont_util": NaN
+            },
+            "deont_util": {
+              "deont_anti": NaN,
+              "deont_neutral_length_matched": NaN,
+              "deont_neutral_short": NaN,
+              "deont_util": NaN
+            }
+          },
+          "cross_neutral_cosine": NaN,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": NaN,
+            "neutral_short_p1_vs_p2": NaN
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 0.0,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 0.0,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 0.0,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 0.0,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 0.0,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 0.0,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": NaN,
+                "mean_abs_cos": NaN,
+                "n_trials": 64,
+                "p95_abs_cos": NaN
+              },
+              "split_half_cosine": NaN
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": NaN,
+                "mean_abs_cos": NaN,
+                "n_trials": 64,
+                "p95_abs_cos": NaN
+              },
+              "split_half_cosine": NaN
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": NaN,
+                "mean_abs_cos": NaN,
+                "n_trials": 64,
+                "p95_abs_cos": NaN
+              },
+              "split_half_cosine": NaN
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": NaN,
+                "mean_abs_cos": NaN,
+                "n_trials": 64,
+                "p95_abs_cos": NaN
+              },
+              "split_half_cosine": NaN
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": NaN,
+                "mean_abs_cos": NaN,
+                "n_trials": 64,
+                "p95_abs_cos": NaN
+              },
+              "split_half_cosine": NaN
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": NaN,
+                "mean_abs_cos": NaN,
+                "n_trials": 64,
+                "p95_abs_cos": NaN
+              },
+              "split_half_cosine": NaN
+            }
+          }
+        },
+        "16": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.399544358253479,
+              "deont_neutral_short": 0.46899890899658203,
+              "deont_util": 0.19493186473846436
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.399544358253479,
+              "deont_neutral_length_matched": 1.0000001192092896,
+              "deont_neutral_short": 0.7638100385665894,
+              "deont_util": 0.2774907052516937
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.46899890899658203,
+              "deont_neutral_length_matched": 0.7638100385665894,
+              "deont_neutral_short": 1.0,
+              "deont_util": 0.1986105889081955
+            },
+            "deont_util": {
+              "deont_anti": 0.19493186473846436,
+              "deont_neutral_length_matched": 0.2774907052516937,
+              "deont_neutral_short": 0.1986105889081955,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.7638100385665894,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8107442855834961,
+            "neutral_short_p1_vs_p2": 0.8026285767555237
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 1.1600459814071655,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 1.4969356060028076,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 1.4818490743637085,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 1.4093327522277832,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 1.4961122274398804,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 1.0347929000854492,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.7515195608139038,
+                "mean_abs_cos": 0.27147916165631614,
+                "n_trials": 64,
+                "p95_abs_cos": 0.6488766372203827
+              },
+              "split_half_cosine": 0.7082914710044861
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.8269025087356567,
+                "mean_abs_cos": 0.32516756097538746,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7396043360233306
+              },
+              "split_half_cosine": 0.7996764183044434
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.8224714994430542,
+                "mean_abs_cos": 0.32144689321285114,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7271245747804641
+              },
+              "split_half_cosine": 0.8019196391105652
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.8123793005943298,
+                "mean_abs_cos": 0.3054585359641351,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7129152834415435
+              },
+              "split_half_cosine": 0.7806738018989563
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.8214021921157837,
+                "mean_abs_cos": 0.3171624112292193,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7289753288030623
+              },
+              "split_half_cosine": 0.8079514503479004
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.7019700407981873,
+                "mean_abs_cos": 0.2610834103616071,
+                "n_trials": 64,
+                "p95_abs_cos": 0.5744034498929976
+              },
+              "split_half_cosine": 0.637934148311615
+            }
+          }
+        },
+        "24": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.3503926992416382,
+              "deont_neutral_short": 0.424090713262558,
+              "deont_util": 0.17324714362621307
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.3503926992416382,
+              "deont_neutral_length_matched": 1.0,
+              "deont_neutral_short": 0.8333456516265869,
+              "deont_util": 0.3869994282722473
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.424090713262558,
+              "deont_neutral_length_matched": 0.8333456516265869,
+              "deont_neutral_short": 1.0000001192092896,
+              "deont_util": 0.30156368017196655
+            },
+            "deont_util": {
+              "deont_anti": 0.17324714362621307,
+              "deont_neutral_length_matched": 0.3869994282722473,
+              "deont_neutral_short": 0.30156368017196655,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.8333456516265869,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8369432091712952,
+            "neutral_short_p1_vs_p2": 0.8401930332183838
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 1.8148725032806396,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 2.496515989303589,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 2.840111255645752,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 2.436279296875,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 2.874504804611206,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 1.5045069456100464,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.7934543490409851,
+                "mean_abs_cos": 0.33752853986879927,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7043241351842879
+              },
+              "split_half_cosine": 0.8697878122329712
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.8669424653053284,
+                "mean_abs_cos": 0.40051663979829755,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7830807149410245
+              },
+              "split_half_cosine": 0.9292541146278381
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.8846219182014465,
+                "mean_abs_cos": 0.43139826763945166,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8197540849447248
+              },
+              "split_half_cosine": 0.9452398419380188
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.848768949508667,
+                "mean_abs_cos": 0.39573265262515633,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7808778345584866
+              },
+              "split_half_cosine": 0.92356276512146
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.880209743976593,
+                "mean_abs_cos": 0.4387174304574728,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8301575720310209
+              },
+              "split_half_cosine": 0.9456010460853577
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.7388018369674683,
+                "mean_abs_cos": 0.2752688212594876,
+                "n_trials": 64,
+                "p95_abs_cos": 0.644763907790184
+              },
+              "split_half_cosine": 0.8283984661102295
+            }
+          }
+        },
+        "32": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 0.9999998807907104,
+              "deont_neutral_length_matched": 0.5352847576141357,
+              "deont_neutral_short": 0.5610770583152771,
+              "deont_util": 0.2692423164844513
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.5352847576141357,
+              "deont_neutral_length_matched": 1.0,
+              "deont_neutral_short": 0.803497850894928,
+              "deont_util": 0.3741687834262848
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.5610770583152771,
+              "deont_neutral_length_matched": 0.803497850894928,
+              "deont_neutral_short": 1.0,
+              "deont_util": 0.2905491292476654
+            },
+            "deont_util": {
+              "deont_anti": 0.2692423164844513,
+              "deont_neutral_length_matched": 0.3741687834262848,
+              "deont_neutral_short": 0.2905491292476654,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.803497850894928,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8719260692596436,
+            "neutral_short_p1_vs_p2": 0.8634135723114014
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 4.489778518676758,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 4.334076881408691,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 4.419368743896484,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 4.128819465637207,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 4.322979927062988,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 2.572402000427246,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.9347668290138245,
+                "mean_abs_cos": 0.5270551471367071,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8879785865545272
+              },
+              "split_half_cosine": 0.9506549835205078
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.9279730916023254,
+                "mean_abs_cos": 0.48374092714948347,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8678066432476044
+              },
+              "split_half_cosine": 0.9459710121154785
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.936400294303894,
+                "mean_abs_cos": 0.4884894388283101,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8795645713806152
+              },
+              "split_half_cosine": 0.9480836987495422
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.9186141490936279,
+                "mean_abs_cos": 0.483502590864191,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8501599699258804
+              },
+              "split_half_cosine": 0.9412960410118103
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.9286659359931946,
+                "mean_abs_cos": 0.49095020865206607,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8708321303129195
+              },
+              "split_half_cosine": 0.9458302855491638
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.8570865392684937,
+                "mean_abs_cos": 0.35640586997033097,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7856046378612517
+              },
+              "split_half_cosine": 0.8899503350257874
+            }
+          }
+        },
+        "4": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.6576235294342041,
+              "deont_neutral_short": 0.7572142481803894,
+              "deont_util": 0.08376229554414749
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.6576235294342041,
+              "deont_neutral_length_matched": 0.9999998807907104,
+              "deont_neutral_short": 0.6039504408836365,
+              "deont_util": 0.14145679771900177
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.7572142481803894,
+              "deont_neutral_length_matched": 0.6039504408836365,
+              "deont_neutral_short": 1.0,
+              "deont_util": 0.3782946765422821
+            },
+            "deont_util": {
+              "deont_anti": 0.08376229554414749,
+              "deont_neutral_length_matched": 0.14145679771900177,
+              "deont_neutral_short": 0.3782946765422821,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.6039504408836365,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8818333745002747,
+            "neutral_short_p1_vs_p2": 0.9545757174491882
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 0.21708525717258453,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 0.25470879673957825,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 0.285725474357605,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 0.3608618974685669,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 0.42570963501930237,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 0.1275475025177002,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.7377074360847473,
+                "mean_abs_cos": 0.27525286545278504,
+                "n_trials": 64,
+                "p95_abs_cos": 0.6531552642583847
+              },
+              "split_half_cosine": 0.8605313301086426
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.7787767052650452,
+                "mean_abs_cos": 0.30354750675178366,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7100304424762722
+              },
+              "split_half_cosine": 0.9006476402282715
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.8467552661895752,
+                "mean_abs_cos": 0.3388543413602747,
+                "n_trials": 64,
+                "p95_abs_cos": 0.732321137189865
+              },
+              "split_half_cosine": 0.9217179417610168
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.8683813810348511,
+                "mean_abs_cos": 0.384093863036469,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8215150088071823
+              },
+              "split_half_cosine": 0.9433895945549011
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.9091979265213013,
+                "mean_abs_cos": 0.4292416058888193,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8628629177808761
+              },
+              "split_half_cosine": 0.961525559425354
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.5766568779945374,
+                "mean_abs_cos": 0.18467109290941153,
+                "n_trials": 64,
+                "p95_abs_cos": 0.444659024477005
+              },
+              "split_half_cosine": 0.660236656665802
+            }
+          }
+        },
+        "40": {
+          "cosine_matrix": {
+            "deont_anti": {
+              "deont_anti": 1.0,
+              "deont_neutral_length_matched": 0.5464958548545837,
+              "deont_neutral_short": 0.4635613262653351,
+              "deont_util": 0.28785473108291626
+            },
+            "deont_neutral_length_matched": {
+              "deont_anti": 0.5464958548545837,
+              "deont_neutral_length_matched": 0.9999999403953552,
+              "deont_neutral_short": 0.7868539094924927,
+              "deont_util": 0.3313167691230774
+            },
+            "deont_neutral_short": {
+              "deont_anti": 0.4635613262653351,
+              "deont_neutral_length_matched": 0.7868539094924927,
+              "deont_neutral_short": 0.9999998807907104,
+              "deont_util": 0.3356493413448334
+            },
+            "deont_util": {
+              "deont_anti": 0.28785473108291626,
+              "deont_neutral_length_matched": 0.3313167691230774,
+              "deont_neutral_short": 0.3356493413448334,
+              "deont_util": 1.0
+            }
+          },
+          "cross_neutral_cosine": 0.7868539094924927,
+          "cross_positive_cosine": {
+            "neutral_length_matched_p1_vs_p2": 0.8710383772850037,
+            "neutral_short_p1_vs_p2": 0.9081310629844666
+          },
+          "directions": {
+            "deont_anti": {
+              "neg_n": 30,
+              "norm": 6.915317058563232,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched": {
+              "neg_n": 30,
+              "norm": 7.8083696365356445,
+              "pos_n": 30
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "neg_n": 30,
+              "norm": 8.492759704589844,
+              "pos_n": 30
+            },
+            "deont_neutral_short": {
+              "neg_n": 30,
+              "norm": 9.063112258911133,
+              "pos_n": 30
+            },
+            "deont_neutral_short_p_variant": {
+              "neg_n": 30,
+              "norm": 10.01192569732666,
+              "pos_n": 30
+            },
+            "deont_util": {
+              "neg_n": 30,
+              "norm": 4.201078414916992,
+              "pos_n": 30
+            }
+          },
+          "stability": {
+            "deont_anti": {
+              "random_label_null": {
+                "max_abs_cos": 0.9306848049163818,
+                "mean_abs_cos": 0.4570631251699524,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8811362951993942
+              },
+              "split_half_cosine": 0.9602854251861572
+            },
+            "deont_neutral_length_matched": {
+              "random_label_null": {
+                "max_abs_cos": 0.948269784450531,
+                "mean_abs_cos": 0.5141984786441753,
+                "n_trials": 64,
+                "p95_abs_cos": 0.8966253787279128
+              },
+              "split_half_cosine": 0.967045783996582
+            },
+            "deont_neutral_length_matched_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.9566510319709778,
+                "mean_abs_cos": 0.5592035063746152,
+                "n_trials": 64,
+                "p95_abs_cos": 0.9126586735248565
+              },
+              "split_half_cosine": 0.9774678349494934
+            },
+            "deont_neutral_short": {
+              "random_label_null": {
+                "max_abs_cos": 0.9557978510856628,
+                "mean_abs_cos": 0.5689823740394786,
+                "n_trials": 64,
+                "p95_abs_cos": 0.915246668457985
+              },
+              "split_half_cosine": 0.977090060710907
+            },
+            "deont_neutral_short_p_variant": {
+              "random_label_null": {
+                "max_abs_cos": 0.9649878740310669,
+                "mean_abs_cos": 0.6151323328958824,
+                "n_trials": 64,
+                "p95_abs_cos": 0.9275871962308884
+              },
+              "split_half_cosine": 0.9834902882575989
+            },
+            "deont_util": {
+              "random_label_null": {
+                "max_abs_cos": 0.8579525351524353,
+                "mean_abs_cos": 0.37281795011949725,
+                "n_trials": 64,
+                "p95_abs_cos": 0.7659201771020888
+              },
+              "split_half_cosine": 0.8840356469154358
+            }
+          }
+        }
+      },
+      "site": "prompt_end_residual"
+    }
+  },
+  "generation_artifact_id": "generation_run_1_cdd0020853b6",
+  "generation_sanity": {
+    "finish_reason_counts": {
+      "stop": 180
+    },
+    "nonempty_count": 180,
+    "nonempty_rate": 1.0,
+    "per_condition_response_length": {
+      "N_alt_util_01": {
+        "max_chars": 106,
+        "mean_chars": 47.13333333333333,
+        "median_chars": 37.0,
+        "min_chars": 14,
+        "n": 30
+      },
+      "N_anti_01": {
+        "max_chars": 82,
+        "mean_chars": 31.766666666666666,
+        "median_chars": 29.0,
+        "min_chars": 11,
+        "n": 30
+      },
+      "N_neutral_01": {
+        "max_chars": 126,
+        "mean_chars": 50.733333333333334,
+        "median_chars": 49.0,
+        "min_chars": 15,
+        "n": 30
+      },
+      "N_neutral_02": {
+        "max_chars": 193,
+        "mean_chars": 58.1,
+        "median_chars": 47.5,
+        "min_chars": 15,
+        "n": 30
+      },
+      "P_deont_01": {
+        "max_chars": 246,
+        "mean_chars": 67.26666666666667,
+        "median_chars": 47.5,
+        "min_chars": 14,
+        "n": 30
+      },
+      "P_deont_02": {
+        "max_chars": 200,
+        "mean_chars": 51.8,
+        "median_chars": 39.0,
+        "min_chars": 14,
+        "n": 30
+      }
+    },
+    "row_count": 180
+  },
+  "primary_layer": 32,
+  "primary_site": "prompt_end_residual"
+}

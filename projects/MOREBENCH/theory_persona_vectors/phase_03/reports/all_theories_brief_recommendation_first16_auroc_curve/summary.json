@@ -1,0 +1,127 @@
+{
+  "capture_artifact_id": "capture_1_1d7271d73617",
+  "generation_rows_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/report_6aa730c32d87_8c1df9a2/results/generate_natural_responses_results.json",
+  "layers": [
+    0,
+    4,
+    16,
+    24,
+    32,
+    40
+  ],
+  "rows": [
+    {
+      "insample_auroc": 0.9633333333333334,
+      "layer": 0,
+      "loo_auroc": 0.7866666666666666,
+      "theory": "deont"
+    },
+    {
+      "insample_auroc": 0.9688888888888889,
+      "layer": 0,
+      "loo_auroc": 0.5011111111111111,
+      "theory": "util"
+    },
+    {
+      "insample_auroc": 0.945,
+      "layer": 0,
+      "loo_auroc": 0.6372222222222222,
+      "theory": "generic"
+    },
+    {
+      "insample_auroc": 0.94,
+      "layer": 4,
+      "loo_auroc": 0.8366666666666667,
+      "theory": "deont"
+    },
+    {
+      "insample_auroc": 0.9033333333333333,
+      "layer": 4,
+      "loo_auroc": 0.7388888888888889,
+      "theory": "util"
+    },
+    {
+      "insample_auroc": 0.9077777777777778,
+      "layer": 4,
+      "loo_auroc": 0.7777777777777778,
+      "theory": "generic"
+    },
+    {
+      "insample_auroc": 0.9655555555555555,
+      "layer": 16,
+      "loo_auroc": 0.9388888888888889,
+      "theory": "deont"
+    },
+    {
+      "insample_auroc": 0.9033333333333333,
+      "layer": 16,
+      "loo_auroc": 0.8322222222222222,
+      "theory": "util"
+    },
+    {
+      "insample_auroc": 0.9188888888888889,
+      "layer": 16,
+      "loo_auroc": 0.81,
+      "theory": "generic"
+    },
+    {
+      "insample_auroc": 0.9533333333333334,
+      "layer": 24,
+      "loo_auroc": 0.9244444444444444,
+      "theory": "deont"
+    },
+    {
+      "insample_auroc": 0.8688888888888889,
+      "layer": 24,
+      "loo_auroc": 0.7977777777777778,
+      "theory": "util"
+    },
+    {
+      "insample_auroc": 0.9155555555555556,
+      "layer": 24,
+      "loo_auroc": 0.8344444444444444,
+      "theory": "generic"
+    },
+    {
+      "insample_auroc": 0.9733333333333334,
+      "layer": 32,
+      "loo_auroc": 0.97,
+      "theory": "deont"
+    },
+    {
+      "insample_auroc": 0.8966666666666666,
+      "layer": 32,
+      "loo_auroc": 0.8233333333333334,
+      "theory": "util"
+    },
+    {
+      "insample_auroc": 0.9422222222222222,
+      "layer": 32,
+      "loo_auroc": 0.85,
+      "theory": "generic"
+    },
+    {
+      "insample_auroc": 0.9833333333333333,
+      "layer": 40,
+      "loo_auroc": 0.9733333333333334,
+      "theory": "deont"
+    },
+    {
+      "insample_auroc": 0.8711111111111111,
+      "layer": 40,
+      "loo_auroc": 0.7877777777777778,
+      "theory": "util"
+    },
+    {
+      "insample_auroc": 0.9622222222222222,
+      "layer": 40,
+      "loo_auroc": 0.8733333333333333,
+      "theory": "generic"
+    }
+  ],
+  "theories": [
+    "deont",
+    "util",
+    "generic"
+  ]
+}

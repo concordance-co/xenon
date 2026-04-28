@@ -1,0 +1,270 @@
+{
+  "components": 5,
+  "explained_variance_ratio": [
+    0.12782225012779236,
+    0.09714634716510773,
+    0.04646660387516022,
+    0.034526657313108444,
+    0.03134796768426895
+  ],
+  "layer": 32,
+  "max_features": 2000,
+  "min_df": 3,
+  "n_conditions": 18,
+  "n_dilemmas": 30,
+  "n_rows": 540,
+  "ridge_alpha": 10.0,
+  "rows": [
+    {
+      "both_text_resid_corr": -0.0011784314331205138,
+      "label": "procedural_minus_decisive",
+      "label_text_resid_corr": 0.13974003240432065,
+      "pc": 1,
+      "pc_text_resid_corr": -0.06754711066436826,
+      "raw_corr": 0.5120545297214156,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": 0.6333527565002441
+    },
+    {
+      "both_text_resid_corr": -0.12637752815100675,
+      "label": "procedural_risk_management",
+      "label_text_resid_corr": 0.0816422228574568,
+      "pc": 1,
+      "pc_text_resid_corr": -0.1010387921393816,
+      "raw_corr": 0.4193916581229081,
+      "text_predicts_label_r2": 0.6003099679946899,
+      "text_predicts_pc_r2": 0.6333527565002441
+    },
+    {
+      "both_text_resid_corr": -0.08718014667876703,
+      "label": "decisive_resolution",
+      "label_text_resid_corr": -0.12809113191013125,
+      "pc": 1,
+      "pc_text_resid_corr": 0.01271008602107392,
+      "raw_corr": -0.45286606056898565,
+      "text_predicts_label_r2": 0.16362959146499634,
+      "text_predicts_pc_r2": 0.6333527565002441
+    },
+    {
+      "both_text_resid_corr": 0.05548011628110347,
+      "label": "principle_minus_outcome",
+      "label_text_resid_corr": -0.018702851054087553,
+      "pc": 1,
+      "pc_text_resid_corr": 0.04770206129112586,
+      "raw_corr": -0.10674126197897775,
+      "text_predicts_label_r2": 0.3294532299041748,
+      "text_predicts_pc_r2": 0.6333527565002441
+    },
+    {
+      "both_text_resid_corr": 0.12319844505363939,
+      "label": "virtue_character",
+      "label_text_resid_corr": 0.07869867330772214,
+      "pc": 1,
+      "pc_text_resid_corr": 0.0618192810229968,
+      "raw_corr": -0.3129865857292623,
+      "text_predicts_label_r2": 0.5275148153305054,
+      "text_predicts_pc_r2": 0.6333527565002441
+    },
+    {
+      "both_text_resid_corr": 0.03242709319597582,
+      "label": "procedural_minus_decisive",
+      "label_text_resid_corr": 0.06664291608417479,
+      "pc": 2,
+      "pc_text_resid_corr": -0.006151315129161671,
+      "raw_corr": 0.19128887918586915,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": 0.6427127718925476
+    },
+    {
+      "both_text_resid_corr": -0.06611067255859136,
+      "label": "procedural_risk_management",
+      "label_text_resid_corr": 0.04967022847824367,
+      "pc": 2,
+      "pc_text_resid_corr": -0.025747315126833363,
+      "raw_corr": 0.17523159465375673,
+      "text_predicts_label_r2": 0.6003099679946899,
+      "text_predicts_pc_r2": 0.6427127718925476
+    },
+    {
+      "both_text_resid_corr": -0.08945136081109835,
+      "label": "decisive_resolution",
+      "label_text_resid_corr": -0.05354952613826279,
+      "pc": 2,
+      "pc_text_resid_corr": -0.015864140576389463,
+      "raw_corr": -0.15008540434684617,
+      "text_predicts_label_r2": 0.16362959146499634,
+      "text_predicts_pc_r2": 0.6427127718925476
+    },
+    {
+      "both_text_resid_corr": -0.1325270458256016,
+      "label": "principle_minus_outcome",
+      "label_text_resid_corr": 0.04970120758929463,
+      "pc": 2,
+      "pc_text_resid_corr": -0.11224028853532872,
+      "raw_corr": 0.4734850845698289,
+      "text_predicts_label_r2": 0.3294532299041748,
+      "text_predicts_pc_r2": 0.6427127718925476
+    },
+    {
+      "both_text_resid_corr": 0.14732388172383531,
+      "label": "virtue_character",
+      "label_text_resid_corr": 0.023890418258416035,
+      "pc": 2,
+      "pc_text_resid_corr": 0.07644343699011805,
+      "raw_corr": 0.5069160562833196,
+      "text_predicts_label_r2": 0.5275148153305054,
+      "text_predicts_pc_r2": 0.6427127718925476
+    },
+    {
+      "both_text_resid_corr": -0.06731506781584405,
+      "label": "procedural_minus_decisive",
+      "label_text_resid_corr": 0.030159939449336853,
+      "pc": 3,
+      "pc_text_resid_corr": -0.040691072101864456,
+      "raw_corr": 0.053871295955936926,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": 0.45082348585128784
+    },
+    {
+      "both_text_resid_corr": -0.2233429793641962,
+      "label": "procedural_risk_management",
+      "label_text_resid_corr": -0.0280884779395958,
+      "pc": 3,
+      "pc_text_resid_corr": -0.1416500970303204,
+      "raw_corr": 0.02609171845428854,
+      "text_predicts_label_r2": 0.6003099679946899,
+      "text_predicts_pc_r2": 0.45082348585128784
+    },
+    {
+      "both_text_resid_corr": -0.06751372233541963,
+      "label": "decisive_resolution",
+      "label_text_resid_corr": -0.05974329664196192,
+      "pc": 3,
+      "pc_text_resid_corr": -0.07544865637798334,
+      "raw_corr": -0.06619345407595675,
+      "text_predicts_label_r2": 0.16362959146499634,
+      "text_predicts_pc_r2": 0.45082348585128784
+    },
+    {
+      "both_text_resid_corr": 0.04625132115546603,
+      "label": "principle_minus_outcome",
+      "label_text_resid_corr": 0.01956601246444129,
+      "pc": 3,
+      "pc_text_resid_corr": 0.03886886536288184,
+      "raw_corr": 0.02917082825477963,
+      "text_predicts_label_r2": 0.3294532299041748,
+      "text_predicts_pc_r2": 0.45082348585128784
+    },
+    {
+      "both_text_resid_corr": -0.015310381176220451,
+      "label": "virtue_character",
+      "label_text_resid_corr": -0.03297896946112793,
+      "pc": 3,
+      "pc_text_resid_corr": -0.04922965126298146,
+      "raw_corr": 0.07775360063140521,
+      "text_predicts_label_r2": 0.5275148153305054,
+      "text_predicts_pc_r2": 0.45082348585128784
+    },
+    {
+      "both_text_resid_corr": -0.15443950652876862,
+      "label": "procedural_minus_decisive",
+      "label_text_resid_corr": -0.12204321470739468,
+      "pc": 4,
+      "pc_text_resid_corr": -0.1310330288372514,
+      "raw_corr": -0.08952087700832931,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": 0.34325259923934937
+    },
+    {
+      "both_text_resid_corr": -0.08519478987537758,
+      "label": "procedural_risk_management",
+      "label_text_resid_corr": -0.03237925781573236,
+      "pc": 4,
+      "pc_text_resid_corr": -0.058406855619997484,
+      "raw_corr": 0.08012625506595153,
+      "text_predicts_label_r2": 0.6003099679946899,
+      "text_predicts_pc_r2": 0.34325259923934937
+    },
+    {
+      "both_text_resid_corr": 0.14510119280188896,
+      "label": "decisive_resolution",
+      "label_text_resid_corr": 0.13920218915936153,
+      "pc": 4,
+      "pc_text_resid_corr": 0.1662069443721503,
+      "raw_corr": 0.23703102211359844,
+      "text_predicts_label_r2": 0.16362959146499634,
+      "text_predicts_pc_r2": 0.34325259923934937
+    },
+    {
+      "both_text_resid_corr": 0.16440929604165694,
+      "label": "principle_minus_outcome",
+      "label_text_resid_corr": 0.06320281134882613,
+      "pc": 4,
+      "pc_text_resid_corr": 0.061124776134212605,
+      "raw_corr": 0.03333516024084058,
+      "text_predicts_label_r2": 0.3294532299041748,
+      "text_predicts_pc_r2": 0.34325259923934937
+    },
+    {
+      "both_text_resid_corr": -0.07936155200352932,
+      "label": "virtue_character",
+      "label_text_resid_corr": -0.047845265568893264,
+      "pc": 4,
+      "pc_text_resid_corr": -0.04460794033979958,
+      "raw_corr": -0.14933849067652652,
+      "text_predicts_label_r2": 0.5275148153305054,
+      "text_predicts_pc_r2": 0.34325259923934937
+    },
+    {
+      "both_text_resid_corr": 0.030189833256370004,
+      "label": "procedural_minus_decisive",
+      "label_text_resid_corr": 0.06037152870427839,
+      "pc": 5,
+      "pc_text_resid_corr": 0.09116646203734075,
+      "raw_corr": 0.007388082941719258,
+      "text_predicts_label_r2": 0.5088638067245483,
+      "text_predicts_pc_r2": 0.29402774572372437
+    },
+    {
+      "both_text_resid_corr": 0.025632946485219375,
+      "label": "procedural_risk_management",
+      "label_text_resid_corr": 0.09449294786453608,
+      "pc": 5,
+      "pc_text_resid_corr": 0.06693379786337438,
+      "raw_corr": 0.08544769929312367,
+      "text_predicts_label_r2": 0.6003099679946899,
+      "text_predicts_pc_r2": 0.29402774572372437
+    },
+    {
+      "both_text_resid_corr": -0.022059108479111477,
+      "label": "decisive_resolution",
+      "label_text_resid_corr": -0.01375293558163827,
+      "pc": 5,
+      "pc_text_resid_corr": -0.08858577149450121,
+      "raw_corr": 0.07514467493297403,
+      "text_predicts_label_r2": 0.16362959146499634,
+      "text_predicts_pc_r2": 0.29402774572372437
+    },
+    {
+      "both_text_resid_corr": -0.024987939379071508,
+      "label": "principle_minus_outcome",
+      "label_text_resid_corr": -0.030271492026470136,
+      "pc": 5,
+      "pc_text_resid_corr": 0.06778464842079675,
+      "raw_corr": -0.05786466781677036,
+      "text_predicts_label_r2": 0.3294532299041748,
+      "text_predicts_pc_r2": 0.29402774572372437
+    },
+    {
+      "both_text_resid_corr": -0.11656848391596453,
+      "label": "virtue_character",
+      "label_text_resid_corr": -0.04008525039086743,
+      "pc": 5,
+      "pc_text_resid_corr": -0.006810374688546821,
+      "raw_corr": 0.009105922851922814,
+      "text_predicts_label_r2": 0.5275148153305054,
+      "text_predicts_pc_r2": 0.29402774572372437
+    }
+  ],
+  "slice": "full"
+}

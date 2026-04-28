@@ -1,0 +1,294 @@
+{
+  "condition_means": [
+    {
+      "condition_id": "N_anti_contract_01",
+      "conditional_recommendation": 0.3,
+      "consequence_forecasting": 0.16666666666666666,
+      "moral_uncertainty": 0.13333333333333333,
+      "n": 30,
+      "priority_resolution": 0.43333333333333335,
+      "procedural_escalation": 0.26666666666666666,
+      "risk_mitigation": 0.16666666666666666,
+      "stakeholder_identification": 1.9333333333333333,
+      "tradeoff_acknowledged": 1.1333333333333333
+    },
+    {
+      "condition_id": "N_anti_contractarian_01",
+      "conditional_recommendation": 0.5,
+      "consequence_forecasting": 0.16666666666666666,
+      "moral_uncertainty": 0.1,
+      "n": 30,
+      "priority_resolution": 0.8333333333333334,
+      "procedural_escalation": 0.43333333333333335,
+      "risk_mitigation": 0.3333333333333333,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 1.1666666666666667
+    },
+    {
+      "condition_id": "N_anti_deont_01",
+      "conditional_recommendation": 0.3333333333333333,
+      "consequence_forecasting": 0.3333333333333333,
+      "moral_uncertainty": 0.13333333333333333,
+      "n": 30,
+      "priority_resolution": 0.4666666666666667,
+      "procedural_escalation": 0.23333333333333334,
+      "risk_mitigation": 0.16666666666666666,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 0.9666666666666667
+    },
+    {
+      "condition_id": "N_anti_util_01",
+      "conditional_recommendation": 0.4,
+      "consequence_forecasting": 0.43333333333333335,
+      "moral_uncertainty": 0.16666666666666666,
+      "n": 30,
+      "priority_resolution": 0.5666666666666667,
+      "procedural_escalation": 0.3,
+      "risk_mitigation": 0.16666666666666666,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 0.8
+    },
+    {
+      "condition_id": "N_anti_virtue_01",
+      "conditional_recommendation": 0.43333333333333335,
+      "consequence_forecasting": 0.2,
+      "moral_uncertainty": 0.06666666666666667,
+      "n": 30,
+      "priority_resolution": 0.36666666666666664,
+      "procedural_escalation": 0.4666666666666667,
+      "risk_mitigation": 0.13333333333333333,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 0.8666666666666667
+    },
+    {
+      "condition_id": "N_generic_moral_01",
+      "conditional_recommendation": 0.6333333333333333,
+      "consequence_forecasting": 0.16666666666666666,
+      "moral_uncertainty": 0.26666666666666666,
+      "n": 30,
+      "priority_resolution": 0.3,
+      "procedural_escalation": 0.4666666666666667,
+      "risk_mitigation": 0.4,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.5333333333333334
+    },
+    {
+      "condition_id": "N_neutral_01",
+      "conditional_recommendation": 0.4666666666666667,
+      "consequence_forecasting": 0.23333333333333334,
+      "moral_uncertainty": 0.13333333333333333,
+      "n": 30,
+      "priority_resolution": 0.23333333333333334,
+      "procedural_escalation": 0.4666666666666667,
+      "risk_mitigation": 0.26666666666666666,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 1.3333333333333333
+    },
+    {
+      "condition_id": "N_neutral_02",
+      "conditional_recommendation": 0.43333333333333335,
+      "consequence_forecasting": 0.3,
+      "moral_uncertainty": 0.1,
+      "n": 30,
+      "priority_resolution": 0.26666666666666666,
+      "procedural_escalation": 0.5333333333333333,
+      "risk_mitigation": 0.3,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.2666666666666666
+    },
+    {
+      "condition_id": "P_contract_01",
+      "conditional_recommendation": 0.2,
+      "consequence_forecasting": 0.2,
+      "moral_uncertainty": 0.06666666666666667,
+      "n": 30,
+      "priority_resolution": 0.3,
+      "procedural_escalation": 0.4666666666666667,
+      "risk_mitigation": 0.36666666666666664,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 1.5666666666666667
+    },
+    {
+      "condition_id": "P_contract_02",
+      "conditional_recommendation": 0.8333333333333334,
+      "consequence_forecasting": 0.4666666666666667,
+      "moral_uncertainty": 0.2,
+      "n": 30,
+      "priority_resolution": 0.36666666666666664,
+      "procedural_escalation": 0.3333333333333333,
+      "risk_mitigation": 0.26666666666666666,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.0333333333333334
+    },
+    {
+      "condition_id": "P_contractarian_01",
+      "conditional_recommendation": 0.3333333333333333,
+      "consequence_forecasting": 0.23333333333333334,
+      "moral_uncertainty": 0.06666666666666667,
+      "n": 30,
+      "priority_resolution": 0.3,
+      "procedural_escalation": 0.43333333333333335,
+      "risk_mitigation": 0.3,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.5666666666666667
+    },
+    {
+      "condition_id": "P_contractarian_02",
+      "conditional_recommendation": 0.5666666666666667,
+      "consequence_forecasting": 0.2,
+      "moral_uncertainty": 0.13333333333333333,
+      "n": 30,
+      "priority_resolution": 0.1,
+      "procedural_escalation": 0.4666666666666667,
+      "risk_mitigation": 0.2,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.6
+    },
+    {
+      "condition_id": "P_deont_01",
+      "conditional_recommendation": 0.6,
+      "consequence_forecasting": 0.26666666666666666,
+      "moral_uncertainty": 0.3,
+      "n": 30,
+      "priority_resolution": 0.4666666666666667,
+      "procedural_escalation": 0.7,
+      "risk_mitigation": 0.5333333333333333,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.3
+    },
+    {
+      "condition_id": "P_deont_02",
+      "conditional_recommendation": 0.6666666666666666,
+      "consequence_forecasting": 0.5333333333333333,
+      "moral_uncertainty": 0.26666666666666666,
+      "n": 30,
+      "priority_resolution": 0.5,
+      "procedural_escalation": 0.26666666666666666,
+      "risk_mitigation": 0.26666666666666666,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 0.6
+    },
+    {
+      "condition_id": "P_util_01",
+      "conditional_recommendation": 0.26666666666666666,
+      "consequence_forecasting": 0.4,
+      "moral_uncertainty": 0.2,
+      "n": 30,
+      "priority_resolution": 0.3333333333333333,
+      "procedural_escalation": 0.43333333333333335,
+      "risk_mitigation": 0.43333333333333335,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.7
+    },
+    {
+      "condition_id": "P_util_02",
+      "conditional_recommendation": 0.5333333333333333,
+      "consequence_forecasting": 0.23333333333333334,
+      "moral_uncertainty": 0.26666666666666666,
+      "n": 30,
+      "priority_resolution": 0.7666666666666667,
+      "procedural_escalation": 0.36666666666666664,
+      "risk_mitigation": 0.26666666666666666,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.9333333333333333
+    },
+    {
+      "condition_id": "P_virtue_01",
+      "conditional_recommendation": 0.6,
+      "consequence_forecasting": 0.13333333333333333,
+      "moral_uncertainty": 0.43333333333333335,
+      "n": 30,
+      "priority_resolution": 0.3,
+      "procedural_escalation": 0.43333333333333335,
+      "risk_mitigation": 0.3333333333333333,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 1.4
+    },
+    {
+      "condition_id": "P_virtue_02",
+      "conditional_recommendation": 0.23333333333333334,
+      "consequence_forecasting": 0.5,
+      "moral_uncertainty": 0.3,
+      "n": 30,
+      "priority_resolution": 0.4,
+      "procedural_escalation": 0.16666666666666666,
+      "risk_mitigation": 0.1,
+      "stakeholder_identification": 1.9666666666666666,
+      "tradeoff_acknowledged": 0.9
+    }
+  ],
+  "elapsed_seconds": 0.11728215217590332,
+  "feature_means": {
+    "conditional_recommendation": 0.46296296296296297,
+    "consequence_forecasting": 0.28703703703703703,
+    "moral_uncertainty": 0.18518518518518517,
+    "priority_resolution": 0.40555555555555556,
+    "procedural_escalation": 0.40185185185185185,
+    "risk_mitigation": 0.2777777777777778,
+    "stakeholder_identification": 1.9814814814814814,
+    "tradeoff_acknowledged": 1.2592592592592593
+  },
+  "features": [
+    "stakeholder_identification",
+    "consequence_forecasting",
+    "tradeoff_acknowledged",
+    "priority_resolution",
+    "moral_uncertainty",
+    "risk_mitigation",
+    "conditional_recommendation",
+    "procedural_escalation"
+  ],
+  "generation_rows_paths": [
+    "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/report_6aa730c32d87_8c1df9a2/results/generate_natural_responses_results.json",
+    "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/morebench_theory_persona_vectors_phase03_brief_recommendation_smoke_anti_contractarian_contractarian_contractarian/report_02aa68279c28_ff67f3ad/results/generate_natural_responses_results.json"
+  ],
+  "model_for_this_run": null,
+  "n_scored_rows": 540,
+  "n_source_rows": 540,
+  "new_rows_written": 540,
+  "output_jsonl": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/process_feature_labels/process_feature_scores.jsonl",
+  "rubric_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/specs/process_feature_rubric.json",
+  "score_distributions": {
+    "conditional_recommendation": {
+      "0": 317,
+      "1": 196,
+      "2": 27
+    },
+    "consequence_forecasting": {
+      "0": 391,
+      "1": 143,
+      "2": 6
+    },
+    "moral_uncertainty": {
+      "0": 449,
+      "1": 82,
+      "2": 9
+    },
+    "priority_resolution": {
+      "0": 332,
+      "1": 197,
+      "2": 11
+    },
+    "procedural_escalation": {
+      "0": 363,
+      "1": 137,
+      "2": 40
+    },
+    "risk_mitigation": {
+      "0": 414,
+      "1": 102,
+      "2": 24
+    },
+    "stakeholder_identification": {
+      "0": 0,
+      "1": 10,
+      "2": 530
+    },
+    "tradeoff_acknowledged": {
+      "0": 66,
+      "1": 268,
+      "2": 206
+    }
+  },
+  "scorer_type_for_this_run": "keyword_baseline"
+}

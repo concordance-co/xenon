@@ -1,0 +1,708 @@
+{
+  "evr_l32": [
+    0.09455645829439163,
+    0.06944802403450012,
+    0.05166349560022354,
+    0.03683284670114517,
+    0.03279883787035942
+  ],
+  "histograms": {
+    "care_repaired": {
+      "hist_counts": [
+        6,
+        60,
+        0,
+        285,
+        0,
+        129,
+        60
+      ],
+      "hist_edges": [
+        0.0,
+        0.2857142857142857,
+        0.5714285714285714,
+        0.8571428571428571,
+        1.1428571428571428,
+        1.4285714285714284,
+        1.7142857142857142,
+        2.0
+      ],
+      "max": 2.0,
+      "mean": 1.163888888888889,
+      "min": 0.0,
+      "quantiles_10_25_50_75_90": [
+        0.5,
+        1.0,
+        1.0,
+        1.5,
+        2.0
+      ],
+      "std": 0.4276244313892597,
+      "unique_counts": {
+        "0.0": 6,
+        "0.5": 60,
+        "1.0": 285,
+        "1.5": 129,
+        "2.0": 60
+      }
+    },
+    "decisive_resolution": {
+      "hist_counts": [
+        218,
+        0,
+        0,
+        0,
+        0,
+        0,
+        322
+      ],
+      "hist_edges": [
+        1.0,
+        1.1428571428571428,
+        1.2857142857142856,
+        1.4285714285714286,
+        1.5714285714285714,
+        1.7142857142857142,
+        1.8571428571428572,
+        2.0
+      ],
+      "max": 2.0,
+      "mean": 1.5962962962962963,
+      "min": 1.0,
+      "quantiles_10_25_50_75_90": [
+        1.0,
+        1.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "std": 0.49063940253470867,
+      "unique_counts": {
+        "1.0": 218,
+        "2.0": 322
+      }
+    },
+    "outcome_content_only": {
+      "hist_counts": [
+        35,
+        68,
+        0,
+        205,
+        0,
+        151,
+        81
+      ],
+      "hist_edges": [
+        0.0,
+        0.2857142857142857,
+        0.5714285714285714,
+        0.8571428571428571,
+        1.1428571428571428,
+        1.4285714285714284,
+        1.7142857142857142,
+        2.0
+      ],
+      "max": 2.0,
+      "mean": 1.162037037037037,
+      "min": 0.0,
+      "quantiles_10_25_50_75_90": [
+        0.5,
+        1.0,
+        1.0,
+        1.5,
+        2.0
+      ],
+      "std": 0.5384679213583309,
+      "unique_counts": {
+        "0.0": 35,
+        "0.5": 68,
+        "1.0": 205,
+        "1.5": 151,
+        "2.0": 81
+      }
+    },
+    "principle_integrity": {
+      "hist_counts": [
+        80,
+        127,
+        87,
+        150,
+        43,
+        47,
+        6
+      ],
+      "hist_edges": [
+        0.0,
+        0.2619047619047619,
+        0.5238095238095238,
+        0.7857142857142858,
+        1.0476190476190477,
+        1.3095238095238095,
+        1.5714285714285716,
+        1.8333333333333333
+      ],
+      "max": 1.8333333333333333,
+      "mean": 0.7012345679012346,
+      "min": 0.0,
+      "quantiles_10_25_50_75_90": [
+        0.16666666666666666,
+        0.3333333333333333,
+        0.6666666666666666,
+        1.0,
+        1.1666666666666667
+      ],
+      "std": 0.40703499626908773,
+      "unique_counts": {
+        "0.0": 44,
+        "0.167": 36,
+        "0.333": 65,
+        "0.5": 62,
+        "0.667": 87,
+        "0.833": 86,
+        "1.0": 64,
+        "1.167": 43,
+        "1.333": 28,
+        "1.5": 19,
+        "1.667": 4,
+        "1.833": 2
+      }
+    },
+    "principle_minus_outcome": {
+      "hist_counts": [
+        21,
+        89,
+        145,
+        137,
+        71,
+        52,
+        25
+      ],
+      "hist_edges": [
+        -2.0,
+        -1.5,
+        -1.0,
+        -0.5,
+        0.0,
+        0.5,
+        1.0,
+        1.5
+      ],
+      "max": 1.5,
+      "mean": -0.4608024691358024,
+      "min": -2.0,
+      "quantiles_10_25_50_75_90": [
+        -1.3499999999999992,
+        -1.0,
+        -0.5,
+        0.0,
+        0.5
+      ],
+      "std": 0.7323060805083205,
+      "unique_counts": {
+        "-2.0": 9,
+        "-1.833": 2,
+        "-1.667": 10,
+        "-1.5": 33,
+        "-1.333": 25,
+        "-1.167": 31,
+        "-1.0": 44,
+        "-0.833": 49,
+        "-0.667": 52,
+        "-0.5": 35,
+        "-0.333": 50,
+        "-0.167": 52,
+        "0.0": 27,
+        "0.167": 25,
+        "0.333": 19,
+        "0.5": 26,
+        "0.667": 15,
+        "0.833": 11,
+        "1.0": 14,
+        "1.167": 4,
+        "1.333": 6,
+        "1.5": 1
+      }
+    },
+    "procedural_minus_decisive": {
+      "hist_counts": [
+        214,
+        76,
+        48,
+        64,
+        70,
+        41,
+        27
+      ],
+      "hist_edges": [
+        -2.0,
+        -1.5714285714285714,
+        -1.1428571428571428,
+        -0.7142857142857144,
+        -0.2857142857142858,
+        0.1428571428571428,
+        0.5714285714285712,
+        1.0
+      ],
+      "max": 1.0,
+      "mean": -1.0103703703703706,
+      "min": -2.0,
+      "quantiles_10_25_50_75_90": [
+        -2.0,
+        -1.8,
+        -1.2,
+        -0.19999999999999996,
+        0.19999999999999996
+      ],
+      "std": 0.8473290562068879,
+      "unique_counts": {
+        "-2.0": 99,
+        "-1.8": 53,
+        "-1.6": 62,
+        "-1.4": 47,
+        "-1.2": 29,
+        "-1.0": 31,
+        "-0.8": 17,
+        "-0.6": 32,
+        "-0.4": 32,
+        "-0.2": 37,
+        "0.0": 33,
+        "0.2": 22,
+        "0.4": 19,
+        "0.6": 13,
+        "0.8": 11,
+        "1.0": 3
+      }
+    },
+    "procedural_risk_management": {
+      "hist_counts": [
+        182,
+        88,
+        138,
+        43,
+        54,
+        16,
+        19
+      ],
+      "hist_edges": [
+        0.0,
+        0.2857142857142857,
+        0.5714285714285714,
+        0.8571428571428571,
+        1.1428571428571428,
+        1.4285714285714284,
+        1.7142857142857142,
+        2.0
+      ],
+      "max": 2.0,
+      "mean": 0.5859259259259259,
+      "min": 0.0,
+      "quantiles_10_25_50_75_90": [
+        0.0,
+        0.2,
+        0.5,
+        0.8,
+        1.4
+      ],
+      "std": 0.5047423931095153,
+      "unique_counts": {
+        "0.0": 119,
+        "0.2": 63,
+        "0.4": 88,
+        "0.6": 76,
+        "0.8": 62,
+        "1.0": 43,
+        "1.2": 29,
+        "1.4": 25,
+        "1.6": 16,
+        "1.8": 15,
+        "2.0": 4
+      }
+    }
+  },
+  "internal_consistency": {
+    "care_original": {
+      "cronbach_alpha": 0.0873406970941577,
+      "features": [
+        "care_compassion",
+        "rights_autonomy",
+        "stakeholder_identification"
+      ],
+      "mean_interitem_corr": 0.04680830687865279
+    },
+    "care_repaired": {
+      "cronbach_alpha": 0.10970927043334755,
+      "features": [
+        "care_compassion",
+        "stakeholder_identification"
+      ],
+      "mean_interitem_corr": 0.06540786659660701
+    },
+    "outcome_content_only": {
+      "cronbach_alpha": 0.29798193349990965,
+      "features": [
+        "harm_welfare",
+        "public_interest_social_impact"
+      ],
+      "mean_interitem_corr": 0.17830590353326561
+    },
+    "outcome_original": {
+      "cronbach_alpha": 0.3635004930875892,
+      "features": [
+        "harm_welfare",
+        "public_interest_social_impact",
+        "consequence_forecasting"
+      ],
+      "mean_interitem_corr": 0.1610154664903025
+    },
+    "principle_integrity": {
+      "cronbach_alpha": 0.3730398064415202,
+      "features": [
+        "rights_autonomy",
+        "fairness_justice",
+        "honesty_truthfulness",
+        "responsibility_accountability",
+        "loyalty_trust",
+        "virtue_character"
+      ],
+      "mean_interitem_corr": 0.09143621323192619
+    },
+    "procedural_risk_management": {
+      "cronbach_alpha": 0.6973252187659531,
+      "features": [
+        "legality_compliance",
+        "procedural_escalation",
+        "risk_mitigation",
+        "conditional_recommendation",
+        "moral_uncertainty"
+      ],
+      "mean_interitem_corr": 0.31934144650478996
+    },
+    "tradeoff_mapping": {
+      "cronbach_alpha": 0.3848921778049061,
+      "features": [
+        "tradeoff_acknowledged",
+        "stakeholder_identification",
+        "consequence_forecasting"
+      ],
+      "mean_interitem_corr": 0.20496315675835466
+    }
+  },
+  "length_residualization": [
+    {
+      "composite": "outcome_content_only",
+      "corr_both_length_resid": -0.034064097784930185,
+      "corr_composite_with_length": 0.12195459571766662,
+      "corr_pc_length_resid": -0.03380983246731264,
+      "corr_pc_with_length": -0.12048797270940866,
+      "corr_raw": -0.048257582638676834,
+      "pc": 1
+    },
+    {
+      "composite": "principle_integrity",
+      "corr_both_length_resid": -0.03169033509274989,
+      "corr_composite_with_length": 0.35441152385523333,
+      "corr_pc_length_resid": -0.02963330127002256,
+      "corr_pc_with_length": -0.12048797270940866,
+      "corr_raw": -0.07211974237408604,
+      "pc": 1
+    },
+    {
+      "composite": "procedural_risk_management",
+      "corr_both_length_resid": -0.20337632151911214,
+      "corr_composite_with_length": 0.42080331999826137,
+      "corr_pc_length_resid": -0.1844932160556638,
+      "corr_pc_with_length": -0.12048797270940866,
+      "corr_raw": -0.2338508826252653,
+      "pc": 1
+    },
+    {
+      "composite": "care_repaired",
+      "corr_both_length_resid": -0.091682513046648,
+      "corr_composite_with_length": 0.2896021838592959,
+      "corr_pc_length_resid": -0.08775365167803316,
+      "corr_pc_with_length": -0.12048797270940866,
+      "corr_raw": -0.12200792766403865,
+      "pc": 1
+    },
+    {
+      "composite": "decisive_resolution",
+      "corr_both_length_resid": 0.2877367151238978,
+      "corr_composite_with_length": 0.08362909530622421,
+      "corr_pc_length_resid": 0.286728759465615,
+      "corr_pc_with_length": -0.12048797270940866,
+      "corr_raw": 0.27456357924172403,
+      "pc": 1
+    },
+    {
+      "composite": "principle_minus_outcome",
+      "corr_both_length_resid": 0.00843828421920869,
+      "corr_composite_with_length": 0.1073174970490445,
+      "corr_pc_length_resid": 0.008389551448211758,
+      "corr_pc_with_length": -0.12048797270940866,
+      "corr_raw": -0.004602035876307615,
+      "pc": 1
+    },
+    {
+      "composite": "procedural_minus_decisive",
+      "corr_both_length_resid": -0.2817504030258022,
+      "corr_composite_with_length": 0.20224202646361997,
+      "corr_pc_length_resid": -0.27592819212970304,
+      "corr_pc_with_length": -0.12048797270940866,
+      "corr_raw": -0.2982857282570134,
+      "pc": 1
+    },
+    {
+      "composite": "outcome_content_only",
+      "corr_both_length_resid": -0.1769281936198412,
+      "corr_composite_with_length": 0.12195459571766662,
+      "corr_pc_length_resid": -0.17560754501110948,
+      "corr_pc_with_length": 0.3422288909958819,
+      "corr_raw": -0.12326738124631519,
+      "pc": 2
+    },
+    {
+      "composite": "principle_integrity",
+      "corr_both_length_resid": 0.29592038524391273,
+      "corr_composite_with_length": 0.35441152385523333,
+      "corr_pc_length_resid": 0.27671206070262905,
+      "corr_pc_with_length": 0.3422288909958819,
+      "corr_raw": 0.3812931130115206,
+      "pc": 2
+    },
+    {
+      "composite": "procedural_risk_management",
+      "corr_both_length_resid": 0.015269517951856883,
+      "corr_composite_with_length": 0.42080331999826137,
+      "corr_pc_length_resid": 0.013851772190211708,
+      "corr_pc_with_length": 0.3422288909958819,
+      "corr_raw": 0.15702640884946162,
+      "pc": 2
+    },
+    {
+      "composite": "care_repaired",
+      "corr_both_length_resid": 0.07620000877506097,
+      "corr_composite_with_length": 0.2896021838592959,
+      "corr_pc_length_resid": 0.07293461758088385,
+      "corr_pc_with_length": 0.3422288909958819,
+      "corr_raw": 0.16764081281559384,
+      "pc": 2
+    },
+    {
+      "composite": "decisive_resolution",
+      "corr_both_length_resid": -0.20115821672428688,
+      "corr_composite_with_length": 0.08362909530622421,
+      "corr_pc_length_resid": -0.20045354974193164,
+      "corr_pc_with_length": 0.3422288909958819,
+      "corr_raw": -0.15972919364987903,
+      "pc": 2
+    },
+    {
+      "composite": "principle_minus_outcome",
+      "corr_both_length_resid": 0.28457231878507677,
+      "corr_composite_with_length": 0.1073174970490445,
+      "corr_pc_length_resid": 0.28292885700042153,
+      "corr_pc_with_length": 0.3422288909958819,
+      "corr_raw": 0.30257180334930156,
+      "pc": 2
+    },
+    {
+      "composite": "procedural_minus_decisive",
+      "corr_both_length_resid": 0.1269456650550236,
+      "corr_composite_with_length": 0.20224202646361997,
+      "corr_pc_length_resid": 0.12432240550915011,
+      "corr_pc_with_length": 0.3422288909958819,
+      "corr_raw": 0.18602846245993818,
+      "pc": 2
+    },
+    {
+      "composite": "outcome_content_only",
+      "corr_both_length_resid": 0.09867814550989495,
+      "corr_composite_with_length": 0.12195459571766662,
+      "corr_pc_length_resid": 0.09794158028016615,
+      "corr_pc_with_length": -0.07219466143157895,
+      "corr_raw": 0.08888153693772637,
+      "pc": 3
+    },
+    {
+      "composite": "principle_integrity",
+      "corr_both_length_resid": -0.17420889663247047,
+      "corr_composite_with_length": 0.35441152385523333,
+      "corr_pc_length_resid": -0.162900919246116,
+      "corr_pc_with_length": -0.07219466143157895,
+      "corr_raw": -0.18806245918106423,
+      "pc": 3
+    },
+    {
+      "composite": "procedural_risk_management",
+      "corr_both_length_resid": 0.2627704194283925,
+      "corr_composite_with_length": 0.42080331999826137,
+      "corr_pc_length_resid": 0.23837268469859063,
+      "corr_pc_with_length": -0.07219466143157895,
+      "corr_raw": 0.20737091246487505,
+      "pc": 3
+    },
+    {
+      "composite": "care_repaired",
+      "corr_both_length_resid": 0.032353416613337044,
+      "corr_composite_with_length": 0.2896021838592959,
+      "corr_pc_length_resid": 0.030966978955252873,
+      "corr_pc_with_length": -0.07219466143157895,
+      "corr_raw": 0.009978440894263007,
+      "pc": 3
+    },
+    {
+      "composite": "decisive_resolution",
+      "corr_both_length_resid": -0.21539603265106463,
+      "corr_composite_with_length": 0.08362909530622421,
+      "corr_pc_length_resid": -0.21464148990949006,
+      "corr_pc_with_length": -0.07219466143157895,
+      "corr_raw": -0.2201189702226862,
+      "pc": 3
+    },
+    {
+      "composite": "principle_minus_outcome",
+      "corr_both_length_resid": -0.16350577745315625,
+      "corr_composite_with_length": 0.1073174970490445,
+      "corr_pc_length_resid": -0.16256149904279316,
+      "corr_pc_with_length": -0.07219466143157895,
+      "corr_raw": -0.16988505506707668,
+      "pc": 3
+    },
+    {
+      "composite": "procedural_minus_decisive",
+      "corr_both_length_resid": 0.27190054644735245,
+      "corr_composite_with_length": 0.20224202646361997,
+      "corr_pc_length_resid": 0.2662818772025775,
+      "corr_pc_with_length": -0.07219466143157895,
+      "corr_raw": 0.2509862362179079,
+      "pc": 3
+    },
+    {
+      "composite": "outcome_content_only",
+      "corr_both_length_resid": -0.008719336137108166,
+      "corr_composite_with_length": 0.12195459571766662,
+      "corr_pc_length_resid": -0.008654252224228649,
+      "corr_pc_with_length": 0.17692793970796777,
+      "corr_raw": 0.013059454279082608,
+      "pc": 4
+    },
+    {
+      "composite": "principle_integrity",
+      "corr_both_length_resid": 0.021503833363798592,
+      "corr_composite_with_length": 0.35441152385523333,
+      "corr_pc_length_resid": 0.020108009923690818,
+      "corr_pc_with_length": 0.17692793970796777,
+      "corr_raw": 0.08249608282199626,
+      "pc": 4
+    },
+    {
+      "composite": "procedural_risk_management",
+      "corr_both_length_resid": -0.08097437525061028,
+      "corr_composite_with_length": 0.42080331999826137,
+      "corr_pc_length_resid": -0.07345605819050106,
+      "corr_pc_with_length": 0.17692793970796777,
+      "corr_raw": 0.002154663119729858,
+      "pc": 4
+    },
+    {
+      "composite": "care_repaired",
+      "corr_both_length_resid": 0.030321976659180534,
+      "corr_composite_with_length": 0.2896021838592959,
+      "corr_pc_length_resid": 0.029022592090013257,
+      "corr_pc_with_length": 0.17692793970796777,
+      "corr_raw": 0.07980344382877443,
+      "pc": 4
+    },
+    {
+      "composite": "decisive_resolution",
+      "corr_both_length_resid": 0.19761561108984863,
+      "corr_composite_with_length": 0.08362909530622421,
+      "corr_pc_length_resid": 0.19692335402673608,
+      "corr_pc_with_length": 0.17692793970796777,
+      "corr_raw": 0.20861297690815772,
+      "pc": 4
+    },
+    {
+      "composite": "principle_minus_outcome",
+      "corr_both_length_resid": 0.017641957230430688,
+      "corr_composite_with_length": 0.1073174970490445,
+      "corr_pc_length_resid": 0.017540071415825743,
+      "corr_pc_with_length": 0.17692793970796777,
+      "corr_raw": 0.0362508195282317,
+      "pc": 4
+    },
+    {
+      "composite": "procedural_minus_decisive",
+      "corr_both_length_resid": -0.16111304400590382,
+      "corr_composite_with_length": 0.20224202646361997,
+      "corr_pc_length_resid": -0.15778373512029134,
+      "corr_pc_with_length": 0.17692793970796777,
+      "corr_raw": -0.11951224354931432,
+      "pc": 4
+    },
+    {
+      "composite": "outcome_content_only",
+      "corr_both_length_resid": 0.0035291410765270043,
+      "corr_composite_with_length": 0.12195459571766662,
+      "corr_pc_length_resid": 0.0035027984391039144,
+      "corr_pc_with_length": -0.28793356364246725,
+      "corr_raw": -0.03176036506821422,
+      "pc": 5
+    },
+    {
+      "composite": "principle_integrity",
+      "corr_both_length_resid": -0.007356142804603747,
+      "corr_composite_with_length": 0.35441152385523333,
+      "corr_pc_length_resid": -0.00687865228553016,
+      "corr_pc_with_length": -0.28793356364246725,
+      "corr_raw": -0.10863431707999498,
+      "pc": 5
+    },
+    {
+      "composite": "procedural_risk_management",
+      "corr_both_length_resid": -0.06610576218952928,
+      "corr_composite_with_length": 0.42080331999826137,
+      "corr_pc_length_resid": -0.059967967632933564,
+      "corr_pc_with_length": -0.28793356364246725,
+      "corr_raw": -0.1785917469060984,
+      "pc": 5
+    },
+    {
+      "composite": "care_repaired",
+      "corr_both_length_resid": -0.014203962914167492,
+      "corr_composite_with_length": 0.2896021838592959,
+      "corr_pc_length_resid": -0.01359528194199248,
+      "corr_pc_with_length": -0.28793356364246725,
+      "corr_raw": -0.09640571584471905,
+      "pc": 5
+    },
+    {
+      "composite": "decisive_resolution",
+      "corr_both_length_resid": 0.07565527096753787,
+      "corr_composite_with_length": 0.08362909530622421,
+      "corr_pc_length_resid": 0.07539024688668823,
+      "corr_pc_with_length": -0.28793356364246725,
+      "corr_raw": 0.04811787564013431,
+      "pc": 5
+    },
+    {
+      "composite": "principle_minus_outcome",
+      "corr_both_length_resid": -0.006436129223951871,
+      "corr_composite_with_length": 0.1073174970490445,
+      "corr_pc_length_resid": -0.006398959296590684,
+      "corr_pc_with_length": -0.28793356364246725,
+      "corr_raw": -0.03702827521064056,
+      "pc": 5
+    },
+    {
+      "composite": "procedural_minus_decisive",
+      "corr_both_length_resid": -0.08105112294588089,
+      "corr_composite_with_length": 0.20224202646361997,
+      "corr_pc_length_resid": -0.0793762478575593,
+      "corr_pc_with_length": -0.28793356364246725,
+      "corr_raw": -0.13424696184445942,
+      "pc": 5
+    }
+  ],
+  "n": 540
+}

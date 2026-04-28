@@ -1,0 +1,3250 @@
+{
+  "base_capture_id": "capture_1_1d7271d73617",
+  "conditions": [
+    "N_neutral_01",
+    "N_neutral_02",
+    "N_generic_moral_01",
+    "P_deont_01",
+    "P_deont_02",
+    "P_util_01",
+    "P_util_02",
+    "P_virtue_01",
+    "P_virtue_02",
+    "P_contract_01",
+    "P_contract_02",
+    "P_contractarian_01",
+    "P_contractarian_02",
+    "N_anti_deont_01",
+    "N_anti_util_01",
+    "N_anti_virtue_01",
+    "N_anti_contract_01",
+    "N_anti_contractarian_01"
+  ],
+  "contractarian_capture_id": "capture_1_c24f680774a7",
+  "generation_rows": {
+    "base_generation_rows": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/report_6aa730c32d87_8c1df9a2/results/generate_natural_responses_results.json",
+    "contractarian_generation_rows": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/morebench_theory_persona_vectors_phase03_brief_recommendation_smoke_anti_contractarian_contractarian_contractarian/report_02aa68279c28_ff67f3ad/results/generate_natural_responses_results.json"
+  },
+  "results": [
+    {
+      "condition_centroid_scores": {
+        "N_anti_contract_01": [
+          0.06221120059490204,
+          -0.18517166376113892,
+          -0.18011769652366638,
+          -0.024713145568966866,
+          -0.025675248354673386,
+          -0.002201938070356846,
+          0.05057574808597565,
+          0.09538473188877106
+        ],
+        "N_anti_contractarian_01": [
+          -0.4151242971420288,
+          -0.4402124285697937,
+          -0.4550289809703827,
+          -0.009948418475687504,
+          -0.2793777287006378,
+          -0.0909080058336258,
+          0.21833238005638123,
+          0.15772518515586853
+        ],
+        "N_anti_deont_01": [
+          -0.12273815274238586,
+          -0.486407071352005,
+          -0.16485919058322906,
+          -0.3815472424030304,
+          -0.21740958094596863,
+          -0.21250897645950317,
+          -0.24607135355472565,
+          0.21270805597305298
+        ],
+        "N_anti_util_01": [
+          -0.04316343739628792,
+          -0.19665126502513885,
+          -0.05018587037920952,
+          0.21585559844970703,
+          -0.033015958964824677,
+          0.006222558207809925,
+          -0.03746909275650978,
+          0.18024411797523499
+        ],
+        "N_anti_virtue_01": [
+          0.04432615265250206,
+          -0.18515603244304657,
+          -0.20879240334033966,
+          -0.33487147092819214,
+          -0.26046842336654663,
+          -0.31550151109695435,
+          -0.1812412291765213,
+          0.10813120007514954
+        ],
+        "N_generic_moral_01": [
+          -0.28130170702934265,
+          0.37934383749961853,
+          -0.12279660999774933,
+          -0.10171185433864594,
+          0.33866187930107117,
+          -0.034635502845048904,
+          0.05998961254954338,
+          -0.1376449167728424
+        ],
+        "N_neutral_01": [
+          0.20966646075248718,
+          0.23037201166152954,
+          -0.12822844088077545,
+          -0.12476146966218948,
+          0.1194690391421318,
+          -0.041260309517383575,
+          -0.030210858210921288,
+          -0.12887310981750488
+        ],
+        "N_neutral_02": [
+          0.12168620526790619,
+          0.15835881233215332,
+          -0.22962261736392975,
+          -0.03380700573325157,
+          0.1557929366827011,
+          -0.03250592201948166,
+          0.0028608287684619427,
+          -0.057816606014966965
+        ],
+        "P_contract_01": [
+          0.48521360754966736,
+          0.2405170053243637,
+          -0.0251392163336277,
+          -0.00289935409091413,
+          -0.16757161915302277,
+          0.08514072000980377,
+          0.02305460348725319,
+          -0.03865845501422882
+        ],
+        "P_contract_02": [
+          0.11359071731567383,
+          0.005549000576138496,
+          0.0737655982375145,
+          0.1817617565393448,
+          0.021519046276807785,
+          0.051996953785419464,
+          0.010476901195943356,
+          -0.11450400948524475
+        ],
+        "P_contractarian_01": [
+          0.22357873618602753,
+          0.44763997197151184,
+          -0.1708066612482071,
+          -0.1366799771785736,
+          0.11567609757184982,
+          0.09581540524959564,
+          0.029948851093649864,
+          -0.04448924958705902
+        ],
+        "P_contractarian_02": [
+          -0.11680571734905243,
+          0.4564283788204193,
+          -0.011626124382019043,
+          -0.32157620787620544,
+          0.09971676021814346,
+          0.08355732262134552,
+          -0.0005308116669766605,
+          -0.00985339842736721
+        ],
+        "P_deont_01": [
+          -0.10761567950248718,
+          0.10471973568201065,
+          0.013742972165346146,
+          0.5511562824249268,
+          -0.02173190377652645,
+          -0.05649397522211075,
+          0.06561952084302902,
+          -0.023387877270579338
+        ],
+        "P_deont_02": [
+          -0.391217976808548,
+          -0.367776095867157,
+          0.6093035936355591,
+          0.24524910748004913,
+          0.10597777366638184,
+          0.10196962207555771,
+          0.30317094922065735,
+          -0.1856812685728073
+        ],
+        "P_util_01": [
+          0.47842472791671753,
+          -0.13859017193317413,
+          0.09620168805122375,
+          -0.053799159824848175,
+          0.004733250010758638,
+          0.03694729506969452,
+          -0.05640489608049393,
+          0.005043498706072569
+        ],
+        "P_util_02": [
+          0.24344301223754883,
+          -0.4475816488265991,
+          0.07320408523082733,
+          -0.03658662363886833,
+          -0.036863576620817184,
+          -0.03158293291926384,
+          -0.1437779814004898,
+          0.021595776081085205
+        ],
+        "P_virtue_01": [
+          0.13211604952812195,
+          0.32543888688087463,
+          -0.0725884735584259,
+          0.22235430777072906,
+          0.19934071600437164,
+          0.0360804945230484,
+          0.0032496429048478603,
+          -0.10776443779468536
+        ],
+        "P_virtue_02": [
+          -0.6362897157669067,
+          0.09917853772640228,
+          0.9535744786262512,
+          0.1465248316526413,
+          -0.11877348273992538,
+          0.31986886262893677,
+          -0.07157301157712936,
+          0.06784078478813171
+        ]
+      },
+      "cv_loading_stability": [
+        {
+          "abs_condition_loading_corr": 0.7910232300055934,
+          "pc": 1
+        },
+        {
+          "abs_condition_loading_corr": 0.8899326450837144,
+          "pc": 2
+        },
+        {
+          "abs_condition_loading_corr": 0.9526513861514965,
+          "pc": 3
+        },
+        {
+          "abs_condition_loading_corr": 0.8084763727860105,
+          "pc": 4
+        },
+        {
+          "abs_condition_loading_corr": 0.6745093190840461,
+          "pc": 5
+        },
+        {
+          "abs_condition_loading_corr": 0.5760128913414599,
+          "pc": 6
+        },
+        {
+          "abs_condition_loading_corr": 0.4839623811908675,
+          "pc": 7
+        },
+        {
+          "abs_condition_loading_corr": 0.7673368536463085,
+          "pc": 8
+        }
+      ],
+      "explained_variance_ratio": [
+        0.07306759059429169,
+        0.06849775463342667,
+        0.04852941632270813,
+        0.03836112841963768,
+        0.03138842061161995,
+        0.024578895419836044,
+        0.022940363734960556,
+        0.020858019590377808
+      ],
+      "layer": 16,
+      "n_conditions": 18,
+      "n_dilemmas": 30,
+      "n_features": 2048,
+      "n_rows": 540,
+      "pcs": [
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.6362897157669067,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.4151242971420288,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.391217976808548,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.28130170702934265,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.12273815274238586,
+                "theory": "anti_deontology"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.48521360754966736,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.47842472791671753,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": 0.24344301223754883,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": 0.22357873618602753,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.20966646075248718,
+                "theory": "none"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.07306759059429169,
+          "pc": 1,
+          "singular_value": 13.6947021484375
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.486407071352005,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.4475816488265991,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.4402124285697937,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.367776095867157,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.19665126502513885,
+                "theory": "anti_utilitarian"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.4564283788204193,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": 0.44763997197151184,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.37934383749961853,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.32543888688087463,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.2405170053243637,
+                "theory": "contractualism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.06849775463342667,
+          "pc": 2,
+          "singular_value": 13.259536743164062
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.4550289809703827,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": -0.22962261736392975,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.20879240334033966,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.18011769652366638,
+                "theory": "anti_contractualism"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.1708066612482071,
+                "theory": "contractarianism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.9535744786262512,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.6093035936355591,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.09620168805122375,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": 0.0737655982375145,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": 0.07320408523082733,
+                "theory": "utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.04852941632270813,
+          "pc": 3,
+          "singular_value": 11.160733222961426
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.3815472424030304,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.33487147092819214,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": -0.32157620787620544,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.1366799771785736,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.12476146966218948,
+                "theory": "none"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.5511562824249268,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.24524910748004913,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.22235430777072906,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.21585559844970703,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": 0.1817617565393448,
+                "theory": "contractualism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.03836112841963768,
+          "pc": 4,
+          "singular_value": 9.922837257385254
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.2793777287006378,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.26046842336654663,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.21740958094596863,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -0.16757161915302277,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.11877348273992538,
+                "theory": "virtue_ethics"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.33866187930107117,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.19934071600437164,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.1557929366827011,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.1194690391421318,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": 0.11567609757184982,
+                "theory": "contractarianism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.03138842061161995,
+          "pc": 5,
+          "singular_value": 8.975836753845215
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.31550151109695435,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.21250897645950317,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.0909080058336258,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.05649397522211075,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.041260309517383575,
+                "theory": "none"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.31986886262893677,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.10196962207555771,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": 0.09581540524959564,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.08514072000980377,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.08355732262134552,
+                "theory": "contractarianism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.024578895419836044,
+          "pc": 6,
+          "singular_value": 7.942758560180664
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.24607135355472565,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.1812412291765213,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.1437779814004898,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.07157301157712936,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.05640489608049393,
+                "theory": "utilitarian"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.30317094922065735,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.21833238005638123,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.06561952084302902,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.05998961254954338,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.05057574808597565,
+                "theory": "anti_contractualism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.022940363734960556,
+          "pc": 7,
+          "singular_value": 7.6734442710876465
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.1856812685728073,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.1376449167728424,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.12887310981750488,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": -0.11450400948524475,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": -0.10776443779468536,
+                "theory": "virtue_ethics"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.21270805597305298,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.18024411797523499,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.15772518515586853,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.10813120007514954,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.09538473188877106,
+                "theory": "anti_contractualism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.020858019590377808,
+          "pc": 8,
+          "singular_value": 7.316893100738525
+        }
+      ],
+      "site": "generated_sequence_residual",
+      "slice": "first_16"
+    },
+    {
+      "condition_centroid_scores": {
+        "N_anti_contract_01": [
+          0.4577127695083618,
+          0.13296101987361908,
+          -0.29079630970954895,
+          0.07362224906682968,
+          -0.12052712589502335,
+          0.0692419782280922,
+          0.0355408638715744,
+          0.06882070004940033
+        ],
+        "N_anti_contractarian_01": [
+          0.671000063419342,
+          -0.1087019145488739,
+          -0.5209789872169495,
+          0.31952017545700073,
+          0.08972655236721039,
+          0.015220314264297485,
+          -0.2730500400066376,
+          -0.2929900288581848
+        ],
+        "N_anti_deont_01": [
+          0.6563851237297058,
+          0.08507222682237625,
+          -0.3028523325920105,
+          -0.27615925669670105,
+          -0.008961504325270653,
+          -0.005647244863212109,
+          0.13832809031009674,
+          0.05992234870791435
+        ],
+        "N_anti_util_01": [
+          0.6532174348831177,
+          0.11500406265258789,
+          -0.4324480891227722,
+          -0.07743436843156815,
+          0.1270321160554886,
+          -0.0484696626663208,
+          0.02588457614183426,
+          0.07419456541538239
+        ],
+        "N_anti_virtue_01": [
+          0.5825382471084595,
+          0.23176313936710358,
+          -0.2925834357738495,
+          -0.29932525753974915,
+          -0.05939634144306183,
+          0.02547360584139824,
+          0.06178606301546097,
+          0.04706426337361336
+        ],
+        "N_generic_moral_01": [
+          -0.7972953915596008,
+          0.5297483205795288,
+          -0.07770852744579315,
+          -0.2234880030155182,
+          0.02165217511355877,
+          0.056911054998636246,
+          -0.5017161965370178,
+          0.26731157302856445
+        ],
+        "N_neutral_01": [
+          0.39163729548454285,
+          0.6940883994102478,
+          0.6409159898757935,
+          0.08968877047300339,
+          -0.07551280409097672,
+          -0.5403388738632202,
+          -0.01929212361574173,
+          -0.10780181735754013
+        ],
+        "N_neutral_02": [
+          0.315872460603714,
+          0.6964489817619324,
+          0.5976255536079407,
+          0.18660375475883484,
+          0.12166602909564972,
+          0.5138401389122009,
+          0.1446494460105896,
+          -0.0561225451529026
+        ],
+        "P_contract_01": [
+          -0.8879109025001526,
+          0.23106101155281067,
+          -0.40089237689971924,
+          0.3571830093860626,
+          -0.4740667939186096,
+          -0.02664431370794773,
+          0.21095973253250122,
+          -0.00045062749995850027
+        ],
+        "P_contract_02": [
+          0.010808061808347702,
+          -0.4221637547016144,
+          0.20120733976364136,
+          0.1905350387096405,
+          -0.05226822569966316,
+          0.038218095898628235,
+          -0.07559937983751297,
+          0.10668333619832993
+        ],
+        "P_contractarian_01": [
+          -0.5827382802963257,
+          -0.16051173210144043,
+          -0.05857274308800697,
+          0.09132716059684753,
+          0.14589379727840424,
+          -0.004224698059260845,
+          0.05007515102624893,
+          -0.24035093188285828
+        ],
+        "P_contractarian_02": [
+          0.15426097810268402,
+          -0.5364742279052734,
+          0.23309069871902466,
+          0.23149675130844116,
+          0.09967614710330963,
+          -0.030525529757142067,
+          -0.16301076114177704,
+          -0.07748545706272125
+        ],
+        "P_deont_01": [
+          -0.47722896933555603,
+          -0.1754850596189499,
+          0.14624519646167755,
+          -0.45843422412872314,
+          0.20988596975803375,
+          -0.05761760100722313,
+          0.15137767791748047,
+          -0.13674044609069824
+        ],
+        "P_deont_02": [
+          0.09890326112508774,
+          -0.39653199911117554,
+          0.3484521508216858,
+          -0.048562515527009964,
+          -0.24203182756900787,
+          0.11102995276451111,
+          -0.055193543434143066,
+          0.06121189892292023
+        ],
+        "P_util_01": [
+          -0.6888579726219177,
+          0.052279260009527206,
+          -0.2017640322446823,
+          0.21434953808784485,
+          0.39910468459129333,
+          -0.13147082924842834,
+          0.20037022233009338,
+          0.2052675187587738
+        ],
+        "P_util_02": [
+          0.07639728486537933,
+          -0.46873027086257935,
+          0.21564356982707977,
+          0.19923950731754303,
+          0.07771489769220352,
+          -0.05845341831445694,
+          0.07178541272878647,
+          0.27930358052253723
+        ],
+        "P_virtue_01": [
+          -0.8392283320426941,
+          -0.018328959122300148,
+          -0.049875658005476,
+          -0.2527497708797455,
+          -0.054128266870975494,
+          0.07576440274715424,
+          -0.018953898921608925,
+          -0.28218916058540344
+        ],
+        "P_virtue_02": [
+          0.2045269012451172,
+          -0.4814983606338501,
+          0.24529141187667847,
+          -0.3174123764038086,
+          -0.205459326505661,
+          -0.0023073265329003334,
+          0.01605883426964283,
+          0.02435111254453659
+        ]
+      },
+      "cv_loading_stability": [
+        {
+          "abs_condition_loading_corr": 0.9997390549689803,
+          "pc": 1
+        },
+        {
+          "abs_condition_loading_corr": 0.9993171503760995,
+          "pc": 2
+        },
+        {
+          "abs_condition_loading_corr": 0.9995464298519259,
+          "pc": 3
+        },
+        {
+          "abs_condition_loading_corr": 0.9986670511961757,
+          "pc": 4
+        },
+        {
+          "abs_condition_loading_corr": 0.9976943464144913,
+          "pc": 5
+        },
+        {
+          "abs_condition_loading_corr": 0.9994033719576872,
+          "pc": 6
+        },
+        {
+          "abs_condition_loading_corr": 0.9938816444519145,
+          "pc": 7
+        },
+        {
+          "abs_condition_loading_corr": 0.998635501591035,
+          "pc": 8
+        }
+      ],
+      "explained_variance_ratio": [
+        0.2857343852519989,
+        0.13636691868305206,
+        0.10961335152387619,
+        0.05778057128190994,
+        0.03492728993296623,
+        0.03333013132214546,
+        0.030336672440171242,
+        0.02718210220336914
+      ],
+      "layer": 16,
+      "n_conditions": 18,
+      "n_dilemmas": 30,
+      "n_features": 2048,
+      "n_rows": 540,
+      "pcs": [
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -0.8879109025001526,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": -0.8392283320426941,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.7972953915596008,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.6888579726219177,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.5827382802963257,
+                "theory": "contractarianism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.671000063419342,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.6563851237297058,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.6532174348831177,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.5825382471084595,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.4577127695083618,
+                "theory": "anti_contractualism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.2857343852519989,
+          "pc": 1,
+          "singular_value": 12.728549003601074
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": -0.5364742279052734,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.4814983606338501,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.46873027086257935,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": -0.4221637547016144,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.39653199911117554,
+                "theory": "deontology"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.6964489817619324,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.6940883994102478,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.5297483205795288,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.23176313936710358,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.23106101155281067,
+                "theory": "contractualism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.13636691868305206,
+          "pc": 2,
+          "singular_value": 8.793305397033691
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.5209789872169495,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.4324480891227722,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -0.40089237689971924,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.3028523325920105,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.2925834357738495,
+                "theory": "anti_virtue_ethics"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.6409159898757935,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.5976255536079407,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.3484521508216858,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.24529141187667847,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.23309069871902466,
+                "theory": "contractarianism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.10961335152387619,
+          "pc": 3,
+          "singular_value": 7.8836870193481445
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.45843422412872314,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.3174123764038086,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.29932525753974915,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.27615925669670105,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": -0.2527497708797455,
+                "theory": "virtue_ethics"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.3571830093860626,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.31952017545700073,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.23149675130844116,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.21434953808784485,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": 0.19923950731754303,
+                "theory": "utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.05778057128190994,
+          "pc": 4,
+          "singular_value": 5.723854064941406
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -0.4740667939186096,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.24203182756900787,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.205459326505661,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.12052712589502335,
+                "theory": "anti_contractualism"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.07551280409097672,
+                "theory": "none"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.39910468459129333,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.20988596975803375,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": 0.14589379727840424,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.1270321160554886,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.12166602909564972,
+                "theory": "none"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.03492728993296623,
+          "pc": 5,
+          "singular_value": 4.4502058029174805
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.5403388738632202,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.13147082924842834,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.05845341831445694,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.05761760100722313,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.0484696626663208,
+                "theory": "anti_utilitarian"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.5138401389122009,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.11102995276451111,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.07576440274715424,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.0692419782280922,
+                "theory": "anti_contractualism"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.056911054998636246,
+                "theory": "generic_moral"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.03333013132214546,
+          "pc": 6,
+          "singular_value": 4.347265243530273
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.5017161965370178,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.2730500400066376,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": -0.16301076114177704,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": -0.07559937983751297,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.055193543434143066,
+                "theory": "deontology"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.21095973253250122,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.20037022233009338,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.15137767791748047,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.1446494460105896,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.13832809031009674,
+                "theory": "anti_deontology"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.030336672440171242,
+          "pc": 7,
+          "singular_value": 4.147454261779785
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.2929900288581848,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": -0.28218916058540344,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.24035093188285828,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.13674044609069824,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.10780181735754013,
+                "theory": "none"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": 0.27930358052253723,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.26731157302856445,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.2052675187587738,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": 0.10668333619832993,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.07419456541538239,
+                "theory": "anti_utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.02718210220336914,
+          "pc": 8,
+          "singular_value": 3.9258992671966553
+        }
+      ],
+      "site": "prompt_end_residual",
+      "slice": "full"
+    },
+    {
+      "condition_centroid_scores": {
+        "N_anti_contract_01": [
+          0.16487447917461395,
+          -0.4132058918476105,
+          0.31261342763900757,
+          0.0988556370139122,
+          0.14011377096176147,
+          0.25928372144699097,
+          -0.07056113332509995,
+          0.06875662505626678
+        ],
+        "N_anti_contractarian_01": [
+          1.2606985569000244,
+          -0.38697025179862976,
+          0.8591858148574829,
+          -0.0024888634216040373,
+          0.5029219388961792,
+          0.3082846999168396,
+          -0.10334231704473495,
+          0.5511718392372131
+        ],
+        "N_anti_deont_01": [
+          0.7195358872413635,
+          -1.1931614875793457,
+          0.44754984974861145,
+          -0.8250357508659363,
+          0.5868704319000244,
+          -0.22884224355220795,
+          0.40743348002433777,
+          0.03755010664463043
+        ],
+        "N_anti_util_01": [
+          0.6892684102058411,
+          -0.07344724237918854,
+          -0.16514073312282562,
+          0.3197324573993683,
+          0.29952019453048706,
+          0.21433821320533752,
+          0.17727908492088318,
+          0.2849907875061035
+        ],
+        "N_anti_virtue_01": [
+          0.013146749697625637,
+          -0.7006611227989197,
+          0.5101354122161865,
+          -0.40383750200271606,
+          0.5941511392593384,
+          -0.07982566952705383,
+          -0.2000667005777359,
+          0.037718091160058975
+        ],
+        "N_generic_moral_01": [
+          -0.16828109323978424,
+          0.6819265484809875,
+          0.6404740214347839,
+          0.03233134001493454,
+          -0.6781623363494873,
+          -0.13896821439266205,
+          -0.12744347751140594,
+          0.08745025098323822
+        ],
+        "N_neutral_01": [
+          -0.8350445628166199,
+          -0.04234588146209717,
+          0.3530695140361786,
+          0.11083522439002991,
+          -0.3029285967350006,
+          -0.011259063147008419,
+          -0.04095977172255516,
+          -0.12436525523662567
+        ],
+        "N_neutral_02": [
+          -0.6440709233283997,
+          -0.0818440392613411,
+          0.44021251797676086,
+          0.2733517289161682,
+          -0.36387547850608826,
+          -0.0557585246860981,
+          -0.12147854268550873,
+          -0.02952936477959156
+        ],
+        "P_contract_01": [
+          -1.0399985313415527,
+          0.06362524628639221,
+          -0.006286333780735731,
+          0.1496841460466385,
+          0.4596391022205353,
+          0.16291281580924988,
+          -0.028154142200946808,
+          -0.0016841322649270296
+        ],
+        "P_contract_02": [
+          -0.03451315686106682,
+          0.14665426313877106,
+          -0.3986119031906128,
+          0.3112093508243561,
+          -0.04820207878947258,
+          -0.027163386344909668,
+          -0.07723598927259445,
+          -0.008981406688690186
+        ],
+        "P_contractarian_01": [
+          -1.1049507856369019,
+          0.3861817419528961,
+          0.3411768674850464,
+          -0.015096094459295273,
+          -0.2648813724517822,
+          -0.1649133563041687,
+          0.13561215996742249,
+          -0.14186207950115204
+        ],
+        "P_contractarian_02": [
+          -0.6663686633110046,
+          0.6917571425437927,
+          0.5258508324623108,
+          -0.5664045214653015,
+          -0.2954311966896057,
+          -0.11887059360742569,
+          0.1468997448682785,
+          -0.10190895944833755
+        ],
+        "P_deont_01": [
+          0.47166702151298523,
+          0.5579513907432556,
+          -0.42685893177986145,
+          0.9643045663833618,
+          -0.02394672855734825,
+          -0.220919668674469,
+          -0.30310288071632385,
+          0.08756256103515625
+        ],
+        "P_deont_02": [
+          0.9473068118095398,
+          0.11243478953838348,
+          -1.100268006324768,
+          -0.07530888170003891,
+          -0.43801531195640564,
+          0.4642651677131653,
+          -0.5962868928909302,
+          -0.07985417544841766
+        ],
+        "P_util_01": [
+          -0.7375175356864929,
+          -0.6563616394996643,
+          -0.16536261141300201,
+          -0.022058269008994102,
+          -0.020999182015657425,
+          -0.28470948338508606,
+          -0.00040233234176412225,
+          -0.19681206345558167
+        ],
+        "P_util_02": [
+          0.009743722155690193,
+          -1.120840311050415,
+          -0.28370949625968933,
+          -0.11728005111217499,
+          0.04721616953611374,
+          -0.6918601989746094,
+          0.2257024347782135,
+          -0.2716217041015625
+        ],
+        "P_virtue_01": [
+          -0.41279664635658264,
+          0.5837575793266296,
+          -0.26378658413887024,
+          0.505949079990387,
+          -0.3745279014110565,
+          0.014290530234575272,
+          0.11681592464447021,
+          0.07565213739871979
+        ],
+        "P_virtue_02": [
+          1.3673018217086792,
+          1.4445488452911377,
+          -1.6202424764633179,
+          -0.7387436032295227,
+          0.18053698539733887,
+          0.5997158288955688,
+          0.4592910408973694,
+          -0.2742331326007843
+        ]
+      },
+      "cv_loading_stability": [
+        {
+          "abs_condition_loading_corr": 0.8837511998488339,
+          "pc": 1
+        },
+        {
+          "abs_condition_loading_corr": 0.9503898423754298,
+          "pc": 2
+        },
+        {
+          "abs_condition_loading_corr": 0.8552307550345146,
+          "pc": 3
+        },
+        {
+          "abs_condition_loading_corr": 0.9591378718065218,
+          "pc": 4
+        },
+        {
+          "abs_condition_loading_corr": 0.8155227893041832,
+          "pc": 5
+        },
+        {
+          "abs_condition_loading_corr": 0.6824569593269559,
+          "pc": 6
+        },
+        {
+          "abs_condition_loading_corr": 0.7317199925159116,
+          "pc": 7
+        },
+        {
+          "abs_condition_loading_corr": 0.7586970783652491,
+          "pc": 8
+        }
+      ],
+      "explained_variance_ratio": [
+        0.09455645829439163,
+        0.06944802403450012,
+        0.05166349560022354,
+        0.03683284670114517,
+        0.03279883787035942,
+        0.028117787092924118,
+        0.026564711704850197,
+        0.021260647103190422
+      ],
+      "layer": 32,
+      "n_conditions": 18,
+      "n_dilemmas": 30,
+      "n_features": 2048,
+      "n_rows": 540,
+      "pcs": [
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -1.1049507856369019,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -1.0399985313415527,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.8350445628166199,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.7375175356864929,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": -0.6663686633110046,
+                "theory": "contractarianism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 1.3673018217086792,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 1.2606985569000244,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.9473068118095398,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.7195358872413635,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.6892684102058411,
+                "theory": "anti_utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.09455645829439163,
+          "pc": 1,
+          "singular_value": 27.979990005493164
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -1.1931614875793457,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -1.120840311050415,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.7006611227989197,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.6563616394996643,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.4132058918476105,
+                "theory": "anti_contractualism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 1.4445488452911377,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.6917571425437927,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.6819265484809875,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.5837575793266296,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.5579513907432556,
+                "theory": "deontology"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.06944802403450012,
+          "pc": 2,
+          "singular_value": 23.979045867919922
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -1.6202424764633179,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -1.100268006324768,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.42685893177986145,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": -0.3986119031906128,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.28370949625968933,
+                "theory": "utilitarian"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.8591858148574829,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.6404740214347839,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.5258508324623108,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.5101354122161865,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.44754984974861145,
+                "theory": "anti_deontology"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.05166349560022354,
+          "pc": 3,
+          "singular_value": 20.68206214904785
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.8250357508659363,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.7387436032295227,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": -0.5664045214653015,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.40383750200271606,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.11728005111217499,
+                "theory": "utilitarian"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.9643045663833618,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.505949079990387,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.3197324573993683,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": 0.3112093508243561,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.2733517289161682,
+                "theory": "none"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.03683284670114517,
+          "pc": 4,
+          "singular_value": 17.463029861450195
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.6781623363494873,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.43801531195640564,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": -0.3745279014110565,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": -0.36387547850608826,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.3029285967350006,
+                "theory": "none"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.5941511392593384,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.5868704319000244,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.5029219388961792,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.4596391022205353,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.29952019453048706,
+                "theory": "anti_utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.03279883787035942,
+          "pc": 5,
+          "singular_value": 16.47901153564453
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.6918601989746094,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.28470948338508606,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.22884224355220795,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.220919668674469,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.1649133563041687,
+                "theory": "contractarianism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.5997158288955688,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.4642651677131653,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.3082846999168396,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.25928372144699097,
+                "theory": "anti_contractualism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.21433821320533752,
+                "theory": "anti_utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.028117787092924118,
+          "pc": 6,
+          "singular_value": 15.257821083068848
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.5962868928909302,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.30310288071632385,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.2000667005777359,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.12744347751140594,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": -0.12147854268550873,
+                "theory": "none"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.4592910408973694,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.40743348002433777,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": 0.2257024347782135,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.17727908492088318,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.1468997448682785,
+                "theory": "contractarianism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.026564711704850197,
+          "pc": 7,
+          "singular_value": 14.830455780029297
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.2742331326007843,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.2716217041015625,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.19681206345558167,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.14186207950115204,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -0.12436525523662567,
+                "theory": "none"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.5511718392372131,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.2849907875061035,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.08756256103515625,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.08745025098323822,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.07565213739871979,
+                "theory": "virtue_ethics"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.021260647103190422,
+          "pc": 8,
+          "singular_value": 13.267533302307129
+        }
+      ],
+      "site": "generated_sequence_residual",
+      "slice": "first_16"
+    },
+    {
+      "condition_centroid_scores": {
+        "N_anti_contract_01": [
+          1.592678427696228,
+          -0.04536950960755348,
+          -0.4460581839084625,
+          -0.011748340912163258,
+          -0.5687368512153625,
+          -0.3188941180706024,
+          0.05542571470141411,
+          0.07117240130901337
+        ],
+        "N_anti_contractarian_01": [
+          1.8076385259628296,
+          0.37347447872161865,
+          -0.19028015434741974,
+          -0.6013470888137817,
+          -0.9102570414543152,
+          -0.059662625193595886,
+          -0.27814051508903503,
+          0.07253997027873993
+        ],
+        "N_anti_deont_01": [
+          2.0632784366607666,
+          0.3808707892894745,
+          -0.6893629431724548,
+          0.2067614048719406,
+          1.0329625606536865,
+          -0.14566558599472046,
+          0.1579088270664215,
+          -0.08068611472845078
+        ],
+        "N_anti_util_01": [
+          1.5092155933380127,
+          -0.2029174417257309,
+          -0.43029874563217163,
+          0.2047024816274643,
+          -0.7398779988288879,
+          0.6487629413604736,
+          0.4690759479999542,
+          -0.4220079481601715
+        ],
+        "N_anti_virtue_01": [
+          1.8735947608947754,
+          -0.09964192658662796,
+          -0.7248081564903259,
+          0.21450428664684296,
+          0.7280702590942383,
+          -0.16111959517002106,
+          -0.4353580176830292,
+          0.09489608556032181
+        ],
+        "N_generic_moral_01": [
+          -1.3011419773101807,
+          -0.49891796708106995,
+          -0.7294418215751648,
+          1.0119684934616089,
+          -0.46409672498703003,
+          -0.2374494969844818,
+          -0.6322017908096313,
+          0.3612704873085022
+        ],
+        "N_neutral_01": [
+          0.31299126148223877,
+          -2.523890256881714,
+          0.8491396307945251,
+          0.09716561436653137,
+          0.09913250058889389,
+          0.08102134615182877,
+          0.4783606231212616,
+          0.8441692590713501
+        ],
+        "N_neutral_02": [
+          -0.1910018026828766,
+          -2.4026520252227783,
+          0.8373756408691406,
+          -0.2845233678817749,
+          0.11004945635795593,
+          -0.151576429605484,
+          -0.4270496964454651,
+          -0.863421618938446
+        ],
+        "P_contract_01": [
+          -1.9199784994125366,
+          -0.06125807389616966,
+          -1.1616384983062744,
+          -0.3517501652240753,
+          -0.1602637618780136,
+          -0.7619907855987549,
+          0.6630449891090393,
+          -0.06317499279975891
+        ],
+        "P_contract_02": [
+          -0.2810860276222229,
+          0.9385162591934204,
+          0.7688844799995422,
+          -0.2541399896144867,
+          -0.1603938788175583,
+          -0.011212289333343506,
+          0.06630738079547882,
+          0.02967270277440548
+        ],
+        "P_contractarian_01": [
+          -0.8968066573143005,
+          0.18863385915756226,
+          -0.2939828932285309,
+          -0.6262661814689636,
+          0.04798995703458786,
+          0.06881091743707657,
+          -0.3126814067363739,
+          0.19466038048267365
+        ],
+        "P_contractarian_02": [
+          -0.38093313574790955,
+          1.06838059425354,
+          0.8287613987922668,
+          -0.5293110609054565,
+          -0.0879015401005745,
+          -0.016351474449038506,
+          -0.312611848115921,
+          0.1672527939081192
+        ],
+        "P_deont_01": [
+          -0.8970457911491394,
+          0.4553465247154236,
+          -0.13050875067710876,
+          0.5381391644477844,
+          0.11167339980602264,
+          0.9545468688011169,
+          -0.17674995958805084,
+          0.15663567185401917
+        ],
+        "P_deont_02": [
+          -0.3766822814941406,
+          1.002646565437317,
+          1.0645734071731567,
+          0.8041975498199463,
+          0.0017061865655705333,
+          -0.543270468711853,
+          -0.035785239189863205,
+          -0.11062545329332352
+        ],
+        "P_util_01": [
+          -1.2780156135559082,
+          -0.0355030819773674,
+          -0.7316239476203918,
+          -0.8048166036605835,
+          0.4122958481311798,
+          0.3539291322231293,
+          0.1551268845796585,
+          0.0018303905380889773
+        ],
+        "P_util_02": [
+          -0.07477807998657227,
+          0.6415000557899475,
+          0.7781544327735901,
+          -0.655637800693512,
+          0.3381783068180084,
+          0.052087560296058655,
+          0.013104244135320187,
+          0.141171395778656
+        ],
+        "P_virtue_01": [
+          -1.682172179222107,
+          -0.08302147686481476,
+          -0.4403378665447235,
+          0.4047118127346039,
+          0.10115039348602295,
+          0.2728753387928009,
+          0.000789260258898139,
+          -0.38575759530067444
+        ],
+        "P_virtue_02": [
+          0.12024640291929245,
+          0.9038028120994568,
+          0.8414525985717773,
+          0.6373899579048157,
+          0.10831926763057709,
+          -0.0248410627245903,
+          0.5514339208602905,
+          -0.20959781110286713
+        ]
+      },
+      "cv_loading_stability": [
+        {
+          "abs_condition_loading_corr": 0.9997032533268937,
+          "pc": 1
+        },
+        {
+          "abs_condition_loading_corr": 0.9995749998130733,
+          "pc": 2
+        },
+        {
+          "abs_condition_loading_corr": 0.9996174606819926,
+          "pc": 3
+        },
+        {
+          "abs_condition_loading_corr": 0.9971995982861438,
+          "pc": 4
+        },
+        {
+          "abs_condition_loading_corr": 0.9988988124028625,
+          "pc": 5
+        },
+        {
+          "abs_condition_loading_corr": 0.9954907040509868,
+          "pc": 6
+        },
+        {
+          "abs_condition_loading_corr": 0.992982882049575,
+          "pc": 7
+        },
+        {
+          "abs_condition_loading_corr": 0.9969623789251488,
+          "pc": 8
+        }
+      ],
+      "explained_variance_ratio": [
+        0.29188889265060425,
+        0.18142399191856384,
+        0.09779737889766693,
+        0.05421954393386841,
+        0.04193613678216934,
+        0.02891388162970543,
+        0.0258466936647892,
+        0.022697629407048225
+      ],
+      "layer": 32,
+      "n_conditions": 18,
+      "n_dilemmas": 30,
+      "n_features": 2048,
+      "n_rows": 540,
+      "pcs": [
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -1.9199784994125366,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": -1.682172179222107,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -1.3011419773101807,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -1.2780156135559082,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": -0.8970457911491394,
+                "theory": "deontology"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 2.0632784366607666,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": 1.8735947608947754,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": 1.8076385259628296,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": 1.592678427696228,
+                "theory": "anti_contractualism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 1.5092155933380127,
+                "theory": "anti_utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.29188889265060425,
+          "pc": 1,
+          "singular_value": 28.979537963867188
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": -2.523890256881714,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": -2.4026520252227783,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.49891796708106995,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.2029174417257309,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.09964192658662796,
+                "theory": "anti_virtue_ethics"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 1.06838059425354,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 1.002646565437317,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": 0.9385162591934204,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.9038028120994568,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": 0.6415000557899475,
+                "theory": "utilitarian"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.18142399191856384,
+          "pc": 2,
+          "singular_value": 22.847043991088867
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -1.1616384983062744,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.7316239476203918,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.7294418215751648,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.7248081564903259,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.6893629431724548,
+                "theory": "anti_deontology"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 1.0645734071731567,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.8491396307945251,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.8414525985717773,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": 0.8373756408691406,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.8287613987922668,
+                "theory": "contractarianism"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.09779737889766693,
+          "pc": 3,
+          "singular_value": 16.774372100830078
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": -0.8048166036605835,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": -0.655637800693512,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.6262661814689636,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.6013470888137817,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": -0.5293110609054565,
+                "theory": "contractarianism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 1.0119684934616089,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": 0.8041975498199463,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.6373899579048157,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.5381391644477844,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.4047118127346039,
+                "theory": "virtue_ethics"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.05421954393386841,
+          "pc": 4,
+          "singular_value": 12.489946365356445
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_anti_contractarian_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.9102570414543152,
+                "theory": "anti_contractarianism"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.7398779988288879,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.5687368512153625,
+                "theory": "anti_contractualism"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.46409672498703003,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_contract_02",
+                "role": "positive_variant",
+                "score": -0.1603938788175583,
+                "theory": "contractualism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 1.0329625606536865,
+                "theory": "anti_deontology"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.7280702590942383,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.4122958481311798,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_util_02",
+                "role": "positive_variant",
+                "score": 0.3381783068180084,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.11167339980602264,
+                "theory": "deontology"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.04193613678216934,
+          "pc": 5,
+          "singular_value": 10.984413146972656
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": -0.7619907855987549,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.543270468711853,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_contract_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.3188941180706024,
+                "theory": "anti_contractualism"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.2374494969844818,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.16111959517002106,
+                "theory": "anti_virtue_ethics"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.9545468688011169,
+                "theory": "deontology"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.6487629413604736,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "P_util_01",
+                "role": "positive",
+                "score": 0.3539291322231293,
+                "theory": "utilitarian"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": 0.2728753387928009,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.08102134615182877,
+                "theory": "none"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.02891388162970543,
+          "pc": 6,
+          "singular_value": 9.120861053466797
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": -0.6322017908096313,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "N_anti_virtue_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.4353580176830292,
+                "theory": "anti_virtue_ethics"
+              },
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": -0.4270496964454651,
+                "theory": "none"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": -0.3126814067363739,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": -0.312611848115921,
+                "theory": "contractarianism"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "P_contract_01",
+                "role": "positive",
+                "score": 0.6630449891090393,
+                "theory": "contractualism"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": 0.5514339208602905,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.4783606231212616,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.4690759479999542,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "N_anti_deont_01",
+                "role": "anti_theory_diagnostic",
+                "score": 0.1579088270664215,
+                "theory": "anti_deontology"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.0258466936647892,
+          "pc": 7,
+          "singular_value": 8.623531341552734
+        },
+        {
+          "condition_extremes": {
+            "negative": [
+              {
+                "condition_id": "N_neutral_02",
+                "role": "neutral_negative_length_matched",
+                "score": -0.863421618938446,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_anti_util_01",
+                "role": "anti_theory_diagnostic",
+                "score": -0.4220079481601715,
+                "theory": "anti_utilitarian"
+              },
+              {
+                "condition_id": "P_virtue_01",
+                "role": "positive",
+                "score": -0.38575759530067444,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_virtue_02",
+                "role": "positive_variant",
+                "score": -0.20959781110286713,
+                "theory": "virtue_ethics"
+              },
+              {
+                "condition_id": "P_deont_02",
+                "role": "positive_variant",
+                "score": -0.11062545329332352,
+                "theory": "deontology"
+              }
+            ],
+            "positive": [
+              {
+                "condition_id": "N_neutral_01",
+                "role": "neutral_negative",
+                "score": 0.8441692590713501,
+                "theory": "none"
+              },
+              {
+                "condition_id": "N_generic_moral_01",
+                "role": "generic_moral_anchor",
+                "score": 0.3612704873085022,
+                "theory": "generic_moral"
+              },
+              {
+                "condition_id": "P_contractarian_01",
+                "role": "positive",
+                "score": 0.19466038048267365,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_contractarian_02",
+                "role": "positive_variant",
+                "score": 0.1672527939081192,
+                "theory": "contractarianism"
+              },
+              {
+                "condition_id": "P_deont_01",
+                "role": "positive",
+                "score": 0.15663567185401917,
+                "theory": "deontology"
+              }
+            ]
+          },
+          "explained_variance_ratio": 0.022697629407048225,
+          "pc": 8,
+          "singular_value": 8.081145286560059
+        }
+      ],
+      "site": "prompt_end_residual",
+      "slice": "full"
+    }
+  ]
+}

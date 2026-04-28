@@ -1,0 +1,1336 @@
+{
+  "components": 5,
+  "condition_categories": [
+    "N_anti_contract_01",
+    "N_anti_contractarian_01",
+    "N_anti_deont_01",
+    "N_anti_util_01",
+    "N_anti_virtue_01",
+    "N_generic_moral_01",
+    "N_neutral_01",
+    "N_neutral_02",
+    "P_contract_01",
+    "P_contract_02",
+    "P_contractarian_01",
+    "P_contractarian_02",
+    "P_deont_01",
+    "P_deont_02",
+    "P_util_01",
+    "P_util_02",
+    "P_virtue_01",
+    "P_virtue_02"
+  ],
+  "condition_n": 18,
+  "correlations": [
+    {
+      "correlation": -0.14885901560308787,
+      "feature": "harm_welfare",
+      "pc": 1
+    },
+    {
+      "correlation": -0.04496524717280263,
+      "feature": "rights_autonomy",
+      "pc": 1
+    },
+    {
+      "correlation": 0.04493223118387893,
+      "feature": "fairness_justice",
+      "pc": 1
+    },
+    {
+      "correlation": 0.048137093944777505,
+      "feature": "honesty_truthfulness",
+      "pc": 1
+    },
+    {
+      "correlation": 0.009173235608403349,
+      "feature": "responsibility_accountability",
+      "pc": 1
+    },
+    {
+      "correlation": -0.07627250412493618,
+      "feature": "loyalty_trust",
+      "pc": 1
+    },
+    {
+      "correlation": 0.024188585185695718,
+      "feature": "legality_compliance",
+      "pc": 1
+    },
+    {
+      "correlation": 0.06865794258485561,
+      "feature": "public_interest_social_impact",
+      "pc": 1
+    },
+    {
+      "correlation": -0.0894663217498056,
+      "feature": "virtue_character",
+      "pc": 1
+    },
+    {
+      "correlation": 0.027112961638311006,
+      "feature": "care_compassion",
+      "pc": 1
+    },
+    {
+      "correlation": 0.012536472301856998,
+      "feature": "stakeholder_identification",
+      "pc": 1
+    },
+    {
+      "correlation": -0.13619882158099136,
+      "feature": "consequence_forecasting",
+      "pc": 1
+    },
+    {
+      "correlation": 0.265418283440565,
+      "feature": "tradeoff_acknowledged",
+      "pc": 1
+    },
+    {
+      "correlation": -0.2517646410757517,
+      "feature": "priority_resolution",
+      "pc": 1
+    },
+    {
+      "correlation": -0.0925508242379512,
+      "feature": "moral_uncertainty",
+      "pc": 1
+    },
+    {
+      "correlation": 0.037550425185608374,
+      "feature": "risk_mitigation",
+      "pc": 1
+    },
+    {
+      "correlation": -0.0459902943820547,
+      "feature": "conditional_recommendation",
+      "pc": 1
+    },
+    {
+      "correlation": 0.14364708017046116,
+      "feature": "procedural_escalation",
+      "pc": 1
+    },
+    {
+      "correlation": -0.12136605395875508,
+      "feature": "harm_welfare",
+      "pc": 2
+    },
+    {
+      "correlation": 0.2570037204556127,
+      "feature": "rights_autonomy",
+      "pc": 2
+    },
+    {
+      "correlation": 0.1910265361869758,
+      "feature": "fairness_justice",
+      "pc": 2
+    },
+    {
+      "correlation": 0.11245225097352939,
+      "feature": "honesty_truthfulness",
+      "pc": 2
+    },
+    {
+      "correlation": 0.2777121485351962,
+      "feature": "responsibility_accountability",
+      "pc": 2
+    },
+    {
+      "correlation": 0.2950215884616913,
+      "feature": "loyalty_trust",
+      "pc": 2
+    },
+    {
+      "correlation": 0.004831812806621181,
+      "feature": "legality_compliance",
+      "pc": 2
+    },
+    {
+      "correlation": -0.056360103969768476,
+      "feature": "public_interest_social_impact",
+      "pc": 2
+    },
+    {
+      "correlation": 0.3042337953763658,
+      "feature": "virtue_character",
+      "pc": 2
+    },
+    {
+      "correlation": 0.11675141716204253,
+      "feature": "care_compassion",
+      "pc": 2
+    },
+    {
+      "correlation": -0.01084816293439315,
+      "feature": "stakeholder_identification",
+      "pc": 2
+    },
+    {
+      "correlation": 0.0730036022114095,
+      "feature": "consequence_forecasting",
+      "pc": 2
+    },
+    {
+      "correlation": -0.01609424477174654,
+      "feature": "tradeoff_acknowledged",
+      "pc": 2
+    },
+    {
+      "correlation": -0.08395444486710746,
+      "feature": "priority_resolution",
+      "pc": 2
+    },
+    {
+      "correlation": 0.08998187371033907,
+      "feature": "moral_uncertainty",
+      "pc": 2
+    },
+    {
+      "correlation": -0.0019284587251411935,
+      "feature": "risk_mitigation",
+      "pc": 2
+    },
+    {
+      "correlation": 0.07113908639855429,
+      "feature": "conditional_recommendation",
+      "pc": 2
+    },
+    {
+      "correlation": 0.04577403800191756,
+      "feature": "procedural_escalation",
+      "pc": 2
+    },
+    {
+      "correlation": -0.022316294310945128,
+      "feature": "harm_welfare",
+      "pc": 3
+    },
+    {
+      "correlation": -0.10542510200386368,
+      "feature": "rights_autonomy",
+      "pc": 3
+    },
+    {
+      "correlation": -0.14861905158700442,
+      "feature": "fairness_justice",
+      "pc": 3
+    },
+    {
+      "correlation": -0.06317651688529863,
+      "feature": "honesty_truthfulness",
+      "pc": 3
+    },
+    {
+      "correlation": -0.11882130416170465,
+      "feature": "responsibility_accountability",
+      "pc": 3
+    },
+    {
+      "correlation": -0.1906049773511586,
+      "feature": "loyalty_trust",
+      "pc": 3
+    },
+    {
+      "correlation": -0.02694597098468104,
+      "feature": "legality_compliance",
+      "pc": 3
+    },
+    {
+      "correlation": 0.0429640253636118,
+      "feature": "public_interest_social_impact",
+      "pc": 3
+    },
+    {
+      "correlation": -0.261360379278917,
+      "feature": "virtue_character",
+      "pc": 3
+    },
+    {
+      "correlation": -0.04274354044111458,
+      "feature": "care_compassion",
+      "pc": 3
+    },
+    {
+      "correlation": -0.038175419468360006,
+      "feature": "stakeholder_identification",
+      "pc": 3
+    },
+    {
+      "correlation": -0.050316569090158796,
+      "feature": "consequence_forecasting",
+      "pc": 3
+    },
+    {
+      "correlation": 0.12431221412989267,
+      "feature": "tradeoff_acknowledged",
+      "pc": 3
+    },
+    {
+      "correlation": 0.005793991216316797,
+      "feature": "priority_resolution",
+      "pc": 3
+    },
+    {
+      "correlation": -0.058018441758808444,
+      "feature": "moral_uncertainty",
+      "pc": 3
+    },
+    {
+      "correlation": 0.01849720621321735,
+      "feature": "risk_mitigation",
+      "pc": 3
+    },
+    {
+      "correlation": 0.03870589060619949,
+      "feature": "conditional_recommendation",
+      "pc": 3
+    },
+    {
+      "correlation": 0.06370723229413303,
+      "feature": "procedural_escalation",
+      "pc": 3
+    },
+    {
+      "correlation": 0.11490476704932888,
+      "feature": "harm_welfare",
+      "pc": 4
+    },
+    {
+      "correlation": 0.07193482544840553,
+      "feature": "rights_autonomy",
+      "pc": 4
+    },
+    {
+      "correlation": 0.11975945552621811,
+      "feature": "fairness_justice",
+      "pc": 4
+    },
+    {
+      "correlation": -0.08053420710250254,
+      "feature": "honesty_truthfulness",
+      "pc": 4
+    },
+    {
+      "correlation": 0.06056506641041209,
+      "feature": "responsibility_accountability",
+      "pc": 4
+    },
+    {
+      "correlation": -0.027775793734553904,
+      "feature": "loyalty_trust",
+      "pc": 4
+    },
+    {
+      "correlation": -0.03994085075706524,
+      "feature": "legality_compliance",
+      "pc": 4
+    },
+    {
+      "correlation": 0.03931581695393337,
+      "feature": "public_interest_social_impact",
+      "pc": 4
+    },
+    {
+      "correlation": 0.002712242116900486,
+      "feature": "virtue_character",
+      "pc": 4
+    },
+    {
+      "correlation": 0.09617586698120582,
+      "feature": "care_compassion",
+      "pc": 4
+    },
+    {
+      "correlation": 0.06834076803877978,
+      "feature": "stakeholder_identification",
+      "pc": 4
+    },
+    {
+      "correlation": -0.014088702006724381,
+      "feature": "consequence_forecasting",
+      "pc": 4
+    },
+    {
+      "correlation": 0.10089739223906835,
+      "feature": "tradeoff_acknowledged",
+      "pc": 4
+    },
+    {
+      "correlation": 0.04999142827194046,
+      "feature": "priority_resolution",
+      "pc": 4
+    },
+    {
+      "correlation": 0.024983375442124513,
+      "feature": "moral_uncertainty",
+      "pc": 4
+    },
+    {
+      "correlation": 0.14090182925159353,
+      "feature": "risk_mitigation",
+      "pc": 4
+    },
+    {
+      "correlation": 0.07794674982116756,
+      "feature": "conditional_recommendation",
+      "pc": 4
+    },
+    {
+      "correlation": 0.11180373406683422,
+      "feature": "procedural_escalation",
+      "pc": 4
+    },
+    {
+      "correlation": -0.04050509602788994,
+      "feature": "harm_welfare",
+      "pc": 5
+    },
+    {
+      "correlation": 0.009640868344033382,
+      "feature": "rights_autonomy",
+      "pc": 5
+    },
+    {
+      "correlation": -0.02577540485112559,
+      "feature": "fairness_justice",
+      "pc": 5
+    },
+    {
+      "correlation": -0.044146693431044486,
+      "feature": "honesty_truthfulness",
+      "pc": 5
+    },
+    {
+      "correlation": -0.04226963918100977,
+      "feature": "responsibility_accountability",
+      "pc": 5
+    },
+    {
+      "correlation": -0.1071915940281878,
+      "feature": "loyalty_trust",
+      "pc": 5
+    },
+    {
+      "correlation": -0.001320364050826604,
+      "feature": "legality_compliance",
+      "pc": 5
+    },
+    {
+      "correlation": -0.010743984434717904,
+      "feature": "public_interest_social_impact",
+      "pc": 5
+    },
+    {
+      "correlation": -0.06581327215465849,
+      "feature": "virtue_character",
+      "pc": 5
+    },
+    {
+      "correlation": -0.040067888424052664,
+      "feature": "care_compassion",
+      "pc": 5
+    },
+    {
+      "correlation": -0.06199951023481699,
+      "feature": "stakeholder_identification",
+      "pc": 5
+    },
+    {
+      "correlation": -0.033081811899887355,
+      "feature": "consequence_forecasting",
+      "pc": 5
+    },
+    {
+      "correlation": -0.07524451681835619,
+      "feature": "tradeoff_acknowledged",
+      "pc": 5
+    },
+    {
+      "correlation": 0.10723775776545504,
+      "feature": "priority_resolution",
+      "pc": 5
+    },
+    {
+      "correlation": -0.11136783561916061,
+      "feature": "moral_uncertainty",
+      "pc": 5
+    },
+    {
+      "correlation": 0.0028148150492307024,
+      "feature": "risk_mitigation",
+      "pc": 5
+    },
+    {
+      "correlation": -0.08101569191571903,
+      "feature": "conditional_recommendation",
+      "pc": 5
+    },
+    {
+      "correlation": 0.04228821184815178,
+      "feature": "procedural_escalation",
+      "pc": 5
+    }
+  ],
+  "dilemma_n": 30,
+  "ethical_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/ethical_content_labels/scores.jsonl",
+  "explained_variance_ratio": [
+    0.09674108028411865,
+    0.06982788443565369,
+    0.051427535712718964,
+    0.03900158405303955,
+    0.032536957412958145
+  ],
+  "feature_summaries": {
+    "care_compassion": {
+      "counts": {
+        "0": 347,
+        "1": 134,
+        "2": 59
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.6425925925925926,
+      "mean": 0.46666666865348816,
+      "n": 540,
+      "std": 0.6836719512939453
+    },
+    "conditional_recommendation": {
+      "counts": {
+        "0": 317,
+        "1": 196,
+        "2": 27
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.587037037037037,
+      "mean": 0.46296295523643494,
+      "n": 540,
+      "std": 0.5904474854469299
+    },
+    "consequence_forecasting": {
+      "counts": {
+        "0": 391,
+        "1": 143,
+        "2": 6
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.7240740740740741,
+      "mean": 0.28703704476356506,
+      "n": 540,
+      "std": 0.4763077199459076
+    },
+    "fairness_justice": {
+      "counts": {
+        "0": 381,
+        "1": 116,
+        "2": 43
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.7055555555555556,
+      "mean": 0.3740740716457367,
+      "n": 540,
+      "std": 0.6272175312042236
+    },
+    "harm_welfare": {
+      "counts": {
+        "0": 141,
+        "1": 160,
+        "2": 239
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.4425925925925926,
+      "mean": 1.1814814805984497,
+      "n": 540,
+      "std": 0.8190043568611145
+    },
+    "honesty_truthfulness": {
+      "counts": {
+        "0": 381,
+        "1": 115,
+        "2": 44
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.7055555555555556,
+      "mean": 0.3759259283542633,
+      "n": 540,
+      "std": 0.6305304169654846
+    },
+    "legality_compliance": {
+      "counts": {
+        "0": 428,
+        "1": 79,
+        "2": 33
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.7925925925925926,
+      "mean": 0.26851850748062134,
+      "n": 540,
+      "std": 0.5644807815551758
+    },
+    "loyalty_trust": {
+      "counts": {
+        "0": 340,
+        "1": 146,
+        "2": 54
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.6296296296296297,
+      "mean": 0.4703703820705414,
+      "n": 540,
+      "std": 0.6701657176017761
+    },
+    "moral_uncertainty": {
+      "counts": {
+        "0": 449,
+        "1": 82,
+        "2": 9
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.8314814814814815,
+      "mean": 0.18518517911434174,
+      "n": 540,
+      "std": 0.42921432852745056
+    },
+    "priority_resolution": {
+      "counts": {
+        "0": 332,
+        "1": 197,
+        "2": 11
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.6148148148148148,
+      "mean": 0.4055555462837219,
+      "n": 540,
+      "std": 0.5308681130409241
+    },
+    "procedural_escalation": {
+      "counts": {
+        "0": 363,
+        "1": 137,
+        "2": 40
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.6722222222222223,
+      "mean": 0.4018518626689911,
+      "n": 540,
+      "std": 0.6233097910881042
+    },
+    "public_interest_social_impact": {
+      "counts": {
+        "0": 289,
+        "1": 197,
+        "2": 54
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.5351851851851852,
+      "mean": 0.5648148059844971,
+      "n": 540,
+      "std": 0.6676818132400513
+    },
+    "responsibility_accountability": {
+      "counts": {
+        "0": 234,
+        "1": 195,
+        "2": 111
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.43333333333333335,
+      "mean": 0.7722222208976746,
+      "n": 540,
+      "std": 0.7661632895469666
+    },
+    "rights_autonomy": {
+      "counts": {
+        "0": 344,
+        "1": 152,
+        "2": 44
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.6370370370370371,
+      "mean": 0.4444444477558136,
+      "n": 540,
+      "std": 0.6402159929275513
+    },
+    "risk_mitigation": {
+      "counts": {
+        "0": 414,
+        "1": 102,
+        "2": 24
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.7666666666666667,
+      "mean": 0.2777777910232544,
+      "n": 540,
+      "std": 0.5380577445030212
+    },
+    "stakeholder_identification": {
+      "counts": {
+        "1": 10,
+        "2": 530
+      },
+      "low_variance_drop_candidate": true,
+      "majority_rate": 0.9814814814814815,
+      "mean": 1.9814814329147339,
+      "n": 540,
+      "std": 0.13481685519218445
+    },
+    "tradeoff_acknowledged": {
+      "counts": {
+        "0": 66,
+        "1": 268,
+        "2": 206
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.4962962962962963,
+      "mean": 1.2592592239379883,
+      "n": 540,
+      "std": 0.660672664642334
+    },
+    "virtue_character": {
+      "counts": {
+        "0": 393,
+        "1": 118,
+        "2": 29
+      },
+      "low_variance_drop_candidate": false,
+      "majority_rate": 0.7277777777777777,
+      "mean": 0.32592591643333435,
+      "n": 540,
+      "std": 0.5719314813613892
+    }
+  },
+  "joined_n": 540,
+  "label_condition_means": {
+    "N_anti_contract_01": {
+      "care_compassion": 0.4000000059604645,
+      "conditional_recommendation": 0.30000001192092896,
+      "consequence_forecasting": 0.1666666716337204,
+      "fairness_justice": 0.20000000298023224,
+      "harm_welfare": 0.9666666388511658,
+      "honesty_truthfulness": 0.1666666716337204,
+      "legality_compliance": 0.2666666805744171,
+      "loyalty_trust": 0.20000000298023224,
+      "moral_uncertainty": 0.13333334028720856,
+      "priority_resolution": 0.4333333373069763,
+      "procedural_escalation": 0.2666666805744171,
+      "public_interest_social_impact": 0.6000000238418579,
+      "responsibility_accountability": 0.4000000059604645,
+      "rights_autonomy": 0.23333333432674408,
+      "risk_mitigation": 0.1666666716337204,
+      "stakeholder_identification": 1.9333332777023315,
+      "tradeoff_acknowledged": 1.1333333253860474,
+      "virtue_character": 0.13333334028720856
+    },
+    "N_anti_contractarian_01": {
+      "care_compassion": 0.2666666805744171,
+      "conditional_recommendation": 0.5,
+      "consequence_forecasting": 0.1666666716337204,
+      "fairness_justice": 0.23333333432674408,
+      "harm_welfare": 1.3333333730697632,
+      "honesty_truthfulness": 0.3333333432674408,
+      "legality_compliance": 0.30000001192092896,
+      "loyalty_trust": 0.30000001192092896,
+      "moral_uncertainty": 0.10000000149011612,
+      "priority_resolution": 0.8333333134651184,
+      "procedural_escalation": 0.4333333373069763,
+      "public_interest_social_impact": 0.6000000238418579,
+      "responsibility_accountability": 0.7666666507720947,
+      "rights_autonomy": 0.3333333432674408,
+      "risk_mitigation": 0.3333333432674408,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 1.1666666269302368,
+      "virtue_character": 0.13333334028720856
+    },
+    "N_anti_deont_01": {
+      "care_compassion": 0.1666666716337204,
+      "conditional_recommendation": 0.3333333432674408,
+      "consequence_forecasting": 0.3333333432674408,
+      "fairness_justice": 0.0,
+      "harm_welfare": 1.1666666269302368,
+      "honesty_truthfulness": 0.20000000298023224,
+      "legality_compliance": 0.1666666716337204,
+      "loyalty_trust": 0.13333334028720856,
+      "moral_uncertainty": 0.13333334028720856,
+      "priority_resolution": 0.46666666865348816,
+      "procedural_escalation": 0.23333333432674408,
+      "public_interest_social_impact": 0.5,
+      "responsibility_accountability": 0.23333333432674408,
+      "rights_autonomy": 0.1666666716337204,
+      "risk_mitigation": 0.1666666716337204,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 0.9666666388511658,
+      "virtue_character": 0.03333333507180214
+    },
+    "N_anti_util_01": {
+      "care_compassion": 0.46666666865348816,
+      "conditional_recommendation": 0.4000000059604645,
+      "consequence_forecasting": 0.4333333373069763,
+      "fairness_justice": 0.30000001192092896,
+      "harm_welfare": 1.1666666269302368,
+      "honesty_truthfulness": 0.23333333432674408,
+      "legality_compliance": 0.1666666716337204,
+      "loyalty_trust": 0.3333333432674408,
+      "moral_uncertainty": 0.1666666716337204,
+      "priority_resolution": 0.5666666626930237,
+      "procedural_escalation": 0.30000001192092896,
+      "public_interest_social_impact": 0.46666666865348816,
+      "responsibility_accountability": 0.699999988079071,
+      "rights_autonomy": 0.46666666865348816,
+      "risk_mitigation": 0.1666666716337204,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 0.800000011920929,
+      "virtue_character": 0.20000000298023224
+    },
+    "N_anti_virtue_01": {
+      "care_compassion": 0.3333333432674408,
+      "conditional_recommendation": 0.4333333373069763,
+      "consequence_forecasting": 0.20000000298023224,
+      "fairness_justice": 0.10000000149011612,
+      "harm_welfare": 1.0333333015441895,
+      "honesty_truthfulness": 0.2666666805744171,
+      "legality_compliance": 0.3333333432674408,
+      "loyalty_trust": 0.13333334028720856,
+      "moral_uncertainty": 0.06666667014360428,
+      "priority_resolution": 0.36666667461395264,
+      "procedural_escalation": 0.46666666865348816,
+      "public_interest_social_impact": 0.36666667461395264,
+      "responsibility_accountability": 0.7333333492279053,
+      "rights_autonomy": 0.20000000298023224,
+      "risk_mitigation": 0.13333334028720856,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 0.8666666746139526,
+      "virtue_character": 0.20000000298023224
+    },
+    "N_generic_moral_01": {
+      "care_compassion": 0.7333333492279053,
+      "conditional_recommendation": 0.6333333253860474,
+      "consequence_forecasting": 0.1666666716337204,
+      "fairness_justice": 0.30000001192092896,
+      "harm_welfare": 1.2333333492279053,
+      "honesty_truthfulness": 0.4333333373069763,
+      "legality_compliance": 0.2666666805744171,
+      "loyalty_trust": 0.4333333373069763,
+      "moral_uncertainty": 0.2666666805744171,
+      "priority_resolution": 0.30000001192092896,
+      "procedural_escalation": 0.46666666865348816,
+      "public_interest_social_impact": 0.699999988079071,
+      "responsibility_accountability": 1.100000023841858,
+      "rights_autonomy": 0.6333333253860474,
+      "risk_mitigation": 0.4000000059604645,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.5333333015441895,
+      "virtue_character": 0.2666666805744171
+    },
+    "N_neutral_01": {
+      "care_compassion": 0.46666666865348816,
+      "conditional_recommendation": 0.46666666865348816,
+      "consequence_forecasting": 0.23333333432674408,
+      "fairness_justice": 0.1666666716337204,
+      "harm_welfare": 0.8999999761581421,
+      "honesty_truthfulness": 0.36666667461395264,
+      "legality_compliance": 0.23333333432674408,
+      "loyalty_trust": 0.1666666716337204,
+      "moral_uncertainty": 0.13333334028720856,
+      "priority_resolution": 0.23333333432674408,
+      "procedural_escalation": 0.46666666865348816,
+      "public_interest_social_impact": 0.5333333611488342,
+      "responsibility_accountability": 0.5333333611488342,
+      "rights_autonomy": 0.20000000298023224,
+      "risk_mitigation": 0.2666666805744171,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 1.3333333730697632,
+      "virtue_character": 0.10000000149011612
+    },
+    "N_neutral_02": {
+      "care_compassion": 0.6000000238418579,
+      "conditional_recommendation": 0.4333333373069763,
+      "consequence_forecasting": 0.30000001192092896,
+      "fairness_justice": 0.1666666716337204,
+      "harm_welfare": 0.9333333373069763,
+      "honesty_truthfulness": 0.2666666805744171,
+      "legality_compliance": 0.30000001192092896,
+      "loyalty_trust": 0.2666666805744171,
+      "moral_uncertainty": 0.10000000149011612,
+      "priority_resolution": 0.2666666805744171,
+      "procedural_escalation": 0.5333333611488342,
+      "public_interest_social_impact": 0.5,
+      "responsibility_accountability": 0.5666666626930237,
+      "rights_autonomy": 0.23333333432674408,
+      "risk_mitigation": 0.30000001192092896,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.2666666507720947,
+      "virtue_character": 0.10000000149011612
+    },
+    "P_contract_01": {
+      "care_compassion": 0.6333333253860474,
+      "conditional_recommendation": 0.20000000298023224,
+      "consequence_forecasting": 0.20000000298023224,
+      "fairness_justice": 0.4333333373069763,
+      "harm_welfare": 1.0666667222976685,
+      "honesty_truthfulness": 0.46666666865348816,
+      "legality_compliance": 0.30000001192092896,
+      "loyalty_trust": 0.46666666865348816,
+      "moral_uncertainty": 0.06666667014360428,
+      "priority_resolution": 0.30000001192092896,
+      "procedural_escalation": 0.46666666865348816,
+      "public_interest_social_impact": 0.699999988079071,
+      "responsibility_accountability": 1.1333333253860474,
+      "rights_autonomy": 0.6000000238418579,
+      "risk_mitigation": 0.36666667461395264,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 1.5666667222976685,
+      "virtue_character": 0.23333333432674408
+    },
+    "P_contract_02": {
+      "care_compassion": 0.4000000059604645,
+      "conditional_recommendation": 0.8333333134651184,
+      "consequence_forecasting": 0.46666666865348816,
+      "fairness_justice": 1.4333332777023315,
+      "harm_welfare": 1.1333333253860474,
+      "honesty_truthfulness": 0.3333333432674408,
+      "legality_compliance": 0.3333333432674408,
+      "loyalty_trust": 0.4333333373069763,
+      "moral_uncertainty": 0.20000000298023224,
+      "priority_resolution": 0.36666667461395264,
+      "procedural_escalation": 0.3333333432674408,
+      "public_interest_social_impact": 0.36666667461395264,
+      "responsibility_accountability": 0.6333333253860474,
+      "rights_autonomy": 0.699999988079071,
+      "risk_mitigation": 0.2666666805744171,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.0333333015441895,
+      "virtue_character": 0.1666666716337204
+    },
+    "P_contractarian_01": {
+      "care_compassion": 0.3333333432674408,
+      "conditional_recommendation": 0.3333333432674408,
+      "consequence_forecasting": 0.23333333432674408,
+      "fairness_justice": 0.5333333611488342,
+      "harm_welfare": 1.1333333253860474,
+      "honesty_truthfulness": 0.46666666865348816,
+      "legality_compliance": 0.4000000059604645,
+      "loyalty_trust": 0.800000011920929,
+      "moral_uncertainty": 0.06666667014360428,
+      "priority_resolution": 0.30000001192092896,
+      "procedural_escalation": 0.4333333373069763,
+      "public_interest_social_impact": 0.6000000238418579,
+      "responsibility_accountability": 0.7666666507720947,
+      "rights_autonomy": 0.3333333432674408,
+      "risk_mitigation": 0.30000001192092896,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.5666667222976685,
+      "virtue_character": 0.13333334028720856
+    },
+    "P_contractarian_02": {
+      "care_compassion": 0.46666666865348816,
+      "conditional_recommendation": 0.5666666626930237,
+      "consequence_forecasting": 0.20000000298023224,
+      "fairness_justice": 0.3333333432674408,
+      "harm_welfare": 0.8666666746139526,
+      "honesty_truthfulness": 0.46666666865348816,
+      "legality_compliance": 0.30000001192092896,
+      "loyalty_trust": 1.100000023841858,
+      "moral_uncertainty": 0.13333334028720856,
+      "priority_resolution": 0.10000000149011612,
+      "procedural_escalation": 0.46666666865348816,
+      "public_interest_social_impact": 0.8999999761581421,
+      "responsibility_accountability": 0.6666666865348816,
+      "rights_autonomy": 0.4000000059604645,
+      "risk_mitigation": 0.20000000298023224,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.600000023841858,
+      "virtue_character": 0.30000001192092896
+    },
+    "P_deont_01": {
+      "care_compassion": 0.6666666865348816,
+      "conditional_recommendation": 0.6000000238418579,
+      "consequence_forecasting": 0.2666666805744171,
+      "fairness_justice": 0.4333333373069763,
+      "harm_welfare": 1.4333332777023315,
+      "honesty_truthfulness": 0.5,
+      "legality_compliance": 0.2666666805744171,
+      "loyalty_trust": 0.7333333492279053,
+      "moral_uncertainty": 0.30000001192092896,
+      "priority_resolution": 0.46666666865348816,
+      "procedural_escalation": 0.699999988079071,
+      "public_interest_social_impact": 0.6666666865348816,
+      "responsibility_accountability": 1.7666666507720947,
+      "rights_autonomy": 1.2333333492279053,
+      "risk_mitigation": 0.5333333611488342,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.2999999523162842,
+      "virtue_character": 0.2666666805744171
+    },
+    "P_deont_02": {
+      "care_compassion": 0.36666667461395264,
+      "conditional_recommendation": 0.6666666865348816,
+      "consequence_forecasting": 0.5333333611488342,
+      "fairness_justice": 0.13333334028720856,
+      "harm_welfare": 1.2333333492279053,
+      "honesty_truthfulness": 0.3333333432674408,
+      "legality_compliance": 0.2666666805744171,
+      "loyalty_trust": 1.2999999523162842,
+      "moral_uncertainty": 0.2666666805744171,
+      "priority_resolution": 0.5,
+      "procedural_escalation": 0.2666666805744171,
+      "public_interest_social_impact": 0.4000000059604645,
+      "responsibility_accountability": 1.0666667222976685,
+      "rights_autonomy": 0.46666666865348816,
+      "risk_mitigation": 0.2666666805744171,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 0.6000000238418579,
+      "virtue_character": 0.5
+    },
+    "P_util_01": {
+      "care_compassion": 0.4333333373069763,
+      "conditional_recommendation": 0.2666666805744171,
+      "consequence_forecasting": 0.4000000059604645,
+      "fairness_justice": 0.36666667461395264,
+      "harm_welfare": 1.7666666507720947,
+      "honesty_truthfulness": 0.30000001192092896,
+      "legality_compliance": 0.2666666805744171,
+      "loyalty_trust": 0.30000001192092896,
+      "moral_uncertainty": 0.20000000298023224,
+      "priority_resolution": 0.3333333432674408,
+      "procedural_escalation": 0.4333333373069763,
+      "public_interest_social_impact": 0.8333333134651184,
+      "responsibility_accountability": 0.5666666626930237,
+      "rights_autonomy": 0.2666666805744171,
+      "risk_mitigation": 0.4333333373069763,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.7000000476837158,
+      "virtue_character": 0.1666666716337204
+    },
+    "P_util_02": {
+      "care_compassion": 0.23333333432674408,
+      "conditional_recommendation": 0.5333333611488342,
+      "consequence_forecasting": 0.23333333432674408,
+      "fairness_justice": 0.1666666716337204,
+      "harm_welfare": 1.8333333730697632,
+      "honesty_truthfulness": 0.2666666805744171,
+      "legality_compliance": 0.1666666716337204,
+      "loyalty_trust": 0.06666667014360428,
+      "moral_uncertainty": 0.2666666805744171,
+      "priority_resolution": 0.7666666507720947,
+      "procedural_escalation": 0.36666667461395264,
+      "public_interest_social_impact": 0.7333333492279053,
+      "responsibility_accountability": 0.4000000059604645,
+      "rights_autonomy": 0.2666666805744171,
+      "risk_mitigation": 0.2666666805744171,
+      "stakeholder_identification": 2.0,
+      "tradeoff_acknowledged": 1.9333332777023315,
+      "virtue_character": 0.10000000149011612
+    },
+    "P_virtue_01": {
+      "care_compassion": 0.7666666507720947,
+      "conditional_recommendation": 0.6000000238418579,
+      "consequence_forecasting": 0.13333334028720856,
+      "fairness_justice": 1.0,
+      "harm_welfare": 1.100000023841858,
+      "honesty_truthfulness": 0.7333333492279053,
+      "legality_compliance": 0.10000000149011612,
+      "loyalty_trust": 0.4333333373069763,
+      "moral_uncertainty": 0.4333333373069763,
+      "priority_resolution": 0.30000001192092896,
+      "procedural_escalation": 0.4333333373069763,
+      "public_interest_social_impact": 0.4333333373069763,
+      "responsibility_accountability": 0.7666666507720947,
+      "rights_autonomy": 0.5666666626930237,
+      "risk_mitigation": 0.3333333432674408,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 1.399999976158142,
+      "virtue_character": 1.6666666269302368
+    },
+    "P_virtue_02": {
+      "care_compassion": 0.6666666865348816,
+      "conditional_recommendation": 0.23333333432674408,
+      "consequence_forecasting": 0.5,
+      "fairness_justice": 0.4333333373069763,
+      "harm_welfare": 0.9666666388511658,
+      "honesty_truthfulness": 0.6333333253860474,
+      "legality_compliance": 0.4000000059604645,
+      "loyalty_trust": 0.8666666746139526,
+      "moral_uncertainty": 0.30000001192092896,
+      "priority_resolution": 0.4000000059604645,
+      "procedural_escalation": 0.1666666716337204,
+      "public_interest_social_impact": 0.2666666805744171,
+      "responsibility_accountability": 1.100000023841858,
+      "rights_autonomy": 0.699999988079071,
+      "risk_mitigation": 0.10000000149011612,
+      "stakeholder_identification": 1.9666666984558105,
+      "tradeoff_acknowledged": 0.8999999761581421,
+      "virtue_character": 1.1666666269302368
+    }
+  },
+  "layer": 40,
+  "pc_condition_means": {
+    "N_anti_contract_01": {
+      "PC1": -0.4204443395137787,
+      "PC2": -0.9657960534095764,
+      "PC3": 0.39605051279067993,
+      "PC4": -0.006808429956436157,
+      "PC5": 0.3804945647716522
+    },
+    "N_anti_contractarian_01": {
+      "PC1": -2.501462697982788,
+      "PC2": -0.7020533680915833,
+      "PC3": 1.6851978302001953,
+      "PC4": -0.06545236706733704,
+      "PC5": 1.0057451725006104
+    },
+    "N_anti_deont_01": {
+      "PC1": -1.3947837352752686,
+      "PC2": -2.38468074798584,
+      "PC3": 1.382285475730896,
+      "PC4": -1.75126051902771,
+      "PC5": 0.8287533521652222
+    },
+    "N_anti_util_01": {
+      "PC1": -1.447372317314148,
+      "PC2": -0.2547590434551239,
+      "PC3": -0.3444821536540985,
+      "PC4": 0.3216007351875305,
+      "PC5": 0.7508509159088135
+    },
+    "N_anti_virtue_01": {
+      "PC1": -0.013053218834102154,
+      "PC2": -1.4656766653060913,
+      "PC3": 1.0812950134277344,
+      "PC4": -1.0857244729995728,
+      "PC5": 0.9938476085662842
+    },
+    "N_generic_moral_01": {
+      "PC1": 0.7622168064117432,
+      "PC2": 1.2775837182998657,
+      "PC3": 1.2508022785186768,
+      "PC4": 0.8029130101203918,
+      "PC5": -1.2408607006072998
+    },
+    "N_neutral_01": {
+      "PC1": 1.6323373317718506,
+      "PC2": -0.2827880084514618,
+      "PC3": 0.572835385799408,
+      "PC4": 0.4271087348461151,
+      "PC5": -0.4627555310726166
+    },
+    "N_neutral_02": {
+      "PC1": 1.4204548597335815,
+      "PC2": -0.42682111263275146,
+      "PC3": 0.6502174735069275,
+      "PC4": 0.8863695859909058,
+      "PC5": -0.5536523461341858
+    },
+    "P_contract_01": {
+      "PC1": 2.1922006607055664,
+      "PC2": 0.11688236892223358,
+      "PC3": -0.34195029735565186,
+      "PC4": -0.09610868245363235,
+      "PC5": 0.7580600380897522
+    },
+    "P_contract_02": {
+      "PC1": -0.05914594605565071,
+      "PC2": 0.3728563189506531,
+      "PC3": -1.1107162237167358,
+      "PC4": 0.5398653745651245,
+      "PC5": -0.043479833751916885
+    },
+    "P_contractarian_01": {
+      "PC1": 2.1046173572540283,
+      "PC2": 0.6798738837242126,
+      "PC3": 0.7374688982963562,
+      "PC4": 0.2935023903846741,
+      "PC5": -0.20037835836410522
+    },
+    "P_contractarian_02": {
+      "PC1": 1.5582785606384277,
+      "PC2": 1.277470350265503,
+      "PC3": 1.2412155866622925,
+      "PC4": -0.42019030451774597,
+      "PC5": -0.5178660750389099
+    },
+    "P_deont_01": {
+      "PC1": -0.8852652311325073,
+      "PC2": 1.2460647821426392,
+      "PC3": -1.1430789232254028,
+      "PC4": 1.7501978874206543,
+      "PC5": 0.22435550391674042
+    },
+    "P_deont_02": {
+      "PC1": -2.1258325576782227,
+      "PC2": 0.7581532001495361,
+      "PC3": -2.0787882804870605,
+      "PC4": -0.49375030398368835,
+      "PC5": -1.3771960735321045
+    },
+    "P_util_01": {
+      "PC1": 1.3679943084716797,
+      "PC2": -1.3685379028320312,
+      "PC3": -0.4217081665992737,
+      "PC4": 0.02507488615810871,
+      "PC5": -0.24130986630916595
+    },
+    "P_util_02": {
+      "PC1": -0.23041294515132904,
+      "PC2": -2.1478054523468018,
+      "PC3": -0.5534155368804932,
+      "PC4": -0.11580291390419006,
+      "PC5": 0.10997717827558517
+    },
+    "P_virtue_01": {
+      "PC1": 0.8260233402252197,
+      "PC2": 1.0261238813400269,
+      "PC3": -0.7432739734649658,
+      "PC4": 1.1010839939117432,
+      "PC5": -0.44315484166145325
+    },
+    "P_virtue_02": {
+      "PC1": -2.7863473892211914,
+      "PC2": 3.243910312652588,
+      "PC3": -2.2599551677703857,
+      "PC4": -2.1126182079315186,
+      "PC5": 0.028569016605615616
+    }
+  },
+  "process_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/process_feature_labels/process_feature_scores.jsonl",
+  "regressions": [
+    {
+      "loo_dilemma_r2": 0.03235197067260742,
+      "pc": 1,
+      "predictor_set": "content"
+    },
+    {
+      "loo_dilemma_r2": 0.12207692861557007,
+      "pc": 1,
+      "predictor_set": "process"
+    },
+    {
+      "loo_dilemma_r2": 0.11341720819473267,
+      "pc": 1,
+      "predictor_set": "content_plus_process"
+    },
+    {
+      "loo_dilemma_r2": 0.2915661931037903,
+      "pc": 1,
+      "predictor_set": "theory_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.39565783739089966,
+      "pc": 1,
+      "predictor_set": "condition_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.2250099778175354,
+      "pc": 2,
+      "predictor_set": "content"
+    },
+    {
+      "loo_dilemma_r2": -0.015150785446166992,
+      "pc": 2,
+      "predictor_set": "process"
+    },
+    {
+      "loo_dilemma_r2": 0.19246619939804077,
+      "pc": 2,
+      "predictor_set": "content_plus_process"
+    },
+    {
+      "loo_dilemma_r2": 0.4026983380317688,
+      "pc": 2,
+      "predictor_set": "theory_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.43403053283691406,
+      "pc": 2,
+      "predictor_set": "condition_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.08969146013259888,
+      "pc": 3,
+      "predictor_set": "content"
+    },
+    {
+      "loo_dilemma_r2": -0.012987613677978516,
+      "pc": 3,
+      "predictor_set": "process"
+    },
+    {
+      "loo_dilemma_r2": 0.07876622676849365,
+      "pc": 3,
+      "predictor_set": "content_plus_process"
+    },
+    {
+      "loo_dilemma_r2": 0.3829234838485718,
+      "pc": 3,
+      "predictor_set": "theory_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.4122822880744934,
+      "pc": 3,
+      "predictor_set": "condition_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.024833202362060547,
+      "pc": 4,
+      "predictor_set": "content"
+    },
+    {
+      "loo_dilemma_r2": -0.0029753446578979492,
+      "pc": 4,
+      "predictor_set": "process"
+    },
+    {
+      "loo_dilemma_r2": 0.02037501335144043,
+      "pc": 4,
+      "predictor_set": "content_plus_process"
+    },
+    {
+      "loo_dilemma_r2": 0.15124624967575073,
+      "pc": 4,
+      "predictor_set": "theory_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.34629470109939575,
+      "pc": 4,
+      "predictor_set": "condition_onehot"
+    },
+    {
+      "loo_dilemma_r2": -0.006205201148986816,
+      "pc": 5,
+      "predictor_set": "content"
+    },
+    {
+      "loo_dilemma_r2": 0.005847930908203125,
+      "pc": 5,
+      "predictor_set": "process"
+    },
+    {
+      "loo_dilemma_r2": -0.003947615623474121,
+      "pc": 5,
+      "predictor_set": "content_plus_process"
+    },
+    {
+      "loo_dilemma_r2": 0.1639707088470459,
+      "pc": 5,
+      "predictor_set": "theory_onehot"
+    },
+    {
+      "loo_dilemma_r2": 0.20492953062057495,
+      "pc": 5,
+      "predictor_set": "condition_onehot"
+    }
+  ],
+  "theory_categories": [
+    "anti_contractarianism",
+    "anti_contractualism",
+    "anti_deontology",
+    "anti_utilitarian",
+    "anti_virtue_ethics",
+    "contractarianism",
+    "contractualism",
+    "deontology",
+    "generic_moral",
+    "none",
+    "utilitarian",
+    "virtue_ethics"
+  ]
+}

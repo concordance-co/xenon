@@ -1,0 +1,326 @@
+{
+  "condition_means": [
+    {
+      "care_compassion": 0.4,
+      "condition_id": "N_anti_contract_01",
+      "fairness_justice": 0.2,
+      "harm_welfare": 0.9666666666666667,
+      "honesty_truthfulness": 0.16666666666666666,
+      "legality_compliance": 0.26666666666666666,
+      "loyalty_trust": 0.2,
+      "n": 30,
+      "public_interest_social_impact": 0.6,
+      "responsibility_accountability": 0.4,
+      "rights_autonomy": 0.23333333333333334,
+      "virtue_character": 0.13333333333333333
+    },
+    {
+      "care_compassion": 0.26666666666666666,
+      "condition_id": "N_anti_contractarian_01",
+      "fairness_justice": 0.23333333333333334,
+      "harm_welfare": 1.3333333333333333,
+      "honesty_truthfulness": 0.3333333333333333,
+      "legality_compliance": 0.3,
+      "loyalty_trust": 0.3,
+      "n": 30,
+      "public_interest_social_impact": 0.6,
+      "responsibility_accountability": 0.7666666666666667,
+      "rights_autonomy": 0.3333333333333333,
+      "virtue_character": 0.13333333333333333
+    },
+    {
+      "care_compassion": 0.16666666666666666,
+      "condition_id": "N_anti_deont_01",
+      "fairness_justice": 0.0,
+      "harm_welfare": 1.1666666666666667,
+      "honesty_truthfulness": 0.2,
+      "legality_compliance": 0.16666666666666666,
+      "loyalty_trust": 0.13333333333333333,
+      "n": 30,
+      "public_interest_social_impact": 0.5,
+      "responsibility_accountability": 0.23333333333333334,
+      "rights_autonomy": 0.16666666666666666,
+      "virtue_character": 0.03333333333333333
+    },
+    {
+      "care_compassion": 0.4666666666666667,
+      "condition_id": "N_anti_util_01",
+      "fairness_justice": 0.3,
+      "harm_welfare": 1.1666666666666667,
+      "honesty_truthfulness": 0.23333333333333334,
+      "legality_compliance": 0.16666666666666666,
+      "loyalty_trust": 0.3333333333333333,
+      "n": 30,
+      "public_interest_social_impact": 0.4666666666666667,
+      "responsibility_accountability": 0.7,
+      "rights_autonomy": 0.4666666666666667,
+      "virtue_character": 0.2
+    },
+    {
+      "care_compassion": 0.3333333333333333,
+      "condition_id": "N_anti_virtue_01",
+      "fairness_justice": 0.1,
+      "harm_welfare": 1.0333333333333334,
+      "honesty_truthfulness": 0.26666666666666666,
+      "legality_compliance": 0.3333333333333333,
+      "loyalty_trust": 0.13333333333333333,
+      "n": 30,
+      "public_interest_social_impact": 0.36666666666666664,
+      "responsibility_accountability": 0.7333333333333333,
+      "rights_autonomy": 0.2,
+      "virtue_character": 0.2
+    },
+    {
+      "care_compassion": 0.7333333333333333,
+      "condition_id": "N_generic_moral_01",
+      "fairness_justice": 0.3,
+      "harm_welfare": 1.2333333333333334,
+      "honesty_truthfulness": 0.43333333333333335,
+      "legality_compliance": 0.26666666666666666,
+      "loyalty_trust": 0.43333333333333335,
+      "n": 30,
+      "public_interest_social_impact": 0.7,
+      "responsibility_accountability": 1.1,
+      "rights_autonomy": 0.6333333333333333,
+      "virtue_character": 0.26666666666666666
+    },
+    {
+      "care_compassion": 0.4666666666666667,
+      "condition_id": "N_neutral_01",
+      "fairness_justice": 0.16666666666666666,
+      "harm_welfare": 0.9,
+      "honesty_truthfulness": 0.36666666666666664,
+      "legality_compliance": 0.23333333333333334,
+      "loyalty_trust": 0.16666666666666666,
+      "n": 30,
+      "public_interest_social_impact": 0.5333333333333333,
+      "responsibility_accountability": 0.5333333333333333,
+      "rights_autonomy": 0.2,
+      "virtue_character": 0.1
+    },
+    {
+      "care_compassion": 0.6,
+      "condition_id": "N_neutral_02",
+      "fairness_justice": 0.16666666666666666,
+      "harm_welfare": 0.9333333333333333,
+      "honesty_truthfulness": 0.26666666666666666,
+      "legality_compliance": 0.3,
+      "loyalty_trust": 0.26666666666666666,
+      "n": 30,
+      "public_interest_social_impact": 0.5,
+      "responsibility_accountability": 0.5666666666666667,
+      "rights_autonomy": 0.23333333333333334,
+      "virtue_character": 0.1
+    },
+    {
+      "care_compassion": 0.6333333333333333,
+      "condition_id": "P_contract_01",
+      "fairness_justice": 0.43333333333333335,
+      "harm_welfare": 1.0666666666666667,
+      "honesty_truthfulness": 0.4666666666666667,
+      "legality_compliance": 0.3,
+      "loyalty_trust": 0.4666666666666667,
+      "n": 30,
+      "public_interest_social_impact": 0.7,
+      "responsibility_accountability": 1.1333333333333333,
+      "rights_autonomy": 0.6,
+      "virtue_character": 0.23333333333333334
+    },
+    {
+      "care_compassion": 0.4,
+      "condition_id": "P_contract_02",
+      "fairness_justice": 1.4333333333333333,
+      "harm_welfare": 1.1333333333333333,
+      "honesty_truthfulness": 0.3333333333333333,
+      "legality_compliance": 0.3333333333333333,
+      "loyalty_trust": 0.43333333333333335,
+      "n": 30,
+      "public_interest_social_impact": 0.36666666666666664,
+      "responsibility_accountability": 0.6333333333333333,
+      "rights_autonomy": 0.7,
+      "virtue_character": 0.16666666666666666
+    },
+    {
+      "care_compassion": 0.3333333333333333,
+      "condition_id": "P_contractarian_01",
+      "fairness_justice": 0.5333333333333333,
+      "harm_welfare": 1.1333333333333333,
+      "honesty_truthfulness": 0.4666666666666667,
+      "legality_compliance": 0.4,
+      "loyalty_trust": 0.8,
+      "n": 30,
+      "public_interest_social_impact": 0.6,
+      "responsibility_accountability": 0.7666666666666667,
+      "rights_autonomy": 0.3333333333333333,
+      "virtue_character": 0.13333333333333333
+    },
+    {
+      "care_compassion": 0.4666666666666667,
+      "condition_id": "P_contractarian_02",
+      "fairness_justice": 0.3333333333333333,
+      "harm_welfare": 0.8666666666666667,
+      "honesty_truthfulness": 0.4666666666666667,
+      "legality_compliance": 0.3,
+      "loyalty_trust": 1.1,
+      "n": 30,
+      "public_interest_social_impact": 0.9,
+      "responsibility_accountability": 0.6666666666666666,
+      "rights_autonomy": 0.4,
+      "virtue_character": 0.3
+    },
+    {
+      "care_compassion": 0.6666666666666666,
+      "condition_id": "P_deont_01",
+      "fairness_justice": 0.43333333333333335,
+      "harm_welfare": 1.4333333333333333,
+      "honesty_truthfulness": 0.5,
+      "legality_compliance": 0.26666666666666666,
+      "loyalty_trust": 0.7333333333333333,
+      "n": 30,
+      "public_interest_social_impact": 0.6666666666666666,
+      "responsibility_accountability": 1.7666666666666666,
+      "rights_autonomy": 1.2333333333333334,
+      "virtue_character": 0.26666666666666666
+    },
+    {
+      "care_compassion": 0.36666666666666664,
+      "condition_id": "P_deont_02",
+      "fairness_justice": 0.13333333333333333,
+      "harm_welfare": 1.2333333333333334,
+      "honesty_truthfulness": 0.3333333333333333,
+      "legality_compliance": 0.26666666666666666,
+      "loyalty_trust": 1.3,
+      "n": 30,
+      "public_interest_social_impact": 0.4,
+      "responsibility_accountability": 1.0666666666666667,
+      "rights_autonomy": 0.4666666666666667,
+      "virtue_character": 0.5
+    },
+    {
+      "care_compassion": 0.43333333333333335,
+      "condition_id": "P_util_01",
+      "fairness_justice": 0.36666666666666664,
+      "harm_welfare": 1.7666666666666666,
+      "honesty_truthfulness": 0.3,
+      "legality_compliance": 0.26666666666666666,
+      "loyalty_trust": 0.3,
+      "n": 30,
+      "public_interest_social_impact": 0.8333333333333334,
+      "responsibility_accountability": 0.5666666666666667,
+      "rights_autonomy": 0.26666666666666666,
+      "virtue_character": 0.16666666666666666
+    },
+    {
+      "care_compassion": 0.23333333333333334,
+      "condition_id": "P_util_02",
+      "fairness_justice": 0.16666666666666666,
+      "harm_welfare": 1.8333333333333333,
+      "honesty_truthfulness": 0.26666666666666666,
+      "legality_compliance": 0.16666666666666666,
+      "loyalty_trust": 0.06666666666666667,
+      "n": 30,
+      "public_interest_social_impact": 0.7333333333333333,
+      "responsibility_accountability": 0.4,
+      "rights_autonomy": 0.26666666666666666,
+      "virtue_character": 0.1
+    },
+    {
+      "care_compassion": 0.7666666666666667,
+      "condition_id": "P_virtue_01",
+      "fairness_justice": 1.0,
+      "harm_welfare": 1.1,
+      "honesty_truthfulness": 0.7333333333333333,
+      "legality_compliance": 0.1,
+      "loyalty_trust": 0.43333333333333335,
+      "n": 30,
+      "public_interest_social_impact": 0.43333333333333335,
+      "responsibility_accountability": 0.7666666666666667,
+      "rights_autonomy": 0.5666666666666667,
+      "virtue_character": 1.6666666666666667
+    },
+    {
+      "care_compassion": 0.6666666666666666,
+      "condition_id": "P_virtue_02",
+      "fairness_justice": 0.43333333333333335,
+      "harm_welfare": 0.9666666666666667,
+      "honesty_truthfulness": 0.6333333333333333,
+      "legality_compliance": 0.4,
+      "loyalty_trust": 0.8666666666666667,
+      "n": 30,
+      "public_interest_social_impact": 0.26666666666666666,
+      "responsibility_accountability": 1.1,
+      "rights_autonomy": 0.7,
+      "virtue_character": 1.1666666666666667
+    }
+  ],
+  "dimensions": [
+    "harm_welfare",
+    "rights_autonomy",
+    "fairness_justice",
+    "honesty_truthfulness",
+    "responsibility_accountability",
+    "loyalty_trust",
+    "legality_compliance",
+    "public_interest_social_impact",
+    "virtue_character",
+    "care_compassion"
+  ],
+  "distributions": {
+    "care_compassion": {
+      "0": 347,
+      "1": 134,
+      "2": 59
+    },
+    "fairness_justice": {
+      "0": 381,
+      "1": 116,
+      "2": 43
+    },
+    "harm_welfare": {
+      "0": 141,
+      "1": 160,
+      "2": 239
+    },
+    "honesty_truthfulness": {
+      "0": 381,
+      "1": 115,
+      "2": 44
+    },
+    "legality_compliance": {
+      "0": 428,
+      "1": 79,
+      "2": 33
+    },
+    "loyalty_trust": {
+      "0": 340,
+      "1": 146,
+      "2": 54
+    },
+    "public_interest_social_impact": {
+      "0": 289,
+      "1": 197,
+      "2": 54
+    },
+    "responsibility_accountability": {
+      "0": 234,
+      "1": 195,
+      "2": 111
+    },
+    "rights_autonomy": {
+      "0": 344,
+      "1": 152,
+      "2": 44
+    },
+    "virtue_character": {
+      "0": 393,
+      "1": 118,
+      "2": 29
+    }
+  },
+  "schema_version": "2026-04-27",
+  "scorer_counts": {
+    "keyword_baseline": 540
+  },
+  "total_loaded_rows": 540,
+  "total_scored_rows": 540
+}

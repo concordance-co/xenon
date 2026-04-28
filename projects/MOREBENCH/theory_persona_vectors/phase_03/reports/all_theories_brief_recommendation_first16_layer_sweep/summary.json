@@ -1,0 +1,164 @@
+{
+  "capture_artifact_id": "capture_1_1d7271d73617",
+  "generation_rows_path": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/all_theories_brief_recommendation_report/report_6aa730c32d87_8c1df9a2/results/generate_natural_responses_results.json",
+  "layers": [
+    0,
+    4,
+    16,
+    24,
+    32,
+    40
+  ],
+  "rows": [
+    {
+      "cos_to_l32": 0.13749870657920837,
+      "gap": 0.16123240776360037,
+      "layer": 0,
+      "null_p95": 0.08859559558331966,
+      "real_median": 0.24982800334692,
+      "theory": "deont"
+    },
+    {
+      "cos_to_l32": 0.12468142062425613,
+      "gap": -0.10355857969261702,
+      "layer": 0,
+      "null_p95": 0.09854299761354919,
+      "real_median": -0.005015582079067826,
+      "theory": "util"
+    },
+    {
+      "cos_to_l32": 0.16303929686546326,
+      "gap": 0.055466590076684974,
+      "layer": 0,
+      "null_p95": 0.1132390148937702,
+      "real_median": 0.16870560497045517,
+      "theory": "generic"
+    },
+    {
+      "cos_to_l32": 0.45776981115341187,
+      "gap": 0.24815088212490088,
+      "layer": 4,
+      "null_p95": 0.19217220246791833,
+      "real_median": 0.4403230845928192,
+      "theory": "deont"
+    },
+    {
+      "cos_to_l32": 0.4149252474308014,
+      "gap": 0.14836594834923744,
+      "layer": 4,
+      "null_p95": 0.1544649712741375,
+      "real_median": 0.30283091962337494,
+      "theory": "util"
+    },
+    {
+      "cos_to_l32": 0.49109238386154175,
+      "gap": 0.15162002071738248,
+      "layer": 4,
+      "null_p95": 0.18816884830594058,
+      "real_median": 0.33978886902332306,
+      "theory": "generic"
+    },
+    {
+      "cos_to_l32": 0.7143902778625488,
+      "gap": 0.3939451210200787,
+      "layer": 16,
+      "null_p95": 0.24133310392498966,
+      "real_median": 0.6352782249450684,
+      "theory": "deont"
+    },
+    {
+      "cos_to_l32": 0.6467679142951965,
+      "gap": 0.38133906126022354,
+      "layer": 16,
+      "null_p95": 0.16694728732109054,
+      "real_median": 0.5482863485813141,
+      "theory": "util"
+    },
+    {
+      "cos_to_l32": 0.6237871646881104,
+      "gap": 0.2785572744905951,
+      "layer": 16,
+      "null_p95": 0.2290943525731561,
+      "real_median": 0.5076516270637512,
+      "theory": "generic"
+    },
+    {
+      "cos_to_l32": 0.7699907422065735,
+      "gap": 0.4114416539669038,
+      "layer": 24,
+      "null_p95": 0.24509605765342699,
+      "real_median": 0.6565377116203308,
+      "theory": "deont"
+    },
+    {
+      "cos_to_l32": 0.7823184132575989,
+      "gap": 0.36072746068239214,
+      "layer": 24,
+      "null_p95": 0.1710870251059532,
+      "real_median": 0.5318144857883453,
+      "theory": "util"
+    },
+    {
+      "cos_to_l32": 0.780531644821167,
+      "gap": 0.21783303767442713,
+      "layer": 24,
+      "null_p95": 0.28660032600164403,
+      "real_median": 0.5044333636760712,
+      "theory": "generic"
+    },
+    {
+      "cos_to_l32": 0.9999999403953552,
+      "gap": 0.4189867809414864,
+      "layer": 32,
+      "null_p95": 0.32758541554212567,
+      "real_median": 0.7465721964836121,
+      "theory": "deont"
+    },
+    {
+      "cos_to_l32": 1.0000001192092896,
+      "gap": 0.3633260875940323,
+      "layer": 32,
+      "null_p95": 0.21431733667850492,
+      "real_median": 0.5776434242725372,
+      "theory": "util"
+    },
+    {
+      "cos_to_l32": 1.0,
+      "gap": 0.3455424532294274,
+      "layer": 32,
+      "null_p95": 0.24736706167459482,
+      "real_median": 0.5929095149040222,
+      "theory": "generic"
+    },
+    {
+      "cos_to_l32": 0.7985000014305115,
+      "gap": 0.45629175156354906,
+      "layer": 40,
+      "null_p95": 0.31823204308748243,
+      "real_median": 0.7745237946510315,
+      "theory": "deont"
+    },
+    {
+      "cos_to_l32": 0.7936504483222961,
+      "gap": 0.3552825391292572,
+      "layer": 40,
+      "null_p95": 0.19103155136108396,
+      "real_median": 0.5463140904903412,
+      "theory": "util"
+    },
+    {
+      "cos_to_l32": 0.791253387928009,
+      "gap": 0.3175511509180069,
+      "layer": 40,
+      "null_p95": 0.2555582970380783,
+      "real_median": 0.5731094479560852,
+      "theory": "generic"
+    }
+  ],
+  "suggested_write_layers": {
+    "deont": "L16 first layer with gap>=0.30 and cos_to_L32>=0.35",
+    "generic": "L32 first layer with gap>=0.30 and cos_to_L32>=0.35",
+    "util": "L16 first layer with gap>=0.30 and cos_to_L32>=0.35"
+  },
+  "trials": 128
+}

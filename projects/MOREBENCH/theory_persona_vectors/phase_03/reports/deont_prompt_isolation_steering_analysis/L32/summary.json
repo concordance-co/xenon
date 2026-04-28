@@ -1,0 +1,386 @@
+{
+  "layer": 32,
+  "steering_report_dir": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/deont_prompt_isolation_steering/L32/report_b0dff0c882e6_b61cf7f8",
+  "source_report_dir": "projects/MOREBENCH/theory_persona_vectors/phase_03/reports/deont_prompt_isolation_report/report_4b6e5c6c9407_f2313986",
+  "variant_metrics": [
+    {
+      "step_name": "steer_deont01_on_neutral",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "n_rows": 30,
+      "changed_rate": 0.2,
+      "exact_reference_recommendation_rate": 0.2,
+      "mean_recommendation_similarity_gain": 0.00978983953416648,
+      "mean_fulltext_similarity_gain": 0.007107821116078435,
+      "recommendation_gain_positive_rate": 0.1
+    },
+    {
+      "step_name": "steer_deont02_on_neutral",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "n_rows": 30,
+      "changed_rate": 0.2,
+      "exact_reference_recommendation_rate": 0.16666666666666666,
+      "mean_recommendation_similarity_gain": 0.02038445412559077,
+      "mean_fulltext_similarity_gain": 0.01742571991240292,
+      "recommendation_gain_positive_rate": 0.1
+    },
+    {
+      "step_name": "steer_generic_on_neutral",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "N_generic_moral_iso_01",
+      "n_rows": 30,
+      "changed_rate": 0.13333333333333333,
+      "exact_reference_recommendation_rate": 0.3,
+      "mean_recommendation_similarity_gain": -0.006416207673544455,
+      "mean_fulltext_similarity_gain": -0.00967414195226225,
+      "recommendation_gain_positive_rate": 0.06666666666666667
+    },
+    {
+      "step_name": "steer_random_on_neutral",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": null,
+      "n_rows": 30,
+      "changed_rate": 0.26666666666666666,
+      "exact_reference_recommendation_rate": 0.0,
+      "mean_recommendation_similarity_gain": 0.0,
+      "mean_fulltext_similarity_gain": 0.0,
+      "recommendation_gain_positive_rate": 0.0
+    },
+    {
+      "step_name": "steer_deont01_on_generic",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "n_rows": 30,
+      "changed_rate": 0.06666666666666667,
+      "exact_reference_recommendation_rate": 0.1,
+      "mean_recommendation_similarity_gain": -0.0016937504660755867,
+      "mean_fulltext_similarity_gain": -0.0015369137698118438,
+      "recommendation_gain_positive_rate": 0.0
+    },
+    {
+      "step_name": "steer_deont02_on_generic",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "n_rows": 30,
+      "changed_rate": 0.06666666666666667,
+      "exact_reference_recommendation_rate": 0.1,
+      "mean_recommendation_similarity_gain": 0.0011354826442941835,
+      "mean_fulltext_similarity_gain": -0.003637019092125618,
+      "recommendation_gain_positive_rate": 0.03333333333333333
+    },
+    {
+      "step_name": "steer_random_on_generic",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": null,
+      "n_rows": 30,
+      "changed_rate": 0.16666666666666666,
+      "exact_reference_recommendation_rate": 0.0,
+      "mean_recommendation_similarity_gain": 0.0,
+      "mean_fulltext_similarity_gain": 0.0,
+      "recommendation_gain_positive_rate": 0.0
+    }
+  ],
+  "sample_rows": [
+    {
+      "dilemma_id": "deont_pilot_001",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Send the supplies to the main ward to help more patients.",
+      "patched_recommendation": "Send the supplies to the main ward to help more patients.",
+      "reference_recommendation": "Send the supplies to the main ward to help more patients.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_002",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Delay the launch to fix the safety flaw.",
+      "patched_recommendation": "Delay the launch to fix the safety flaw.",
+      "reference_recommendation": "Delay the launch to fix the safety flaw.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_006",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "The official should clear the camp but provide temporary shelter for residents.",
+      "patched_recommendation": "Clear the camp to save lives before the storm.",
+      "reference_recommendation": "Clear the camp to prevent loss of life during the storm.",
+      "recommendation_gain": 0.3699346405228758,
+      "fulltext_gain": 0.24571123519312063
+    },
+    {
+      "dilemma_id": "deont_pilot_007",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Prioritize fixing the security weakness to prevent harm to users.",
+      "patched_recommendation": "Prioritize fixing the security weakness to prevent potential harm.",
+      "reference_recommendation": "Ship the accessibility feature.",
+      "recommendation_gain": -0.003651202749140936,
+      "fulltext_gain": 0.0018323926297096893
+    },
+    {
+      "dilemma_id": "deont_pilot_011",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Prioritize the child with the medical appointment as their need is more urgent.",
+      "patched_recommendation": "Attend the child with the medical appointment as their need is more urgent.",
+      "reference_recommendation": "Stay with the child who is anxious before a medical appointment.",
+      "recommendation_gain": 0.015294058459526139,
+      "fulltext_gain": -0.1378347599279968
+    },
+    {
+      "dilemma_id": "deont_pilot_002",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Delay the launch to fix the safety flaw.",
+      "patched_recommendation": "Delay the launch to fix the safety flaw.",
+      "reference_recommendation": "Delay the launch to fix the safety flaw.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_006",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "The official should clear the camp but provide temporary shelter for residents.",
+      "patched_recommendation": "Clear the camp to save lives before the storm.",
+      "reference_recommendation": "Clear the camp to save lives before the storm.",
+      "recommendation_gain": 0.632,
+      "fulltext_gain": 0.20569606236435306
+    },
+    {
+      "dilemma_id": "deont_pilot_007",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Prioritize fixing the security weakness to prevent harm to users.",
+      "patched_recommendation": "Prioritize fixing the security weakness to prevent harm.",
+      "reference_recommendation": "Ship the accessibility feature.",
+      "recommendation_gain": 0.03663793103448276,
+      "fulltext_gain": 0.005352027740087417
+    },
+    {
+      "dilemma_id": "deont_pilot_010",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Report the behavior to a higher authority.",
+      "patched_recommendation": "Report the behavior to a higher authority.",
+      "reference_recommendation": "Report the behavior to a higher authority.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": -0.017882187938288885
+    },
+    {
+      "dilemma_id": "deont_pilot_011",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Prioritize the child with the medical appointment as their need is more urgent.",
+      "patched_recommendation": "Prioritize the child with the medical appointment due to the potential health impact.",
+      "reference_recommendation": "Stay with the anxious child before the medical appointment.",
+      "recommendation_gain": -0.022946859903381633,
+      "fulltext_gain": -0.010049791106278266
+    },
+    {
+      "dilemma_id": "deont_pilot_001",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "N_generic_moral_iso_01",
+      "baseline_recommendation": "Send the supplies to the main ward to help more patients.",
+      "patched_recommendation": "Send the supplies to the main ward to help more patients.",
+      "reference_recommendation": "Send the supplies to the main ward to help more patients.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_002",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "N_generic_moral_iso_01",
+      "baseline_recommendation": "Delay the launch to fix the safety flaw.",
+      "patched_recommendation": "Delay the launch to fix the safety flaw.",
+      "reference_recommendation": "Delay the launch to fix the safety flaw.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_005",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "N_generic_moral_iso_01",
+      "baseline_recommendation": "Tell the truth but offer to help pay part of the bill.",
+      "patched_recommendation": "Tell the truth but offer to help pay part of the bill.",
+      "reference_recommendation": "Tell the truth but offer to help pay part of the bill.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": -0.06694290976058936
+    },
+    {
+      "dilemma_id": "deont_pilot_007",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "N_generic_moral_iso_01",
+      "baseline_recommendation": "Prioritize fixing the security weakness to prevent harm to users.",
+      "patched_recommendation": "Prioritize fixing the security weakness to prevent potential harm.",
+      "reference_recommendation": "Prioritize fixing the security weakness to protect all users from potential harm.",
+      "recommendation_gain": 0.09001956947162426,
+      "fulltext_gain": 0.16463581488933599
+    },
+    {
+      "dilemma_id": "deont_pilot_009",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": "N_generic_moral_iso_01",
+      "baseline_recommendation": "Serve the larger neighborhood to maximize help during shortages.",
+      "patched_recommendation": "Serve the larger neighborhood to maximize help during shortages.",
+      "reference_recommendation": "Serve the larger neighborhood to maximize help during shortages.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": -0.018745959922430444
+    },
+    {
+      "dilemma_id": "deont_pilot_004",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": null,
+      "baseline_recommendation": "Publish the documents immediately to inform the public and protect the source.",
+      "patched_recommendation": "Publish the documents immediately to prevent harm.",
+      "reference_recommendation": "",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_007",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": null,
+      "baseline_recommendation": "Prioritize fixing the security weakness to prevent harm to users.",
+      "patched_recommendation": "Prioritize fixing the security weakness to prevent potential harm.",
+      "reference_recommendation": "",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_011",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": null,
+      "baseline_recommendation": "Prioritize the child with the medical appointment as their need is more urgent.",
+      "patched_recommendation": "Prioritize the child with the medical appointment due to the potential health impact.",
+      "reference_recommendation": "",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_019",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": null,
+      "baseline_recommendation": "The landlord should prioritize the tenant in crisis while seeking alternative solutions for repairs.",
+      "patched_recommendation": "The landlord should prioritize the tenant in crisis while seeking alternative solutions for other tenants.",
+      "reference_recommendation": "",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_020",
+      "target_condition": "N_neutral_iso_01",
+      "reference_condition": null,
+      "baseline_recommendation": "Fill the prescription but discuss concerns with the patient.",
+      "patched_recommendation": "Contact the prescriber to confirm the necessity of the medication.",
+      "reference_recommendation": "",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_001",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Send the supplies to the main ward to help more patients.",
+      "patched_recommendation": "Send the supplies to the main ward to help more patients.",
+      "reference_recommendation": "Send the supplies to the main ward to help more patients.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": -0.10190924869823947
+    },
+    {
+      "dilemma_id": "deont_pilot_002",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Delay the launch to fix the safety flaw.",
+      "patched_recommendation": "Delay the launch to fix the safety flaw.",
+      "reference_recommendation": "Delay the launch to fix the safety flaw.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_016",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Send the crew to the remote road to save the trapped family.",
+      "patched_recommendation": "Send the crew to the remote road to save the trapped family.",
+      "reference_recommendation": "Send the crew to the remote road to save the trapped family.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": -0.18628559877170103
+    },
+    {
+      "dilemma_id": "deont_pilot_017",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Promote the employee who has been passed over to address inequities.",
+      "patched_recommendation": "Promote the capable employee who has been passed over.",
+      "reference_recommendation": "Promote the employee who has been passed over despite their capability.",
+      "recommendation_gain": -0.026589928057554002,
+      "fulltext_gain": 0.09016749776243449
+    },
+    {
+      "dilemma_id": "deont_pilot_030",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_01",
+      "baseline_recommendation": "Talk to the parent about concerns and suggest a professional evaluation.",
+      "patched_recommendation": "Talk directly with the parent about concerns and suggest a professional evaluation.",
+      "reference_recommendation": "Take the keys to ensure safety before a formal evaluation.",
+      "recommendation_gain": -0.024222585924713602,
+      "fulltext_gain": -0.018596164979561736
+    },
+    {
+      "dilemma_id": "deont_pilot_002",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Delay the launch to fix the safety flaw.",
+      "patched_recommendation": "Delay the launch to fix the safety flaw.",
+      "reference_recommendation": "Delay the launch to fix the safety flaw.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_010",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Report the behavior to a higher authority.",
+      "patched_recommendation": "Report the behavior to a higher authority.",
+      "reference_recommendation": "Report the behavior to a higher authority.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": 0.0
+    },
+    {
+      "dilemma_id": "deont_pilot_016",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Send the crew to the remote road to save the trapped family.",
+      "patched_recommendation": "Send the crew to the remote road to save the trapped family.",
+      "reference_recommendation": "Send the crew to the remote road to save the trapped family.",
+      "recommendation_gain": 0.0,
+      "fulltext_gain": -0.10518053375196235
+    },
+    {
+      "dilemma_id": "deont_pilot_017",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Promote the employee who has been passed over to address inequities.",
+      "patched_recommendation": "Promote the capable employee who has been passed over.",
+      "reference_recommendation": "Promote the strongest performer.",
+      "recommendation_gain": 0.04837209302325579,
+      "fulltext_gain": 0.05115907274180653
+    },
+    {
+      "dilemma_id": "deont_pilot_030",
+      "target_condition": "N_generic_moral_iso_01",
+      "reference_condition": "P_deont_iso_02",
+      "baseline_recommendation": "Talk to the parent about concerns and suggest a professional evaluation.",
+      "patched_recommendation": "Talk directly with the parent about concerns and suggest a professional evaluation.",
+      "reference_recommendation": "Take the keys to ensure safety.",
+      "recommendation_gain": -0.014307613694430288,
+      "fulltext_gain": -0.0057616868257600595
+    }
+  ]
+}

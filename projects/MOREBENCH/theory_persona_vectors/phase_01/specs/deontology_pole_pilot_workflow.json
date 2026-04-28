@@ -1,0 +1,82 @@
+{
+  "steps": [
+    {
+      "artifact_kinds": [
+        "generation_run"
+      ],
+      "depends_on": [],
+      "description": "Generate terse recommendation-only responses for the 6-condition deontology pilot. Three samples per (dilemma, condition) at temperature 0.7.",
+      "errors": [],
+      "missing_capabilities": [],
+      "name": "generate_terse_responses",
+      "runner": "capture_gpu",
+      "spec_kind": "generation_run",
+      "warnings": []
+    },
+    {
+      "artifact_kinds": [
+        "transform"
+      ],
+      "depends_on": [
+        "generate_terse_responses"
+      ],
+      "description": "Filter the terse-generation batch into a capture dataset, dropping empty and length-finished rows. Records combined-prompt token-section metadata for prompt-end and generated capture sites.",
+      "errors": [],
+      "missing_capabilities": [],
+      "name": "build_capture_dataset",
+      "runner": "analysis_cpu",
+      "spec_kind": "transform",
+      "warnings": []
+    },
+    {
+      "artifact_kinds": [
+        "capture"
+      ],
+      "depends_on": [
+        "build_capture_dataset"
+      ],
+      "description": "Capture prompt-end and generated-sequence residuals on the filtered terse-response dataset. Layers: 0, 4, 16, 24, 32, 40 (pilot subset; primary L32).",
+      "errors": [],
+      "missing_capabilities": [],
+      "name": "capture_residuals",
+      "runner": "capture_gpu",
+      "spec_kind": "capture",
+      "warnings": []
+    },
+    {
+      "artifact_kinds": [
+        "transform"
+      ],
+      "depends_on": [
+        "build_capture_dataset",
+        "capture_residuals"
+      ],
+      "description": "Compact post-capture summary of generation+capture status for the pole pilot.",
+      "errors": [],
+      "missing_capabilities": [],
+      "name": "summarize_pilot",
+      "runner": "analysis_cpu",
+      "spec_kind": "transform",
+      "warnings": []
+    },
+    {
+      "artifact_kinds": [
+        "report"
+      ],
+      "depends_on": [
+        "build_capture_dataset",
+        "capture_residuals",
+        "generate_terse_responses",
+        "summarize_pilot"
+      ],
+      "description": "Package pilot generation+capture artifacts for local browsing.",
+      "errors": [],
+      "missing_capabilities": [],
+      "name": "report",
+      "runner": "report_local",
+      "spec_kind": "report",
+      "warnings": []
+    }
+  ],
+  "workflow": "morebench_theory_persona_vectors_phase01_deontology_pole_pilot"
+}
