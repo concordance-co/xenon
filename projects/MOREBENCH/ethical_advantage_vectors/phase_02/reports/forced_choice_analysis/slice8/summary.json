@@ -1,0 +1,1288 @@
+{
+  "behavior": {
+    "choice_letter_counts_by_condition": {
+      "N_neutral_choice_01": {
+        "A": 8,
+        "B": 8,
+        "C": 8,
+        "D": 8
+      },
+      "P_ethical_choice_01": {
+        "A": 8,
+        "B": 8,
+        "C": 8,
+        "D": 8
+      },
+      "P_exploit_choice_01": {
+        "A": 8,
+        "B": 8,
+        "C": 8,
+        "D": 8
+      },
+      "P_self_serving_choice_01": {
+        "A": 8,
+        "B": 8,
+        "C": 8,
+        "D": 8
+      }
+    },
+    "choice_type_counts_by_condition": {
+      "N_neutral_choice_01": {
+        "ethical": 32
+      },
+      "P_ethical_choice_01": {
+        "ethical": 32
+      },
+      "P_exploit_choice_01": {
+        "self_advantage": 32
+      },
+      "P_self_serving_choice_01": {
+        "ethical": 30,
+        "self_advantage": 2
+      }
+    },
+    "choice_type_counts_by_order": {
+      "0": {
+        "ethical": 23,
+        "self_advantage": 9
+      },
+      "1": {
+        "ethical": 23,
+        "self_advantage": 9
+      },
+      "2": {
+        "ethical": 24,
+        "self_advantage": 8
+      },
+      "3": {
+        "ethical": 24,
+        "self_advantage": 8
+      }
+    },
+    "choice_type_rates_by_condition": {
+      "N_neutral_choice_01": {
+        "ethical": 1.0
+      },
+      "P_ethical_choice_01": {
+        "ethical": 1.0
+      },
+      "P_exploit_choice_01": {
+        "self_advantage": 1.0
+      },
+      "P_self_serving_choice_01": {
+        "ethical": 0.9375,
+        "self_advantage": 0.0625
+      }
+    },
+    "finish_reason_counts": {
+      "stop": 128
+    },
+    "malformed_choice_count": 0,
+    "row_count": 128
+  },
+  "capture_artifact_id": "capture_1_680897b5e9d4",
+  "capture_local_dir": "artifacts/capture_1_680897b5e9d4",
+  "generation_rows_path": "projects/MOREBENCH/ethical_advantage_vectors/phase_02/reports/forced_choice/report_803aeb87edac_f5900a48/results/generate_forced_choices_results.json",
+  "probe_rows": [
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 1.0,
+      "centroid_auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9930399656295776,
+      "layer": 16,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.990909090909091,
+      "auc_std": 0.018181818181818167,
+      "centroid_auc_mean": 0.9981818181818181,
+      "centroid_auc_std": 0.0036363636363636598,
+      "fold_aucs": [
+        0.9545454545454546,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9909090909090909,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9900440573692322,
+      "layer": 16,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 16,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "scenario_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9666666666666668,
+      "auc_std": 0.06666666666666667,
+      "centroid_auc_mean": 0.9933333333333334,
+      "centroid_auc_std": 0.013333333333333286,
+      "fold_aucs": [
+        0.8333333333333334,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.985288679599762,
+      "layer": 16,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 1.0,
+      "centroid_auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9900044202804565,
+      "layer": 24,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.990909090909091,
+      "auc_std": 0.018181818181818167,
+      "centroid_auc_mean": 0.990909090909091,
+      "centroid_auc_std": 0.018181818181818167,
+      "fold_aucs": [
+        0.9545454545454546,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9545454545454546,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9926877617835999,
+      "layer": 24,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 24,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "scenario_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9933333333333334,
+      "auc_std": 0.013333333333333286,
+      "centroid_auc_mean": 0.9933333333333334,
+      "centroid_auc_std": 0.013333333333333286,
+      "fold_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9890961050987244,
+      "layer": 24,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 1.0,
+      "centroid_auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.992207407951355,
+      "layer": 32,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.990909090909091,
+      "auc_std": 0.018181818181818167,
+      "centroid_auc_mean": 0.9981818181818181,
+      "centroid_auc_std": 0.0036363636363636598,
+      "fold_aucs": [
+        0.9545454545454546,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9909090909090909,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9921610355377197,
+      "layer": 32,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 32,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "scenario_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9933333333333334,
+      "auc_std": 0.013333333333333286,
+      "centroid_auc_mean": 0.9933333333333334,
+      "centroid_auc_std": 0.013333333333333286,
+      "fold_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9901456236839294,
+      "layer": 32,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 1.0,
+      "centroid_auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9925857186317444,
+      "layer": 40,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.990909090909091,
+      "auc_std": 0.018181818181818167,
+      "centroid_auc_mean": 0.9981818181818181,
+      "centroid_auc_std": 0.0036363636363636598,
+      "fold_aucs": [
+        0.9545454545454546,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9909090909090909,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9876845479011536,
+      "layer": 40,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 40,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "scenario_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9933333333333334,
+      "auc_std": 0.013333333333333286,
+      "centroid_auc_mean": 0.9933333333333334,
+      "centroid_auc_std": 0.013333333333333286,
+      "fold_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9886053800582886,
+      "layer": 40,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "scenario_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 0.9703125,
+      "centroid_auc_std": 0.021194781197266466,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        0.9609375,
+        0.984375,
+        0.96875,
+        0.9375
+      ],
+      "fold_direction_cosine_median": 0.9930382370948792,
+      "layer": 16,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.9727272727272727,
+      "auc_std": 0.054545454545454494,
+      "centroid_auc_mean": 0.7098863636363636,
+      "centroid_auc_std": 0.029973623907784148,
+      "fold_aucs": [
+        0.8636363636363638,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.7681818181818182,
+        0.703125,
+        0.703125,
+        0.6875,
+        0.6875
+      ],
+      "fold_direction_cosine_median": 0.9868859052658081,
+      "layer": 16,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 16,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "options_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9733333333333334,
+      "auc_std": 0.05333333333333332,
+      "centroid_auc_mean": 0.6522916666666667,
+      "centroid_auc_std": 0.023884851079944196,
+      "fold_aucs": [
+        0.8666666666666667,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.6833333333333333,
+        0.65625,
+        0.671875,
+        0.625,
+        0.625
+      ],
+      "fold_direction_cosine_median": 0.9797905683517456,
+      "layer": 16,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 0.8765625,
+      "centroid_auc_std": 0.01514899955442603,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.8515625,
+        0.8828125,
+        0.8984375,
+        0.875,
+        0.875
+      ],
+      "fold_direction_cosine_median": 0.9932549595832825,
+      "layer": 24,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.989469696969697,
+      "auc_std": 0.0133565569099421,
+      "centroid_auc_mean": 0.7630871212121212,
+      "centroid_auc_std": 0.05895667542860712,
+      "fold_aucs": [
+        0.9681818181818181,
+        1.0,
+        1.0,
+        1.0,
+        0.9791666666666666
+      ],
+      "fold_centroid_aucs": [
+        0.8727272727272728,
+        0.7395833333333334,
+        0.703125,
+        0.7291666666666666,
+        0.7708333333333334
+      ],
+      "fold_direction_cosine_median": 0.9919474720954895,
+      "layer": 24,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 24,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "options_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9866666666666667,
+      "auc_std": 0.02666666666666666,
+      "centroid_auc_mean": 0.7416666666666667,
+      "centroid_auc_std": 0.05368374469468803,
+      "fold_aucs": [
+        0.9333333333333333,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.8333333333333334,
+        0.75,
+        0.6875,
+        0.75,
+        0.6875
+      ],
+      "fold_direction_cosine_median": 0.9874422550201416,
+      "layer": 24,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 0.91875,
+      "centroid_auc_std": 0.04032339968926231,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.96875,
+        0.9140625,
+        0.9609375,
+        0.875,
+        0.875
+      ],
+      "fold_direction_cosine_median": 0.9919925928115845,
+      "layer": 32,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.9854545454545456,
+      "auc_std": 0.029090909090909098,
+      "centroid_auc_mean": 0.8590340909090909,
+      "centroid_auc_std": 0.02400299018141739,
+      "fold_aucs": [
+        0.9272727272727272,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9045454545454545,
+        0.8489583333333333,
+        0.8333333333333334,
+        0.8541666666666665,
+        0.8541666666666666
+      ],
+      "fold_direction_cosine_median": 0.9925889372825623,
+      "layer": 32,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 32,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "options_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9866666666666667,
+      "auc_std": 0.02666666666666666,
+      "centroid_auc_mean": 0.7825,
+      "centroid_auc_std": 0.0415331193145904,
+      "fold_aucs": [
+        0.9333333333333333,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.8500000000000001,
+        0.75,
+        0.75,
+        0.75,
+        0.8125
+      ],
+      "fold_direction_cosine_median": 0.9900016784667969,
+      "layer": 32,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 0.93125,
+      "centroid_auc_std": 0.01514899955442603,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.953125,
+        0.9140625,
+        0.9140625,
+        0.9375,
+        0.9375
+      ],
+      "fold_direction_cosine_median": 0.9931448101997375,
+      "layer": 40,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.989090909090909,
+      "auc_std": 0.021818181818181823,
+      "centroid_auc_mean": 0.8686363636363635,
+      "centroid_auc_std": 0.06252692257605483,
+      "fold_aucs": [
+        0.9454545454545454,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9681818181818181,
+        0.8020833333333334,
+        0.8020833333333333,
+        0.8958333333333333,
+        0.875
+      ],
+      "fold_direction_cosine_median": 0.9918586015701294,
+      "layer": 40,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 40,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "options_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9735416666666665,
+      "auc_std": 0.04550831731062402,
+      "centroid_auc_mean": 0.8279166666666666,
+      "centroid_auc_std": 0.08048626090485535,
+      "fold_aucs": [
+        0.8833333333333334,
+        1.0,
+        0.984375,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9833333333333334,
+        0.765625,
+        0.765625,
+        0.8125,
+        0.8125
+      ],
+      "fold_direction_cosine_median": 0.9895638823509216,
+      "layer": 40,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "options_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 0.975,
+      "centroid_auc_std": 0.049999999999999996,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        0.875,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9709815382957458,
+      "layer": 16,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.9872727272727273,
+      "auc_std": 0.025454545454545483,
+      "centroid_auc_mean": 0.9296022727272726,
+      "centroid_auc_std": 0.038024134022169476,
+      "fold_aucs": [
+        0.9363636363636363,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9136363636363636,
+        0.9375,
+        0.9010416666666666,
+        1.0,
+        0.8958333333333333
+      ],
+      "fold_direction_cosine_median": 0.9649479389190674,
+      "layer": 16,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 16,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "prompt_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9933333333333334,
+      "auc_std": 0.013333333333333286,
+      "centroid_auc_mean": 0.94625,
+      "centroid_auc_std": 0.08474225628339146,
+      "fold_aucs": [
+        0.9666666666666668,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.95,
+        1.0,
+        0.78125,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9753748774528503,
+      "layer": 16,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 1.0,
+      "centroid_auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9648585915565491,
+      "layer": 24,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.9709090909090909,
+      "auc_std": 0.0581818181818182,
+      "centroid_auc_mean": 0.9664204545454546,
+      "centroid_auc_std": 0.039016144441616364,
+      "fold_aucs": [
+        0.8545454545454545,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9727272727272728,
+        0.890625,
+        0.9895833333333333,
+        1.0,
+        0.9791666666666666
+      ],
+      "fold_direction_cosine_median": 0.9588512778282166,
+      "layer": 24,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 24,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "prompt_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.97,
+      "auc_std": 0.06000000000000001,
+      "centroid_auc_mean": 0.9552083333333334,
+      "centroid_auc_std": 0.05777260259942519,
+      "fold_aucs": [
+        0.85,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9166666666666667,
+        1.0,
+        0.859375,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9740947484970093,
+      "layer": 24,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 1.0,
+      "centroid_auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9860175848007202,
+      "layer": 32,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.9954545454545455,
+      "auc_std": 0.009090909090909084,
+      "centroid_auc_mean": 0.9972727272727273,
+      "centroid_auc_std": 0.005454545454545468,
+      "fold_aucs": [
+        0.9772727272727273,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9863636363636363,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9888036847114563,
+      "layer": 32,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 32,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "prompt_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.9933333333333334,
+      "auc_std": 0.01333333333333333,
+      "centroid_auc_mean": 0.99,
+      "centroid_auc_std": 0.019999999999999976,
+      "fold_aucs": [
+        0.9666666666666667,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.9500000000000001,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9878910183906555,
+      "layer": 32,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "centroid_auc_mean": 1.0,
+      "centroid_auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9868250489234924,
+      "layer": 40,
+      "n": 96,
+      "negative": 32,
+      "positive": 64,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole"
+    },
+    {
+      "auc_mean": 0.9954545454545455,
+      "auc_std": 0.009090909090909084,
+      "centroid_auc_mean": 0.9979166666666666,
+      "centroid_auc_std": 0.004166666666666697,
+      "fold_aucs": [
+        0.9772727272727273,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        1.0,
+        0.9895833333333333,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9904811382293701,
+      "layer": 40,
+      "n": 128,
+      "negative": 94,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical"
+    },
+    {
+      "auc_mean": NaN,
+      "auc_std": NaN,
+      "centroid_auc_mean": NaN,
+      "centroid_auc_std": NaN,
+      "fold_aucs": [],
+      "fold_centroid_aucs": [],
+      "fold_direction_cosine_median": NaN,
+      "layer": 40,
+      "n": 32,
+      "negative": 32,
+      "positive": 0,
+      "site": "prompt_end_residual",
+      "split_kind": "none",
+      "target": "chosen_self_vs_ethical_neutral"
+    },
+    {
+      "auc_mean": 0.99,
+      "auc_std": 0.019999999999999976,
+      "centroid_auc_mean": 0.97,
+      "centroid_auc_std": 0.05999999999999996,
+      "fold_aucs": [
+        0.9500000000000001,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_centroid_aucs": [
+        0.8500000000000001,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_direction_cosine_median": 0.9857297539710999,
+      "layer": 40,
+      "n": 64,
+      "negative": 30,
+      "positive": 34,
+      "site": "prompt_end_residual",
+      "split_kind": "group_kfold_dilemma",
+      "target": "chosen_self_vs_ethical_negative"
+    }
+  ]
+}

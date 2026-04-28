@@ -1,0 +1,1835 @@
+{
+  "action_rows_path": "projects/MOREBENCH/ethical_advantage_vectors/phase_01/reports/behavior_smoke_analysis/v2_full40/scored_rows.jsonl",
+  "activation_incremental": [
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 16,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 1.0,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 24,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 1.0,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 32,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 1.0,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 40,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 1.0,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.9984375,
+      "combined_auc_mean": 0.9963541666666668,
+      "combined_delta_over_text": 0.06210937500000013,
+      "fold_activation_aucs": [
+        1.0,
+        0.9921875,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        0.9921875,
+        1.0,
+        0.9973958333333334,
+        0.9921875
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8365885416666666,
+        0.7649739583333334,
+        0.9075520833333333,
+        0.7259114583333333,
+        0.935546875
+      ],
+      "fold_text_aucs": [
+        0.9928385416666666,
+        0.9290364583333334,
+        0.9251302083333333,
+        0.95703125,
+        0.8671875
+      ],
+      "layer": 16,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.8341145833333332,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 0.9342447916666666,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.9989583333333332,
+      "combined_auc_mean": 0.9971354166666668,
+      "combined_delta_over_text": 0.0628906250000002,
+      "fold_activation_aucs": [
+        1.0,
+        0.9947916666666666,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        0.9876302083333334,
+        1.0,
+        0.998046875,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8678385416666667,
+        0.7877604166666667,
+        0.9095052083333334,
+        0.814453125,
+        0.935546875
+      ],
+      "fold_text_aucs": [
+        0.9928385416666666,
+        0.9290364583333334,
+        0.9251302083333333,
+        0.95703125,
+        0.8671875
+      ],
+      "layer": 24,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.8630208333333333,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 0.9342447916666666,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.06575520833333337,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.88671875,
+        0.8001302083333334,
+        0.8977864583333333,
+        0.787109375,
+        0.9537760416666666
+      ],
+      "fold_text_aucs": [
+        0.9928385416666666,
+        0.9290364583333334,
+        0.9251302083333333,
+        0.95703125,
+        0.8671875
+      ],
+      "layer": 32,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.8651041666666668,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 0.9342447916666666,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.06575520833333337,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.88671875,
+        0.8203125,
+        0.9069010416666666,
+        0.751953125,
+        0.9544270833333334
+      ],
+      "fold_text_aucs": [
+        0.9928385416666666,
+        0.9290364583333334,
+        0.9251302083333333,
+        0.95703125,
+        0.8671875
+      ],
+      "layer": 40,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.8640625,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 0.9342447916666666,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6985677083333334,
+        0.7298177083333334,
+        0.7897135416666667,
+        0.6783854166666665,
+        0.7447916666666666
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 16,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.7282552083333333,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6881510416666667,
+        0.7180989583333333,
+        0.767578125,
+        0.7688802083333334,
+        0.73828125
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 24,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.7361979166666667,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6608072916666667,
+        0.7428385416666666,
+        0.7180989583333334,
+        0.7539062499999999,
+        0.8118489583333333
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 32,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.7375,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 1.0,
+      "combined_auc_mean": 1.0,
+      "combined_delta_over_text": 0.0,
+      "fold_activation_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6829427083333334,
+        0.755859375,
+        0.7259114583333334,
+        0.7473958333333334,
+        0.7923177083333333
+      ],
+      "fold_text_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "layer": 40,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "residual_activation_abs_auc_mean": 0.7408854166666667,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_auc_mean": 1.0,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.9318669608563226,
+      "combined_auc_mean": 0.9448534424598254,
+      "combined_delta_over_text": 0.0041508170054269655,
+      "fold_activation_aucs": [
+        0.890827922077922,
+        0.9164133738601824,
+        0.9467592592592592,
+        0.9633699633699634,
+        0.9419642857142857
+      ],
+      "fold_combined_aucs": [
+        0.9074675324675325,
+        0.9251519756838905,
+        0.9467592592592592,
+        0.9757326007326008,
+        0.9691558441558441
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8169642857142857,
+        0.6474164133738601,
+        0.6890432098765432,
+        0.7793040293040293,
+        0.7771915584415585
+      ],
+      "fold_text_aucs": [
+        0.9342532467532467,
+        0.9008358662613981,
+        0.9066358024691358,
+        0.9780219780219781,
+        0.9837662337662337
+      ],
+      "layer": 16,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.7419838993420553,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9407026254543984,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.9442822822698709,
+      "combined_auc_mean": 0.9488759369078519,
+      "combined_delta_over_text": 0.008173311453453458,
+      "fold_activation_aucs": [
+        0.9151785714285714,
+        0.9441489361702128,
+        0.9313271604938271,
+        0.9656593406593407,
+        0.9650974025974026
+      ],
+      "fold_combined_aucs": [
+        0.9155844155844156,
+        0.9471884498480243,
+        0.931712962962963,
+        0.9697802197802199,
+        0.9801136363636365
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8068181818181819,
+        0.6261398176291794,
+        0.6616512345679013,
+        0.8255494505494505,
+        0.7950487012987013
+      ],
+      "fold_text_aucs": [
+        0.9342532467532467,
+        0.9008358662613981,
+        0.9066358024691358,
+        0.9780219780219781,
+        0.9837662337662337
+      ],
+      "layer": 24,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.7430414771726829,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9407026254543984,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.9484843679435878,
+      "combined_auc_mean": 0.9511727470060803,
+      "combined_delta_over_text": 0.010470121551681921,
+      "fold_activation_aucs": [
+        0.9176136363636364,
+        0.9414893617021277,
+        0.955246913580247,
+        0.967032967032967,
+        0.961038961038961
+      ],
+      "fold_combined_aucs": [
+        0.9151785714285714,
+        0.9464285714285714,
+        0.9556327160493827,
+        0.9670329670329672,
+        0.9715909090909091
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8214285714285714,
+        0.6386778115501519,
+        0.6184413580246912,
+        0.8054029304029304,
+        0.7836850649350648
+      ],
+      "fold_text_aucs": [
+        0.9342532467532467,
+        0.9008358662613981,
+        0.9066358024691358,
+        0.9780219780219781,
+        0.9837662337662337
+      ],
+      "layer": 32,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.7335271472682819,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9407026254543984,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.9511757959009733,
+      "combined_auc_mean": 0.9538234142400809,
+      "combined_delta_over_text": 0.013120788785682458,
+      "fold_activation_aucs": [
+        0.9099025974025974,
+        0.9418693009118542,
+        0.9483024691358025,
+        0.9789377289377289,
+        0.9768668831168832
+      ],
+      "fold_combined_aucs": [
+        0.9123376623376622,
+        0.9464285714285714,
+        0.9483024691358024,
+        0.9803113553113553,
+        0.981737012987013
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8234577922077921,
+        0.6382978723404255,
+        0.6635802469135803,
+        0.7953296703296704,
+        0.8133116883116883
+      ],
+      "fold_text_aucs": [
+        0.9342532467532467,
+        0.9008358662613981,
+        0.9066358024691358,
+        0.9780219780219781,
+        0.9837662337662337
+      ],
+      "layer": 40,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.7467954540206312,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9407026254543984,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.9461924829832631,
+      "combined_auc_mean": 0.9364932529382883,
+      "combined_delta_over_text": 0.07960135559869597,
+      "fold_activation_aucs": [
+        0.8770292207792207,
+        0.9156534954407295,
+        0.9683641975308642,
+        0.9816849816849816,
+        0.9882305194805194
+      ],
+      "fold_combined_aucs": [
+        0.8790584415584415,
+        0.8776595744680852,
+        0.9672067901234568,
+        0.978021978021978,
+        0.9805194805194805
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6793831168831169,
+        0.8107902735562311,
+        0.7885802469135803,
+        0.7907509157509158,
+        0.8129058441558441
+      ],
+      "fold_text_aucs": [
+        0.8488230519480519,
+        0.7021276595744681,
+        0.8607253086419754,
+        0.9340659340659342,
+        0.9387175324675324
+      ],
+      "layer": 16,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.7764820794519376,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.8568918973395924,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.9674556219325723,
+      "combined_auc_mean": 0.9578057482312801,
+      "combined_delta_over_text": 0.1009138508916877,
+      "fold_activation_aucs": [
+        0.9375,
+        0.9498480243161094,
+        0.976466049382716,
+        0.9807692307692307,
+        0.9926948051948052
+      ],
+      "fold_combined_aucs": [
+        0.921672077922078,
+        0.9327507598784195,
+        0.9733796296296295,
+        0.9766483516483517,
+        0.984577922077922
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8340097402597403,
+        0.8506838905775077,
+        0.8360339506172839,
+        0.8859890109890111,
+        0.8969155844155844
+      ],
+      "fold_text_aucs": [
+        0.8488230519480519,
+        0.7021276595744681,
+        0.8607253086419754,
+        0.9340659340659342,
+        0.9387175324675324
+      ],
+      "layer": 24,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.8607264353718256,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.8568918973395924,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.9679471451191309,
+      "combined_auc_mean": 0.9566276726294458,
+      "combined_delta_over_text": 0.09973577528985345,
+      "fold_activation_aucs": [
+        0.9492694805194806,
+        0.9346504559270516,
+        0.9899691358024691,
+        0.978021978021978,
+        0.9878246753246753
+      ],
+      "fold_combined_aucs": [
+        0.9253246753246752,
+        0.918693009118541,
+        0.9830246913580247,
+        0.9743589743589743,
+        0.981737012987013
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8737824675324675,
+        0.8271276595744682,
+        0.8441358024691358,
+        0.8456959706959707,
+        0.7800324675324676
+      ],
+      "fold_text_aucs": [
+        0.8488230519480519,
+        0.7021276595744681,
+        0.8607253086419754,
+        0.9340659340659342,
+        0.9387175324675324
+      ],
+      "layer": 32,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.8341548735609019,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.8568918973395924,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.9634371686233388,
+      "combined_auc_mean": 0.954275134505631,
+      "combined_delta_over_text": 0.09738323716603858,
+      "fold_activation_aucs": [
+        0.9545454545454546,
+        0.9270516717325228,
+        0.9756944444444444,
+        0.9720695970695971,
+        0.9878246753246753
+      ],
+      "fold_combined_aucs": [
+        0.9265422077922078,
+        0.9122340425531914,
+        0.9795524691358025,
+        0.9725274725274725,
+        0.9805194805194805
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.9103084415584416,
+        0.8050911854103344,
+        0.8043981481481481,
+        0.7980769230769231,
+        0.7414772727272728
+      ],
+      "fold_text_aucs": [
+        0.8488230519480519,
+        0.7021276595744681,
+        0.8607253086419754,
+        0.9340659340659342,
+        0.9387175324675324
+      ],
+      "layer": 40,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.811870394184224,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.8568918973395924,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.9804742276373482,
+      "combined_auc_mean": 0.9787958954625621,
+      "combined_delta_over_text": 0.00937672617637142,
+      "fold_activation_aucs": [
+        0.9776785714285714,
+        0.9661854103343466,
+        0.9776234567901234,
+        0.9853479853479854,
+        0.9955357142857143
+      ],
+      "fold_combined_aucs": [
+        0.9736201298701299,
+        0.9642857142857143,
+        0.9783950617283951,
+        0.9821428571428572,
+        0.9955357142857143
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.635551948051948,
+        0.6743920972644376,
+        0.7777777777777777,
+        0.6373626373626373,
+        0.6761363636363635
+      ],
+      "fold_text_aucs": [
+        0.9577922077922079,
+        0.9551671732522796,
+        0.9675925925925926,
+        0.9734432234432234,
+        0.9931006493506493
+      ],
+      "layer": 16,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.6802441648186328,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9694191692861907,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.9788464506992876,
+      "combined_auc_mean": 0.9793240283488511,
+      "combined_delta_over_text": 0.009904859062660476,
+      "fold_activation_aucs": [
+        0.9703733766233766,
+        0.9627659574468085,
+        0.9853395061728394,
+        0.9830586080586081,
+        0.9926948051948052
+      ],
+      "fold_combined_aucs": [
+        0.9679383116883117,
+        0.9688449848024316,
+        0.9868827160493827,
+        0.9798534798534799,
+        0.9931006493506493
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6156655844155844,
+        0.6595744680851063,
+        0.7997685185185185,
+        0.63507326007326,
+        0.765827922077922
+      ],
+      "fold_text_aucs": [
+        0.9577922077922079,
+        0.9551671732522796,
+        0.9675925925925926,
+        0.9734432234432234,
+        0.9931006493506493
+      ],
+      "layer": 24,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.6951819506340783,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9694191692861907,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.9736671376299035,
+      "combined_auc_mean": 0.9767845088323812,
+      "combined_delta_over_text": 0.0073653395461905635,
+      "fold_activation_aucs": [
+        0.9663149350649352,
+        0.9574468085106382,
+        0.9780092592592593,
+        0.9807692307692307,
+        0.9857954545454546
+      ],
+      "fold_combined_aucs": [
+        0.9646915584415585,
+        0.9654255319148936,
+        0.9837962962962963,
+        0.9789377289377289,
+        0.9910714285714286
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.5637175324675325,
+        0.6329787234042553,
+        0.7083333333333334,
+        0.706959706959707,
+        0.7106331168831168
+      ],
+      "fold_text_aucs": [
+        0.9577922077922079,
+        0.9551671732522796,
+        0.9675925925925926,
+        0.9734432234432234,
+        0.9931006493506493
+      ],
+      "layer": 32,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.6645244826095891,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9694191692861907,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.979612951731746,
+      "combined_auc_mean": 0.9799432000229873,
+      "combined_delta_over_text": 0.010524030736796641,
+      "fold_activation_aucs": [
+        0.9788961038961039,
+        0.9631458966565349,
+        0.9841820987654321,
+        0.9807692307692308,
+        0.9910714285714286
+      ],
+      "fold_combined_aucs": [
+        0.9772727272727273,
+        0.9661854103343465,
+        0.9872685185185185,
+        0.9771062271062271,
+        0.9918831168831169
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.5856331168831169,
+        0.6458966565349544,
+        0.720679012345679,
+        0.6927655677655677,
+        0.742288961038961
+      ],
+      "fold_text_aucs": [
+        0.9577922077922079,
+        0.9551671732522796,
+        0.9675925925925926,
+        0.9734432234432234,
+        0.9931006493506493
+      ],
+      "layer": 40,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "residual_activation_abs_auc_mean": 0.6774526629136559,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_auc_mean": 0.9694191692861907,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.45977909858958255,
+      "combined_auc_mean": 0.46020152562491273,
+      "combined_delta_over_text": -0.18533724340175955,
+      "fold_activation_aucs": [
+        0.4545454545454546,
+        0.2857142857142857,
+        0.4895833333333333,
+        0.4596774193548387,
+        0.609375
+      ],
+      "fold_combined_aucs": [
+        0.4545454545454546,
+        0.2901785714285714,
+        0.4791666666666667,
+        0.467741935483871,
+        0.609375
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6212121212121212,
+        0.7142857142857143,
+        0.53125,
+        0.564516129032258,
+        0.78125
+      ],
+      "fold_text_aucs": [
+        0.5909090909090909,
+        0.4776785714285714,
+        0.4791666666666667,
+        0.7580645161290323,
+        0.921875
+      ],
+      "layer": 16,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.6425027929060187,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.6455387690266723,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.5397461073872364,
+      "combined_auc_mean": 0.553293883535819,
+      "combined_delta_over_text": -0.0922448854908533,
+      "fold_activation_aucs": [
+        0.4393939393939394,
+        0.4419642857142857,
+        0.5104166666666666,
+        0.5725806451612903,
+        0.734375
+      ],
+      "fold_combined_aucs": [
+        0.4545454545454546,
+        0.4419642857142857,
+        0.5,
+        0.5887096774193549,
+        0.78125
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.696969696969697,
+        0.5714285714285714,
+        0.5104166666666667,
+        0.5,
+        0.78125
+      ],
+      "fold_text_aucs": [
+        0.5909090909090909,
+        0.4776785714285714,
+        0.4791666666666667,
+        0.7580645161290323,
+        0.921875
+      ],
+      "layer": 24,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.6120129870129871,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.6455387690266723,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.4759055124982544,
+      "combined_auc_mean": 0.48414414886189083,
+      "combined_delta_over_text": -0.16139462016478145,
+      "fold_activation_aucs": [
+        0.4242424242424242,
+        0.49107142857142855,
+        0.37500000000000006,
+        0.3548387096774194,
+        0.734375
+      ],
+      "fold_combined_aucs": [
+        0.4393939393939394,
+        0.4910714285714286,
+        0.3541666666666667,
+        0.3548387096774194,
+        0.78125
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6212121212121212,
+        0.5178571428571428,
+        0.5833333333333333,
+        0.8306451612903226,
+        0.75
+      ],
+      "fold_text_aucs": [
+        0.5909090909090909,
+        0.4776785714285714,
+        0.4791666666666667,
+        0.7580645161290323,
+        0.921875
+      ],
+      "layer": 32,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.6606095517385839,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.6455387690266723,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.5763362309733278,
+      "combined_auc_mean": 0.5751684471442535,
+      "combined_delta_over_text": -0.07037032188241876,
+      "fold_activation_aucs": [
+        0.5757575757575758,
+        0.5848214285714286,
+        0.2604166666666667,
+        0.49193548387096775,
+        0.96875
+      ],
+      "fold_combined_aucs": [
+        0.5606060606060606,
+        0.5803571428571429,
+        0.25,
+        0.5161290322580645,
+        0.96875
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.5757575757575757,
+        0.5848214285714285,
+        0.6354166666666666,
+        0.6693548387096775,
+        0.859375
+      ],
+      "fold_text_aucs": [
+        0.5909090909090909,
+        0.4776785714285714,
+        0.4791666666666667,
+        0.7580645161290323,
+        0.921875
+      ],
+      "layer": 40,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.6649451019410696,
+      "slice": "prompt_end",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.6455387690266723,
+      "text_field": "prompt_text"
+    },
+    {
+      "activation_auc_mean": 0.6101146837033934,
+      "combined_auc_mean": 0.5999083577712611,
+      "combined_delta_over_text": 0.012426249825443492,
+      "fold_activation_aucs": [
+        0.3939393939393939,
+        0.5178571428571428,
+        0.7395833333333334,
+        0.7741935483870968,
+        0.625
+      ],
+      "fold_combined_aucs": [
+        0.4393939393939394,
+        0.4375,
+        0.7395833333333334,
+        0.7580645161290323,
+        0.625
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8636363636363636,
+        0.5669642857142857,
+        0.6875,
+        0.7338709677419355,
+        0.6875
+      ],
+      "fold_text_aucs": [
+        0.5984848484848485,
+        0.39285714285714285,
+        0.6875,
+        0.7741935483870968,
+        0.484375
+      ],
+      "layer": 16,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.707894323418517,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.5874821079458176,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.706269637620444,
+      "combined_auc_mean": 0.7059584904342969,
+      "combined_delta_over_text": 0.11847638248847936,
+      "fold_activation_aucs": [
+        0.3939393939393939,
+        0.6473214285714286,
+        0.8020833333333333,
+        0.7661290322580645,
+        0.921875
+      ],
+      "fold_combined_aucs": [
+        0.5151515151515151,
+        0.6339285714285714,
+        0.7708333333333335,
+        0.7661290322580645,
+        0.84375
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8333333333333333,
+        0.6741071428571428,
+        0.7916666666666666,
+        0.653225806451613,
+        1.0
+      ],
+      "fold_text_aucs": [
+        0.5984848484848485,
+        0.39285714285714285,
+        0.6875,
+        0.7741935483870968,
+        0.484375
+      ],
+      "layer": 24,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.7904665898617511,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.5874821079458176,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.661417748917749,
+      "combined_auc_mean": 0.6981287529674626,
+      "combined_delta_over_text": 0.11064664502164501,
+      "fold_activation_aucs": [
+        0.19696969696969696,
+        0.6830357142857143,
+        0.7395833333333334,
+        0.75,
+        0.9375
+      ],
+      "fold_combined_aucs": [
+        0.4545454545454546,
+        0.6785714285714286,
+        0.7083333333333334,
+        0.7741935483870968,
+        0.875
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8939393939393939,
+        0.7410714285714286,
+        0.6458333333333334,
+        0.782258064516129,
+        1.0
+      ],
+      "fold_text_aucs": [
+        0.5984848484848485,
+        0.39285714285714285,
+        0.6875,
+        0.7741935483870968,
+        0.484375
+      ],
+      "layer": 32,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.812620444072057,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.5874821079458176,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.6888659055997766,
+      "combined_auc_mean": 0.6955248044965787,
+      "combined_delta_over_text": 0.10804269655076115,
+      "fold_activation_aucs": [
+        0.36363636363636365,
+        0.6116071428571428,
+        0.7291666666666666,
+        0.9274193548387097,
+        0.8125
+      ],
+      "fold_combined_aucs": [
+        0.48484848484848486,
+        0.59375,
+        0.7291666666666667,
+        0.935483870967742,
+        0.734375
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.8181818181818181,
+        0.6875,
+        0.625,
+        0.8467741935483871,
+        0.8125
+      ],
+      "fold_text_aucs": [
+        0.5984848484848485,
+        0.39285714285714285,
+        0.6875,
+        0.7741935483870968,
+        0.484375
+      ],
+      "layer": 40,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.7579912023460411,
+      "slice": "generated_first_16",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.5874821079458176,
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "activation_auc_mean": 0.7529342968859097,
+      "combined_auc_mean": 0.7635735232509426,
+      "combined_delta_over_text": -0.014674102778941434,
+      "fold_activation_aucs": [
+        0.5151515151515151,
+        0.7589285714285714,
+        0.7083333333333333,
+        0.782258064516129,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        0.5909090909090909,
+        0.7098214285714286,
+        0.71875,
+        0.7983870967741935,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6060606060606061,
+        0.8348214285714286,
+        0.5520833333333334,
+        0.7580645161290323,
+        0.96875
+      ],
+      "fold_text_aucs": [
+        0.696969696969697,
+        0.5803571428571429,
+        0.71875,
+        0.8951612903225806,
+        1.0
+      ],
+      "layer": 16,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.74395597681888,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.7782476260298841,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.8029709537774053,
+      "combined_auc_mean": 0.8089189708141321,
+      "combined_delta_over_text": 0.030671344784248045,
+      "fold_activation_aucs": [
+        0.6060606060606061,
+        0.7901785714285714,
+        0.7395833333333333,
+        0.8790322580645161,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        0.6666666666666667,
+        0.7142857142857143,
+        0.7604166666666667,
+        0.9032258064516129,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.6363636363636364,
+        0.8839285714285714,
+        0.5520833333333334,
+        0.8467741935483871,
+        1.0
+      ],
+      "fold_text_aucs": [
+        0.696969696969697,
+        0.5803571428571429,
+        0.71875,
+        0.8951612903225806,
+        1.0
+      ],
+      "layer": 24,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.7838299469347857,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.7782476260298841,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.7346372713308197,
+      "combined_auc_mean": 0.791246857980729,
+      "combined_delta_over_text": 0.012999231950844958,
+      "fold_activation_aucs": [
+        0.5909090909090908,
+        0.7008928571428571,
+        0.5104166666666666,
+        0.8709677419354839,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        0.696969696969697,
+        0.6339285714285714,
+        0.6979166666666667,
+        0.9274193548387097,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.5303030303030303,
+        0.8125,
+        0.71875,
+        0.8306451612903226,
+        1.0
+      ],
+      "fold_text_aucs": [
+        0.696969696969697,
+        0.5803571428571429,
+        0.71875,
+        0.8951612903225806,
+        1.0
+      ],
+      "layer": 32,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.7784396383186706,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.7782476260298841,
+      "text_field": "generated_text"
+    },
+    {
+      "activation_auc_mean": 0.7823575617930457,
+      "combined_auc_mean": 0.7841642228739003,
+      "combined_delta_over_text": 0.005916596844016242,
+      "fold_activation_aucs": [
+        0.48484848484848486,
+        0.7589285714285714,
+        0.7083333333333334,
+        0.9596774193548387,
+        1.0
+      ],
+      "fold_combined_aucs": [
+        0.5606060606060607,
+        0.65625,
+        0.7604166666666667,
+        0.9435483870967742,
+        1.0
+      ],
+      "fold_residual_activation_abs_aucs": [
+        0.7121212121212122,
+        0.7991071428571428,
+        0.6041666666666666,
+        0.9516129032258065,
+        1.0
+      ],
+      "fold_text_aucs": [
+        0.696969696969697,
+        0.5803571428571429,
+        0.71875,
+        0.8951612903225806,
+        1.0
+      ],
+      "layer": 40,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "residual_activation_abs_auc_mean": 0.8134015849741656,
+      "slice": "generated_full",
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_auc_mean": 0.7782476260298841,
+      "text_field": "generated_text"
+    }
+  ],
+  "capture_artifact_id": "capture_1_2461d8ccdc41",
+  "condition_baselines": [
+    {
+      "auc": 1.0,
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "target": "prompt_pole"
+    },
+    {
+      "auc": 0.9193253968253968,
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "target": "observed_action"
+    },
+    {
+      "auc": 0.5,
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "target": "observed_action_within_negative"
+    }
+  ],
+  "generation_rows_path": "projects/MOREBENCH/ethical_advantage_vectors/phase_01/reports/v2_full_capture/report_12abda8dec51_9d7390f7/results/generate_v2_responses_results.json",
+  "text_baselines": [
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_field": "instruction_text"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_field": "prompt_text"
+    },
+    {
+      "auc_mean": 0.9342447916666666,
+      "auc_std": 0.04137470955441023,
+      "fold_aucs": [
+        0.9928385416666666,
+        0.9290364583333334,
+        0.9251302083333333,
+        0.95703125,
+        0.8671875
+      ],
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "auc_mean": 0.9967447916666666,
+      "auc_std": 0.004396339327118271,
+      "fold_aucs": [
+        1.0,
+        0.9889322916666666,
+        1.0,
+        1.0,
+        0.9947916666666667
+      ],
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_field": "generated_prefix32_text"
+    },
+    {
+      "auc_mean": 1.0,
+      "auc_std": 0.0,
+      "fold_aucs": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "n": 400,
+      "negative": 160,
+      "positive": 240,
+      "split_kind": "group_kfold_dilemma",
+      "target": "prompt_pole",
+      "text_field": "generated_text"
+    },
+    {
+      "auc_mean": 0.9341927239755254,
+      "auc_std": 0.04168768319982587,
+      "fold_aucs": [
+        0.908685064935065,
+        0.8797492401215805,
+        0.9168595679012346,
+        0.9782509157509157,
+        0.9874188311688312
+      ],
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_field": "instruction_text"
+    },
+    {
+      "auc_mean": 0.9407026254543984,
+      "auc_std": 0.03475258217569236,
+      "fold_aucs": [
+        0.9342532467532467,
+        0.9008358662613981,
+        0.9066358024691358,
+        0.9780219780219781,
+        0.9837662337662337
+      ],
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_field": "prompt_text"
+    },
+    {
+      "auc_mean": 0.8568918973395924,
+      "auc_std": 0.08565399828135903,
+      "fold_aucs": [
+        0.8488230519480519,
+        0.7021276595744681,
+        0.8607253086419754,
+        0.9340659340659342,
+        0.9387175324675324
+      ],
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "auc_mean": 0.971612353039658,
+      "auc_std": 0.016449578324617437,
+      "fold_aucs": [
+        0.9797077922077921,
+        0.9407294832826747,
+        0.9841820987654321,
+        0.9688644688644689,
+        0.9845779220779222
+      ],
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_field": "generated_prefix32_text"
+    },
+    {
+      "auc_mean": 0.9694191692861907,
+      "auc_std": 0.01355468566107571,
+      "fold_aucs": [
+        0.9577922077922079,
+        0.9551671732522796,
+        0.9675925925925926,
+        0.9734432234432234,
+        0.9931006493506493
+      ],
+      "n": 535,
+      "negative": 360,
+      "positive": 175,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action",
+      "text_field": "generated_text"
+    },
+    {
+      "auc_mean": 0.6261699657869013,
+      "auc_std": 0.14104768049860056,
+      "fold_aucs": [
+        0.4848484848484848,
+        0.5625,
+        0.5104166666666667,
+        0.7137096774193548,
+        0.859375
+      ],
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_field": "instruction_text"
+    },
+    {
+      "auc_mean": 0.6455387690266723,
+      "auc_std": 0.17196795074785348,
+      "fold_aucs": [
+        0.5909090909090909,
+        0.4776785714285714,
+        0.4791666666666667,
+        0.7580645161290323,
+        0.921875
+      ],
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_field": "prompt_text"
+    },
+    {
+      "auc_mean": 0.5874821079458176,
+      "auc_std": 0.13674483812320448,
+      "fold_aucs": [
+        0.5984848484848485,
+        0.39285714285714285,
+        0.6875,
+        0.7741935483870968,
+        0.484375
+      ],
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_field": "generated_prefix16_text"
+    },
+    {
+      "auc_mean": 0.7625741865661221,
+      "auc_std": 0.1592409991641615,
+      "fold_aucs": [
+        0.803030303030303,
+        0.5982142857142857,
+        0.5729166666666667,
+        0.8387096774193549,
+        1.0
+      ],
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_field": "generated_prefix32_text"
+    },
+    {
+      "auc_mean": 0.7782476260298841,
+      "auc_std": 0.14976623975086856,
+      "fold_aucs": [
+        0.696969696969697,
+        0.5803571428571429,
+        0.71875,
+        0.8951612903225806,
+        1.0
+      ],
+      "n": 175,
+      "negative": 19,
+      "positive": 156,
+      "split_kind": "group_kfold_dilemma",
+      "target": "observed_action_within_negative",
+      "text_field": "generated_text"
+    }
+  ]
+}
