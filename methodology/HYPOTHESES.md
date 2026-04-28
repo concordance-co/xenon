@@ -5,8 +5,9 @@ collects candidate research directions worth running through the flywheel
 but not yet committed to a phase. One per subproject, lives at the
 subproject root, append-only with explicit closure semantics.
 
-This doc explains the why and how. The instance for any given subproject
-lives at `projects/<project>/<subproject>/HYPOTHESES.md`.
+This doc explains the why and how. The instance lives at
+`projects/<project>/[<subproject>/]HYPOTHESES.md` — at the subproject
+level when there is one, otherwise at the project root.
 
 ## Purpose
 
@@ -24,19 +25,15 @@ Without a catalog, these candidates live scattered across PHASE.md files,
 chat logs, and memory. They get rediscovered, re-debated, and sometimes
 re-run. The catalog is the durable home that prevents this.
 
-## What it is not
+## Shape
 
-A hypothesis catalog is not a backlog, not a roadmap, not a wishlist.
+Entries are **claim-shaped**: falsifiable propositions about the system
+under study, each paired with the evidence required to confirm or refute
+it and the flywheel path that produces that evidence. Tasks and roadmap
+items belong elsewhere.
 
-- A backlog is task-shaped — work to be done.
-- A roadmap is sequence-shaped — order of work.
-- A hypothesis catalog is **claim-shaped** — falsifiable propositions about
-  the system under study, each with the evidence it would take to confirm
-  or refute, and the flywheel path that produces that evidence.
-
-If an entry can't be turned into a sentence of the form "We believe X;
-to confirm we would need Y; here is the cheapest path to Y" — it's not a
-hypothesis. It's a vibe or a task. Move it elsewhere.
+An entry must compress to a sentence of the form "We believe X; to
+confirm we would need Y; here is the cheapest path to Y."
 
 ## What goes in
 
@@ -57,7 +54,7 @@ A candidate belongs in the catalog when it is:
 
 ## What does not go in
 
-- Hypotheses with no falsifiable pass/fail criterion. These rot.
+- Hypotheses with no falsifiable pass/fail criterion.
 - Hypotheses whose evidence would require a different model, dataset, or
   subproject. Those belong to that other subproject's catalog, not this
   one.
@@ -138,8 +135,8 @@ The catalog is therefore the persistent store across phases; the
   what claim level.
 - `CHECKS.md` — the decision-point triggers. Tells you what to ask
   before committing to a measurement, claim, or design.
-- `HYPOTHESES.md` (subproject) — the candidates. Tells you what's worth
-  running next.
+- `HYPOTHESES.md` (per project or subproject) — the candidates. Tells
+  you what's worth running next.
 
 The flywheel says how to move; the principles say what to claim; the
 checks say when to pause; the catalog says where to go.
@@ -158,9 +155,8 @@ analysis," "superseded by H7," "abandoned, see decision log." If the
 verdict needs more than ten words, the catalog is the wrong place; cite
 the relevant PHASE.md and link.
 
-Closed hypotheses are a feature, not a bug. They prevent repeated
-rediscovery and they are the longest-lived honest output of the
-subproject.
+Closed hypotheses prevent repeated rediscovery and are the longest-lived
+honest output of the subproject.
 
 ## Decision log
 
@@ -199,19 +195,17 @@ need a durable home.
   Symptom: the catalog has not been touched in months. The catalog has
   become a graveyard. Fix: prune to the top three by information value
   and move the rest to a numbered archive section.
-- **ID reuse.** Closed H1 gets recycled as a new H1. Breaks the
-  decision log. Don't.
+- **ID reuse.** Closed H1 gets recycled as a new H1, breaking the
+  decision log.
 - **Catalog as roadmap.** Entries written as tasks, not claims. Fix:
   rewrite with explicit pass/fail criteria. If you can't, the entry
   doesn't belong here.
 - **Stale entries.** `last_touched` six months old, status still
-  `proposed`. Either run it, supersede it, or close it as
-  not-worth-pursuing. Don't leave it.
+  `proposed`. Run it, supersede it, or close it as not-worth-pursuing.
 - **Closed hypotheses deleted.** Loses the audit trail. Move them to
   the closed table; never delete.
 
-## Templates
+## Example
 
-A starter template lives at `templates/HYPOTHESES.md` (TODO if not
-present). For an example of a populated catalog, see
+For an example of a populated catalog, see
 `projects/MOREBENCH/theory_persona_vectors/HYPOTHESES.md`.

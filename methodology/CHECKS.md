@@ -13,7 +13,7 @@ Each check is a concrete question that surfaces a principle from `PRINCIPLES.md`
 
 ## Before promoting a claim up the evidence ladder
 
-- What level does this evidence actually support? (P2, P6)
+- What level does this evidence support? (P2, P6)
 - Has the next level's test been run, or are you extrapolating? (P2)
 - Could a cheap baseline have produced the same number? (P7)
 - Does the result survive a second split? (P11)
@@ -24,6 +24,9 @@ Each check is a concrete question that surfaces a principle from `PRINCIPLES.md`
 - What's the nuisance-stratified cell size after you control for what matters? (P8)
 - Can a cheap n-gram classifier recover the label? If yes, which channel did you miss? (P10)
 - Is the abstraction you're encoding the one that appeared in real data, or a smoothed version of it? (P5)
+- If the data can't cleanly support the question, what augmentation will repair the failure mode? (P9)
+- For response-side labels, which two of the four confound-reduction categories will you stack — viewport reduction, training distribution variation, lexical subspace subtraction, or target reformulation? (P12)
+- Do contrasting prompts drive different recommendations or decisions at the behavior level? (P13)
 
 ## Before crossing into real data
 

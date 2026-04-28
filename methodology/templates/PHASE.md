@@ -3,10 +3,22 @@
 Every phase has a `PHASE.md` following this shape. It is the canonical
 orientation, design, running-state, and closure artifact for the phase.
 
-Initialize it when the phase starts. Early sections may say "not run yet" or
-name planned datasets, loci, controls, and success criteria. Keep it current as
-work runs. When the phase closes, finalize the same file so the next phase's
-premise can inherit from its open threads.
+Initialize it at the start of the phase but **leave most sections empty
+until the phase has earned them**. Pre-work, only `Premise` and
+`Artifacts` carry content (and `Open threads` if real questions exist).
+Everything else — `What we ran`, `Primary result`, `Qualitative
+inspection`, `Corrections`, `Running hypothesis`, `Claim boundary` —
+stays empty until runs, data reading, or evidence updates have produced
+something to record.
+
+Filling sections prospectively defeats the point. PHASE.md anchors what
+the phase actually showed against what was expected.
+
+The `Claim boundary` section tracks **mechanistic claims** — what the
+phase's work supports about model internals, representations,
+localization, or causality. Operational facts (the data is accessible,
+the benchmark is runnable, a model is selected) belong in `Premise` or
+`Artifacts`.
 
 File: `projects/<project>/[<subproject>/]<phase>/PHASE.md` (subproject optional)
 
@@ -20,19 +32,21 @@ rationale, and success / failure criteria.
 
 ## What we ran
 
-Run ids, datasets, loci, sites. Enough to reproduce or re-enter. Before runs
-exist, state the planned workflow, data source, controls, and execution
-sequence.
+Run ids, datasets, loci, sites. Enough to reproduce or re-enter.
+
+Empty until runs exist. Planned workflow and data sources belong in `Premise`.
 
 ## Primary result
 
-The headline numbers or observations. Tables, not prose, where possible. Before
-runs exist, state the planned primary readout and what would count as a useful
-result.
+The headline numbers or observations. Tables, not prose, where possible.
+
+Empty until a run has produced a primary readout.
 
 ## Qualitative inspection
 
 High rows, low rows, rows that surprise. What reading the data actually looks like.
+
+Empty until you've inspected real run data.
 
 ## Corrections
 
@@ -40,11 +54,17 @@ Beliefs held going in that this phase revised. Preregistered proxies that didn't
 
 Load-bearing section. Do not omit to avoid the appearance of backtracking.
 
+Empty until the phase has actually revised a belief against evidence.
+
 ## Running hypothesis
 
 What we now believe after this phase. Specific. Avoid restating the primary result.
 
+Empty until evidence has updated belief. Pre-work belief lives in `Premise`.
+
 ## Claim boundary
+
+Mechanistic claims earned by this phase's work, separated by support level.
 
 Safe to claim right now:
 
@@ -57,6 +77,8 @@ Not supported yet, avoid claiming:
 Preferred phrasing for the current state:
 
 - ...
+
+Empty until the phase has produced mechanistic evidence.
 
 ## Artifacts
 

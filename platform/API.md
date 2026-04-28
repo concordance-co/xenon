@@ -835,6 +835,7 @@ Shared fields:
 
 Operator-specific sources:
 - `InterchangePatch.activation_bank`
+- `InterchangePatch.donor_tokens`
 - `ProjectOutPatch.subspace`
 - `AddDirectionPatch.direction`
 - `SwapMeanPatch.centroids`

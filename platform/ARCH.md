@@ -491,7 +491,7 @@ capture_runner = ModalRunner(
 analysis_runner = ModalRunner(
     resources=ModalResources(
         cpu=6,
-        memory_gb=24,
+        memory_mb=24000,
         secrets=(
             ModalSecret.from_env_var("XENON_NEON_DATABASE_URL", secret_name="xenon-db"),
         ),

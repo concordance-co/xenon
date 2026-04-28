@@ -20,7 +20,7 @@ If the task is not behaviorally sane, stop and repair it first.
 
 Behavioral sanity is distinct from data worthiness. Data can be real, rich, and important and still be a bad substrate for a specific model if the model can't do the task, outputs are malformed, labels are behaviorally incoherent, or the task is solved by shortcuts.
 
-For response-side labels, the practical version: inspect generated model outputs, not just activations. An activation-only smoke test is not enough.
+For response-side labels, inspect generated outputs alongside activations. An activation-only smoke test misses output-level pathology.
 
 ## 2. Evidence must climb a ladder
 
@@ -36,25 +36,23 @@ Do not make Level 5 claims from Level 2 evidence. A high-AUROC probe supports a 
 
 The ladder is claim hygiene that runs alongside the flywheel. See `FLYWHEEL.md` for how they relate.
 
-## 3. Read layer is not write layer
-
-A readable signal is not automatically a writable signal.
+## 3. Detection sites and intervention sites diverge
 
 Common pattern: later layers give the strongest probe AUROC; earlier layers give more causal leverage. Late layers may contain compressed summary states. Early or middle layers may still contain malleable computation.
 
-Do not pick intervention sites only because they are easy to read.
+Choose intervention sites for causal leverage, not readout strength.
 
-## 4. Outcome-designed is not latent-designed
+## 4. Translate outcome labels into latent labels
 
 Labels in upstream data usually describe outcomes or grader judgments — was the response helpful, was the trade profitable, did the rubric pass. Mechanistic work needs labels closer to prompt structure, internal state, deliberative process, objective orientation, or intervention target.
 
 The job is often to translate from outcome supervision to latent-oriented supervision. This happens in flywheel stage 2.
 
-## 5. Source data is evidence, not proof of tractability
+## 5. Treat source data as a prior, then test tractability
 
-Start from the data as a crystallized artifact. Its shape encodes what someone thought mattered — what distinctions they expected to be meaningful, what behaviors they believed were worth surfacing. This is evidence of value.
+Start from the data as a crystallized artifact. Its shape encodes what someone thought mattered — what distinctions they expected to be meaningful, what behaviors they believed were worth surfacing. Treat that as a prior about value.
 
-It is not proof of mechanistic tractability. The correct posture: derive the implicit question from the data, then test whether the data supports that question cleanly.
+Tractability is a separate test. Derive the implicit question from the data, then check whether the data supports that question cleanly.
 
 For benchmarks: design choices carry information about the field's priors about what matters.
 
@@ -84,7 +82,7 @@ Good-looking results are not enough. Always ask:
 - could the model be using style instead of state?
 - could source, length, or role tokens explain the effect?
 - could prompt format alone recover the label?
-- could a same-label control show the intervention is just destabilizing the model?
+- could a same-label control show the intervention is merely destabilizing the model?
 
 Controls should be planned before results, not added as a reaction to skepticism.
 
@@ -92,25 +90,23 @@ Controls should be planned before results, not added as a reaction to skepticism
 
 Any analysis plan should check post-stratification sample size.
 
-How many examples remain per target label after stratifying on the nuisance variables that actually need to be controlled? Do the resulting cells still support the planned probe or intervention?
+How many examples remain per target label after stratifying on the nuisance variables that need control? Do the resulting cells still support the planned probe or intervention?
 
-If the answer is no, the correct response is to narrow the question, augment the data, or stop. Not: run the analysis anyway and hope regularization hides the problem.
+If the answer is no, narrow the question, augment the data, or stop. Regularization masks the problem rather than solving it.
 
-## 9. Data is a seed set, not a prison
+## 9. Augment data to fit the question
 
-If the data cannot cleanly support the intended question, the answer is not always "give up."
+When data cannot cleanly support the intended question, redesign it. Rewrites, matched pairs, counterbalancing, response generation, and synthetic augmentation are all on the table. Augmentation should repair the experiment's failure mode, not its row count.
 
-It may need rewrites, matched pairs, counterbalancing, response generation, or synthetic augmentation. Augmentation should repair the experiment, not just enlarge it.
-
-This is what flywheel stage 2 is for.
+Flywheel stage 2 is where this happens.
 
 ## 10. Labels leak by construction
 
 Upstream labels — whether from graders, outcomes, or production bookkeeping — are usually applicable from surface semantics. Treat imported labels as surface-recoverable by default until the pipeline has actively broken the most plausible shortcut channels.
 
-The goal is not to remove every easy feature blindly. It is to break surface-label correlation while preserving the semantic content a careful human reader would still recover.
+The goal is to break surface-label correlation while preserving the semantic content a careful human reader would still recover. Blanket feature removal overshoots.
 
-## 11. One-split success is not transfer
+## 11. Single-slice success demands stress tests
 
 A result that survives only one narrow slice should not be promoted as abstraction, transfer, or mechanism.
 
@@ -118,7 +114,7 @@ If a result looks unusually strong, clean, or easy, stress-test it against the s
 
 ## 12. Response-side probing requires active confound reduction
 
-Instruction-following models produce label-adjacent vocabulary when primed with label-adjacent instructions. This is not a bug; it is the defining property of the models being probed. Any response-side label on an instruction-following benchmark will carry a lexical confound unless the experiment actively works against it.
+Instruction-following models produce label-adjacent vocabulary when primed with label-adjacent instructions. That behavior is the defining property of the models being probed; experiments must design around it rather than try to suppress it. Any response-side label on an instruction-following benchmark will carry a lexical confound unless the experiment actively works against it.
 
 Four complementary confound-reduction technique categories exist, and they stack:
 

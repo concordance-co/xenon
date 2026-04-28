@@ -1,0 +1,56 @@
+{
+  "benchmark": "healthbench",
+  "phase": "00",
+  "version": "v1",
+  "frozen_date": "2026-04-28",
+  "recommendation": "proceed_to_benchmark_to_latent_labels",
+  "initial_slice": "healthbench_consensus",
+  "probe_target_model": "/models/Qwen/Qwen3-30B-A3B",
+  "source_links": {
+    "repo": "https://github.com/openai/simple-evals",
+    "announcement": "https://openai.com/index/healthbench/",
+    "eval_file": "https://github.com/openai/simple-evals/blob/main/healthbench_eval.py",
+    "consensus_blob": "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/consensus_2025-05-09-20-00-46.jsonl"
+  },
+  "access_status": "public_runnable_reference_eval",
+  "license_status": "simple_evals_repo_mit",
+  "label_richness": "high",
+  "product_relevance": "high",
+  "native_surfaces": [
+    "prompt_id",
+    "prompt_chat_messages",
+    "example_tags",
+    "rubric_items",
+    "rubric_points",
+    "rubric_tags",
+    "optional_physician_completion_metadata"
+  ],
+  "candidate_mechanistic_questions": [
+    "context_needed_state_for_underspecified_health_queries",
+    "triage_urgency_or_emergency_escalation_state",
+    "scope_calibration_under_medical_uncertainty",
+    "clinician_vs_layperson_audience_framing",
+    "response_depth_control"
+  ],
+  "major_confound_families": [
+    "topic_label_leakage",
+    "rubric_text_leakage",
+    "response_lexical_leakage",
+    "length_and_turn_count",
+    "consensus_selection_effects",
+    "hard_subset_model_conditioning"
+  ],
+  "next_actions": [
+    "freeze_phase_01_latent_label_ontology",
+    "run_qwen_behavioral_sanity",
+    "run_text_baselines_before_activation_capture"
+  ],
+  "neon_tables": {
+    "healthbench_consensus_v1": {
+      "split": "consensus",
+      "row_count_at_upload": 3671,
+      "uploaded_date": "2026-04-28",
+      "loader": "projects/healthbench/phase_00/scripts/upload_healthbench_consensus_to_neon.py"
+    }
+  }
+}

@@ -10,7 +10,38 @@ Work is organized in three levels:
 - **Subproject** — one research question about that system. Owns its synthetic seed, probes, findings.
 - **Phase** — a chapter of work inside a subproject. A new phase begins when a non-negligible change commits the subproject to a new direction.
 
-The flywheel describes the stages a subproject can move through. Stages are not uniform in size, not every subproject visits every stage, and the loopbacks between stages are where the actual research happens.
+The flywheel describes the stages a subproject can move through. Stages vary in size, subprojects visit different subsets of them, and the loopbacks between stages are where the research happens.
+
+### Layout
+
+```
+projects/<name>/
+  phase_00/
+    PHASE.md           initialized from templates/PHASE.md
+    specs/
+      workflow.py      blank — fills in as the phase commits to a direction
+    docs/              phase-internal artifacts
+    reports/           local report outputs
+```
+
+Optional, added when the work needs them:
+
+- `projects/<name>/REAL_DATA.md` — living real-data context doc (stage-1 artifact). See `templates/REAL_DATA.md`.
+- `projects/<name>/shared/` — project-local helpers (`paths.py`, `neon.py`, etc.)
+- `projects/<name>/scripts/` — project-level builders
+- `projects/<name>/<subproject>/phase_XX/` — same shape, when a project has multiple distinct research questions
+- `projects/<name>/benchmark_context.md` — frozen sidecar for benchmark projects
+
+## Starting a new project
+
+When the user opens with a concrete task — "do benchmark X", "analyze model Y", "investigate behavior Z" — go to work:
+
+1. Read `PRINCIPLES.md`, `CHECKS.md`, and `operations/LOCALITY.md`. Skim `ROSTER.md`.
+2. If the task names a repo, paper, or dataset, scan it.
+3. Scaffold the project per the layout above. The first phase is `phase_00` — the framing pass: orientation, source scan, project-shape decisions. Hypothesis sketches and substrate analysis live here. Capture and synth design come later.
+4. Report back with what the substrate looks like, what scaffold went up, and what framings the data invites.
+
+The user takes it into hypothesis mode from there. Phase 0 closes when the project has a defensible first research question and the next phase has its premise.
 
 ## The stages
 
@@ -102,7 +133,7 @@ Artifact: probes, directions, characterization report.
 
 Goal: move from synth-validated signal to real-data transfer. Ask whether the thing you built survives on real data from the original system.
 
-Moves: apply probes to real data at the matched loci. Inspect high-projection rows. Inspect low-projection rows. Understand what the probe actually reads on real data — it will not be exactly what it reads on synth.
+Moves: apply probes to real data at the matched loci. Inspect high-projection rows. Inspect low-projection rows. Understand what the probe reads on real data — it will differ from what it reads on synth.
 
 Exit when: you can state clearly what the probe reads on real data and what it doesn't, with the claim boundary matching the evidence.
 

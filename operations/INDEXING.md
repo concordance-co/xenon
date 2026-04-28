@@ -96,8 +96,6 @@ Project-specific discovery helpers live under the project:
 
 These are project-local by design for now. If a helper pattern starts repeating across projects, it's a candidate for promotion into `pipelines_v2/` — but default to project-local until the pattern is repeated.
 
-Open question: some of what's currently in `prompt_confusion/paths.py` (dataset export roots, registry paths) may generalize. Worth revisiting during the next infrastructure pass.
-
 ## Cross-project discovery
 
 The catalog is cross-project by default. Neon tables and Modal volumes are not indexed cross-project.

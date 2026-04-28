@@ -10,11 +10,11 @@ Xenon is Concordance's mech interp platform: `pipelines_v2` infrastructure plus 
 
 Three reference trees. Load the relevant one for the work.
 
-- **`methodology/`** — how to do the research. Flywheel, principles, checks, method roster, templates.
+- **`methodology/`** — how to do the research. Flywheel, principles, checks, hypothesis catalog spec, method roster, templates.
 - **`operations/`** — where data lives, how to discover it, how reports are built. Locality, indexing, reporting.
 - **`platform/`** — `pipelines_v2` API, workflow authoring, specs, architecture.
 
-Project work lives under `projects/<project>/`. Each project has a `REAL_DATA.md` living document and one or more phases, optionally grouped into subprojects.
+Project work lives under `projects/<project>/`. Phases live directly under the project, or grouped into subprojects when a project has multiple research questions. `REAL_DATA.md` is added when stage-1 work begins.
 
 Archive directories (`*/archive/`) are historical. Treat as effectively deleted unless explicitly digging through old work.
 
@@ -85,6 +85,7 @@ methodology/             research substrate
   FLYWHEEL.md            how a subproject moves from question to finding
   PRINCIPLES.md          always-true research values
   CHECKS.md              decision-point triggers
+  HYPOTHESES.md          per-subproject hypothesis catalog spec
   ROSTER.md              method catalog (29 families)
   templates/
     PHASE.md             canonical phase orientation/design/closure shape
@@ -110,19 +111,24 @@ tests/                   platform tests
 
 projects/
   <project>/
-    project_spec.json    organizational metadata
-    REAL_DATA.md         living real-data context doc
-    shared/              project-local code
-    [<subproject>/]
-      <phase>/
-        specs/workflow.py
-        PHASE.md         canonical phase orientation/design/closure artifact
-        reports/         local report sources and assets
+    [REAL_DATA.md]       optional — living real-data context doc
+    [shared/]            optional — project-local code
+    phase_XX/
+      PHASE.md           canonical phase orientation/design/closure artifact
+      specs/
+        workflow.py      executable source of truth for the phase
+      docs/              phase-internal artifacts
+      reports/           local report sources and assets
+    [<subproject>/]      optional — when a project has multiple research questions
+      phase_XX/
+        ... same shape
 ```
 
 ## Starting new work
 
-**New project.** Create `projects/<name>/` with `project_spec.json` and a `REAL_DATA.md` based on the template. Add subprojects only when one project has multiple distinct research questions.
+When the user opens with a concrete task, follow `methodology/FLYWHEEL.md`'s "Starting a new project" flow: read methodology + operations, scan any provided source, scaffold `projects/<name>/phase_00/` per the layout there, report the picture back. Phase 0 is the framing pass before stage 1.
+
+Existing projects (`MOREBENCH/`, `COUNSELBENCH/`, `DX_TERMINAL/`) predate the current methodology and templates. Don't pattern-match new work against them — build against the docs. Reference old projects only when explicitly asked.
 
 **New phase.** A new phase begins when a loopback is triggered or the subproject commits to a meaningfully new direction. See `methodology/FLYWHEEL.md`. Create the phase directory with `specs/workflow.py` and a `PHASE.md` initialized from `methodology/templates/PHASE.md`. Keep `PHASE.md` current as the phase runs; finalize the same file when the direction shifts again.
 
