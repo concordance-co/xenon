@@ -123,8 +123,25 @@ Instruction-following models produce label-adjacent vocabulary when primed with 
 Four complementary confound-reduction technique categories exist, and they stack:
 
 - `viewport reduction` — probe only a portion of the response where the instruction-acknowledgment leakage is absent (tail window, conclusion span, non-header content)
-- `training distribution variation` — train the probe across prompt formats, paraphrases, or prime variants so the learned direction must be format-invariant
+- `training distribution variation` — train the probe across prompt formats, paraphrases, or prime variants so the learned direction must be format-invariant. **Variants must be validated, not just constructed.** After building variant pairs, train a text classifier (e.g., char-TFIDF + ridge) on the responses they produce. If within-variant text-classifier accuracy is at ceiling (AUROC ≥ ~0.95), the variants are not driving response-level lexical equivalence — they are merely two prompts with the same target label, and an activation classifier on these variants is still confounded by lexical signal. Repair by adding format-level constraints (output schema, length bound, vocabulary bans on each variant's canonical lexical family) until the within-variant text classifier lands near chance. Only then is the variant pair functioning as a holdout. A technique applied without its validation step has been gestured at, not executed.
 - `lexical subspace subtraction` — residualize probe features against text-baseline predictions, or erase text-aligned subspaces, before probing
 - `target reformulation` — shift from categorical identity to binary collapse, relational contrast, or behavioral extraction
 
 No single technique reliably pushes text baselines off ceiling. Combinations are the norm, not the exception. Plan response-side probe work by pairing techniques from at least two categories before accepting any representational claim.
+
+## 13. Probing requires behavioral divergence
+
+A probe earns nothing if the contrast doesn't drive behavior. Before any activation probe under prompt-conditioned setups, verify the contrasting prompts produce different recommendations / decisions, not merely different activation signatures. This extends §1 (behavioral sanity) into the probing context.
+
+Once behavior divergence is established, the lexical-recoverability of the contrast determines what claim probing can earn:
+
+| lexical leakage | behavior divergence | claim available |
+|---|---|---|
+| low | high | **Optimal probe target.** Activation differences reflect downstream processing. Probing earns Level 2 directly. |
+| high | high | **Valid causal target, not a clean probe target.** Probing alone can't separate instruction-recognition from behavioral shift. Steering on neutral-primed forward passes disambiguates and earns Level 4 regardless of extraction-time lexical confound. |
+| high | low | **Diagnostic null.** Probe AUROC decorates the instruction signature; do not promote. The most common overclaim under priming. |
+| low | low | Nothing happening. |
+
+When a contrast lands in *high lex / high behavior* and steering is available, accept the confound and use steering. Otherwise redesign toward *low lex / high behavior* via §12 techniques (especially `training distribution variation` with the within-variant text-classifier validation).
+
+Measure behavior divergence per phase: recommendation-overlap rate, action-class distribution by condition, pairwise Jaccard on normalized actions. < ~30% divergence flags the contrast as probing-untractable until divergence is engineered up.

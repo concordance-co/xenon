@@ -11,6 +11,22 @@ Before fitting a probe, decide whether the evaluation should be:
 
 If the benchmark already encodes a meaningful split, prefer using it directly instead of defaulting to CV. Otherwise you may overstate abstraction.
 
+### Validate lexical-family holdouts before claiming non-lexical signal
+
+A lexical-family holdout (train on one prompt variant, test on another that shares the target latent but differs lexically) only earns a non-lexical-signal claim if the variants produce response text that a text classifier cannot distinguish.
+
+Mandatory validation step before running the activation probe:
+
+1. train a text classifier (e.g., char TF-IDF 3–5 + ridge) on responses from variant A vs variant B
+2. record balanced accuracy and AUROC
+3. the within-variant text classifier must land near chance (BA ≤ ~0.65, AUROC ≤ ~0.75) for the holdout to be valid
+
+If the within-variant text classifier is at ceiling (AUROC ≥ ~0.95), the variants are not functioning as a holdout — they are two different prompts with the same target label, and the activation probe across them remains confounded by the lexical signal the text classifier exploits. Repair by adding format constraints (output schema, length bound, vocabulary bans on each variant's canonical lexical family) until the validation passes.
+
+A probe-transfer test that has not passed this within-variant text-classifier validation has not isolated lexical confound. Report results from such transfers as Level 2 representational only, with the lexical confound explicitly listed as not-yet-controlled.
+
+This validation is a stricter operationalization of the technique referenced in `methodology/PRINCIPLES.md §12` (response-side probing requires active confound reduction). The skill `latent-label-data-augmentation` covers the variant-construction side of the same loop.
+
 ## Probe selection guide
 
 | Probe | When to use | Interpretability | Capacity |

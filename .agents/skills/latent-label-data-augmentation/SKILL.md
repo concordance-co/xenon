@@ -157,6 +157,27 @@ Useful repair patterns include:
 The goal is not just "more variants."
 The goal is to break one-to-one surface recoverability.
 
+### Validate variant equivalence before treating a variant pair as a holdout
+
+Constructing variants is not the same as having a working holdout. A variant pair earns holdout status only when a within-variant text classifier on the responses they produce lands near chance.
+
+Required validation step:
+
+- train a text classifier (e.g., char TF-IDF 3–5 + ridge) to distinguish the responses produced under variant A from the responses produced under variant B
+- record balanced accuracy and AUROC
+- a within-variant text classifier at ceiling (AUROC ≥ ~0.95 or BA near 1.0) means the variants are not lexically equivalent and are not functioning as a holdout — the pair is two different prompts with the same target label, and any downstream activation classifier on it remains confounded by the lexical signature the text classifier exploits
+
+Repair if the validation fails:
+
+- add output-schema constraints (e.g., fixed three-line structure)
+- add length bounds
+- add vocabulary bans on the canonical lexical family of each variant
+- iterate until the within-variant text classifier lands near chance (BA ≤ ~0.65, AUROC ≤ ~0.75)
+
+A track that ships variant pairs without running this validation has gestured at the technique rather than executing it. Mark such tracks as `shortcut_stress_unvalidated` in the manifest until validation passes.
+
+This was empirically motivated by the MOREBENCH/theory_persona_vectors phase_03 deont-prompt-isolation experiment: natural-prompt within-variant text classifier landed at AUROC 0.998, and the variants were not functioning as holdouts despite being labeled as such. Detected only when the validation was finally run.
+
 ## Confound-focused design checklist
 
 Always consider:
