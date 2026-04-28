@@ -55,11 +55,9 @@ These choices affect which labels are even meaningful.
 
 ## Workflow
 
-Use the full process in:
-
-- [benchmark-to-latent-labels.md](../../../methodology/archive/benchmark-to-latent-labels.md)
-
-At a high level:
+Use this workflow as the canonical benchmark-to-latent-labels process. Older
+long-form planning notes have been archived in the knowledge-base repo and
+should not be treated as active dependencies.
 
 ### 1. Benchmark intake
 
@@ -233,8 +231,9 @@ This phase is done when:
 Primary references:
 
 - [methodology/PRINCIPLES.md](../../../methodology/PRINCIPLES.md)
-- [benchmark-to-latent-labels.md](../../../methodology/archive/benchmark-to-latent-labels.md)
-- [benchmark-first-mech-interp-failure-modes.md](../../../methodology/archive/benchmark-first-mech-interp-failure-modes.md)
+- [methodology/CHECKS.md](../../../methodology/CHECKS.md)
+- [methodology/FLYWHEEL.md](../../../methodology/FLYWHEEL.md)
+- [methodology/templates/REAL_DATA.md](../../../methodology/templates/REAL_DATA.md)
 
 Related skills:
 

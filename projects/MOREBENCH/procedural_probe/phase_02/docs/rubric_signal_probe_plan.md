@@ -6,10 +6,12 @@ for the latest run interpretation and the recommended latent-label pivot.
 
 Grounding:
 
-- local skill: `benchmark-mech-interp`
+- local skill: `benchmark-validation`
+- local skill: `benchmark-to-latent-labels`
+- local skill: `benchmark-mech-interp-analysis`
 - local skill: `constructing-llm-probes`
 - methodology roster: `methodology/ROSTER.md`
-- benchmark planning doc: `methodology/archive/benchmark-to-mech-interp.md`
+- benchmark methodology: `methodology/PRINCIPLES.md`, `methodology/CHECKS.md`
 - paper: https://arxiv.org/pdf/2510.16380
 - official repo: https://github.com/morebench/morebench
 
