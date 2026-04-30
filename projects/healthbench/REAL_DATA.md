@@ -30,6 +30,28 @@ Durable benchmark tables belong in Neon, loaded by repeatable uploader scripts.
 - Uploaded: 2026-04-28.
 - Row count at upload: 3,671.
 
+- `healthbench_ask_vs_answer_smoke_v1`
+- Source: fully synthetic matched triples inspired by HealthBench
+  context-seeking / reducible-uncertainty rubric families, not copied benchmark
+  strings.
+- Loader: `projects/healthbench/phase_00/scripts/upload_ask_vs_answer_smoke_to_neon.py`
+- Purpose: small behavioral smoke set for ask / mixed / answer sanity before
+  any activation capture.
+- Uploaded: 2026-04-30.
+- Row count at upload: 72.
+
+- `healthbench_scope_vs_commit_smoke_v1`
+- Source: fully synthetic matched triples inspired by HealthBench
+  reducible-uncertainty failures, not copied benchmark strings.
+- Loader: `projects/healthbench/phase_01/scripts/upload_scope_vs_commit_smoke_to_neon.py`
+- Purpose: small behavioral smoke set for scope-vs-commit self-consistency
+  before any activation capture, direction construction, steering, or judging.
+- Uploaded: 2026-04-30.
+- Row count at upload: 288.
+- Shape: 6 triples x 3 context-completeness conditions x 16 independent
+  stochastic samples; prompt hashes include the sample index so repeated
+  prompts are not deduplicated by the generation runtime.
+
 ## Handling Rules
 
 - Do not commit raw HealthBench rows to the repository.

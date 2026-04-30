@@ -1,0 +1,76 @@
+{
+  "sections": [
+    {
+      "id": "opener",
+      "title": "Opener",
+      "hint": "Set the hook and the claim boundary. Keep this short.",
+      "markdown": "This work follows up on our recent DX Terminal collaboration, where we used mechanistic interpretability in real-world financial contexts.\n\nPart 2 looks at a different problem DXRG saw in their agents: strange behavior when policy sources collide."
+    },
+    {
+      "id": "problem",
+      "title": "Problem",
+      "hint": "Add concrete DX Terminal examples in plain language.",
+      "markdown": "A trading agent sees system rules, user strategies, active vault settings, portfolio state, market data, and prior decisions. Those sources are not always mutually consistent.\n\nOur question was whether these policy-source conflicts leave a readable internal signal."
+    },
+    {
+      "id": "why",
+      "title": "Why This Matters",
+      "hint": "Your voice goes here: why this matters to agent builders.",
+      "markdown": "The policy-conflict problem was valuable because it was concrete, recurring, and operationally meaningful: if an agent's internal state reflects competing constraints, that signal could eventually support monitoring, audits, prompt redesign, settings semantics, and strategy lifecycle debugging."
+    },
+    {
+      "id": "synthetic_setup",
+      "title": "Synthetic Abstraction",
+      "hint": "Explain why controlled prompts come before real transfer.",
+      "markdown": "Real prompts are entangled, so we started with controlled prompt families. The synthetic prompts isolate conflicts between user-configured strategies and vault-configured active settings while keeping the decision surface simple."
+    },
+    {
+      "id": "synthetic_results_intro",
+      "title": "Synthetic Probe Results Intro",
+      "hint": "Lead into the locked results table.",
+      "markdown": "After iterating on prompt structure and confound controls, all three families were linearly readable under lexical holdouts. Values below are balanced accuracy / AUROC where paired."
+    },
+    {
+      "id": "synthetic_results_takeaway",
+      "title": "Synthetic Results Takeaway",
+      "hint": "Interpret the charts and geometry without overclaiming.",
+      "markdown": "The families are related but not identical. Same-capture mean-difference directions at L36 showed moderate cosine similarity, strongest between `risk_preference` and `trade_size`."
+    },
+    {
+      "id": "transfer_failure",
+      "title": "First Real Transfer Attempt",
+      "hint": "Frame failure as ontology sharpening, not as a dead end.",
+      "markdown": "The first direct transfer pass projected synthetic conflict directions onto full production prompts at coarse global sites. It did not cleanly separate complaint rows from baseline controls.\n\nThat failure mattered. It showed that synthetic success does not automatically become production success."
+    },
+    {
+      "id": "bridge",
+      "title": "Bridge Program",
+      "hint": "Use this as a short failure-analysis interlude before Phase 13.",
+      "markdown": "We then used bridge datasets to separate template mismatch from content and ontology mismatch. The bridge evidence was real but weak: buy-only filtering helped, but the deeper issue was an unresolved ontology and representation mismatch."
+    },
+    {
+      "id": "phase13",
+      "title": "Phase 13 Real Signal Discovery",
+      "hint": "Explain the simpler question: fixed directions, no classifier, no threshold.",
+      "markdown": "Phase 13 asked a simpler question: if we do not train a classifier and do not set thresholds, do fixed synthetic directions produce scalar structure anywhere on real DX Terminal prompts?"
+    },
+    {
+      "id": "row_reading",
+      "title": "Row Reading / Ontology Correction",
+      "hint": "This should become the core narrative section.",
+      "markdown": "The most important interpretability move was reading the top and bottom rows. The preregistered root-cause proxy was wrong for the `trade_size` target. Root-cause labels diagnose why a complaint happened; the probe target is visible current-prefix conflict shape."
+    },
+    {
+      "id": "claim_boundary",
+      "title": "Claim Boundary",
+      "hint": "Keep this crisp and conservative.",
+      "markdown": "Fixed synthetic directions recover a real production signal at L32 `settings_end`. `trade_size` is selective for current-prefix concrete sized-action conflict. `shared_mean` appears to track broader policy tension, but the shared-family interpretation still needs more audit.\n\nThis is not a final detector, not a deployment monitor, and not a causal mechanism claim."
+    },
+    {
+      "id": "closing",
+      "title": "Closing / Next Steps",
+      "hint": "Close with the practical loop and next work.",
+      "markdown": "The useful loop is: real data exposes a messy failure mode; synthetic prompts isolate a clean abstraction; probes find a candidate internal signal; bridge tests expose transfer mismatch; real-data projection finds a narrower shape-specific signal; row reading improves the ontology."
+    }
+  ]
+}

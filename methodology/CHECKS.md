@@ -28,6 +28,13 @@ Each check is a concrete question that surfaces a principle from `PRINCIPLES.md`
 - For response-side labels, which two of the four confound-reduction categories will you stack — viewport reduction, training distribution variation, lexical subspace subtraction, or target reformulation? (P12)
 - Do contrasting prompts drive different recommendations or decisions at the behavior level? (P13)
 
+## Before scaling synth generation
+
+- Have you generated a smoke slice (10–50 rows) and inspected it by eye? (P1, flywheel stage 2)
+- Have you shown the user the spec and a row sample before scaling up?
+- Does the smoke slice pass cheap baseline checks before committing to scale? (P10, flywheel stage 3)
+- Does the planned row count match what the experiment actually needs? (P8)
+
 ## Before crossing into real data
 
 - What loci were chosen in synth, and are they visible in real data? (P3, flywheel stage 4)

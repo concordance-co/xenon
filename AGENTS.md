@@ -31,6 +31,7 @@ Decision points that trigger `methodology/CHECKS.md`:
 - picking a measurement locus
 - promoting a claim up the evidence ladder
 - committing to a synth design
+- scaling synth generation
 - crossing into real data
 - designing an intervention
 - closing a phase

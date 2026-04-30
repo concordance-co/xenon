@@ -13,6 +13,7 @@ Hard rules first, then reference by data class.
 5. Large remote reads are blocked by `ModalVolumeStore.transfer_policy` unless explicitly overridden — don't override casually.
 6. No data artifacts (jsonl, parquet, safetensors, activation dumps) get committed to the repo.
 7. Local files are for smoke fixtures, audit exports, report inputs, and scratch. Nothing else.
+8. Synth generation runs that write to Neon must surface to the user first — show the spec, a sample of rows, and the planned row count. Smoke first (typically <100 rows); scale only after user approval and behavioral sanity against the criteria specified.
 
 ## Data class reference
 

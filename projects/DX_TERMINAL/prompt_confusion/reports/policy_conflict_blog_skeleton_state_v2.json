@@ -1,0 +1,76 @@
+{
+  "sections": [
+    {
+      "id": "opener",
+      "title": "Opener",
+      "hint": "Set the hook and the claim boundary. Keep this short.",
+      "markdown": "This work follows up on our recent blog post documenting our collaboration with DX Terminal to use mechanistic interpretability in real world financial contexts. In part 1, we described our research probing for, and discovering, the early signs of interpretable \"Market Perception\" geometries in LLMs when given real market data.\n\nPart 2 of our work examined a common problem DXRG saw in their agents: strange behaviors when policies collide. Users often ask their agents to execute on strategies they create that directly conflict with the vault settings they inputted when configuring the initial setup.\n\nOur thesis was that we'd be able to find interpretable probe directions associated with \"conflict\" that might allow us to detect difficult-to-spot policy-conflict scenarios in the prompts.\n\nWe used a semi-synthetic pipeline to discover 3 directions associated with distinct \"conflict families\" that shared geometric structure with each other, and have achieved early results that show the directions are active in real data in the cases they were trained to fire on."
+    },
+    {
+      "id": "problem",
+      "title": "Problem",
+      "hint": "Add concrete DX Terminal examples in plain language.",
+      "markdown": "Users operating an agent in the DX Terminal experiment set an initial set of sliders that correspond to different elements of trading for their *vaults*. \n\nThose settings include:\n\n- `Trading Activity`: how readily the agent should take action instead of observing.\n- `Trade Size`: how large each trade should be.\n- `Risk Preference`: whether the agent should prefer safer or more aggressive opportunities.\n- `Holding Style`: how long the agent should generally expect to hold positions.\n- `Diversification`: whether the agent should broaden exposure or concentrate into stronger opportunities.\n\nWhen deployed, agents are prompted at regular tick intervals with updated market information, and asked to call one of three tools:\n\n- record observation\n- buy\n- sell \n\nUsers can also chat with their agent to come up with *strategies* that provide more explicit guidance for the agent. Sometimes, the user curated strategies conflict with the initial vault settings the agent was configured with, and this can lead to strange agent behavior. For example, a user may set their initial vault to `trade_size = 1`, and then after a conversation with the agent create the strategy to \"Sell all positions and go full port into X Token if momentum is strong\". This would imply the agent should take action with the full portfolio, which contradicts the small setting used to configure the vault. \n\nWhile there are instructions in the system prompt for how to resolve this kind of conflict (\"ACTIVE SETTINGS are binding execution constraints\" and \"STRATEGY expresses preferences that apply only within what ACTIVE SETTINGS allow\"), it can still create undesirable behavior in situations where it's not clear which path to take. \n\nWe wanted to see if the model is aware of these conflicts when processing a prompt."
+    },
+    {
+      "id": "why",
+      "title": "Why This Matters",
+      "hint": "Your voice goes here: why this matters to agent builders.",
+      "markdown": "One of our primary goals at Concordance is to bring frontier interpretability techniques and tools into the hands of all agent builders to enable them to learn more deeply about the LLMs they are building on every day. Given the field is still immature, and most of the findings from big labs have been directed towards \"bigger\" problems of safety and alignment, there is little work being done that can directly transfer to real problems on the ground.\n\nThe \"policy conflict\" problem was a real issue that the DXRG team noticed at various points both before and during their DX Terminal experiment, and we felt that it was the right ground for interpretability experiments. The central question became: can we detect policy conflicts in real prompts with a simple set of linear probes?\n\nWe selected this question because there was real data to prove it matters, and is scoped enough to sharpen our toolkit with possible downstream applications in monitoring, auditing, prompt optimization/UX redesigns, and deeper learnings that inform DXRG's agent development."
+    },
+    {
+      "id": "synthetic_setup",
+      "title": "Synthetic Abstraction",
+      "hint": "Explain why controlled prompts come before real transfer.",
+      "markdown": "Real world data can be incredibly messy, but to ask mechanistic questions, one needs a clean dataset to amplify potentially active features before bringing learnings back into real settings.\n\nIn our case, we wanted to examine specific conflicts between user-configured *strategies* and vault-configured *settings*, so we created a synthetic dataset of ~1100 rows to make the read stronger.\n\nSynthetic Prompt Structure:\n\n```text\n[system]\nRole: trading agent.\nCore rule: each prompt contains STRATEGY and ACTIVE SETTINGS.\nPriority rule: ACTIVE SETTINGS are binding execution constraints.\nDecision order:\n  1. decide whether ACTIVE SETTINGS permit entry\n  2. choose asset according to the allowed risk/diversification posture\n  3. choose size according to ACTIVE SETTINGS\nOutput format: strict JSON only.\n\n[user]\nTASK\nChoose exactly one action for this tick.\n\nSTRATEGY\nA compact preference statement, e.g.:\n  - prefer high-conviction trades\n  - prefer large/small size\n  - prefer concentrated/diversified exposure\nStrategy applies only within ACTIVE SETTINGS.\n\nACTIVE SETTINGS\nSlider-like constraints:\n  - Trading Activity\n  - Trade Size\n  - Risk Preference\n  - Holding Style\n  - Diversification\n\nPORTFOLIO\nSmall controlled portfolio state.\n\nMARKET\nFour synthetic assets:\n  - ALPHA\n  - BETA\n  - DELTA\n  - GAMMA\nEach has controlled evidence/risk/diversification language.\n```\n\nUsing this structure, we can create a synthetic dataset that creates both aligned and conflicted rows between three setting types: `trade_size`, `risk_preference`, and `diversification_preference`. For example, to create a conflict row for `trade_size`, we could set the `Trade Size` slider to 5 (highest size), and then add a strategy like \"Never trade more than 10% of portfolio\" while keeping all other things constant. Our decision to isolate conflicts into three families came from an earlier unsupervised discovery phase that showed there might exist different conflict resolution circuits depending on the *type* of conflict in the prompt.\n\nTo avoid lexical confounds, we came up with strategy and other contextual information variation and split the data for strict holdouts to ensure there is minimal leakage between train and test sets.\n\nTODO: Add lexical variation examples here."
+    },
+    {
+      "id": "synthetic_results_intro",
+      "title": "Synthetic Probe Results Intro",
+      "hint": "Lead into the locked results table.",
+      "markdown": "After a few iterations on the synthetic prompt structure and confound isolation, we achieved the following results:"
+    },
+    {
+      "id": "synthetic_results_takeaway",
+      "title": "Synthetic Results Takeaway",
+      "hint": "Interpret the charts and geometry without overclaiming.",
+      "markdown": "We found that while the three aforementioned families had noticeably distinct geometry (see cosine similarities/PCA projections), there was a significant shared space when looking at the `shared_mean` across all trained probe vectors that hinted there is enough structure to continue in our tests.\n\n- clean synthetic policy-conflict directions are strongly readable\n- validated synthetic families:\n  - `trade_size`\n  - `risk_preference`\n  - `diversification_preference`\n- families share meaningful geometry\n- not collinear"
+    },
+    {
+      "id": "transfer_failure",
+      "title": "First Real Transfer Attempt",
+      "hint": "Frame failure as ontology sharpening, not as a dead end.",
+      "markdown": "The first direct transfer pass projected synthetic conflict directions onto full production prompts at coarse global sites. It did not cleanly separate complaint rows from baseline controls.\n\nThat failure mattered. It showed that synthetic success does not automatically become production success."
+    },
+    {
+      "id": "bridge",
+      "title": "Bridge Program",
+      "hint": "Use this as a short failure-analysis interlude before Phase 13.",
+      "markdown": "We then used bridge datasets to separate template mismatch from content and ontology mismatch. The bridge evidence was real but weak: buy-only filtering helped, but the deeper issue was an unresolved ontology and representation mismatch."
+    },
+    {
+      "id": "phase13",
+      "title": "Phase 13 Real Signal Discovery",
+      "hint": "Explain the simpler question: fixed directions, no classifier, no threshold.",
+      "markdown": "Phase 13 asked a simpler question: if we do not train a classifier and do not set thresholds, do fixed synthetic directions produce scalar structure anywhere on real DX Terminal prompts?"
+    },
+    {
+      "id": "row_reading",
+      "title": "Row Reading / Ontology Correction",
+      "hint": "This should become the core narrative section.",
+      "markdown": "The most important interpretability move was reading the top and bottom rows. The preregistered root-cause proxy was wrong for the `trade_size` target. Root-cause labels diagnose why a complaint happened; the probe target is visible current-prefix conflict shape."
+    },
+    {
+      "id": "claim_boundary",
+      "title": "Claim Boundary",
+      "hint": "Keep this crisp and conservative.",
+      "markdown": "Fixed synthetic directions recover a real production signal at L32 `settings_end`. `trade_size` is selective for current-prefix concrete sized-action conflict. `shared_mean` appears to track broader policy tension, but the shared-family interpretation still needs more audit.\n\nThis is not a final detector, not a deployment monitor, and not a causal mechanism claim."
+    },
+    {
+      "id": "closing",
+      "title": "Closing / Next Steps",
+      "hint": "Close with the practical loop and next work.",
+      "markdown": "The useful loop is: real data exposes a messy failure mode; synthetic prompts isolate a clean abstraction; probes find a candidate internal signal; bridge tests expose transfer mismatch; real-data projection finds a narrower shape-specific signal; row reading improves the ontology."
+    }
+  ]
+}

@@ -61,7 +61,7 @@ Artifact: the real-data context doc for this project, versioned and dated. Livin
 
 Goal: construct a tightly-controlled synthetic dataset that isolates the abstraction from stage 1.
 
-Moves: design the prompt template. Define the labels. Bake in the contrast structure you want to probe. Keep nuisance axes controllable. Start small and iterate.
+Moves: design the prompt template. Define the labels. Bake in the contrast structure you want to probe. Keep nuisance axes controllable. Generate a smoke slice (typically 10–50 rows), inspect by eye, surface row samples and the spec to the user. Scale only after the smoke set is sane and the design is approved.
 
 Exit when: you can point to rows of the synth dataset and argue the target abstraction varies across them while nuisances are controlled.
 
