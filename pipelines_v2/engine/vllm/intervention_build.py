@@ -25,6 +25,14 @@ if TYPE_CHECKING:
 _PATCH_WORKER_CLS = "pipelines_v2.engine.vllm.activation_patch_request_worker.ActivationPatchGPUWorker"
 
 
+def target_policy_payload(spec: PatchedGenerationSpec) -> dict[str, Any]:
+    application = getattr(spec.patch, "application", None)
+    to_dict = getattr(application, "to_dict", None)
+    if callable(to_dict):
+        return dict(to_dict())
+    return {"kind": "static", "include_prompt": True, "include_decode": False, "config": {}}
+
+
 def build_llm_kwargs(
     engine: "VLLMEngine",
     *,
@@ -165,6 +173,7 @@ def paired_request_payload(
         "operator": spec.patch.operator,
         "target_layers": [int(layer) for layer in spec.patch.write_site.layers],
         "target_positions": [int(pos) for pos in target_positions],
+        "target_policy": target_policy_payload(spec),
         "source_layer_map": {
             str(int(write_layer)): int(spec.patch.source_layer_for(int(write_layer)))
             for write_layer in spec.patch.write_site.layers
@@ -231,6 +240,7 @@ def unpaired_request_payload(
         "operator": spec.patch.operator,
         "target_layers": [int(layer) for layer in spec.patch.write_site.layers],
         "target_positions": [int(pos) for pos in target_positions],
+        "target_policy": target_policy_payload(spec),
         "source_layer_map": {
             str(int(write_layer)): int(spec.patch.source_layer_for(int(write_layer)))
             for write_layer in spec.patch.write_site.layers

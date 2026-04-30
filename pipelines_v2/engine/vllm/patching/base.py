@@ -63,8 +63,13 @@ class RequestPatchSpec:
     donor_positions: tuple[int, ...]
     target_read_positions: tuple[int, ...]
     query_positions: tuple[int, ...]
+    query_span: tuple[int, ...] = ()
     target_abs_positions: tuple[int, ...] = ()
     covered_abs_positions: tuple[int, ...] = ()
+    covered_abs_spans: tuple[tuple[int, int], ...] = ()
+    phase_counts: tuple[tuple[str, int], ...] = ()
+    target_policy: dict[str, Any] | None = None
+    rowwise: bool = False
     example_key: str = ""
     case_key: str = ""
     control_name: str = ""
@@ -84,8 +89,16 @@ class RequestPatchSpec:
         self.donor_positions = tuple(int(pos) for pos in self.donor_positions)
         self.target_read_positions = tuple(int(pos) for pos in self.target_read_positions)
         self.query_positions = tuple(int(pos) for pos in self.query_positions)
+        if self.query_span:
+            if len(self.query_span) != 2:
+                raise ValueError("query_span must be a [start, end] pair")
+            self.query_span = (int(self.query_span[0]), int(self.query_span[1]))
         self.target_abs_positions = tuple(int(pos) for pos in self.target_abs_positions)
         self.covered_abs_positions = tuple(int(pos) for pos in self.covered_abs_positions)
+        self.covered_abs_spans = tuple((int(start), int(end)) for start, end in self.covered_abs_spans)
+        self.phase_counts = tuple((str(name), int(count)) for name, count in self.phase_counts)
+        self.target_policy = dict(self.target_policy or {})
+        self.rowwise = bool(self.rowwise)
         self.example_key = str(self.example_key)
         self.case_key = str(self.case_key)
         self.control_name = str(self.control_name)
@@ -127,6 +140,12 @@ class RequestPatchSpec:
                 return int(source_layer)
         return int(write_layer)
 
+    def token_count(self) -> int:
+        if self.query_span:
+            start, end = self.query_span
+            return max(0, int(end) - int(start))
+        return len(self.query_positions)
+
     def selected_components_for(self, write_layer: int) -> tuple[int, ...]:
         for candidate_write_layer, indices in self.component_indices_by_layer:
             if int(candidate_write_layer) == int(write_layer):
@@ -136,7 +155,8 @@ class RequestPatchSpec:
 
 def spec_from_payload(payload: dict[str, Any]) -> RequestPatchSpec:
     query_positions = payload.get("query_positions")
-    if query_positions is None:
+    query_span = payload.get("query_span", ())
+    if query_positions is None and not query_span:
         query_positions = payload.get("target_positions", ())
     component_indices_payload = dict(payload.get("component_indices_by_layer", {}))
     source_layer_payload = dict(payload.get("source_layer_map", {}))
@@ -146,9 +166,21 @@ def spec_from_payload(payload: dict[str, Any]) -> RequestPatchSpec:
         donor_example_key=str(payload.get("donor_example_key") or ""),
         donor_positions=tuple(int(pos) for pos in payload.get("donor_positions", ())),
         target_read_positions=tuple(int(pos) for pos in payload.get("target_read_positions", ())),
-        query_positions=tuple(int(pos) for pos in query_positions),
+        query_positions=tuple(int(pos) for pos in (query_positions or ())),
+        query_span=tuple(int(pos) for pos in query_span) if query_span else (),
         target_abs_positions=tuple(int(pos) for pos in payload.get("target_abs_positions", ())),
         covered_abs_positions=tuple(int(pos) for pos in payload.get("covered_abs_positions", ())),
+        covered_abs_spans=tuple(
+            (int(span[0]), int(span[1]))
+            for span in payload.get("covered_abs_spans", ())
+            if isinstance(span, (list, tuple)) and len(span) == 2
+        ),
+        phase_counts=tuple(
+            (str(key), int(value))
+            for key, value in dict(payload.get("phase_counts", {})).items()
+        ),
+        target_policy=dict(payload.get("target_policy") or {}),
+        rowwise=bool(payload.get("rowwise", False)),
         example_key=str(payload.get("example_key") or ""),
         case_key=str(payload.get("case_key") or ""),
         control_name=str(payload.get("control_name") or ""),

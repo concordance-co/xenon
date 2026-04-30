@@ -150,18 +150,88 @@ def apply_subspace_operator(
     donor_mean: torch.Tensor | None = None,
     random_rows: torch.Tensor | None = None,
     match_projected_norm: bool = True,
+    rowwise: bool = False,
 ) -> tuple[torch.Tensor, dict[str, Any]]:
     operator_name = operator_from_mode_id(int(operator)) if isinstance(operator, int) else str(operator)
     if not query_positions:
         return hidden_states, {"status": "skipped", "reason": "no_query_positions", "operator": operator_name}
 
     section = hidden_states[list(query_positions)].to(torch.float32)
-    before = compute_section_state(
-        section,
-        mean=mean,
-        safe_scale=safe_scale,
-        selected_rows=selected_rows,
-    )
+    before = compute_section_state(section, mean=mean, safe_scale=safe_scale, selected_rows=selected_rows)
+
+    if bool(rowwise):
+        centered_rows = (section - mean) / safe_scale
+        if selected_rows.numel() > 0:
+            selected_coeff = centered_rows @ selected_rows.T
+            selected_projected_std = selected_coeff @ selected_rows
+            selected_proj_norm = torch.linalg.vector_norm(selected_projected_std, dim=1)
+        else:
+            selected_projected_std = torch.zeros_like(centered_rows)
+            selected_proj_norm = torch.zeros((section.shape[0],), device=section.device, dtype=torch.float32)
+
+        if operator_name == PROJECT_OUT_OPERATOR:
+            delta_std = -float(strength) * selected_projected_std
+            patched_section = section + (delta_std * scale)
+        elif operator_name == ADD_DIRECTION_OPERATOR:
+            if direction_std is not None:
+                patched_section = section + (float(strength) * direction_std.to(torch.float32) * scale)
+            elif direction_raw is not None:
+                patched_section = section + (float(strength) * direction_raw.to(torch.float32))
+            else:
+                raise ValueError("add_direction requires direction_std or direction_raw")
+        elif operator_name == SWAP_MEAN_OPERATOR:
+            if donor_mean is None:
+                raise ValueError("swap_mean requires donor_mean")
+            patched_section = section + (float(strength) * (donor_mean.to(torch.float32) - section))
+        elif operator_name == SWAP_COMPONENTS_OPERATOR:
+            if donor_mean is None:
+                raise ValueError("swap_components requires donor_mean")
+            donor_centered_std = (donor_mean.to(torch.float32) - mean) / safe_scale
+            if selected_rows.numel() > 0:
+                donor_selected_coeff = donor_centered_std @ selected_rows.T
+                donor_selected_projected_std = donor_selected_coeff @ selected_rows
+            else:
+                donor_selected_projected_std = torch.zeros_like(before["centered_std"])
+            delta_std = float(strength) * (donor_selected_projected_std.unsqueeze(0) - selected_projected_std)
+            patched_section = section + (delta_std * scale)
+        elif operator_name == RANDOM_CONTROL_OPERATOR:
+            if random_rows is None:
+                raise ValueError("random_control requires random_rows")
+            random_coeff = centered_rows @ random_rows.T
+            random_projected_std = random_coeff @ random_rows
+            if bool(match_projected_norm):
+                random_norm = torch.linalg.vector_norm(random_projected_std, dim=1).clamp_min(1e-8)
+                scale_factor = torch.where(
+                    selected_proj_norm > 0,
+                    selected_proj_norm / random_norm,
+                    torch.ones_like(random_norm),
+                )
+                random_projected_std = random_projected_std * scale_factor.unsqueeze(1)
+            delta_std = -float(strength) * random_projected_std
+            patched_section = section + (delta_std * scale)
+        else:
+            raise ValueError(f"Unsupported subspace operator: {operator_name!r}")
+
+        patched = hidden_states.clone()
+        patched[list(query_positions)] = patched_section.to(dtype=hidden_states.dtype)
+        stats = summarize_subspace_patch(
+            original_section=section,
+            patched_section=patched_section,
+            mean=mean,
+            safe_scale=safe_scale,
+            selected_rows=selected_rows,
+            strength=float(strength),
+        )
+        if operator_name == ADD_DIRECTION_OPERATOR:
+            if direction_raw is not None:
+                stats["direction_norm_raw"] = float(torch.linalg.norm(direction_raw.to(torch.float32)).item())
+            elif direction_std is not None:
+                stats["direction_norm_raw"] = float(torch.linalg.norm((direction_std.to(torch.float32) * scale)).item())
+        stats["status"] = "ok"
+        stats["operator"] = operator_name
+        stats["token_count"] = int(len(query_positions))
+        stats["rowwise"] = True
+        return patched, stats
 
     if operator_name == PROJECT_OUT_OPERATOR:
         delta_std = -float(strength) * before["selected_projected_std"]

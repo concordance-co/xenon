@@ -109,19 +109,67 @@ class ActivationPatchRequestHelper:
                 query_start = query_end
                 continue
 
-            computed_prefill_before = int(num_computed_tokens_cpu[i])
+            computed_before = int(num_computed_tokens_cpu[i])
             prefill_len = int(num_prompt_tokens[i])
+            operator = str(payload.get("operator") or "interchange")
+            target_policy = dict(payload.get("target_policy") or {"kind": "static"})
+            target_policy_kind = str(target_policy.get("kind") or "static")
+
+            if target_policy_kind == "every_token":
+                scheduled_abs_start = computed_before
+                scheduled_abs_end = computed_before + scheduled_tokens
+                selected_abs_start = scheduled_abs_start
+                selected_abs_end = scheduled_abs_end
+                if not bool(target_policy.get("include_prompt", True)):
+                    selected_abs_start = max(selected_abs_start, prefill_len)
+                if not bool(target_policy.get("include_decode", False)):
+                    selected_abs_end = min(selected_abs_end, prefill_len)
+                selected_abs_start = max(selected_abs_start, scheduled_abs_start)
+                selected_abs_end = min(selected_abs_end, scheduled_abs_end)
+                if selected_abs_end <= selected_abs_start:
+                    query_start = query_end
+                    continue
+
+                query_span_start = query_start + (selected_abs_start - scheduled_abs_start)
+                query_span_end = query_span_start + (selected_abs_end - selected_abs_start)
+                prompt_count = max(
+                    0,
+                    min(selected_abs_end, prefill_len) - min(max(selected_abs_start, 0), prefill_len),
+                )
+                token_count = int(selected_abs_end - selected_abs_start)
+                local_payload = copy.deepcopy(payload)
+                local_payload["query_span"] = [int(query_span_start), int(query_span_end)]
+                local_payload["covered_abs_spans"] = [[int(selected_abs_start), int(selected_abs_end)]]
+                local_payload["phase_counts"] = {
+                    "prompt": int(prompt_count),
+                    "decode": int(token_count - prompt_count),
+                }
+                local_payload["rowwise"] = True
+                local_payload["target_policy"] = target_policy
+                local_payload.pop("target_positions", None)
+                local_payload.pop("donor_positions", None)
+                local_payload.pop("target_read_positions", None)
+                step_specs.append(
+                    {
+                        "req_id": req_id,
+                        "patch_spec": local_payload,
+                        "chunk_abs_span": [int(selected_abs_start), int(selected_abs_end)],
+                        "query_span": [int(query_span_start), int(query_span_end)],
+                    }
+                )
+                query_start = query_end
+                continue
+
             prefill_chunk_len = max(
                 0,
-                min(scheduled_tokens, prefill_len - computed_prefill_before),
+                min(scheduled_tokens, prefill_len - computed_before),
             )
             if prefill_chunk_len <= 0:
                 query_start = query_end
                 continue
 
-            chunk_abs_start = computed_prefill_before
-            chunk_abs_end = computed_prefill_before + prefill_chunk_len
-            operator = str(payload.get("operator") or "interchange")
+            chunk_abs_start = computed_before
+            chunk_abs_end = computed_before + prefill_chunk_len
             target_positions = [int(pos) for pos in payload.get("target_positions", ())]
             donor_positions = [int(pos) for pos in payload.get("donor_positions", ())]
             target_read_positions = [int(pos) for pos in payload.get("target_read_positions", ())]
@@ -167,6 +215,7 @@ class ActivationPatchRequestHelper:
             local_payload["query_positions"] = kept_query_positions
             local_payload["target_abs_positions"] = [int(pos) for pos in target_positions]
             local_payload["covered_abs_positions"] = [int(pos) for pos in covered_abs_positions]
+            local_payload["target_policy"] = target_policy
             if operator in {"interchange", "residual_path"}:
                 local_payload["donor_positions"] = kept_donor_positions
                 local_payload["target_read_positions"] = kept_target_read_positions

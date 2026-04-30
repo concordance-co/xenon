@@ -160,7 +160,8 @@ def _run_paired(
                 len(tokenized["token_ids"]),
                 token_sections=tokenized["token_sections"],
             )
-            if not target_positions:
+            every_token_application = str(getattr(getattr(spec.patch, "application", None), "kind", "static")) == "every_token"
+            if not target_positions and not every_token_application:
                 rows.append(
                     {
                         "case_key": case_key,

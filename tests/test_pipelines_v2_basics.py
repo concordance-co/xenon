@@ -6540,7 +6540,7 @@ def test_pipelines_v2_activation_patch_smoke_file_builders() -> None:
         "capture_prompt_residual",
         "learn_strategy_subspace",
         "baseline_targets",
-        "lesion_strategy",
+        "lesion_generated_tokens",
         "compare_patch_runs",
     ]
     assert workflow.steps[0].runner == "capture_gpu"
@@ -6548,6 +6548,11 @@ def test_pipelines_v2_activation_patch_smoke_file_builders() -> None:
     assert workflow.steps[2].runner == "capture_gpu"
     assert workflow.steps[3].runner == "capture_gpu"
     assert workflow.steps[4].runner == "analysis_cpu"
+    patch = workflow.steps[3].spec.patch
+    assert patch.application.kind == "every_token"
+    assert patch.application.include_prompt is False
+    assert patch.application.include_decode is True
+    assert patch.target_tokens.kind == "section"
 
 
 def test_pipelines_v2_router_layer_probe_uses_compile_cache(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -7604,6 +7609,286 @@ def test_activation_patch_request_helper_rebases_residual_path_target_read_posit
     assert payload["donor_positions"] == [23]
     assert payload["target_read_positions"] == [33]
     assert payload["covered_abs_positions"] == [13]
+
+
+def test_patch_application_roundtrips_and_plan_blocks_unimplemented_modes() -> None:
+    from pipelines_v2.api import (
+        AddDirectionPatch,
+        Dataset,
+        Example,
+        GenerationSpec,
+        PatchApplication,
+        PatchedGenerationSpec,
+        ResidualInterventionSite,
+        VLLMEngine,
+    )
+    from pipelines_v2.operations.interventions.runtime import patched_generation_plan_errors
+
+    patch = AddDirectionPatch(
+        direction="direction-artifact",
+        write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+        application=PatchApplication.every_token(),
+    )
+    restored = AddDirectionPatch.from_dict(patch.to_dict())
+    assert restored.application.kind == "every_token"
+    assert restored.application.include_prompt is True
+    assert restored.application.include_decode is True
+
+    dataset = Dataset.from_examples((Example(key="ex", prompt="prompt"),))
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(model_id="dummy", enable_prefix_caching=False),
+        dataset=dataset,
+        patch=AddDirectionPatch(
+            direction="direction-artifact",
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            application=PatchApplication.trigger_word("unsafe"),
+        ),
+        generation=GenerationSpec(enabled=True, max_tokens=1),
+    )
+    assert patched_generation_plan_errors(spec) == [
+        "PatchApplication.trigger_word is not implemented for PatchedGenerationSpec yet"
+    ]
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(model_id="dummy", enable_prefix_caching=False),
+        dataset=dataset,
+        patch=AddDirectionPatch(
+            direction="direction-artifact",
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            application=PatchApplication.probe_activated(probe="probe-artifact", threshold=0.5),
+        ),
+        generation=GenerationSpec(enabled=True, max_tokens=1),
+    )
+    assert patched_generation_plan_errors(spec) == [
+        "PatchApplication.probe_activated is not implemented for PatchedGenerationSpec yet"
+    ]
+
+
+def test_patch_application_every_token_blocks_paired_operators_in_plan() -> None:
+    from pipelines_v2.api import (
+        Dataset,
+        Example,
+        GenerationSpec,
+        InterchangePatch,
+        PatchApplication,
+        PatchedGenerationSpec,
+        ResidualInterventionSite,
+        VLLMEngine,
+    )
+    from pipelines_v2.operations.interventions.runtime import patched_generation_plan_errors
+
+    dataset = Dataset.from_examples(
+        (
+            Example(key="target", prompt="target", labels={"role": "target"}, case_key="case"),
+            Example(key="donor", prompt="donor", labels={"role": "donor"}, case_key="case"),
+        )
+    )
+    spec = PatchedGenerationSpec(
+        engine=VLLMEngine(model_id="dummy", enable_prefix_caching=False),
+        dataset=dataset,
+        patch=InterchangePatch(
+            activation_bank="activation-bank",
+            write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+            application=PatchApplication.every_token(),
+        ),
+        pair_by=dataset.cases("case_key"),
+        target_when=dataset.labels("role").equals("target"),
+        donor_when=dataset.labels("role").equals("donor"),
+        generation=GenerationSpec(enabled=True, max_tokens=1),
+    )
+
+    errors = patched_generation_plan_errors(spec)
+    assert len(errors) == 1
+    assert "only supported for unpaired patch operators" in errors[0]
+
+
+def test_activation_patch_request_helper_every_token_covers_prefill_and_decode() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-1",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "operator": "project_out",
+                            "target_layers": [24],
+                            "target_policy": {
+                                "kind": "every_token",
+                                "include_prompt": True,
+                                "include_decode": True,
+                                "config": {},
+                            },
+                            "source_layer_map": {"24": 24},
+                            "component_indices_by_layer": {"24": [0]},
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1"],
+            num_computed_tokens_cpu=[12],
+            num_prompt_tokens=[20],
+        ),
+        num_scheduled_tokens=[5],
+    )
+    assert len(helper.current_step_specs) == 1
+    payload = helper.current_step_specs[0]["patch_spec"]
+    assert payload["query_span"] == [0, 5]
+    assert payload["covered_abs_spans"] == [[12, 17]]
+    assert payload["phase_counts"] == {"prompt": 5, "decode": 0}
+    assert payload["rowwise"] is True
+    assert "target_positions" not in payload
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1"],
+            num_computed_tokens_cpu=[20],
+            num_prompt_tokens=[20],
+        ),
+        num_scheduled_tokens=[1],
+    )
+    assert len(helper.current_step_specs) == 1
+    payload = helper.current_step_specs[0]["patch_spec"]
+    assert payload["query_span"] == [0, 1]
+    assert payload["covered_abs_spans"] == [[20, 21]]
+    assert payload["phase_counts"] == {"prompt": 0, "decode": 1}
+
+
+def test_activation_patch_request_helper_every_token_rebases_mixed_batch_offsets() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-2",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "operator": "add_direction",
+                            "target_layers": [7],
+                            "target_policy": {
+                                "kind": "every_token",
+                                "include_prompt": True,
+                                "include_decode": True,
+                                "config": {},
+                            },
+                            "source_layer_map": {"7": 7},
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["unpatched", "req-2"],
+            num_computed_tokens_cpu=[0, 20],
+            num_prompt_tokens=[10, 20],
+        ),
+        num_scheduled_tokens=[3, 1],
+    )
+
+    assert len(helper.current_step_specs) == 1
+    assert helper.current_step_specs[0]["patch_spec"]["query_span"] == [3, 4]
+    assert helper.current_step_specs[0]["query_span"] == [3, 4]
+
+
+def test_static_activation_patch_request_helper_still_skips_decode_steps() -> None:
+    from types import SimpleNamespace
+
+    from pipelines_v2.engine.vllm.activation_patch_request_worker import ActivationPatchRequestHelper
+
+    helper = ActivationPatchRequestHelper()
+    helper.process_new_reqs(
+        [
+            SimpleNamespace(
+                req_id="req-1",
+                sampling_params=SimpleNamespace(
+                    extra_args={
+                        "activation_patch_spec": {
+                            "target_layers": [24],
+                            "target_positions": [16],
+                            "donor_example_key": "donor-1",
+                            "donor_positions": [9],
+                            "case_key": "pair-1",
+                        }
+                    }
+                ),
+            )
+        ]
+    )
+
+    helper.build_step_specs(
+        input_batch=SimpleNamespace(
+            req_ids=["req-1"],
+            num_computed_tokens_cpu=[26],
+            num_prompt_tokens=[26],
+        ),
+        num_scheduled_tokens=[1],
+    )
+
+    assert helper.current_step_specs == []
+
+
+def test_every_token_project_out_is_rowwise_not_span_mean() -> None:
+    from types import SimpleNamespace
+
+    import torch
+
+    from pipelines_v2.engine.vllm.patching.apply import patch_hidden_states_for_layer
+
+    model = SimpleNamespace(
+        _v2_activation_patch_subspace={
+            0: {
+                "mean": torch.zeros((2,), dtype=torch.float32),
+                "scale": torch.ones((2,), dtype=torch.float32),
+                "safe_scale": torch.ones((2,), dtype=torch.float32),
+                "components": torch.tensor([[1.0, 0.0]], dtype=torch.float32),
+                "named_components": {},
+            }
+        }
+    )
+    hidden = torch.tensor([[1.0, 1.0], [2.0, 0.0]], dtype=torch.float32)
+    patched, stats = patch_hidden_states_for_layer(
+        hidden,
+        owner_model=model,
+        layer_idx=0,
+        batch_spec={
+            "req_id": "req-1",
+            "patch_spec": {
+                "operator": "project_out",
+                "target_layers": [0],
+                "query_span": [0, 2],
+                "rowwise": True,
+                "source_layer_map": {"0": 0},
+                "component_indices_by_layer": {"0": [0]},
+                "strength": 1.0,
+                "target_policy": {
+                    "kind": "every_token",
+                    "include_prompt": True,
+                    "include_decode": True,
+                    "config": {},
+                },
+            },
+        },
+    )
+
+    assert torch.allclose(patched, torch.tensor([[0.0, 1.0], [0.0, 0.0]]))
+    assert stats is not None
+    assert stats["rowwise"] is True
+    assert stats["token_count"] == 2
 
 
 def test_collect_patch_stats_matches_short_request_ids() -> None:

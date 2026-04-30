@@ -30,6 +30,15 @@ def patched_generation_plan_errors(spec: PatchedGenerationSpec) -> list[str]:
         return [f"PatchedGenerationSpec dataset resolution failed during plan: {exc}"]
 
     patch = resolved_spec.patch
+    application = getattr(patch, "application", None)
+    application_kind = str(getattr(application, "kind", "static") or "static")
+    if application_kind in {"trigger_word", "probe_activated"}:
+        return [f"PatchApplication.{application_kind} is not implemented for PatchedGenerationSpec yet"]
+    if application_kind == "every_token" and patch.requires_pairing():
+        return [
+            "PatchApplication.every_token is only supported for unpaired patch operators in v1; "
+            f"{type(patch).__name__} still requires static prompt token positions"
+        ]
 
     if patch.requires_pairing():
         try:

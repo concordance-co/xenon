@@ -386,6 +386,17 @@ def _aggregate_patch_stats(operator: str, chunk_stats: list[dict[str, Any]]) -> 
     if saw_token_count:
         aggregated["token_count"] = int(token_count)
 
+    phase_counts: dict[str, int] = {}
+    for item in chunk_stats:
+        raw_counts = item.get("phase_counts")
+        if not isinstance(raw_counts, dict):
+            continue
+        for name, count in raw_counts.items():
+            if isinstance(count, (int, float)):
+                phase_counts[str(name)] = phase_counts.get(str(name), 0) + int(count)
+    if phase_counts:
+        aggregated["phase_counts"] = phase_counts
+
     covered_abs_spans = _merge_covered_abs_spans(*chunk_stats)
     if covered_abs_spans:
         aggregated["covered_abs_spans"] = covered_abs_spans

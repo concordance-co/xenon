@@ -94,7 +94,10 @@ def patch_hidden_states_for_layer(
     batch_spec: dict[str, Any],
 ) -> tuple[Any, dict[str, Any] | None]:
     spec = spec_from_payload(dict(batch_spec["patch_spec"]))
-    query_positions = list(spec.query_positions)
+    if spec.query_span:
+        query_positions = list(range(int(spec.query_span[0]), int(spec.query_span[1])))
+    else:
+        query_positions = list(spec.query_positions)
     if not query_positions:
         return hidden_states, None
 
@@ -187,14 +190,29 @@ def patch_hidden_states_for_layer(
             donor_mean=subspace_inputs["donor_mean"],
             random_rows=subspace_inputs["random_rows"],
             match_projected_norm=bool(spec.match_projected_norm),
+            rowwise=bool(spec.rowwise),
         )
         patched = patched.to(dtype=hidden.dtype)
         stats = {
             "layer": int(layer_idx),
             "source_layer": int(subspace_inputs["source_layer"]),
-            "query_positions": list(query_positions),
             **subspace_stats,
         }
+        if spec.query_span:
+            stats["query_span"] = [int(spec.query_span[0]), int(spec.query_span[1])]
+        else:
+            stats["query_positions"] = list(query_positions)
+        if spec.covered_abs_spans:
+            stats["covered_abs_spans"] = [
+                [int(start), int(end)] for start, end in spec.covered_abs_spans
+            ]
+            stats["covered_abs_tokens"] = sum(
+                max(0, int(end) - int(start)) for start, end in spec.covered_abs_spans
+            )
+        if spec.phase_counts:
+            stats["phase_counts"] = {str(name): int(count) for name, count in spec.phase_counts}
+        if spec.target_policy:
+            stats["target_policy"] = dict(spec.target_policy)
     elif spec.is_residual_path():
         bank = getattr(owner_model, "_v2_activation_patch_bank", {})
         path_stats: dict[str, Any] = {
@@ -337,6 +355,7 @@ def apply_layer_output_patching(
         subspace = getattr(owner_model, "_v2_activation_patch_subspace", {})
         source_layer = int(layer_idx)
         batch_specs = getattr(owner_model, "_v2_activation_patch_batch_specs", None)
+        has_rowwise_subspace = False
         if isinstance(batch_specs, list):
             for batch_spec in batch_specs:
                 payload = batch_spec.get("patch_spec")
@@ -344,10 +363,18 @@ def apply_layer_output_patching(
                     continue
                 spec = spec_from_payload(dict(payload))
                 if int(layer_idx) in spec.target_layers and is_subspace_operator(spec.operator):
+                    if spec.rowwise:
+                        has_rowwise_subspace = True
+                        continue
                     source_layer = spec.source_layer_for(int(layer_idx))
                     break
         layer_payload = subspace.get(int(source_layer)) if isinstance(subspace, dict) else None
-        if isinstance(layer_state, dict) and isinstance(stats_state, dict) and isinstance(layer_payload, dict):
+        if (
+            not has_rowwise_subspace
+            and isinstance(layer_state, dict)
+            and isinstance(stats_state, dict)
+            and isinstance(layer_payload, dict)
+        ):
             if debug_mode_enabled("log", "subspace_compiled_path"):
                 debug_log(
                     "subspace_compiled_path",
@@ -406,7 +433,9 @@ def apply_layer_output_patching(
             spec = spec_from_payload(dict(payload))
             if int(layer_idx) in spec.target_layers:
                 layer_operators.add(spec.operator)
-                if is_subspace_operator(spec.operator) and contiguous_token_span(spec.query_positions) is None:
+                if is_subspace_operator(spec.operator) and (
+                    spec.rowwise or contiguous_token_span(spec.query_positions) is None
+                ):
                     layer_project_out_contiguous = False
 
     if force_custom_op_presence and custom_op is not None and layer_operators <= {"interchange"}:

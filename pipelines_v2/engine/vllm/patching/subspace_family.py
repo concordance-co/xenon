@@ -205,8 +205,12 @@ def summarize_harvested_subspace_stats(
 ) -> dict[str, Any]:
     unique_positions = sorted({int(pos) for pos in covered_abs_positions})
     target_abs_tokens = len({int(pos) for pos in getattr(spec, "target_abs_positions", ())})
-    covered_abs_spans: list[list[int]] = []
+    covered_abs_spans: list[list[int]] = [
+        [int(start), int(end)]
+        for start, end in getattr(spec, "covered_abs_spans", ())
+    ]
     if unique_positions:
+        covered_abs_spans = []
         start = prev = unique_positions[0]
         for pos in unique_positions[1:]:
             if pos == prev + 1:
@@ -216,17 +220,17 @@ def summarize_harvested_subspace_stats(
             start = prev = pos
         covered_abs_spans.append([int(start), int(prev + 1)])
 
+    token_count = int(spec.token_count()) if hasattr(spec, "token_count") else int(len(spec.query_positions))
     stats = {
         "layer": int(layer_idx),
         "source_layer": int(spec.source_layer_for(int(layer_idx))),
         "status": "ok",
         "operator": spec.operator,
-        "token_count": int(len(spec.query_positions)),
-        "query_positions": [int(pos) for pos in spec.query_positions],
+        "token_count": int(token_count),
         "case_key": spec.case_key,
         "control_name": spec.control_name,
         "covered_abs_spans": covered_abs_spans,
-        "covered_abs_tokens": int(len(unique_positions)),
+        "covered_abs_tokens": int(len(unique_positions) or sum(max(0, int(end) - int(start)) for start, end in covered_abs_spans)),
         "target_abs_tokens": int(target_abs_tokens),
         "coverage_fraction": (
             float(len(unique_positions)) / float(target_abs_tokens)
@@ -234,6 +238,16 @@ def summarize_harvested_subspace_stats(
             else 0.0
         ),
     }
+    if spec.query_span:
+        stats["query_span"] = [int(spec.query_span[0]), int(spec.query_span[1])]
+    else:
+        stats["query_positions"] = [int(pos) for pos in spec.query_positions]
+    if spec.phase_counts:
+        stats["phase_counts"] = {str(name): int(count) for name, count in spec.phase_counts}
+    if spec.target_policy:
+        stats["target_policy"] = dict(spec.target_policy)
+    if spec.rowwise:
+        stats["rowwise"] = True
 
     if spec.operator == PROJECT_OUT_OPERATOR:
         stats.update(

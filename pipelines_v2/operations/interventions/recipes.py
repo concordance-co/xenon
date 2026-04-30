@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
@@ -19,6 +19,98 @@ from .sites import InterventionSite, ResidualInterventionSite, site_from_payload
 
 
 @dataclass(frozen=True, slots=True)
+class PatchApplication:
+    """When to apply an activation patch during generation."""
+
+    kind: str = "static"
+    include_prompt: bool = True
+    include_decode: bool = False
+    config: Mapping[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def static(cls) -> "PatchApplication":
+        return cls(kind="static", include_prompt=True, include_decode=False)
+
+    @classmethod
+    def every_token(
+        cls,
+        *,
+        include_prompt: bool = True,
+        include_decode: bool = True,
+    ) -> "PatchApplication":
+        return cls(
+            kind="every_token",
+            include_prompt=bool(include_prompt),
+            include_decode=bool(include_decode),
+        )
+
+    @classmethod
+    def trigger_word(
+        cls,
+        words: str | Sequence[str],
+        *,
+        include_prompt: bool = True,
+        include_decode: bool = True,
+    ) -> "PatchApplication":
+        normalized_words = [str(words)] if isinstance(words, str) else [str(word) for word in words]
+        return cls(
+            kind="trigger_word",
+            include_prompt=bool(include_prompt),
+            include_decode=bool(include_decode),
+            config={"words": normalized_words},
+        )
+
+    @classmethod
+    def probe_activated(
+        cls,
+        *,
+        probe: Any = None,
+        threshold: float = 0.0,
+        include_prompt: bool = True,
+        include_decode: bool = True,
+    ) -> "PatchApplication":
+        return cls(
+            kind="probe_activated",
+            include_prompt=bool(include_prompt),
+            include_decode=bool(include_decode),
+            config={"probe": probe, "threshold": float(threshold)},
+        )
+
+    def __post_init__(self) -> None:
+        kind = str(self.kind or "static").strip()
+        if kind not in {"static", "every_token", "trigger_word", "probe_activated"}:
+            raise SpecValidationError(f"Unsupported patch application kind: {kind!r}")
+        object.__setattr__(self, "kind", kind)
+        object.__setattr__(self, "include_prompt", bool(self.include_prompt))
+        object.__setattr__(self, "include_decode", bool(self.include_decode))
+        object.__setattr__(self, "config", dict(self.config or {}))
+
+    def to_dict(self) -> dict[str, Any]:
+        return to_primitive(self)
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any] | None) -> "PatchApplication":
+        if payload is None:
+            return cls.static()
+        if isinstance(payload, PatchApplication):
+            return payload
+        return cls(
+            kind=str(payload.get("kind") or "static"),
+            include_prompt=bool(payload.get("include_prompt", True)),
+            include_decode=bool(payload.get("include_decode", False)),
+            config=dict(payload.get("config") or {}),
+        )
+
+
+def patch_application_from_payload(payload: Any) -> PatchApplication:
+    if isinstance(payload, PatchApplication):
+        return payload
+    if isinstance(payload, Mapping):
+        return PatchApplication.from_dict(payload)
+    return PatchApplication.static()
+
+
+@dataclass(frozen=True, slots=True)
 class ActivationPatchSpec:
     """Abstract residual intervention recipe."""
 
@@ -26,6 +118,7 @@ class ActivationPatchSpec:
         default_factory=lambda: ResidualInterventionSite(site="resid_post", layers=(0,))
     )
     target_tokens: TokenSelector = field(default_factory=TokenSelector.last)
+    application: PatchApplication = field(default_factory=PatchApplication.static)
     source_layer_map: Mapping[int, int] = field(default_factory=dict)
     strength: float = 1.0
 
@@ -33,6 +126,7 @@ class ActivationPatchSpec:
     operator_name: ClassVar[str] = "activation_patch"
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "application", patch_application_from_payload(self.application))
         object.__setattr__(self, "source_layer_map", normalize_layer_map(self.source_layer_map))
         object.__setattr__(self, "strength", float(self.strength))
 
@@ -129,6 +223,7 @@ class InterchangePatch(ActivationPatchSpec):
         return cls(
             write_site=site_from_payload(payload.get("write_site", {})),
             target_tokens=token_selector_from_payload(payload.get("target_tokens"), default=TokenSelector.last()) or TokenSelector.last(),
+            application=patch_application_from_payload(payload.get("application")),
             source_layer_map=normalize_layer_map(payload.get("source_layer_map")),
             strength=float(payload.get("strength", 1.0)),
             activation_bank=spec_value_from_dict(payload.get("activation_bank")),
@@ -166,6 +261,7 @@ class ProjectOutPatch(ActivationPatchSpec):
         return cls(
             write_site=site_from_payload(payload.get("write_site", {})),
             target_tokens=token_selector_from_payload(payload.get("target_tokens"), default=TokenSelector.last()) or TokenSelector.last(),
+            application=patch_application_from_payload(payload.get("application")),
             source_layer_map=normalize_layer_map(payload.get("source_layer_map")),
             strength=float(payload.get("strength", 1.0)),
             subspace=spec_value_from_dict(payload.get("subspace")),
@@ -207,6 +303,7 @@ class AddDirectionPatch(ActivationPatchSpec):
         return cls(
             write_site=site_from_payload(payload.get("write_site", {})),
             target_tokens=token_selector_from_payload(payload.get("target_tokens"), default=TokenSelector.last()) or TokenSelector.last(),
+            application=patch_application_from_payload(payload.get("application")),
             source_layer_map=normalize_layer_map(payload.get("source_layer_map")),
             strength=float(payload.get("strength", 1.0)),
             direction=spec_value_from_dict(payload.get("direction")),
@@ -245,6 +342,7 @@ class SwapMeanPatch(ActivationPatchSpec):
         return cls(
             write_site=site_from_payload(payload.get("write_site", {})),
             target_tokens=token_selector_from_payload(payload.get("target_tokens"), default=TokenSelector.last()) or TokenSelector.last(),
+            application=patch_application_from_payload(payload.get("application")),
             source_layer_map=normalize_layer_map(payload.get("source_layer_map")),
             strength=float(payload.get("strength", 1.0)),
             centroids=spec_value_from_dict(payload.get("centroids")),
@@ -293,6 +391,7 @@ class SwapComponentsPatch(ActivationPatchSpec):
         return cls(
             write_site=site_from_payload(payload.get("write_site", {})),
             target_tokens=token_selector_from_payload(payload.get("target_tokens"), default=TokenSelector.last()) or TokenSelector.last(),
+            application=patch_application_from_payload(payload.get("application")),
             source_layer_map=normalize_layer_map(payload.get("source_layer_map")),
             strength=float(payload.get("strength", 1.0)),
             subspace=spec_value_from_dict(payload.get("subspace")),
@@ -336,6 +435,7 @@ class RandomControlPatch(ActivationPatchSpec):
         return cls(
             write_site=site_from_payload(payload.get("write_site", {})),
             target_tokens=token_selector_from_payload(payload.get("target_tokens"), default=TokenSelector.last()) or TokenSelector.last(),
+            application=patch_application_from_payload(payload.get("application")),
             source_layer_map=normalize_layer_map(payload.get("source_layer_map")),
             strength=float(payload.get("strength", 1.0)),
             subspace=spec_value_from_dict(payload.get("subspace")),
@@ -388,6 +488,7 @@ class ResidualPathPatch(ActivationPatchSpec):
         return cls(
             write_site=site_from_payload(payload.get("write_site", {})),
             target_tokens=token_selector_from_payload(payload.get("target_tokens"), default=TokenSelector.last()) or TokenSelector.last(),
+            application=patch_application_from_payload(payload.get("application")),
             source_layer_map=normalize_layer_map(payload.get("source_layer_map")),
             strength=float(payload.get("strength", 1.0)),
             activation_bank=spec_value_from_dict(payload.get("activation_bank")),
@@ -412,6 +513,7 @@ __all__ = [
     "ActivationPatchSpec",
     "AddDirectionPatch",
     "InterchangePatch",
+    "PatchApplication",
     "ProjectOutPatch",
     "RandomControlPatch",
     "ResidualPathPatch",

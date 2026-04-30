@@ -17,6 +17,7 @@ from pipelines_v2.api import (
     ModalVolumeMount,
     ModalVolumeStore,
     PatchComparisonSpec,
+    PatchApplication,
     PatchedGenerationSpec,
     PromptMetadataBuilder,
     ProjectOutPatch,
@@ -224,7 +225,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
                 ),
             ),
             WorkflowStep(
-                name="lesion_strategy",
+                name="lesion_generated_tokens",
                 runner="capture_gpu",
                 depends_on=("baseline_targets",),
                 spec=PatchedGenerationSpec(
@@ -234,6 +235,10 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
                         subspace=StepRef("learn_strategy_subspace"),
                         write_site=ResidualInterventionSite(site="resid_post", layers=(24,)),
                         target_tokens=TokenSelector.section("STRATEGY"),
+                        application=PatchApplication.every_token(
+                            include_prompt=False,
+                            include_decode=True,
+                        ),
                         component_indices_by_layer={24: (0, 1)},
                         strength=1.0,
                     ),
@@ -250,10 +255,10 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
             WorkflowStep(
                 name="compare_patch_runs",
                 runner="analysis_cpu",
-                depends_on=("lesion_strategy",),
+                depends_on=("lesion_generated_tokens",),
                 spec=PatchComparisonSpec(
                     baseline=StepRef("baseline_targets"),
-                    variants={"main": StepRef("lesion_strategy")},
+                    variants={"main": StepRef("lesion_generated_tokens")},
                     row_evaluator=row_evaluator,
                 ),
             ),
