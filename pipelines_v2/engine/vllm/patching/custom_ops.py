@@ -13,6 +13,7 @@ from ..activation_patch_math import (
     RESIDUAL_PATH_MODE_ID,
     SWAP_COMPONENTS_MODE_ID,
     SWAP_MEAN_MODE_ID,
+    summarize_subspace_patch,
 )
 from .subspace_family import (
     SUBSPACE_OPERATOR_MODE_IDS,
@@ -47,10 +48,13 @@ def _apply_subspace_batch_tensorized(
     batch_token_spans: torch.Tensor,
     batch_strengths: torch.Tensor,
     batch_active: torch.Tensor,
+    batch_query_positions: torch.Tensor,
+    batch_token_counts: torch.Tensor,
     batch_direction_raw: torch.Tensor,
     batch_direction_std: torch.Tensor,
     batch_donor_means: torch.Tensor,
     batch_random_rows: torch.Tensor,
+    batch_rowwise: torch.Tensor,
     batch_match_projected_norm: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     hidden_f32 = hidden_states.to(torch.float32)
@@ -64,7 +68,8 @@ def _apply_subspace_batch_tensorized(
     starts = batch_token_spans[:, 0].to(torch.int64).clamp_(0, total_tokens)
     ends = batch_token_spans[:, 1].to(torch.int64).clamp_(0, total_tokens)
     span_counts = (ends - starts).clamp_min_(0)
-    active_mask = batch_active.to(torch.bool)
+    rowwise_mask = batch_rowwise.to(torch.bool)
+    active_mask = batch_active.to(torch.bool) & ~rowwise_mask
     valid_mode_mask = _valid_subspace_mode_mask(batch_mode_ids)
     slot_valid = active_mask & valid_mode_mask & (span_counts > 0)
 
@@ -195,6 +200,174 @@ def _apply_subspace_batch_tensorized(
     delta_markers.index_add_(0, ends, -active_delta)
     token_delta = torch.cumsum(delta_markers[:-1], dim=0)
     patched_hidden = hidden_states + token_delta.to(hidden_states.dtype)
+    patched_hidden, rowwise_valid, rowwise_scalars, rowwise_coeff_before, rowwise_coeff_after = (
+        _apply_subspace_batch_rowwise(
+            hidden_states=patched_hidden,
+            mean=mean_f32,
+            scale=scale_f32,
+            safe_scale=safe_scale_f32,
+            batch_mode_ids=batch_mode_ids,
+            batch_selected_rows=batch_selected_rows,
+            batch_row_counts=batch_row_counts,
+            batch_query_positions=batch_query_positions,
+            batch_token_counts=batch_token_counts,
+            batch_strengths=batch_strengths,
+            batch_active=batch_active,
+            batch_direction_raw=batch_direction_raw,
+            batch_direction_std=batch_direction_std,
+            batch_donor_means=batch_donor_means,
+            batch_random_rows=batch_random_rows,
+            batch_rowwise=batch_rowwise,
+            batch_match_projected_norm=batch_match_projected_norm,
+            scalars=scalars,
+            coeff_before=coeff_before,
+            coeff_after=coeff_after,
+        )
+    )
+    op_valid = op_valid | rowwise_valid
+    return patched_hidden, op_valid, rowwise_scalars, rowwise_coeff_before, rowwise_coeff_after
+
+
+def _apply_subspace_batch_rowwise(
+    *,
+    hidden_states: torch.Tensor,
+    mean: torch.Tensor,
+    scale: torch.Tensor,
+    safe_scale: torch.Tensor,
+    batch_mode_ids: torch.Tensor,
+    batch_selected_rows: torch.Tensor,
+    batch_row_counts: torch.Tensor,
+    batch_query_positions: torch.Tensor,
+    batch_token_counts: torch.Tensor,
+    batch_strengths: torch.Tensor,
+    batch_active: torch.Tensor,
+    batch_direction_raw: torch.Tensor,
+    batch_direction_std: torch.Tensor,
+    batch_donor_means: torch.Tensor,
+    batch_random_rows: torch.Tensor,
+    batch_rowwise: torch.Tensor,
+    batch_match_projected_norm: torch.Tensor,
+    scalars: torch.Tensor,
+    coeff_before: torch.Tensor,
+    coeff_after: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    slot_count = int(batch_active.shape[0])
+    max_tokens = int(batch_query_positions.shape[1])
+    total_tokens = int(hidden_states.shape[0])
+    hidden_dim = int(hidden_states.shape[-1])
+    max_rows = int(batch_selected_rows.shape[1])
+    token_offsets = torch.arange(max_tokens, device=hidden_states.device, dtype=batch_token_counts.dtype)
+    token_mask = token_offsets.unsqueeze(0) < batch_token_counts.unsqueeze(1)
+    in_bounds = (batch_query_positions >= 0) & (batch_query_positions < total_tokens)
+    rowwise_mask = batch_rowwise.to(torch.bool)
+    valid_mode_mask = _valid_subspace_mode_mask(batch_mode_ids)
+    row_count_mask = batch_row_counts > 0
+    base_valid = (
+        batch_active.to(torch.bool)
+        & rowwise_mask
+        & valid_mode_mask
+        & (batch_token_counts > 0)
+        & torch.all(in_bounds | ~token_mask, dim=1)
+    )
+    safe_positions = torch.where(token_mask & in_bounds, batch_query_positions, torch.zeros_like(batch_query_positions)).to(torch.int64)
+    section = hidden_states.index_select(0, safe_positions.reshape(-1)).reshape(slot_count, max_tokens, hidden_dim).to(torch.float32)
+    selected_positions = torch.arange(max_rows, device=hidden_states.device, dtype=batch_row_counts.dtype)
+    selected_mask = selected_positions.unsqueeze(0) < batch_row_counts.unsqueeze(1)
+    selected_rows = batch_selected_rows.to(torch.float32) * selected_mask.unsqueeze(-1).to(torch.float32)
+    centered_rows = (section - mean.reshape(1, 1, hidden_dim)) / safe_scale.reshape(1, 1, hidden_dim)
+    selected_coeff_rows = torch.einsum("sth,srh->str", centered_rows, selected_rows)
+    selected_projected_std = torch.einsum("str,srh->sth", selected_coeff_rows, selected_rows)
+    selected_proj_norm_rows = torch.linalg.vector_norm(selected_projected_std, dim=2)
+    strengths = batch_strengths.to(torch.float32).reshape(slot_count, 1, 1)
+
+    mode_project_out = base_valid & (batch_mode_ids == int(PROJECT_OUT_MODE_ID)) & row_count_mask
+    direction_std = batch_direction_std.to(torch.float32)
+    direction_raw = batch_direction_raw.to(torch.float32)
+    direction_std_available = torch.linalg.vector_norm(direction_std, dim=1) > 0
+    direction_raw_available = torch.linalg.vector_norm(direction_raw, dim=1) > 0
+    mode_add_direction = base_valid & (batch_mode_ids == int(ADD_DIRECTION_MODE_ID)) & (
+        direction_std_available | direction_raw_available
+    )
+    donor_means = batch_donor_means.to(torch.float32)
+    donor_mean_available = torch.linalg.vector_norm(donor_means, dim=1) > 0
+    mode_swap_mean = base_valid & (batch_mode_ids == int(SWAP_MEAN_MODE_ID)) & donor_mean_available
+    mode_swap_components = base_valid & (batch_mode_ids == int(SWAP_COMPONENTS_MODE_ID)) & donor_mean_available & row_count_mask
+    random_rows = batch_random_rows.to(torch.float32) * selected_mask.unsqueeze(-1).to(torch.float32)
+    random_rows_available = torch.linalg.vector_norm(random_rows.reshape(slot_count, -1), dim=1) > 0
+    mode_random_control = base_valid & (batch_mode_ids == int(RANDOM_CONTROL_MODE_ID)) & row_count_mask & random_rows_available
+    op_valid = mode_project_out | mode_add_direction | mode_swap_mean | mode_swap_components | mode_random_control
+
+    delta_rows = torch.zeros_like(section)
+    project_out_delta = -strengths * selected_projected_std * scale.reshape(1, 1, hidden_dim)
+    delta_rows = torch.where(mode_project_out.reshape(slot_count, 1, 1), project_out_delta, delta_rows)
+    direction_delta = torch.where(
+        direction_std_available.reshape(slot_count, 1),
+        direction_std * scale.reshape(1, hidden_dim),
+        direction_raw,
+    ).reshape(slot_count, 1, hidden_dim) * strengths
+    delta_rows = torch.where(mode_add_direction.reshape(slot_count, 1, 1), direction_delta, delta_rows)
+    swap_mean_delta = strengths * (donor_means.reshape(slot_count, 1, hidden_dim) - section)
+    delta_rows = torch.where(mode_swap_mean.reshape(slot_count, 1, 1), swap_mean_delta, delta_rows)
+    donor_centered_std = (donor_means - mean.reshape(1, hidden_dim)) / safe_scale.reshape(1, hidden_dim)
+    donor_coeff = torch.einsum("sh,srh->sr", donor_centered_std, selected_rows)
+    donor_projected_std = torch.einsum("sr,srh->sh", donor_coeff, selected_rows)
+    swap_components_delta = strengths * (
+        donor_projected_std.reshape(slot_count, 1, hidden_dim) - selected_projected_std
+    ) * scale.reshape(1, 1, hidden_dim)
+    delta_rows = torch.where(mode_swap_components.reshape(slot_count, 1, 1), swap_components_delta, delta_rows)
+    random_coeff = torch.einsum("sth,srh->str", centered_rows, random_rows)
+    random_projected_std = torch.einsum("str,srh->sth", random_coeff, random_rows)
+    if random_projected_std.numel():
+        random_norm = torch.linalg.vector_norm(random_projected_std, dim=2).clamp_min(1e-8)
+        match_projected = batch_match_projected_norm.to(torch.bool).reshape(slot_count, 1)
+        random_scale_factor = torch.where(
+            match_projected & (selected_proj_norm_rows > 0),
+            selected_proj_norm_rows / random_norm,
+            torch.ones_like(random_norm),
+        )
+        random_projected_std = random_projected_std * random_scale_factor.unsqueeze(2)
+    random_delta = -strengths * random_projected_std * scale.reshape(1, 1, hidden_dim)
+    delta_rows = torch.where(mode_random_control.reshape(slot_count, 1, 1), random_delta, delta_rows)
+
+    apply_mask = token_mask & op_valid.reshape(slot_count, 1)
+    scatter_positions = safe_positions.reshape(-1, 1).expand(-1, hidden_dim)
+    scatter_delta = (delta_rows * apply_mask.unsqueeze(-1).to(torch.float32)).reshape(-1, hidden_dim).to(hidden_states.dtype)
+    patched_delta = torch.zeros_like(hidden_states)
+    patched_delta.scatter_add_(0, scatter_positions, scatter_delta)
+    patched_hidden = hidden_states + patched_delta
+
+    safe_counts = batch_token_counts.clamp_min(1).to(torch.float32).reshape(slot_count, 1)
+    apply_mask_f = apply_mask.to(torch.float32).unsqueeze(2)
+    mean_before = (section * apply_mask_f).sum(dim=1) / safe_counts
+    mean_after = ((section + delta_rows) * apply_mask_f).sum(dim=1) / safe_counts
+    centered_before = (mean_before - mean.reshape(1, hidden_dim)) / safe_scale.reshape(1, hidden_dim)
+    centered_after = (mean_after - mean.reshape(1, hidden_dim)) / safe_scale.reshape(1, hidden_dim)
+    coeff_before_rowwise = torch.einsum("sh,srh->sr", centered_before, selected_rows)
+    coeff_after_rowwise = torch.einsum("sh,srh->sr", centered_after, selected_rows)
+    projected_before = torch.einsum("sr,srh->sh", coeff_before_rowwise, selected_rows)
+    delta_mean = mean_after - mean_before
+    direction_norm_raw = torch.where(
+        direction_std_available,
+        torch.linalg.vector_norm(direction_std * scale.reshape(1, hidden_dim), dim=1),
+        torch.linalg.vector_norm(direction_raw, dim=1),
+    )
+    rowwise_scalars = torch.stack(
+        (
+            torch.linalg.vector_norm(delta_mean, dim=1),
+            torch.linalg.vector_norm(delta_mean / safe_scale.reshape(1, hidden_dim), dim=1),
+            torch.linalg.vector_norm(mean_before, dim=1),
+            torch.linalg.vector_norm(mean_after, dim=1),
+            torch.linalg.vector_norm(centered_before, dim=1),
+            torch.linalg.vector_norm(centered_after, dim=1),
+            torch.where(mode_add_direction, direction_norm_raw, torch.linalg.vector_norm(projected_before, dim=1)),
+            batch_strengths.to(torch.float32),
+        ),
+        dim=1,
+    )
+    valid_mask = op_valid.reshape(slot_count, 1)
+    scalars = torch.where(valid_mask, rowwise_scalars.to(dtype=scalars.dtype), scalars)
+    coeff_before = torch.where(valid_mask, coeff_before_rowwise.to(dtype=coeff_before.dtype), coeff_before)
+    coeff_after = torch.where(valid_mask, coeff_after_rowwise.to(dtype=coeff_after.dtype), coeff_after)
     return patched_hidden, op_valid, scalars, coeff_before, coeff_after
 
 
@@ -439,10 +612,13 @@ def register_torch_library_subspace_op() -> None:
             batch_token_spans=token_span.reshape(1, 2).to(device=hidden_states.device, dtype=torch.int32),
             batch_strengths=torch.full((1,), float(strength), device=hidden_states.device, dtype=torch.float32),
             batch_active=torch.ones((1,), device=hidden_states.device, dtype=torch.int32),
+            batch_query_positions=torch.zeros((1, 1), device=hidden_states.device, dtype=torch.int32),
+            batch_token_counts=torch.zeros((1,), device=hidden_states.device, dtype=torch.int32),
             batch_direction_raw=direction_raw.reshape(1, hidden_dim).to(device=hidden_states.device, dtype=torch.float32),
             batch_direction_std=direction_std.reshape(1, hidden_dim).to(device=hidden_states.device, dtype=torch.float32),
             batch_donor_means=donor_mean.reshape(1, hidden_dim).to(device=hidden_states.device, dtype=torch.float32),
             batch_random_rows=random_rows.unsqueeze(0).to(device=hidden_states.device, dtype=torch.float32),
+            batch_rowwise=torch.zeros((1,), device=hidden_states.device, dtype=torch.int32),
             batch_match_projected_norm=match_projected_norm.reshape(1).to(device=hidden_states.device, dtype=torch.int32),
         )
         return patched
@@ -505,6 +681,8 @@ def register_torch_library_subspace_batch_op() -> None:
         batch_selected_rows: torch.Tensor,
         batch_row_counts: torch.Tensor,
         batch_token_spans: torch.Tensor,
+        batch_query_positions: torch.Tensor,
+        batch_token_counts: torch.Tensor,
         batch_strengths: torch.Tensor,
         batch_active: torch.Tensor,
         stats_valid: torch.Tensor,
@@ -515,6 +693,7 @@ def register_torch_library_subspace_batch_op() -> None:
         batch_direction_std: torch.Tensor,
         batch_donor_means: torch.Tensor,
         batch_random_rows: torch.Tensor,
+        batch_rowwise: torch.Tensor,
         batch_match_projected_norm: torch.Tensor,
     ) -> torch.Tensor:
         patched_hidden, op_valid, scalars, coeff_before, coeff_after = _apply_subspace_batch_tensorized(
@@ -526,12 +705,15 @@ def register_torch_library_subspace_batch_op() -> None:
             batch_selected_rows=batch_selected_rows,
             batch_row_counts=batch_row_counts,
             batch_token_spans=batch_token_spans,
+            batch_query_positions=batch_query_positions,
+            batch_token_counts=batch_token_counts,
             batch_strengths=batch_strengths,
             batch_active=batch_active,
             batch_direction_raw=batch_direction_raw,
             batch_direction_std=batch_direction_std,
             batch_donor_means=batch_donor_means,
             batch_random_rows=batch_random_rows,
+            batch_rowwise=batch_rowwise,
             batch_match_projected_norm=batch_match_projected_norm,
         )
         valid_mask = op_valid.unsqueeze(1)
@@ -559,6 +741,8 @@ def register_torch_library_subspace_batch_op() -> None:
         batch_selected_rows: torch.Tensor,
         batch_row_counts: torch.Tensor,
         batch_token_spans: torch.Tensor,
+        batch_query_positions: torch.Tensor,
+        batch_token_counts: torch.Tensor,
         batch_strengths: torch.Tensor,
         batch_active: torch.Tensor,
         stats_valid: torch.Tensor,
@@ -569,6 +753,7 @@ def register_torch_library_subspace_batch_op() -> None:
         batch_direction_std: torch.Tensor,
         batch_donor_means: torch.Tensor,
         batch_random_rows: torch.Tensor,
+        batch_rowwise: torch.Tensor,
         batch_match_projected_norm: torch.Tensor,
     ) -> torch.Tensor:
         del (
@@ -579,6 +764,8 @@ def register_torch_library_subspace_batch_op() -> None:
             batch_selected_rows,
             batch_row_counts,
             batch_token_spans,
+            batch_query_positions,
+            batch_token_counts,
             batch_strengths,
             batch_active,
             stats_valid,
@@ -589,6 +776,7 @@ def register_torch_library_subspace_batch_op() -> None:
             batch_direction_std,
             batch_donor_means,
             batch_random_rows,
+            batch_rowwise,
             batch_match_projected_norm,
         )
         return torch.empty_like(hidden_states)
@@ -683,6 +871,8 @@ def register_torch_library_project_out_batch_op() -> None:
         namespace = getattr(torch.ops, "xenon_activation_patch_v2", None)
         batch_mode_ids = torch.full_like(batch_active, 1)
         hidden_dim = int(hidden_states.shape[-1])
+        batch_query_positions = torch.zeros((batch_active.shape[0], 1), device=hidden_states.device, dtype=torch.int32)
+        batch_token_counts = torch.zeros((batch_active.shape[0],), device=hidden_states.device, dtype=torch.int32)
         return namespace.subspace_batch(
             hidden_states,
             mean,
@@ -692,6 +882,8 @@ def register_torch_library_project_out_batch_op() -> None:
             batch_selected_rows,
             batch_row_counts,
             batch_token_spans,
+            batch_query_positions,
+            batch_token_counts,
             batch_strengths,
             batch_active,
             stats_valid,
@@ -702,6 +894,7 @@ def register_torch_library_project_out_batch_op() -> None:
             torch.zeros((batch_active.shape[0], hidden_dim), device=hidden_states.device, dtype=torch.float32),
             torch.zeros((batch_active.shape[0], hidden_dim), device=hidden_states.device, dtype=torch.float32),
             torch.zeros((batch_active.shape[0], batch_selected_rows.shape[1], hidden_dim), device=hidden_states.device, dtype=torch.float32),
+            torch.zeros((batch_active.shape[0],), device=hidden_states.device, dtype=torch.int32),
             torch.ones((batch_active.shape[0],), device=hidden_states.device, dtype=torch.int32),
         )
 
@@ -799,12 +992,18 @@ def run_custom_op(
     direction_std: Any | None = None,
     donor_means: Any | None = None,
     random_rows: Any | None = None,
+    rowwise: Any | None = None,
     match_projected_norm: Any | None = None,
     residual_path_transport_modes: Any | None = None,
     residual_path_replace_alphas: Any | None = None,
 ) -> Any:
     flat_hidden, restore_hidden = flatten_hidden_for_patch(hidden)
     if is_subspace_mode_id(int(operator_id)) and token_spans is not None:
+        rowwise_arg = (
+            rowwise
+            if rowwise is not None
+            else torch.zeros_like(active, dtype=torch.int32)
+        )
         patched = custom_op(
             flat_hidden,
             mean,
@@ -825,6 +1024,8 @@ def run_custom_op(
             batch_token_spans=token_spans,
             batch_strengths=strengths,
             batch_active=active,
+            batch_query_positions=query_positions,
+            batch_token_counts=token_counts,
             stats_valid=stats_valid,
             stats_scalars=stats_scalars,
             stats_coeff_before=stats_coeff_before,
@@ -833,6 +1034,7 @@ def run_custom_op(
             batch_direction_std=direction_std,
             batch_donor_means=donor_means,
             batch_random_rows=random_rows,
+            batch_rowwise=rowwise_arg,
             batch_match_projected_norm=match_projected_norm,
         )
         return restore_hidden(patched)

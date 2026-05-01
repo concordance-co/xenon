@@ -37,12 +37,18 @@ def normalize_generation_output(
 def stats_for_request(batch_stats: Mapping[str, Any], request_id: str) -> dict[str, Any]:
     if request_id in batch_stats and isinstance(batch_stats[request_id], Mapping):
         return {str(key): dict(value) for key, value in dict(batch_stats[request_id]).items()}
-    short_id = request_id.split("-", 1)[0]
+    normalized_request_id = str(request_id)
+    prefix_matches: list[tuple[int, Mapping[str, Any]]] = []
     for candidate_id, payload in batch_stats.items():
         candidate_text = str(candidate_id)
-        if candidate_text == short_id or candidate_text.startswith(f"{short_id}-"):
-            if isinstance(payload, Mapping):
-                return {str(key): dict(value) for key, value in dict(payload).items()}
+        if (
+            candidate_text.startswith(f"{normalized_request_id}-")
+            or normalized_request_id.startswith(f"{candidate_text}-")
+        ) and isinstance(payload, Mapping):
+            prefix_matches.append((len(candidate_text), payload))
+    if prefix_matches:
+        _, payload = max(prefix_matches, key=lambda item: item[0])
+        return {str(key): dict(value) for key, value in dict(payload).items()}
     return {}
 
 

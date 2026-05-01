@@ -10,7 +10,7 @@ from pipelines_v2.engine.base import EngineGenerationResult
 from pipelines_v2.operations.capture import CaptureSpec
 from pipelines_v2.operations.interventions.runtime import resolve_generation_examples
 
-from .capture import run_vllm_capture
+from .capture import run_vllm_capture, run_vllm_capture_with_runtime
 
 if TYPE_CHECKING:
     from pipelines_v2.engine.vllm.engine import VLLMEngine
@@ -22,6 +22,45 @@ def run_vllm_generation(
     engine: "VLLMEngine",
     spec: "GenerationRunSpec",
     batch_callback: Callable[[list[dict[str, Any]], dict[str, Any]], None] | None = None,
+) -> EngineGenerationResult:
+    return _run_vllm_generation(
+        engine=engine,
+        spec=spec,
+        batch_callback=batch_callback,
+        capture_runner=lambda capture_spec, capture_callback: run_vllm_capture(
+            engine=engine,
+            spec=capture_spec,
+            batch_callback=capture_callback,
+        ),
+    )
+
+
+def run_vllm_generation_with_runtime(
+    *,
+    runtime: Any,
+    spec: "GenerationRunSpec",
+    batch_callback: Callable[[list[dict[str, Any]], dict[str, Any]], None] | None = None,
+) -> EngineGenerationResult:
+    """Run generation through an already-loaded reusable vLLM runtime."""
+
+    return _run_vllm_generation(
+        engine=runtime.engine,
+        spec=spec,
+        batch_callback=batch_callback,
+        capture_runner=lambda capture_spec, capture_callback: run_vllm_capture_with_runtime(
+            runtime=runtime,
+            spec=capture_spec,
+            batch_callback=capture_callback,
+        ),
+    )
+
+
+def _run_vllm_generation(
+    *,
+    engine: "VLLMEngine",
+    spec: "GenerationRunSpec",
+    batch_callback: Callable[[list[dict[str, Any]], dict[str, Any]], None] | None,
+    capture_runner: Callable[[CaptureSpec, Any], Any],
 ) -> EngineGenerationResult:
     selected_examples = resolve_generation_examples(spec)
     capture_spec = CaptureSpec(
@@ -53,11 +92,7 @@ def run_vllm_generation(
             },
         )
 
-    capture_result = run_vllm_capture(
-        engine=engine,
-        spec=capture_spec,
-        batch_callback=_on_capture_batch if batch_callback is not None else None,
-    )
+    capture_result = capture_runner(capture_spec, _on_capture_batch if batch_callback is not None else None)
     rows = _generation_rows_from_outputs(selected_examples, capture_result.generations)
     return EngineGenerationResult(
         rows=rows,
@@ -69,6 +104,11 @@ def _generation_rows_from_outputs(
     examples: list[Any],
     generations: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
+    if len(examples) != len(generations):
+        raise RuntimeError(
+            "Generation output count does not match selected example count: "
+            f"got {len(generations)}, expected {len(examples)}"
+        )
     return [
         {
             "example_key": example.key,

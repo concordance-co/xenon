@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from typing import Any
 
 import torch
@@ -13,7 +14,9 @@ from .base import (
     _MAX_BATCH_PATCH_SLOTS,
     contiguous_token_span,
     debug_log,
+    find_decoder_layers,
     infer_model_device,
+    infer_layer_hidden_dim,
     spec_from_payload,
     unwrap_model,
 )
@@ -61,10 +64,19 @@ def register_activation_patch_subspace(model: Any, subspace_payload: dict[int, d
         registered = {}
     for raw_layer, layer_payload in subspace_payload.items():
         layer = int(raw_layer)
-        mean = torch.as_tensor(layer_payload["mean"], device=device, dtype=torch.float32)
-        scale = torch.as_tensor(layer_payload["scale"], device=device, dtype=torch.float32)
+        runtime_hidden_dim = (
+            _runtime_subspace_hidden_dim(model=model, layer=layer, layer_payload=layer_payload)
+            if _has_runtime_subspace_value(layer_payload)
+            else None
+        )
+        mean = _subspace_tensor(layer_payload["mean"], device=device, hidden_dim=runtime_hidden_dim)
+        scale = _subspace_tensor(layer_payload["scale"], device=device, hidden_dim=runtime_hidden_dim)
         safe_scale = torch.where(scale == 0, torch.ones_like(scale), scale)
-        components = torch.as_tensor(layer_payload["components"], device=device, dtype=torch.float32)
+        components = _subspace_tensor(
+            layer_payload["components"],
+            device=device,
+            hidden_dim=runtime_hidden_dim,
+        )
         if components.ndim == 1:
             components = components.unsqueeze(0)
         if components.numel():
@@ -96,6 +108,75 @@ def register_activation_patch_subspace(model: Any, subspace_payload: dict[int, d
             for layer, payload in registered.items()
         },
     }
+
+
+def _has_runtime_subspace_value(layer_payload: Mapping[str, Any]) -> bool:
+    return any(
+        _runtime_subspace_kind(layer_payload.get(field)) is not None
+        for field in ("mean", "scale", "components")
+    )
+
+
+def _runtime_subspace_kind(value: Any) -> str | None:
+    if not isinstance(value, Mapping):
+        return None
+    kind = str(value.get("kind") or "").strip()
+    if kind in {
+        "xenon_runtime_zeros",
+        "xenon_runtime_ones",
+        "xenon_runtime_unit_basis",
+    }:
+        return kind
+    return None
+
+
+def _runtime_subspace_hidden_dim(
+    *,
+    model: Any,
+    layer: int,
+    layer_payload: Mapping[str, Any],
+) -> int:
+    layers = find_decoder_layers(model)
+    layer_module = layers.get(int(layer))
+    if layer_module is not None:
+        return infer_layer_hidden_dim(layer_module)
+    for field in ("mean", "scale", "components"):
+        value = layer_payload.get(field)
+        if _runtime_subspace_kind(value) is not None or value is None:
+            continue
+        tensor = torch.as_tensor(value, dtype=torch.float32)
+        if tensor.ndim >= 1 and int(tensor.shape[-1]) > 0:
+            return int(tensor.shape[-1])
+    raise RuntimeError(
+        f"Could not infer runtime-sized subspace hidden dimension for layer {int(layer)}"
+    )
+
+
+def _subspace_tensor(
+    value: Any,
+    *,
+    device: Any,
+    hidden_dim: int | None,
+) -> torch.Tensor:
+    kind = _runtime_subspace_kind(value)
+    if kind is None:
+        return torch.as_tensor(value, device=device, dtype=torch.float32)
+    if hidden_dim is None:
+        raise RuntimeError(f"Runtime subspace value {kind!r} requires a hidden dimension")
+    dim = int(hidden_dim)
+    if kind == "xenon_runtime_zeros":
+        return torch.zeros((dim,), device=device, dtype=torch.float32)
+    if kind == "xenon_runtime_ones":
+        return torch.ones((dim,), device=device, dtype=torch.float32)
+    indices = tuple(int(index) for index in dict(value).get("indices", (0,)))
+    rows = torch.zeros((len(indices), dim), device=device, dtype=torch.float32)
+    for row_idx, basis_idx in enumerate(indices):
+        if basis_idx < 0 or basis_idx >= dim:
+            raise ValueError(
+                f"Runtime unit-basis component index {basis_idx} is outside hidden dimension {dim}"
+            )
+        rows[row_idx, basis_idx] = 1.0
+    return rows
 
 
 def register_activation_patch_directions(model: Any, direction_payload: dict[int, dict[str, Any]]) -> dict[str, Any]:
@@ -223,6 +304,7 @@ def harvest_batch_patch_stats(model: Any, batch_specs: list[dict[str, Any]]) -> 
                     "layer": int(layer_idx),
                     "status": "ok",
                     "operator": spec.operator,
+                    "dispatch": "compiled_custom_op",
                     "token_count": int(round(float(scalars[1]))),
                     "delta_norm_raw": float(scalars[0]),
                     "query_positions": [int(pos) for pos in spec.query_positions],
@@ -257,6 +339,7 @@ def harvest_batch_patch_stats(model: Any, batch_specs: list[dict[str, Any]]) -> 
                     "source_layer": int(layer_edges[0]["source_layer"]) if layer_edges else int(layer_idx),
                     "status": "ok",
                     "operator": spec.operator,
+                    "dispatch": "compiled_custom_op",
                     "token_count": int(round(float(scalars[1]))),
                     "query_positions": [int(pos) for pos in spec.query_positions],
                     "case_key": spec.case_key,
@@ -294,7 +377,7 @@ def harvest_batch_patch_stats(model: Any, batch_specs: list[dict[str, Any]]) -> 
                     "layer": int(layer_idx),
                     "status": "ok",
                     "operator": spec.operator,
-                    "token_count": int(len(spec.query_positions)),
+                    "token_count": int(_spec_token_count(spec)),
                     "query_positions": [int(pos) for pos in spec.query_positions],
                     "case_key": spec.case_key,
                     "control_name": spec.control_name,
@@ -370,6 +453,16 @@ def _maybe_stable_scalar(chunk_stats: list[dict[str, Any]], key: str) -> float |
     return None
 
 
+def _maybe_stable_string(chunk_stats: list[dict[str, Any]], key: str) -> str | None:
+    values = [str(item.get(key)) for item in chunk_stats if item.get(key) is not None]
+    if not values:
+        return None
+    first = values[0]
+    if all(value == first for value in values):
+        return first
+    return None
+
+
 def _aggregate_patch_stats(operator: str, chunk_stats: list[dict[str, Any]]) -> dict[str, Any]:
     aggregated: dict[str, Any] = {
         "chunk_count": int(len(chunk_stats)),
@@ -385,6 +478,10 @@ def _aggregate_patch_stats(operator: str, chunk_stats: list[dict[str, Any]]) -> 
             saw_token_count = True
     if saw_token_count:
         aggregated["token_count"] = int(token_count)
+
+    stable_dispatch = _maybe_stable_string(chunk_stats, "dispatch")
+    if stable_dispatch is not None:
+        aggregated["dispatch"] = stable_dispatch
 
     phase_counts: dict[str, int] = {}
     for item in chunk_stats:
@@ -502,7 +599,22 @@ def _ensure_batch_runtime_state_buffers(
         buffers = {}
         model._v2_activation_patch_batch_runtime_state = buffers
     layer_buffers = buffers.get(int(layer_idx))
-    if (
+    existing_capacity = (
+        int(layer_buffers["query_positions"].shape[1])
+        if isinstance(layer_buffers, dict) and "query_positions" in layer_buffers
+        else 0
+    )
+    existing_rows = (
+        int(layer_buffers["selected_rows"].shape[1])
+        if isinstance(layer_buffers, dict) and "selected_rows" in layer_buffers
+        else 0
+    )
+    existing_hidden_dim = (
+        int(layer_buffers["selected_rows"].shape[2])
+        if isinstance(layer_buffers, dict) and "selected_rows" in layer_buffers
+        else 0
+    )
+    needs_resize = (
         not isinstance(layer_buffers, dict)
         or "mode_ids" not in layer_buffers
         or "match_projected_norm" not in layer_buffers
@@ -510,15 +622,34 @@ def _ensure_batch_runtime_state_buffers(
         or "direction_std" not in layer_buffers
         or "donor_means" not in layer_buffers
         or "random_rows" not in layer_buffers
+        or "rowwise" not in layer_buffers
         or "residual_path_transport_modes" not in layer_buffers
         or "residual_path_replace_alphas" not in layer_buffers
-        or int(layer_buffers["query_positions"].shape[1]) != int(max_tokens)
-        or int(layer_buffers["donor_rows"].shape[1]) != int(max_tokens)
+        or "donor_rows" not in layer_buffers
+        or existing_capacity < int(max_tokens)
+        or existing_rows < int(max_rows)
+        or existing_hidden_dim != int(hidden_dim)
+        or int(layer_buffers["donor_rows"].shape[1]) < int(max_tokens)
         or int(layer_buffers["donor_rows"].shape[2]) != int(hidden_dim)
-        or int(layer_buffers["selected_rows"].shape[1]) != int(max_rows)
-        or int(layer_buffers["selected_rows"].shape[2]) != int(hidden_dim)
-        or int(layer_buffers["random_rows"].shape[1]) != int(max_rows)
+        or int(layer_buffers["random_rows"].shape[1]) < int(max_rows)
         or int(layer_buffers["random_rows"].shape[2]) != int(hidden_dim)
+    )
+    if (
+        needs_resize
+        and isinstance(layer_buffers, dict)
+        and bool(getattr(model, "_v2_activation_patch_force_custom_op_presence", False))
+    ):
+        raise RuntimeError(
+            "Compiled activation patch request exceeds preallocated runtime buffer capacity "
+            f"for layer {int(layer_idx)}: requested max_tokens={int(max_tokens)} "
+            f"max_rows={int(max_rows)} hidden_dim={int(hidden_dim)}, existing "
+            f"max_tokens={int(existing_capacity)} max_rows={int(existing_rows)} "
+            f"hidden_dim={int(existing_hidden_dim)}. Increase "
+            "XENON_ACTIVATION_PATCH_MAX_TOKENS before constructing the vLLM engine "
+            "or run the engine with enforce_eager=True."
+        )
+    if (
+        needs_resize
     ):
         layer_buffers = {
             "active": torch.zeros((_MAX_BATCH_PATCH_SLOTS,), device=device, dtype=torch.int32),
@@ -547,6 +678,7 @@ def _ensure_batch_runtime_state_buffers(
                 device=device,
                 dtype=torch.float32,
             ),
+            "rowwise": torch.zeros((_MAX_BATCH_PATCH_SLOTS,), device=device, dtype=torch.int32),
             "residual_path_transport_modes": torch.zeros(
                 (_MAX_BATCH_PATCH_SLOTS,),
                 device=device,
@@ -574,10 +706,32 @@ def _ensure_batch_tensor_stats_buffers(
         buffers = {}
         model._v2_activation_patch_batch_tensor_stats = buffers
     layer_buffers = buffers.get(int(layer_idx))
-    if (
+    existing_coeff_dim = (
+        int(layer_buffers["coeff_before"].shape[1])
+        if isinstance(layer_buffers, dict) and "coeff_before" in layer_buffers
+        else 0
+    )
+    needs_resize = (
         not isinstance(layer_buffers, dict)
-        or int(layer_buffers["coeff_before"].shape[1]) != int(coeff_dim)
-        or int(layer_buffers["coeff_after"].shape[1]) != int(coeff_dim)
+        or "coeff_before" not in layer_buffers
+        or "coeff_after" not in layer_buffers
+        or existing_coeff_dim < int(coeff_dim)
+        or int(layer_buffers["coeff_after"].shape[1]) < int(coeff_dim)
+    )
+    if (
+        needs_resize
+        and isinstance(layer_buffers, dict)
+        and bool(getattr(model, "_v2_activation_patch_force_custom_op_presence", False))
+    ):
+        raise RuntimeError(
+            "Compiled activation patch request exceeds preallocated stats buffer capacity "
+            f"for layer {int(layer_idx)}: requested coeff_dim={int(coeff_dim)}, "
+            f"existing coeff_dim={int(existing_coeff_dim)}. Increase the compiled "
+            "patch component capacity before constructing the vLLM engine or run "
+            "the engine with enforce_eager=True."
+        )
+    if (
+        needs_resize
     ):
         layer_buffers = {
             "valid": torch.zeros((_MAX_BATCH_PATCH_SLOTS,), device=device, dtype=torch.int32),
@@ -625,7 +779,7 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
         if not isinstance(payload, dict):
             continue
         spec = spec_from_payload(dict(payload))
-        token_count = len(spec.query_positions)
+        token_count = _spec_token_count(spec)
         if token_count <= 0:
             continue
         for layer_idx in spec.target_layers:
@@ -724,7 +878,7 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
         if not isinstance(payload, dict):
             continue
         spec = spec_from_payload(dict(payload))
-        token_count = len(spec.query_positions)
+        token_count = _spec_token_count(spec)
         if token_count <= 0:
             continue
         for layer_idx in spec.target_layers:
@@ -745,6 +899,7 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
             runtime_buffers["direction_std"][slot_idx].zero_()
             runtime_buffers["donor_means"][slot_idx].zero_()
             runtime_buffers["random_rows"][slot_idx].zero_()
+            runtime_buffers["rowwise"][slot_idx] = 0
             runtime_buffers["residual_path_transport_modes"][slot_idx] = 0
             runtime_buffers["residual_path_replace_alphas"][slot_idx] = 0.0
             if spec.is_interchange():
@@ -837,7 +992,7 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
                 )
                 runtime_buffers["donor_rows"][slot_idx, :token_count].copy_(payload_rows)
             elif is_subspace_operator(spec.operator):
-                token_span = contiguous_token_span(spec.query_positions)
+                token_span = _spec_contiguous_token_span(spec)
                 if token_span is None:
                     continue
                 source_layer = spec.source_layer_for(int(layer_idx))
@@ -859,14 +1014,26 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
                 )
                 if int(runtime_buffers["selected_rows"].shape[1]) < row_count:
                     continue
+                if int(runtime_buffers["query_positions"].shape[1]) < int(token_count):
+                    continue
                 runtime_buffers["active"][slot_idx] = 1
                 runtime_buffers["mode_ids"][slot_idx] = int(operator_mode_id(spec.operator))
                 runtime_buffers["token_counts"][slot_idx] = int(token_count)
                 runtime_buffers["row_counts"][slot_idx] = int(row_count)
                 runtime_buffers["token_spans"][slot_idx, 0] = int(token_span[0])
                 runtime_buffers["token_spans"][slot_idx, 1] = int(token_span[1])
+                query_span = getattr(spec, "query_span", ())
+                if query_span:
+                    query_positions = list(range(int(query_span[0]), int(query_span[1])))
+                else:
+                    query_positions = [int(pos) for pos in spec.query_positions]
+                runtime_buffers["query_positions"][slot_idx, :token_count] = layer_payload["mean"].new_tensor(
+                    query_positions[:token_count],
+                    dtype=runtime_buffers["query_positions"].dtype,
+                )
                 runtime_buffers["strengths"][slot_idx] = float(spec.strength)
                 runtime_buffers["match_projected_norm"][slot_idx] = int(bool(spec.match_projected_norm))
+                runtime_buffers["rowwise"][slot_idx] = int(bool(spec.rowwise))
                 if int(subspace_inputs["selected_rows"].shape[0]) > 0:
                     runtime_buffers["selected_rows"][slot_idx, : int(subspace_inputs["selected_rows"].shape[0])].copy_(
                         subspace_inputs["selected_rows"]
@@ -881,6 +1048,20 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
                     runtime_buffers["random_rows"][slot_idx, : int(subspace_inputs["random_rows"].shape[0])].copy_(
                         subspace_inputs["random_rows"]
                     )
+
+
+def _spec_token_count(spec: Any) -> int:
+    token_count = getattr(spec, "token_count", None)
+    if callable(token_count):
+        return int(token_count())
+    return int(len(getattr(spec, "query_positions", ())))
+
+
+def _spec_contiguous_token_span(spec: Any) -> tuple[int, int] | None:
+    query_span = getattr(spec, "query_span", ())
+    if query_span:
+        return (int(query_span[0]), int(query_span[1]))
+    return contiguous_token_span(getattr(spec, "query_positions", ()))
 
 
 __all__ = [

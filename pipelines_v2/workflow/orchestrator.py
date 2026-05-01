@@ -46,6 +46,13 @@ class WorkflowResult:
         return self.step_results[name]
 
 
+@dataclass(frozen=True, slots=True)
+class _PendingStepSubmission:
+    step: Any
+    resolved_spec: Any
+    step_context: WorkflowStepContext
+
+
 @dataclass(slots=True)
 class WorkflowOrchestrator:
     """Execute a workflow over named runners with dependency-aware fanout."""
@@ -198,7 +205,7 @@ class WorkflowOrchestrator:
 
         results: dict[str, Any] = {}
         pending = set(step_by_name)
-        running: dict[Future[Any], str] = {}
+        running: dict[Future[Any], tuple[str, ...]] = {}
         max_workers = self.max_parallelism or max(1, len(ordered_steps))
 
         if catalog is not None and existing_step_records:
@@ -250,6 +257,7 @@ class WorkflowOrchestrator:
                         for name in sorted(pending)
                         if dependencies[name].issubset(results)
                     ]
+                    pending_submissions: list[_PendingStepSubmission] = []
                     for step in ready:
                         runner = self.runners[step.runner]
                         resolved_spec = _resolve_step_refs(step.spec, results)
@@ -520,16 +528,42 @@ class WorkflowOrchestrator:
                                 message="submitting step to runner",
                             )
                         )
-                        future = pool.submit(
-                            _run_with_workflow_context,
-                            runner,
-                            resolved_spec,
-                            step_context,
-                            self._runner_progress_callback(step_context=step_context, spec_kind=step.spec.kind),
+                        pending_submissions.append(
+                            _PendingStepSubmission(
+                                step=step,
+                                resolved_spec=resolved_spec,
+                                step_context=step_context,
+                            )
                         )
-                        running[future] = step.name
                         pending.remove(step.name)
                         progress_made = True
+                    for submission_group in _workflow_submission_groups(pending_submissions, self.runners):
+                        if len(submission_group) == 1:
+                            submission = submission_group[0]
+                            future = pool.submit(
+                                _run_with_workflow_context,
+                                self.runners[submission.step.runner],
+                                submission.resolved_spec,
+                                submission.step_context,
+                                self._runner_progress_callback(
+                                    step_context=submission.step_context,
+                                    spec_kind=submission.step.spec.kind,
+                                ),
+                            )
+                        else:
+                            runner = self.runners[submission_group[0].step.runner]
+                            contexts = [submission.step_context for submission in submission_group]
+                            future = pool.submit(
+                                _run_many_with_workflow_contexts,
+                                runner,
+                                [submission.resolved_spec for submission in submission_group],
+                                contexts,
+                                self._batch_runner_progress_callback(
+                                    step_contexts=contexts,
+                                    spec_kinds=[submission.step.spec.kind for submission in submission_group],
+                                ),
+                            )
+                        running[future] = tuple(submission.step.name for submission in submission_group)
 
                 if progress_made and not running:
                     continue
@@ -547,120 +581,135 @@ class WorkflowOrchestrator:
                     return_when=FIRST_COMPLETED,
                 )
                 if not done:
-                    for step_name in running.values():
-                        step = step_by_name[step_name]
-                        self._emit_progress(
-                            WorkflowProgressEvent(
-                                run_id=run_id,
-                                workflow_name=workflow.name,
-                                step_name=step_name,
-                                step_index=step_index_by_name[step_name],
-                                runner=step.runner,
-                                spec_kind=step.spec.kind,
-                                status="running",
-                                stage="heartbeat",
-                                message="step still running",
+                    for step_names in running.values():
+                        for step_name in step_names:
+                            step = step_by_name[step_name]
+                            self._emit_progress(
+                                WorkflowProgressEvent(
+                                    run_id=run_id,
+                                    workflow_name=workflow.name,
+                                    step_name=step_name,
+                                    step_index=step_index_by_name[step_name],
+                                    runner=step.runner,
+                                    spec_kind=step.spec.kind,
+                                    status="running",
+                                    stage="heartbeat",
+                                    message="step still running",
+                                )
                             )
-                        )
                     continue
                 for future in done:
-                    step_name = running.pop(future)
+                    step_names = running.pop(future)
                     try:
-                        result = future.result()
-                        results[step_name] = result
-                        if hasattr(result, "manifest"):
-                            manifest = result.manifest()
-                            _LOG.info(
-                                "step completed name=%s runner=%s artifact_kind=%s artifact_id=%s runtime_app_id=%s",
-                                step_name,
-                                step_by_name[step_name].runner,
-                                manifest.artifact_kind,
-                                manifest.artifact_id,
-                                _manifest_runtime_app_id(manifest),
-                            )
+                        future_result = future.result()
+                        if len(step_names) == 1:
+                            result_items = [future_result]
                         else:
-                            _LOG.info("step completed name=%s runner=%s", step_name, step_by_name[step_name].runner)
-                        self._emit_progress(
-                            WorkflowProgressEvent(
-                                run_id=run_id,
-                                workflow_name=workflow.name,
-                                step_name=step_name,
-                                step_index=step_index_by_name[step_name],
-                                runner=step_by_name[step_name].runner,
-                                spec_kind=step_by_name[step_name].spec.kind,
-                                status="completed",
-                                stage="completed",
-                                runtime_app_id=(
-                                    _manifest_runtime_app_id(manifest) if hasattr(result, "manifest") else None
-                                ),
-                                artifact_id=manifest.artifact_id if hasattr(result, "manifest") else None,
-                                artifact_kind=manifest.artifact_kind if hasattr(result, "manifest") else None,
-                                message="step completed",
-                            )
-                        )
-                        if catalog is not None and hasattr(result, "manifest"):
-                            manifest = result.manifest()
-                            catalog.record_workflow_step(
-                                WorkflowStepRecord(
+                            if not isinstance(future_result, (list, tuple)):
+                                raise RuntimeError("batched runner returned a non-sequence result")
+                            result_items = list(future_result)
+                            if len(result_items) != len(step_names):
+                                raise RuntimeError(
+                                    "batched runner returned a different number of results than steps: "
+                                    f"got {len(result_items)}, expected {len(step_names)}"
+                                )
+                        for step_name, result in zip(step_names, result_items, strict=True):
+                            results[step_name] = result
+                            if hasattr(result, "manifest"):
+                                manifest = result.manifest()
+                                _LOG.info(
+                                    "step completed name=%s runner=%s artifact_kind=%s artifact_id=%s runtime_app_id=%s",
+                                    step_name,
+                                    step_by_name[step_name].runner,
+                                    manifest.artifact_kind,
+                                    manifest.artifact_id,
+                                    _manifest_runtime_app_id(manifest),
+                                )
+                            else:
+                                _LOG.info("step completed name=%s runner=%s", step_name, step_by_name[step_name].runner)
+                            step = step_by_name[step_name]
+                            self._emit_progress(
+                                WorkflowProgressEvent(
                                     run_id=run_id,
-                                    workflow_hash=workflow_hash,
-                                    workflow_step_key=f"{workflow_hash}.{step_name}",
+                                    workflow_name=workflow.name,
                                     step_name=step_name,
                                     step_index=step_index_by_name[step_name],
-                                    runner=step_by_name[step_name].runner,
+                                    runner=step.runner,
+                                    spec_kind=step.spec.kind,
                                     status="completed",
-                                    step_semantic_hash=step_by_name[step_name].semantic_hash(),
-                                    step_spec_hash=step_by_name[step_name].spec_hash(),
-                                    input_artifact_refs=tuple(manifest.input_artifact_refs),
-                                    artifact_id=manifest.artifact_id,
-                                    artifact_kind=manifest.artifact_kind,
-                                    started_at=step_started_at.get(
-                                        step_name,
-                                        existing_step_records.get(step_name).started_at
-                                        if step_name in existing_step_records
-                                        else utc_now_iso(),
+                                    stage="completed",
+                                    runtime_app_id=(
+                                        _manifest_runtime_app_id(manifest) if hasattr(result, "manifest") else None
                                     ),
-                                    finished_at=utc_now_iso(),
-                                    runtime_app_id=_manifest_runtime_app_id(manifest),
+                                    artifact_id=manifest.artifact_id if hasattr(result, "manifest") else None,
+                                    artifact_kind=manifest.artifact_kind if hasattr(result, "manifest") else None,
+                                    message="step completed",
                                 )
                             )
+                            if catalog is not None and hasattr(result, "manifest"):
+                                manifest = result.manifest()
+                                catalog.record_workflow_step(
+                                    WorkflowStepRecord(
+                                        run_id=run_id,
+                                        workflow_hash=workflow_hash,
+                                        workflow_step_key=f"{workflow_hash}.{step_name}",
+                                        step_name=step_name,
+                                        step_index=step_index_by_name[step_name],
+                                        runner=step_by_name[step_name].runner,
+                                        status="completed",
+                                        step_semantic_hash=step_by_name[step_name].semantic_hash(),
+                                        step_spec_hash=step_by_name[step_name].spec_hash(),
+                                        input_artifact_refs=tuple(manifest.input_artifact_refs),
+                                        artifact_id=manifest.artifact_id,
+                                        artifact_kind=manifest.artifact_kind,
+                                        started_at=step_started_at.get(
+                                            step_name,
+                                            existing_step_records.get(step_name).started_at
+                                            if step_name in existing_step_records
+                                            else utc_now_iso(),
+                                        ),
+                                        finished_at=utc_now_iso(),
+                                        runtime_app_id=_manifest_runtime_app_id(manifest),
+                                    )
+                                )
                     except Exception as exc:
-                        _LOG.exception("step failed name=%s runner=%s", step_name, step_by_name[step_name].runner)
-                        self._emit_progress(
-                            WorkflowProgressEvent(
-                                run_id=run_id,
-                                workflow_name=workflow.name,
-                                step_name=step_name,
-                                step_index=step_index_by_name[step_name],
-                                runner=step_by_name[step_name].runner,
-                                spec_kind=step_by_name[step_name].spec.kind,
-                                status="failed",
-                                stage="failed",
-                                runtime_app_id=getattr(exc, "runtime_app_id", None),
-                                message=str(exc),
-                            )
-                        )
-                        failed_steps.add(step_name)
-                        if catalog is not None:
-                            catalog.record_workflow_step(
-                                WorkflowStepRecord(
+                        for step_name in step_names:
+                            _LOG.exception("step failed name=%s runner=%s", step_name, step_by_name[step_name].runner)
+                            self._emit_progress(
+                                WorkflowProgressEvent(
                                     run_id=run_id,
-                                    workflow_hash=workflow_hash,
-                                    workflow_step_key=f"{workflow_hash}.{step_name}",
+                                    workflow_name=workflow.name,
                                     step_name=step_name,
                                     step_index=step_index_by_name[step_name],
                                     runner=step_by_name[step_name].runner,
+                                    spec_kind=step_by_name[step_name].spec.kind,
                                     status="failed",
-                                    step_semantic_hash=step_by_name[step_name].semantic_hash(),
-                                    step_spec_hash=step_by_name[step_name].spec_hash(),
-                                    input_artifact_refs=tuple(
-                                        _input_artifact_ids_from_results(step_by_name[step_name], results)
-                                    ),
-                                    started_at=step_started_at.get(step_name, utc_now_iso()),
-                                    finished_at=utc_now_iso(),
+                                    stage="failed",
                                     runtime_app_id=getattr(exc, "runtime_app_id", None),
+                                    message=str(exc),
                                 )
                             )
+                            failed_steps.add(step_name)
+                            if catalog is not None:
+                                catalog.record_workflow_step(
+                                    WorkflowStepRecord(
+                                        run_id=run_id,
+                                        workflow_hash=workflow_hash,
+                                        workflow_step_key=f"{workflow_hash}.{step_name}",
+                                        step_name=step_name,
+                                        step_index=step_index_by_name[step_name],
+                                        runner=step_by_name[step_name].runner,
+                                        status="failed",
+                                        step_semantic_hash=step_by_name[step_name].semantic_hash(),
+                                        step_spec_hash=step_by_name[step_name].spec_hash(),
+                                        input_artifact_refs=tuple(
+                                            _input_artifact_ids_from_results(step_by_name[step_name], results)
+                                        ),
+                                        started_at=step_started_at.get(step_name, utc_now_iso()),
+                                        finished_at=utc_now_iso(),
+                                        runtime_app_id=getattr(exc, "runtime_app_id", None),
+                                    )
+                                )
                         if first_failure is None:
                             first_failure = exc
 
@@ -808,6 +857,42 @@ class WorkflowOrchestrator:
                     metrics=dict(payload.get("metrics", {})),
                 )
             )
+
+        return _callback
+
+    def _batch_runner_progress_callback(
+        self,
+        *,
+        step_contexts: list[WorkflowStepContext],
+        spec_kinds: list[str],
+    ) -> Callable[[Mapping[str, Any]], None] | None:
+        if self.progress_sink is None:
+            return None
+
+        def _callback(payload: Mapping[str, Any]) -> None:
+            for step_context, spec_kind in zip(step_contexts, spec_kinds, strict=False):
+                self._emit_progress(
+                    WorkflowProgressEvent(
+                        run_id=step_context.run_id,
+                        workflow_name=step_context.workflow_name,
+                        step_name=step_context.step_name,
+                        step_index=step_context.step_index,
+                        runner=step_context.runner,
+                        spec_kind=spec_kind,
+                        status=str(payload.get("status") or "running"),
+                        stage=str(payload.get("stage") or "running"),
+                        message=str(payload["message"]) if payload.get("message") is not None else None,
+                        runtime_kind=str(payload["runtime_kind"]) if payload.get("runtime_kind") is not None else None,
+                        runtime_app_id=(
+                            str(payload["runtime_app_id"]) if payload.get("runtime_app_id") is not None else None
+                        ),
+                        artifact_id=str(payload["artifact_id"]) if payload.get("artifact_id") is not None else None,
+                        artifact_kind=(
+                            str(payload["artifact_kind"]) if payload.get("artifact_kind") is not None else None
+                        ),
+                        metrics=dict(payload.get("metrics", {})),
+                    )
+                )
 
         return _callback
 
@@ -1039,6 +1124,61 @@ def _run_with_workflow_context(
     if kwargs:
         return runner.run(spec, **kwargs)
     return runner.run(spec)
+
+
+def _run_many_with_workflow_contexts(
+    runner: Any,
+    specs: list[Any],
+    step_contexts: list[WorkflowStepContext],
+    progress_callback: Callable[[Mapping[str, Any]], None] | None = None,
+) -> list[Any]:
+    run_many = getattr(runner, "run_many", None)
+    if not callable(run_many):
+        raise TypeError(f"Runner {type(runner).__name__} does not support batched workflow execution")
+    try:
+        signature = inspect.signature(run_many)
+    except (TypeError, ValueError):
+        return run_many(specs)
+    kwargs: dict[str, Any] = {}
+    if "workflow_contexts" in signature.parameters:
+        kwargs["workflow_contexts"] = step_contexts
+    if "progress_callback" in signature.parameters:
+        kwargs["progress_callback"] = progress_callback
+    if kwargs:
+        return run_many(specs, **kwargs)
+    return run_many(specs)
+
+
+def _workflow_submission_groups(
+    submissions: list[_PendingStepSubmission],
+    runners: Mapping[str, Runner],
+) -> list[list[_PendingStepSubmission]]:
+    groups: list[list[_PendingStepSubmission]] = []
+    keyed: dict[tuple[str, str], list[_PendingStepSubmission]] = {}
+    for submission in submissions:
+        runner = runners[submission.step.runner]
+        batch_key = _runner_workflow_batch_key(runner, submission.resolved_spec)
+        if batch_key is None:
+            groups.append([submission])
+            continue
+        keyed.setdefault((submission.step.runner, batch_key), []).append(submission)
+    for key in sorted(keyed):
+        group = keyed[key]
+        if len(group) <= 1 or not callable(getattr(runners[group[0].step.runner], "run_many", None)):
+            groups.extend([submission] for submission in group)
+        else:
+            groups.append(group)
+    return groups
+
+
+def _runner_workflow_batch_key(runner: Any, spec: Any) -> str | None:
+    batch_key = getattr(runner, "workflow_batch_key", None)
+    if not callable(batch_key):
+        return None
+    key = batch_key(spec)
+    if key is None:
+        return None
+    return str(key)
 
 
 def _should_inline_transform_step(step: Any) -> bool:

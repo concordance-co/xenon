@@ -383,6 +383,8 @@ class ToyEngine:
                 patch_stats[str(int(write_layer))] = {
                     "layer": int(write_layer),
                     "source_layer": int(source_layer),
+                    "status": "ok",
+                    "operator": patch.operator,
                     "target_span": list(target_positions),
                     "donor_span": list(donor_positions),
                     "token_count": len(target_positions),
@@ -404,6 +406,7 @@ class ToyEngine:
                 patch_stats[str(int(write_layer))] = {
                     "layer": int(write_layer),
                     "source_layer": int(source_layer),
+                    "status": "ok",
                     "operator": patch.operator,
                     "transport": patch.transport,
                     "weight": weight,
@@ -514,6 +517,7 @@ class ToyEngine:
             patch_stats[str(int(write_layer))] = {
                 "layer": int(write_layer),
                 "source_layer": int(source_layer),
+                "status": "ok",
                 "operator": patch.operator,
                 "token_count": len(target_positions),
                 "target_tokens": [int(pos) for pos in target_positions],

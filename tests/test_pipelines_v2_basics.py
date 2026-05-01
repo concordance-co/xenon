@@ -111,7 +111,13 @@ from pipelines_v2.operations.execution.interventions import run_patch_comparison
 from pipelines_v2.runtime import ExecutionPlan
 from pipelines_v2.runtime.specs import runner_spec_from_dict
 from pipelines_v2.runtime.remote_executor import _artifact_id_for, execute_remote, merge_remote_shards
-from pipelines_v2.runtime.modal_worker import _mounted_volumes, _resolved_runtime_spec, run_on_modal
+from pipelines_v2.runtime.modal_worker import (
+    _modal_shard_count,
+    _mounted_volumes,
+    _resolved_runtime_spec,
+    run_many_on_modal,
+    run_on_modal,
+)
 from pipelines_v2.storage.artifacts import InlineOperationArtifact
 from pipelines_v2.storage.composite import preferred_workflow_metadata_catalog
 from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
@@ -3286,6 +3292,226 @@ def test_modal_worker_shards_model_bound_specs(
     assert len(merged_inputs) == 3
     assert "remote_shards_submitted" in [event["stage"] for event in progress_events]
     assert "remote_shards_finished" in [event["stage"] for event in progress_events]
+
+
+def test_modal_worker_ignores_shard_count_for_unshardable_specs() -> None:
+    assert (
+        _modal_shard_count(
+            resources={"shard_count": 3},
+            spec_payload={"kind": "subspace"},
+        )
+        == 1
+    )
+    assert (
+        _modal_shard_count(
+            resources={"shard_count": 3},
+            spec_payload=make_toy_capture_spec().to_dict(),
+        )
+        == 3
+    )
+
+
+def test_modal_worker_shards_batched_model_bound_specs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, object] = {}
+    execute_many_calls: list[list[dict[str, object]]] = []
+    merge_calls: list[dict[str, object]] = []
+    progress_events: list[dict[str, object]] = []
+
+    class FakeImage:
+        def pip_install(self, *packages: str) -> "FakeImage":
+            del packages
+            return self
+
+        def env(self, env_payload: dict[str, str]) -> "FakeImage":
+            del env_payload
+            return self
+
+        def add_local_dir(self, local_path: str, *, remote_path: str) -> "FakeImage":
+            del local_path, remote_path
+            return self
+
+    class FakeImageFactory:
+        @staticmethod
+        def debian_slim(*, python_version: str) -> FakeImage:
+            del python_version
+            return FakeImage()
+
+    class FakeVolume:
+        @staticmethod
+        def from_name(name: str, create_if_missing: bool = False) -> object:
+            return {"name": name, "create_if_missing": create_if_missing}
+
+    class FakeSecret:
+        @staticmethod
+        def from_name(name: str) -> object:
+            return {"name": name}
+
+    class FakeFunction:
+        def __init__(self, fn: object) -> None:
+            self._fn = fn
+
+        def remote(self, *args: object) -> object:
+            return self._fn(*args)
+
+    class FakeAppRun:
+        app_id = "ap-test-batch-shards"
+
+        def __enter__(self) -> "FakeAppRun":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class FakeApp:
+        def __init__(self, name: str) -> None:
+            captured["app_name"] = name
+
+        def function(self, **kwargs: object):
+            captured.setdefault("function_kwargs", []).append(dict(kwargs))
+
+            def decorator(fn):
+                return FakeFunction(fn)
+
+            return decorator
+
+        def run(self) -> FakeAppRun:
+            return FakeAppRun()
+
+    def fake_execute_remote_many(**kwargs: object) -> list[dict[str, object]]:
+        contexts = [dict(context or {}) for context in kwargs["workflow_contexts"]]
+        execute_many_calls.append(contexts)
+        shard = dict(contexts[0]["execution_shard"])
+        return [
+            {
+                "artifact_id": f"{payload['kind']}_shard_{shard['index']}",
+                "artifact_kind": payload["kind"],
+                "schema_version": 1,
+                "operation_spec_hash": "abc123",
+                "operation_semantic_hash": "abc123",
+                "created_at": "2026-04-17T00:00:00+00:00",
+                "engine": payload.get("engine", {}),
+                "runner": {},
+                "input_artifact_refs": [],
+                "example_coverage": {"count": 1},
+                "storage_refs": {"result": {"store": "fake", "path": "unused.json"}},
+                "metadata": {"execution_shard": shard},
+            }
+            for payload in kwargs["spec_payloads"]
+        ]
+
+    def fake_merge_remote_shards(**kwargs: object) -> dict[str, object]:
+        payload = dict(kwargs["spec_payload"])
+        shard_manifests = [dict(item) for item in kwargs["shard_manifests"]]
+        merge_calls.append(
+            {
+                "kind": payload["kind"],
+                "shard_ids": [item["artifact_id"] for item in shard_manifests],
+            }
+        )
+        return {
+            "artifact_id": f"{payload['kind']}_merged",
+            "artifact_kind": payload["kind"],
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-04-17T00:00:00+00:00",
+            "engine": payload.get("engine", {}),
+            "runner": {},
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"result": {"store": "fake", "path": "unused.json"}},
+            "metadata": {"sharded": True},
+        }
+
+    fake_modal = types.SimpleNamespace(
+        App=FakeApp,
+        Image=FakeImageFactory,
+        Volume=FakeVolume,
+        Secret=FakeSecret,
+    )
+    monkeypatch.setitem(sys.modules, "modal", fake_modal)
+    monkeypatch.setattr("pipelines_v2.runtime.remote_executor.execute_remote_many", fake_execute_remote_many)
+    monkeypatch.setattr("pipelines_v2.runtime.remote_executor.merge_remote_shards", fake_merge_remote_shards)
+
+    dataset = make_toy_dataset()
+    subspace = InlineOperationArtifact(
+        payload={
+            "kind": "subspace_result",
+            "layers": {
+                "0": {
+                    "mean": [0.0, 0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0, 1.0],
+                    "safe_scale": [1.0, 1.0, 1.0, 1.0],
+                    "components": [[1.0, 0.0, 0.0, 0.0]],
+                    "component_count": 1,
+                    "named_components": {},
+                }
+            },
+        },
+        artifact_kind="subspace",
+    )
+    engine = ToyEngine()
+    specs = [
+        make_toy_capture_spec(dataset),
+        GenerationRunSpec(
+            engine=engine,
+            dataset=dataset,
+            generation=GenerationSpec(enabled=True, max_tokens=1),
+        ),
+        PatchedGenerationSpec(
+            engine=engine,
+            dataset=dataset,
+            patch=ProjectOutPatch(
+                subspace=subspace,
+                write_site=ResidualInterventionSite(site="resid_post", layers=(0,)),
+                target_tokens=TokenSelector.last(),
+                component_indices_by_layer={0: (0,)},
+            ),
+            select_when=dataset.labels("class").equals("positive"),
+            generation=GenerationSpec(enabled=True, max_tokens=1),
+        ),
+    ]
+
+    results = run_many_on_modal(
+        runner_config={
+            "kind": "modal",
+            "resources": {"max_containers": 2, "shard_count": 2},
+        },
+        store_config={
+            "kind": "modal_volume",
+            "name": "xenon-data",
+            "root": str(tmp_path / "artifacts"),
+        },
+        spec_payloads=[spec.to_dict() for spec in specs],
+        workflow_contexts=[
+            {"run_id": "wr_test", "workflow_step_key": f"wf.step_{index}", "step_name": f"step_{index}"}
+            for index in range(len(specs))
+        ],
+        progress_callback=lambda payload: progress_events.append(dict(payload)),
+    )
+
+    assert [result["artifact_id"] for result in results] == [
+        "capture_merged",
+        "generation_run_merged",
+        "patched_generation_merged",
+    ]
+    assert [result["runner"]["runtime_app_id"] for result in results] == [
+        "ap-test-batch-shards",
+        "ap-test-batch-shards",
+        "ap-test-batch-shards",
+    ]
+    assert len(execute_many_calls) == 2
+    assert [
+        sorted({dict(context["execution_shard"])["index"] for context in contexts})
+        for contexts in execute_many_calls
+    ] == [[0], [1]]
+    assert [call["kind"] for call in merge_calls] == ["capture", "generation_run", "patched_generation"]
+    assert all(len(call["shard_ids"]) == 2 for call in merge_calls)
+    assert "remote_batch_shards_submitted" in [event["stage"] for event in progress_events]
+    assert "remote_batch_shards_finished" in [event["stage"] for event in progress_events]
 
 
 def test_modal_worker_runner_env_overrides_spec_runtime_env(
@@ -6541,6 +6767,7 @@ def test_pipelines_v2_activation_patch_smoke_file_builders() -> None:
         "learn_strategy_subspace",
         "baseline_targets",
         "lesion_generated_tokens",
+        "validate_compiled_patch_stats",
         "compare_patch_runs",
     ]
     assert workflow.steps[0].runner == "capture_gpu"
@@ -6548,11 +6775,15 @@ def test_pipelines_v2_activation_patch_smoke_file_builders() -> None:
     assert workflow.steps[2].runner == "capture_gpu"
     assert workflow.steps[3].runner == "capture_gpu"
     assert workflow.steps[4].runner == "analysis_cpu"
+    assert workflow.steps[5].runner == "analysis_cpu"
     patch = workflow.steps[3].spec.patch
     assert patch.application.kind == "every_token"
     assert patch.application.include_prompt is False
     assert patch.application.include_decode is True
     assert patch.target_tokens.kind == "section"
+    assert workflow.steps[4].spec.builder.import_path == (
+        "scripts.pipelines_v2_activation_patch_smoke:validate_compiled_patch_smoke"
+    )
 
 
 def test_pipelines_v2_router_layer_probe_uses_compile_cache(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -7057,6 +7288,7 @@ def test_load_python_workflow_file_passes_dataset_into_optional_dataset_builder(
 def test_pipelines_v2_cli_tracks_runs_in_local_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     workflow_file = _write_cli_local_workflow_file(tmp_path)
     monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
+    monkeypatch.setenv("XENON_NEON_DATABASE_URL", "")
 
     exit_code = pipelines_v2_cli_main(
         [
@@ -7110,6 +7342,7 @@ def test_pipelines_v2_cli_workflow_run_logging_emits_progress_to_stderr(
 ) -> None:
     workflow_file = _write_cli_local_workflow_file(tmp_path)
     monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
+    monkeypatch.setenv("XENON_NEON_DATABASE_URL", "")
 
     exit_code = pipelines_v2_cli_main(
         [
@@ -7185,6 +7418,7 @@ def test_pipelines_v2_cli_rerun_step_and_from_step_use_prior_run_artifacts(
 ) -> None:
     workflow_file = _write_cli_local_workflow_file(tmp_path)
     monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
+    monkeypatch.setenv("XENON_NEON_DATABASE_URL", "")
 
     exit_code = pipelines_v2_cli_main(
         [

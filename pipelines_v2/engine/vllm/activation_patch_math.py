@@ -223,10 +223,10 @@ def apply_subspace_operator(
             strength=float(strength),
         )
         if operator_name == ADD_DIRECTION_OPERATOR:
-            if direction_raw is not None:
-                stats["direction_norm_raw"] = float(torch.linalg.norm(direction_raw.to(torch.float32)).item())
-            elif direction_std is not None:
+            if direction_std is not None:
                 stats["direction_norm_raw"] = float(torch.linalg.norm((direction_std.to(torch.float32) * scale)).item())
+            elif direction_raw is not None:
+                stats["direction_norm_raw"] = float(torch.linalg.norm(direction_raw.to(torch.float32)).item())
         stats["status"] = "ok"
         stats["operator"] = operator_name
         stats["token_count"] = int(len(query_positions))
@@ -287,10 +287,10 @@ def apply_subspace_operator(
         strength=float(strength),
     )
     if operator_name == ADD_DIRECTION_OPERATOR:
-        if direction_raw is not None:
-            stats["direction_norm_raw"] = float(torch.linalg.norm(direction_raw.to(torch.float32)).item())
-        elif direction_std is not None:
+        if direction_std is not None:
             stats["direction_norm_raw"] = float(torch.linalg.norm((direction_std.to(torch.float32) * scale)).item())
+        elif direction_raw is not None:
+            stats["direction_norm_raw"] = float(torch.linalg.norm(direction_raw.to(torch.float32)).item())
     stats["status"] = "ok"
     stats["operator"] = operator_name
     stats["token_count"] = int(len(query_positions))

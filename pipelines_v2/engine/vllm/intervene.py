@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -55,17 +56,42 @@ if TYPE_CHECKING:
     from pipelines_v2.engine.vllm.engine import VLLMEngine
 
 
+_SUBSPACE_PATCH_OPERATORS = frozenset(
+    {"project_out", "add_direction", "swap_mean", "swap_components", "random_control"}
+)
+
+
+@dataclass(slots=True)
+class VLLMInterventionRuntime:
+    """Loaded vLLM intervention runtime reused within one remote execution session."""
+
+    engine: "VLLMEngine"
+    llm: Any
+    tokenizer: Any
+    reasoning_parser_instance: Any | None
+    batch_size: int
+    session_key: str
+
+
 def run_vllm_intervention(*, engine: "VLLMEngine", spec: PatchedGenerationSpec) -> "EngineInterventionResult":
+    runtime = build_vllm_intervention_runtime(engine=engine, spec=spec)
+    return run_vllm_intervention_with_runtime(runtime=runtime, spec=spec)
+
+
+def build_vllm_intervention_runtime(
+    *,
+    engine: "VLLMEngine",
+    spec: PatchedGenerationSpec,
+) -> VLLMInterventionRuntime:
+    """Construct one vLLM intervention runtime for a compatible patch family."""
+
     from transformers import AutoTokenizer
     from vllm import LLM
 
     tokenizer = AutoTokenizer.from_pretrained(engine.resolved_model_path(), trust_remote_code=True)
-    compiled_operator_hint = None
-    if spec.patch.operator in {"project_out", "add_direction", "swap_mean", "swap_components", "random_control"}:
-        compiled_operator_hint = "subspace"
     llm_kwargs, reasoning_parser = build_llm_kwargs(
         engine,
-        compiled_operator_hint=compiled_operator_hint,
+        compiled_operator_hint=_compiled_operator_hint(spec),
     )
     llm = LLM(**llm_kwargs)
     reasoning_parser_instance = _build_reasoning_parser(
@@ -74,24 +100,78 @@ def run_vllm_intervention(*, engine: "VLLMEngine", spec: PatchedGenerationSpec) 
         enable_thinking=engine.enable_thinking,
     )
     batch_size = max(1, int(engine.max_num_seqs or 1))
-
-    if spec.patch.requires_pairing():
-        return _run_paired(
-            engine=engine,
-            spec=spec,
-            llm=llm,
-            tokenizer=tokenizer,
-            reasoning_parser_instance=reasoning_parser_instance,
-            batch_size=batch_size,
-        )
-    return _run_unpaired(
+    return VLLMInterventionRuntime(
         engine=engine,
-        spec=spec,
         llm=llm,
         tokenizer=tokenizer,
         reasoning_parser_instance=reasoning_parser_instance,
         batch_size=batch_size,
+        session_key=vllm_intervention_session_key(engine=engine, spec=spec),
     )
+
+
+def run_vllm_intervention_with_runtime(
+    *,
+    runtime: VLLMInterventionRuntime,
+    spec: PatchedGenerationSpec,
+) -> "EngineInterventionResult":
+    """Run one patch spec against an already-loaded vLLM intervention runtime."""
+
+    if spec.patch.requires_pairing():
+        return _run_paired(
+            engine=runtime.engine,
+            spec=spec,
+            llm=runtime.llm,
+            tokenizer=runtime.tokenizer,
+            reasoning_parser_instance=runtime.reasoning_parser_instance,
+            batch_size=runtime.batch_size,
+        )
+    return _run_unpaired(
+        engine=runtime.engine,
+        spec=spec,
+        llm=runtime.llm,
+        tokenizer=runtime.tokenizer,
+        reasoning_parser_instance=runtime.reasoning_parser_instance,
+        batch_size=runtime.batch_size,
+    )
+
+
+def vllm_intervention_session_key(
+    *,
+    engine: "VLLMEngine",
+    spec: PatchedGenerationSpec,
+) -> str:
+    """Return a stable key for vLLM runtimes that can safely share one loaded LLM."""
+
+    from pipelines_v2.core.types import stable_hash
+
+    llm_kwargs, reasoning_parser = build_llm_kwargs(
+        engine,
+        compiled_operator_hint=_compiled_operator_hint(spec),
+    )
+    return stable_hash(
+        {
+            "kind": "vllm_intervention_runtime",
+            "family": _patch_family(spec),
+            "llm_kwargs": llm_kwargs,
+            "reasoning_parser": reasoning_parser,
+            "engine": engine.identity(),
+        }
+    )
+
+
+def _compiled_operator_hint(spec: PatchedGenerationSpec) -> str | None:
+    if spec.patch.operator in _SUBSPACE_PATCH_OPERATORS:
+        return "subspace"
+    return None
+
+
+def _patch_family(spec: PatchedGenerationSpec) -> str:
+    if spec.patch.operator in _SUBSPACE_PATCH_OPERATORS:
+        return "subspace"
+    if spec.patch.requires_pairing():
+        return "paired"
+    return str(spec.patch.operator)
 
 
 def _run_paired(
@@ -155,6 +235,7 @@ def _run_paired(
                 tools=spec.generation.chat_tools,
                 tool_choice=spec.generation.tool_choice,
                 enable_thinking=engine.enable_thinking,
+                chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs") or {}),
             )
             target_positions = spec.patch.target_tokens.resolve(
                 len(tokenized["token_ids"]),
@@ -228,6 +309,11 @@ def _run_paired(
             continue
 
         patched_outputs = llm.generate(prompts=patched_prompts, sampling_params=patched_params)
+        if len(patched_outputs) != len(planned_rows):
+            raise RuntimeError(
+                "vLLM returned a different number of patched request outputs than prompts: "
+                f"got {len(patched_outputs)}, expected {len(planned_rows)}"
+            )
         batch_stats = _apply_to_model(llm, collect_patch_stats) or {}
 
         for index, row_plan in enumerate(planned_rows):
@@ -343,6 +429,7 @@ def _run_unpaired(
                 tools=spec.generation.chat_tools,
                 tool_choice=spec.generation.tool_choice,
                 enable_thinking=engine.enable_thinking,
+                chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs") or {}),
             )
             target_positions = spec.patch.target_tokens.resolve(
                 len(tokenized["token_ids"]),
@@ -384,6 +471,11 @@ def _run_unpaired(
             continue
 
         patched_outputs = llm.generate(prompts=patched_prompts, sampling_params=patched_params)
+        if len(patched_outputs) != len(planned_rows):
+            raise RuntimeError(
+                "vLLM returned a different number of patched request outputs than prompts: "
+                f"got {len(patched_outputs)}, expected {len(planned_rows)}"
+            )
         batch_stats = _apply_to_model(llm, collect_patch_stats) or {}
 
         for index, row_plan in enumerate(planned_rows):
@@ -432,4 +524,10 @@ def _run_unpaired(
     )
 
 
-__all__ = ["run_vllm_intervention"]
+__all__ = [
+    "VLLMInterventionRuntime",
+    "build_vllm_intervention_runtime",
+    "run_vllm_intervention",
+    "run_vllm_intervention_with_runtime",
+    "vllm_intervention_session_key",
+]

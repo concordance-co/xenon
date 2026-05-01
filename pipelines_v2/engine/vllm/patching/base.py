@@ -11,6 +11,17 @@ import torch
 
 _MAX_BATCH_PATCH_SLOTS = 64
 _DEFAULT_COMPILED_PATCH_MAX_COMPONENTS = 8
+_DEFAULT_COMPILED_PATCH_MAX_TOKENS = 64
+
+
+def default_compiled_patch_max_tokens() -> int:
+    raw = str(os.getenv("XENON_ACTIVATION_PATCH_MAX_TOKENS", "") or "").strip()
+    if not raw:
+        return _DEFAULT_COMPILED_PATCH_MAX_TOKENS
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return _DEFAULT_COMPILED_PATCH_MAX_TOKENS
 
 
 def in_compiled_region() -> bool:
