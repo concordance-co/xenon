@@ -1,0 +1,39 @@
+name: Modal vLLM
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref or SHA to test.
+        required: true
+        default: main
+        type: string
+      suite:
+        description: Modal suite to run.
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - contracts
+          - full
+      shard_count:
+        description: Number of shards for sharded contract coverage.
+        required: true
+        default: "2"
+        type: string
+      max_containers:
+        description: Max Modal containers for sharded contract coverage.
+        required: true
+        default: "2"
+        type: string
+
+jobs:
+  run:
+    uses: ./.github/workflows/modal-vllm-reusable.yml
+    with:
+      ref: ${{ inputs.ref }}
+      suite: ${{ inputs.suite }}
+      shard_count: ${{ inputs.shard_count }}
+      max_containers: ${{ inputs.max_containers }}
+    secrets: inherit
