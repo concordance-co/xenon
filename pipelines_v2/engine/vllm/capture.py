@@ -25,10 +25,8 @@ def run_vllm_capture(
 ) -> EngineCaptureResult:
     """Run a capture spec with vLLM in the current process."""
 
-    import torch
-    from safetensors.torch import load_file
     from transformers import AutoTokenizer
-    from vllm import LLM, SamplingParams
+    from vllm import LLM
 
     examples = list(spec.dataset.examples)
     residual_sites = [site for site in spec.sites if isinstance(site, ResidualSite)]
@@ -113,110 +111,170 @@ def run_vllm_capture(
             parser_name=reasoning_parser,
             enable_thinking=engine.enable_thinking,
         )
+        return _run_vllm_capture_loaded(
+            engine=engine,
+            spec=spec,
+            llm=llm,
+            tokenizer=tokenizer,
+            reasoning_parser=reasoning_parser,
+            batch_callback=batch_callback,
+        )
 
-        router_enabled = False
-        discovered_router_layers: list[int] = []
-        if wants_routing:
-            from functools import partial
 
-            buffer_size = int(engine.max_model_len or 32768)
-            router_enabled = bool(_apply_to_model(llm, partial(_setup_router_capture_on_model, max_tokens=buffer_size)))
-            if not router_enabled:
-                raise RuntimeError("MoE routing capture was requested, but no compatible MoE blocks were found")
-            discovered_router_layers = sorted(
-                int(layer) for layer in (_apply_to_model(llm, _discover_router_layers_on_model) or [])
+def run_vllm_capture_with_runtime(
+    *,
+    runtime: Any,
+    spec: CaptureSpec,
+    batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
+) -> EngineCaptureResult:
+    """Run capture against an already-loaded reusable vLLM runtime."""
+
+    return _run_vllm_capture_loaded(
+        engine=runtime.engine,
+        spec=spec,
+        llm=runtime.llm,
+        tokenizer=runtime.tokenizer,
+        reasoning_parser=runtime.reasoning_parser_instance,
+        batch_callback=batch_callback,
+    )
+
+
+def _run_vllm_capture_loaded(
+    *,
+    engine: VLLMEngine,
+    spec: CaptureSpec,
+    llm: Any,
+    tokenizer: Any,
+    reasoning_parser: Any | None,
+    batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
+) -> EngineCaptureResult:
+    from functools import partial
+
+    examples = list(spec.dataset.examples)
+    residual_sites = [site for site in spec.sites if isinstance(site, ResidualSite)]
+    routing_sites = [site for site in spec.sites if isinstance(site, MoERoutingSite)]
+    residual_layers = sorted({int(layer) for site in residual_sites for layer in site.layers})
+    wants_residual = bool(residual_sites)
+    wants_routing = bool(routing_sites)
+    wants_generation = bool(spec.generation.enabled)
+    capture_generated_tokens = bool(spec.generation.capture_generated_tokens)
+    batch_size = max(1, int(engine.max_num_seqs or 1))
+    section_names = [
+        str(getattr(site.tokens, "value", ""))
+        for site in spec.sites
+        if getattr(site.tokens, "kind", None) == "section"
+    ]
+    wants_sections = bool(section_names)
+    requires_prompt_metadata_sections = wants_sections and not (
+        capture_generated_tokens and all(name in {"prompt", "generated", "full"} for name in section_names)
+    )
+
+    if wants_routing and bool(engine.enable_prefix_caching):
+        raise ValueError(
+            "MoE routing capture currently requires enable_prefix_caching=False in the current vLLM implementation"
+        )
+
+    router_enabled = False
+    discovered_router_layers: list[int] = []
+    if wants_routing:
+        buffer_size = int(engine.max_model_len or 32768)
+        router_enabled = bool(_apply_to_model(llm, partial(_setup_router_capture_on_model, max_tokens=buffer_size)))
+        if not router_enabled:
+            raise RuntimeError("MoE routing capture was requested, but no compatible MoE blocks were found")
+        discovered_router_layers = sorted(
+            int(layer) for layer in (_apply_to_model(llm, _discover_router_layers_on_model) or [])
+        )
+
+    feature_payloads: dict[str, dict[str, Any]] = {site.name: _empty_feature(site) for site in spec.sites}
+    generations: list[dict[str, Any]] = []
+    example_metadata: list[dict[str, Any]] = []
+
+    for batch in _iter_batches(examples, batch_size):
+        batch_records = _capture_prompt_batch(
+            llm=llm,
+            tokenizer=tokenizer,
+            reasoning_parser=reasoning_parser,
+            examples=batch,
+            add_generation_prompt=bool(engine.add_generation_prompt),
+            require_sections=requires_prompt_metadata_sections,
+            prompt_metadata_builder=spec.prompt_metadata_builder,
+            wants_residual=wants_residual,
+            wants_routing=wants_routing,
+            wants_generation=wants_generation,
+            generation_max_tokens=spec.generation.max_tokens,
+            generation_temperature=float(spec.generation.temperature or 0.0),
+            generation_top_p=float(spec.generation.top_p),
+            generation_top_k=int(spec.generation.top_k),
+            generation_chat_tools=spec.generation.chat_tools,
+            generation_tool_choice=spec.generation.tool_choice,
+            generation_structured_output=spec.generation.structured_output,
+            capture_reasoning=bool(spec.generation.capture_reasoning),
+            capture_generated_tokens=capture_generated_tokens,
+            enable_thinking=engine.enable_thinking,
+            chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
+        )
+        batch_generations: list[dict[str, Any]] = []
+        batch_example_metadata: list[dict[str, Any]] = []
+        for record in batch_records:
+            example = record["example"]
+            prompt_token_ids = record["prompt_token_ids"]
+            prompt_token_sections = record["prompt_token_sections"]
+            prompt_section_records = record["prompt_section_records"]
+            residual_token_count = record["residual_token_count"]
+            residual_token_sections = record["residual_token_sections"]
+            residual_section_records = record["residual_section_records"]
+            residual = record["residual"]
+            router_data = record["router_data"]
+            actual_router_layers = record["actual_router_layers"]
+            generation_result = record["generation_result"]
+
+            _fill_residual_features(
+                feature_payloads=feature_payloads,
+                residual_sites=residual_sites,
+                residual_layers=residual_layers,
+                residual=residual,
+                example=example,
+                token_count=residual_token_count,
+                token_sections=residual_token_sections,
+                section_records=residual_section_records,
+            )
+            _fill_router_features(
+                feature_payloads=feature_payloads,
+                routing_sites=routing_sites,
+                router_data=router_data,
+                example=example,
+                token_count=len(prompt_token_ids),
+                token_sections=prompt_token_sections,
+                section_records=prompt_section_records,
+                discovered_router_layers=discovered_router_layers,
             )
 
-        feature_payloads: dict[str, dict[str, Any]] = {site.name: _empty_feature(site) for site in spec.sites}
-        generations: list[dict[str, Any]] = []
-        example_metadata: list[dict[str, Any]] = []
+            if generation_result is not None:
+                generation_row = {"example_key": example.key, **generation_result}
+                generations.append(generation_row)
+                batch_generations.append(generation_row)
 
-        for batch in _iter_batches(examples, batch_size):
-            batch_records = _capture_prompt_batch(
-                llm=llm,
-                tokenizer=tokenizer,
-                reasoning_parser=reasoning_parser,
-                examples=batch,
-                add_generation_prompt=bool(engine.add_generation_prompt),
-                require_sections=requires_prompt_metadata_sections,
-                prompt_metadata_builder=spec.prompt_metadata_builder,
-                wants_residual=wants_residual,
-                wants_routing=wants_routing,
-                wants_generation=wants_generation,
-                generation_max_tokens=spec.generation.max_tokens,
-                generation_temperature=float(spec.generation.temperature or 0.0),
-                generation_top_p=float(spec.generation.top_p),
-                generation_top_k=int(spec.generation.top_k),
-                generation_chat_tools=spec.generation.chat_tools,
-                generation_tool_choice=spec.generation.tool_choice,
-                generation_structured_output=spec.generation.structured_output,
-                capture_reasoning=bool(spec.generation.capture_reasoning),
-                capture_generated_tokens=capture_generated_tokens,
-                enable_thinking=engine.enable_thinking,
-                chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
+            metadata_row = {
+                "example_key": example.key,
+                "prompt_hash": example.prompt_hash,
+                "token_count": residual_token_count,
+                "prompt_token_count": len(prompt_token_ids),
+                "generated_token_count": int(record["generated_token_count"]),
+                "captured_generated_token_count": int(record["captured_generated_token_count"]),
+                "generated": generation_result is not None,
+                "capture_generated_tokens": capture_generated_tokens,
+                "capture_mode": "batched_prompt_capture" if len(batch) > 1 else "single_request",
+                "actual_router_layers": actual_router_layers,
+            }
+            example_metadata.append(metadata_row)
+            batch_example_metadata.append(metadata_row)
+
+        if batch_callback is not None:
+            batch_callback(
+                list(batch),
+                list(batch_generations),
+                list(batch_example_metadata),
             )
-            batch_generations: list[dict[str, Any]] = []
-            batch_example_metadata: list[dict[str, Any]] = []
-            for record in batch_records:
-                example = record["example"]
-                prompt_token_ids = record["prompt_token_ids"]
-                prompt_token_sections = record["prompt_token_sections"]
-                prompt_section_records = record["prompt_section_records"]
-                residual_token_count = record["residual_token_count"]
-                residual_token_sections = record["residual_token_sections"]
-                residual_section_records = record["residual_section_records"]
-                residual = record["residual"]
-                router_data = record["router_data"]
-                actual_router_layers = record["actual_router_layers"]
-                generation_result = record["generation_result"]
-
-                _fill_residual_features(
-                    feature_payloads=feature_payloads,
-                    residual_sites=residual_sites,
-                    residual_layers=residual_layers,
-                    residual=residual,
-                    example=example,
-                    token_count=residual_token_count,
-                    token_sections=residual_token_sections,
-                    section_records=residual_section_records,
-                )
-                _fill_router_features(
-                    feature_payloads=feature_payloads,
-                    routing_sites=routing_sites,
-                    router_data=router_data,
-                    example=example,
-                    token_count=len(prompt_token_ids),
-                    token_sections=prompt_token_sections,
-                    section_records=prompt_section_records,
-                    discovered_router_layers=discovered_router_layers,
-                )
-
-                if generation_result is not None:
-                    generation_row = {"example_key": example.key, **generation_result}
-                    generations.append(generation_row)
-                    batch_generations.append(generation_row)
-
-                metadata_row = {
-                    "example_key": example.key,
-                    "prompt_hash": example.prompt_hash,
-                    "token_count": residual_token_count,
-                    "prompt_token_count": len(prompt_token_ids),
-                    "generated_token_count": int(record["generated_token_count"]),
-                    "captured_generated_token_count": int(record["captured_generated_token_count"]),
-                    "generated": generation_result is not None,
-                    "capture_generated_tokens": capture_generated_tokens,
-                    "capture_mode": "batched_prompt_capture" if len(batch) > 1 else "single_request",
-                    "actual_router_layers": actual_router_layers,
-                }
-                example_metadata.append(metadata_row)
-                batch_example_metadata.append(metadata_row)
-
-            if batch_callback is not None:
-                batch_callback(
-                    list(batch),
-                    list(batch_generations),
-                    list(batch_example_metadata),
-                )
 
     return EngineCaptureResult(
         features=feature_payloads,
@@ -612,6 +670,11 @@ def _capture_prompt_batch(
         prompts=prompts,
         sampling_params=sampling_params,
     )
+    if len(outputs) != len(examples):
+        raise RuntimeError(
+            "vLLM returned a different number of request outputs than prompts: "
+            f"got {len(outputs)}, expected {len(examples)}"
+        )
 
     router_by_example: dict[str, dict[int, dict[str, Any]]] = {}
     actual_router_layers: list[int] = []

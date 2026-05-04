@@ -37,3 +37,17 @@ dashboard = [
     "pydantic>=2.7.0",
     "psycopg_pool>=3.2.0",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: pure deterministic tests with no external services",
+    "contract: reusable implementation contract tests",
+    "integration_local: local runner, local store, or local catalog integration",
+    "integration_remote_fake: remote execution paths exercised with fakes only",
+    "slow: tests that are too slow for the default inner loop",
+    "modal: tests that require Modal",
+    "postgres: tests that require a PostgreSQL service",
+    "vllm: tests that require vLLM or vLLM-specific runtime behavior",
+    "interp: tests that require optional mech-interp dependencies such as torch or scikit-learn",
+    "network: tests that require network access",
+]

@@ -348,14 +348,34 @@ def apply_layer_output_patching(
     force_custom_op_presence = bool(getattr(owner_model, "_v2_activation_patch_force_custom_op_presence", False))
     compiled_operator_hint = str(getattr(owner_model, "_v2_activation_patch_compiled_operator_hint", "") or "").strip()
 
-    if force_custom_op_presence and custom_op is not None and compiled_operator_hint == "subspace":
+    batch_specs = getattr(owner_model, "_v2_activation_patch_batch_specs", None)
+    layer_operators = set()
+    layer_project_out_contiguous = True
+    if isinstance(batch_specs, list):
+        for batch_spec in batch_specs:
+            payload = batch_spec.get("patch_spec")
+            if not isinstance(payload, dict):
+                continue
+            spec = spec_from_payload(dict(payload))
+            if int(layer_idx) in spec.target_layers:
+                layer_operators.add(spec.operator)
+                if is_subspace_operator(spec.operator) and (
+                    spec.rowwise or contiguous_token_span(spec.query_positions) is None
+                ):
+                    layer_project_out_contiguous = False
+
+    if (
+        force_custom_op_presence
+        and custom_op is not None
+        and compiled_operator_hint == "subspace"
+        and layer_operators
+        and layer_operators <= SUBSPACE_OPERATORS
+    ):
         runtime_state = getattr(owner_model, "_v2_activation_patch_batch_runtime_state", None)
         layer_state = runtime_state.get(int(layer_idx)) if isinstance(runtime_state, dict) else None
         stats_state = getattr(owner_model, "_v2_activation_patch_batch_tensor_stats", {}).get(int(layer_idx))
         subspace = getattr(owner_model, "_v2_activation_patch_subspace", {})
         source_layer = int(layer_idx)
-        batch_specs = getattr(owner_model, "_v2_activation_patch_batch_specs", None)
-        has_rowwise_subspace = False
         if isinstance(batch_specs, list):
             for batch_spec in batch_specs:
                 payload = batch_spec.get("patch_spec")
@@ -363,15 +383,11 @@ def apply_layer_output_patching(
                     continue
                 spec = spec_from_payload(dict(payload))
                 if int(layer_idx) in spec.target_layers and is_subspace_operator(spec.operator):
-                    if spec.rowwise:
-                        has_rowwise_subspace = True
-                        continue
                     source_layer = spec.source_layer_for(int(layer_idx))
                     break
         layer_payload = subspace.get(int(source_layer)) if isinstance(subspace, dict) else None
         if (
-            not has_rowwise_subspace
-            and isinstance(layer_state, dict)
+            isinstance(layer_state, dict)
             and isinstance(stats_state, dict)
             and isinstance(layer_payload, dict)
         ):
@@ -409,6 +425,7 @@ def apply_layer_output_patching(
                 direction_std=layer_state["direction_std"],
                 donor_means=layer_state["donor_means"],
                 random_rows=layer_state["random_rows"],
+                rowwise=layer_state["rowwise"],
                 match_projected_norm=layer_state["match_projected_norm"],
             )
             if debug_mode_enabled("panic", "subspace_postop_missing_stats"):
@@ -421,22 +438,6 @@ def apply_layer_output_patching(
                     token_spans=layer_state["token_spans"].detach().cpu().tolist(),
                 )
             return replace_hidden_tensor(output, patched_hidden)
-
-    batch_specs = getattr(owner_model, "_v2_activation_patch_batch_specs", None)
-    layer_operators = set()
-    layer_project_out_contiguous = True
-    if isinstance(batch_specs, list):
-        for batch_spec in batch_specs:
-            payload = batch_spec.get("patch_spec")
-            if not isinstance(payload, dict):
-                continue
-            spec = spec_from_payload(dict(payload))
-            if int(layer_idx) in spec.target_layers:
-                layer_operators.add(spec.operator)
-                if is_subspace_operator(spec.operator) and (
-                    spec.rowwise or contiguous_token_span(spec.query_positions) is None
-                ):
-                    layer_project_out_contiguous = False
 
     if force_custom_op_presence and custom_op is not None and layer_operators <= {"interchange"}:
         runtime_state = getattr(owner_model, "_v2_activation_patch_batch_runtime_state", None)
@@ -553,6 +554,7 @@ def apply_layer_output_patching(
             direction_std=layer_state["direction_std"],
             donor_means=layer_state["donor_means"],
             random_rows=layer_state["random_rows"],
+            rowwise=layer_state["rowwise"],
             match_projected_norm=layer_state["match_projected_norm"],
         )
         return replace_hidden_tensor(output, patched_hidden)

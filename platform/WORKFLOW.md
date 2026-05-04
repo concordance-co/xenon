@@ -81,6 +81,38 @@ Operational notes:
   the later run lands on the same GPU family and variant that produced the
   cache.
 
+## Modal Workflow Batching
+
+`ModalResources(enable_workflow_batching=True)` opts a runner into orchestrator
+coalescing for compatible ready steps. The orchestrator keeps workflow semantics
+unchanged, but submits same-runner/same-runtime ready steps through
+`ModalRunner.run_many(...)`, producing normal per-step artifacts and lineage.
+
+This is primarily for vLLM model-bound fanout work: compatible `CaptureSpec`,
+`GenerationRunSpec`, and `PatchedGenerationSpec` steps with the same
+model/resources can execute inside one remote Modal app call. Inside that call,
+the remote worker builds a reusable vLLM session for the batch and dispatches
+capture, raw generation, and patched generation through the same loaded
+`LLM(...)` when their construction-time requirements are compatible.
+
+Operational constraints:
+
+- Batching is conservative and opt-in per runner.
+- Runtime env is merged when values are compatible. Conflicting env values
+  still fail planning for the batch.
+- A single loaded vLLM session is not shared across incompatible patch families;
+  mixed patch-family batches may still share Modal spin-up, but they require
+  separate loaded vLLM sessions.
+- `ModalResources.shard_count > 1` is compatible with model-bound batching.
+  The runner submits one batch per shard in parallel, reuses one loaded vLLM
+  session inside each shard, and then merges each spec's shard artifacts
+  separately.
+- Modal `shard_count` is data parallelism over examples or paired cases. It is
+  separate from vLLM tensor/pipeline parallelism, which is configured on
+  `VLLMEngine` and happens inside one engine instance.
+- Dependent workflow steps still wait for upstream artifacts; batching applies
+  to ready fanout groups, not arbitrary DAG collapsing.
+
 ## Source Of Truth
 
 The executable source of truth is the checked-in Python workflow file:

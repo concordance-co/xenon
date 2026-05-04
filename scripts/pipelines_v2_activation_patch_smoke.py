@@ -28,6 +28,7 @@ from pipelines_v2.api import (
     TokenPooling,
     TokenSelector,
     TransformBuilder,
+    TransformSpec,
     VLLMEngine,
     WorkflowSpec,
     WorkflowStep,
@@ -75,6 +76,69 @@ def evaluate_patch_row(
             "patched_word": patched_word,
             "baseline_text": str(baseline.get("generated_text") or ""),
             "patched_text": str(patched.get("generated_text") or ""),
+        },
+    }
+
+
+def validate_compiled_patch_smoke(*, patched: Any) -> dict[str, Any]:
+    payload = patched.result() if hasattr(patched, "result") else dict(patched)
+    rows = list(payload.get("rows") or [])
+    ok_rows = [dict(row) for row in rows if str(row.get("status") or "ok") == "ok"]
+    failures: list[str] = []
+    operator_counts: dict[str, int] = {}
+    dispatch_counts: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
+    checked_layers = 0
+    missing_runtime_stats_count = 0
+
+    if not rows:
+        failures.append("patched generation returned no rows")
+    if not ok_rows:
+        failures.append("patched generation returned no ok rows")
+
+    for row in ok_rows:
+        row_key = str(row.get("example_key") or row.get("case_key") or "<unknown>")
+        patch_stats = row.get("patch_stats")
+        if not isinstance(patch_stats, dict) or not patch_stats:
+            failures.append(f"{row_key}: missing patch_stats")
+            continue
+        for layer, raw_stats in patch_stats.items():
+            if not isinstance(raw_stats, dict):
+                failures.append(f"{row_key}: layer {layer} stats are not a mapping")
+                continue
+            checked_layers += 1
+            status = str(raw_stats.get("status") or "")
+            operator = str(raw_stats.get("operator") or "")
+            dispatch = str(raw_stats.get("dispatch") or "")
+            status_counts[status] = status_counts.get(status, 0) + 1
+            operator_counts[operator] = operator_counts.get(operator, 0) + 1
+            dispatch_counts[dispatch] = dispatch_counts.get(dispatch, 0) + 1
+            if status == "missing_runtime_stats":
+                missing_runtime_stats_count += 1
+            if status != "ok":
+                failures.append(f"{row_key}: layer {layer} status={status!r}")
+            if operator != "project_out":
+                failures.append(f"{row_key}: layer {layer} operator={operator!r}")
+            if dispatch != "compiled_custom_op":
+                failures.append(f"{row_key}: layer {layer} dispatch={dispatch!r}")
+            if int(raw_stats.get("token_count") or 0) <= 0:
+                failures.append(f"{row_key}: layer {layer} token_count did not show an applied patch")
+
+    summary = {
+        "row_count": len(rows),
+        "patched_count": len(ok_rows),
+        "checked_patch_stat_layers": checked_layers,
+        "missing_runtime_stats_count": missing_runtime_stats_count,
+        "operator_counts": operator_counts,
+        "dispatch_counts": dispatch_counts,
+        "status_counts": status_counts,
+    }
+    if failures:
+        raise AssertionError(f"compiled patch smoke validation failed: {failures}; summary={summary}")
+    return {
+        "payload": {
+            "kind": "transform_result",
+            "summary": summary,
         },
     }
 
@@ -176,6 +240,10 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
         evaluate_patch_row,
         local_python_sources=("scripts",),
     )
+    smoke_validator = TransformBuilder.from_function(
+        validate_compiled_patch_smoke,
+        local_python_sources=("scripts",),
+    )
     return WorkflowSpec(
         name="pipelines_v2_activation_patch_smoke",
         steps=(
@@ -253,9 +321,18 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
                 ),
             ),
             WorkflowStep(
-                name="compare_patch_runs",
+                name="validate_compiled_patch_stats",
                 runner="analysis_cpu",
                 depends_on=("lesion_generated_tokens",),
+                spec=TransformSpec(
+                    builder=smoke_validator,
+                    inputs={"patched": StepRef("lesion_generated_tokens")},
+                ),
+            ),
+            WorkflowStep(
+                name="compare_patch_runs",
+                runner="analysis_cpu",
+                depends_on=("validate_compiled_patch_stats",),
                 spec=PatchComparisonSpec(
                     baseline=StepRef("baseline_targets"),
                     variants={"main": StepRef("lesion_generated_tokens")},

@@ -226,6 +226,7 @@ def summarize_harvested_subspace_stats(
         "source_layer": int(spec.source_layer_for(int(layer_idx))),
         "status": "ok",
         "operator": spec.operator,
+        "dispatch": "compiled_custom_op",
         "token_count": int(token_count),
         "case_key": spec.case_key,
         "control_name": spec.control_name,

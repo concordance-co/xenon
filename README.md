@@ -61,6 +61,77 @@ Environment:
 XENON_NEON_DATABASE_URL=postgresql://...
 ```
 
+## Tests
+
+Run the local suite first:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/pytest -q tests
+```
+
+Modal/vLLM GPU tests are opt-in because they start GPU containers and load real
+model weights. Use them when changing `pipelines_v2` vLLM capture, generation,
+activation patching, Modal execution, sharding, or workflow batching.
+
+The full Modal contract file uses the shared-session fast path: it loads the
+model once per compatible batch, then runs capture, generation, patched
+generation, mixed patch operators, and sharded `run_many` coverage against that
+loaded engine.
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 \
+XENON_RUN_MODAL_VLLM_GPU_SMOKE=1 \
+XENON_RUN_MODAL_VLLM_ENGINE_CONTRACTS=1 \
+XENON_RUN_MODAL_VLLM_PATCH_OPERATOR_CONTRACTS=1 \
+XENON_RUN_MODAL_VLLM_PAIRED_PATCH_CONTRACTS=1 \
+XENON_MODAL_VLLM_ENGINE_CONTRACT_SHARD_COUNT=2 \
+XENON_MODAL_VLLM_ENGINE_CONTRACT_MAX_CONTAINERS=2 \
+.venv/bin/pytest -q tests/pipelines_v2/engine/test_modal_vllm_gpu_smoke.py -s
+```
+
+For a cheaper GPU sanity check, run only the smoke test:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 \
+XENON_RUN_MODAL_VLLM_GPU_SMOKE=1 \
+.venv/bin/pytest -q \
+  tests/pipelines_v2/engine/test_modal_vllm_gpu_smoke.py::test_modal_vllm_compiled_project_out_smoke \
+  -s
+```
+
+The Modal tests print app ids while running. If a run hangs or fails inside the
+remote container, inspect it with:
+
+```bash
+modal app logs <app-id>
+```
+
+Keep `-s` enabled for Modal tests so app ids and structured remote progress are
+visible in pytest output. Do not enable the GPU flags in ordinary local test
+runs or CI jobs without Modal credentials and budget.
+
+GitHub can run the Modal suite without making it part of every PR. Use the
+`Modal vLLM` workflow from the Actions tab for an explicit run against a ref or
+SHA. Available suites are:
+
+- `smoke`: one compiled vLLM GPU sanity test.
+- `contracts`: smoke plus the reusable engine contract suite.
+- `full`: smoke, engine contracts, patch-operator contracts, paired-patch
+  contracts, and sharded `run_many` coverage.
+
+Trusted repo members can also comment on an in-repo PR branch:
+
+```text
+/modal-smoke
+/modal-contracts
+/modal-full
+```
+
+The comment trigger intentionally ignores forked PRs so Modal secrets are not
+exposed to untrusted code. Store `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` in
+the protected `modal-gpu` GitHub environment, and require environment approval
+if a human should explicitly approve GPU spend before the job starts.
+
 ## Docs
 
 - [platform/API.md](platform/API.md)

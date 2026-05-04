@@ -93,6 +93,8 @@ if _VLLMCustomOp is not None:
                         kwargs["batch_selected_rows"],
                         kwargs["batch_row_counts"],
                         kwargs["batch_token_spans"],
+                        kwargs["batch_query_positions"],
+                        kwargs["batch_token_counts"],
                         kwargs["batch_strengths"],
                         kwargs["batch_active"],
                         kwargs["stats_valid"],
@@ -103,6 +105,7 @@ if _VLLMCustomOp is not None:
                         kwargs["batch_direction_std"],
                         kwargs["batch_donor_means"],
                         kwargs["batch_random_rows"],
+                        kwargs["batch_rowwise"],
                         kwargs["batch_match_projected_norm"],
                     )
                 if is_subspace_mode_id(mode_id) and hasattr(namespace, "subspace"):
@@ -199,6 +202,8 @@ if _VLLMCustomOp is not None:
                         kwargs["batch_selected_rows"],
                         kwargs["batch_row_counts"],
                         kwargs["batch_token_spans"],
+                        kwargs["batch_query_positions"],
+                        kwargs["batch_token_counts"],
                         kwargs["batch_strengths"],
                         kwargs["batch_active"],
                         kwargs["stats_valid"],
@@ -209,6 +214,7 @@ if _VLLMCustomOp is not None:
                         kwargs["batch_direction_std"],
                         kwargs["batch_donor_means"],
                         kwargs["batch_random_rows"],
+                        kwargs["batch_rowwise"],
                         kwargs["batch_match_projected_norm"],
                     )
                 if is_subspace_mode_id(mode_id) and hasattr(namespace, "subspace"):

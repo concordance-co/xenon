@@ -22,6 +22,7 @@ from .apply import (
 from .base import (
     _DEFAULT_COMPILED_PATCH_MAX_COMPONENTS,
     ActivationPatchedLayer,
+    default_compiled_patch_max_tokens,
     debug_panic,
     find_decoder_layers,
     infer_layer_hidden_dim,
@@ -138,7 +139,7 @@ def init_activation_patching(model: Any) -> None:
         _ensure_batch_runtime_state_buffers(
             model,
             layer_idx=int(layer_idx),
-            max_tokens=1,
+            max_tokens=default_compiled_patch_max_tokens(),
             max_rows=_DEFAULT_COMPILED_PATCH_MAX_COMPONENTS,
             hidden_dim=int(layer_payload["mean"].shape[0]),
             device=device,

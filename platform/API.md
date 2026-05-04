@@ -1080,9 +1080,17 @@ Fields:
 - `max_containers`
 - `shard_count`
   - number of deterministic prompt-hash shards to run for supported
-    model-bound specs (`CaptureSpec` and `GenerationRunSpec`). Each shard is a
-    separate Modal invocation and may run on a separate container up to
-    `max_containers`; completed shard artifacts are reused on resume.
+    model-bound specs (`CaptureSpec`, `GenerationRunSpec`, and
+    `PatchedGenerationSpec`). Unpaired generation/patch specs shard after
+    target selection; paired patch specs shard by case key so target/donor rows
+    stay together. Each shard is a separate Modal invocation and may run on a
+    separate container up to `max_containers`; completed shard artifacts are
+    reused on resume.
+- `enable_workflow_batching`
+  - opt-in flag that lets `WorkflowOrchestrator` coalesce compatible ready
+    steps for this runner into one Modal app invocation. For vLLM model-bound
+    specs, the remote worker can reuse one loaded session across compatible
+    capture, generation, and patched-generation work.
 - `secrets`
 - `volumes`
 
@@ -1100,10 +1108,19 @@ Methods:
 - `identity()`
 - `plan(spec)`
 - `run(spec)`
+- `run_many(specs, workflow_contexts=...)`
+- `workflow_batch_key(spec)`
 
 Behavior:
 - validates required secret bindings at plan time
 - ships one spec to a remote runtime
+- when workflow batching is enabled, compatible ready steps can share one
+  remote process; vLLM model-bound specs in the same model/resource family
+  reuse a loaded vLLM session within that batch when their construction-time
+  requirements are compatible
+- when `shard_count > 1` and `run_many(...)` is used, Modal submits one
+  compatible batch per shard, reuses one loaded vLLM session within each shard,
+  and merges shard outputs separately for each requested spec
 
 ### `ModalRunnerSpec`
 

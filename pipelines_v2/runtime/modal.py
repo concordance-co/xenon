@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Sequence
 
-from pipelines_v2.core.types import OperationSpec
+from pipelines_v2.core.types import OperationSpec, stable_hash
+from pipelines_v2.engine.base import PythonRuntimeSpec
 from pipelines_v2.operations.specs import CaptureSpec, GenerationRunSpec, PatchedGenerationSpec
 from pipelines_v2.runtime.artifacts import ARTIFACT_BOUND_SPECS as _ARTIFACT_BOUND_SPECS
 from pipelines_v2.runtime.base import ExecutionPlan
-from pipelines_v2.runtime.modal_worker import run_on_modal
+from pipelines_v2.runtime.modal_worker import run_many_on_modal, run_on_modal
 from pipelines_v2.runtime.planning import spec_plan_errors
 from pipelines_v2.storage.artifacts import ArtifactManifest, CaptureArtifact, OperationArtifact
 from pipelines_v2.storage.base import Catalog
@@ -81,6 +82,7 @@ class ModalResources:
     timeout_seconds: int | None = None
     max_containers: int | None = None
     shard_count: int | None = None
+    enable_workflow_batching: bool = False
     env: dict[str, str] = field(default_factory=dict)
     secrets: tuple[ModalSecret, ...] = ()
     volumes: tuple[ModalVolumeMount, ...] = ()
@@ -93,6 +95,7 @@ class ModalResources:
             "timeout_seconds": self.timeout_seconds,
             "max_containers": self.max_containers,
             "shard_count": self.shard_count,
+            "enable_workflow_batching": self.enable_workflow_batching,
             "env": dict(self.env),
             "secrets": [secret.to_dict() for secret in self.secrets],
             "volumes": [volume.to_dict() for volume in self.volumes],
@@ -107,6 +110,7 @@ class ModalResources:
             timeout_seconds=int(payload["timeout_seconds"]) if payload.get("timeout_seconds") is not None else None,
             max_containers=int(payload["max_containers"]) if payload.get("max_containers") is not None else None,
             shard_count=int(payload["shard_count"]) if payload.get("shard_count") is not None else None,
+            enable_workflow_batching=bool(payload.get("enable_workflow_batching", False)),
             env={str(key): str(value) for key, value in dict(payload.get("env", {})).items()},
             secrets=tuple(ModalSecret.from_dict(dict(secret)) for secret in payload.get("secrets", ())),
             volumes=tuple(ModalVolumeMount.from_dict(dict(volume)) for volume in payload.get("volumes", ())),
@@ -161,6 +165,114 @@ class ModalRunner:
         if isinstance(spec, (CaptureSpec, GenerationRunSpec, PatchedGenerationSpec, *_ARTIFACT_BOUND_SPECS)):
             return self._run_remote(spec, workflow_context=workflow_context, progress_callback=progress_callback)
         raise NotImplementedError(f"ModalRunner cannot run {spec.kind!r} specs yet")
+
+    def workflow_batch_key(self, spec: OperationSpec) -> str | None:
+        """Return a conservative key for workflow steps that can share one Modal batch."""
+        if not self.resources.enable_workflow_batching:
+            return None
+        if not isinstance(spec, (CaptureSpec, GenerationRunSpec, PatchedGenerationSpec, *_ARTIFACT_BOUND_SPECS)):
+            return None
+        runtime_spec = spec.runtime_spec()
+        if not isinstance(runtime_spec, PythonRuntimeSpec):
+            return None
+        engine = spec.bound_engine()
+        engine_identity = engine.identity() if engine is not None else {}
+        if dict(engine_identity).get("kind") == "vllm" and isinstance(
+            spec,
+            (CaptureSpec, GenerationRunSpec, PatchedGenerationSpec),
+        ):
+            return stable_hash(
+                {
+                    "runner": self.identity(),
+                    "kind": "vllm_model_session",
+                    "engine": engine_identity,
+                    "runtime": {
+                        "python_version": runtime_spec.python_version,
+                        "pip_packages": list(runtime_spec.pip_packages),
+                        "local_python_sources": list(runtime_spec.local_python_sources),
+                    },
+                }
+            )
+        if int(self.resources.shard_count or 1) != 1:
+            return None
+        patch_family = None
+        if isinstance(spec, PatchedGenerationSpec):
+            operator = str(spec.patch.operator)
+            if operator in {"project_out", "add_direction", "swap_mean", "swap_components", "random_control"}:
+                patch_family = "subspace"
+            elif spec.patch.requires_pairing():
+                patch_family = "paired"
+            else:
+                patch_family = operator
+        return stable_hash(
+            {
+                "runner": self.identity(),
+                "spec_kind": spec.kind,
+                "engine": engine_identity,
+                "patch_family": patch_family,
+                "runtime": {
+                    "python_version": runtime_spec.python_version,
+                    "pip_packages": list(runtime_spec.pip_packages),
+                    "env": dict(runtime_spec.env),
+                    "local_python_sources": list(runtime_spec.local_python_sources),
+                },
+            }
+        )
+
+    def run_many(
+        self,
+        specs: Sequence[OperationSpec],
+        *,
+        workflow_contexts: Sequence[WorkflowStepContext | None] | None = None,
+        progress_callback: Any | None = None,
+    ) -> list[CaptureArtifact | OperationArtifact]:
+        """Execute compatible specs in one Modal app invocation."""
+        specs_tuple = tuple(specs)
+        if not specs_tuple:
+            return []
+        contexts = (
+            tuple(workflow_contexts)
+            if workflow_contexts is not None
+            else tuple(None for _ in specs_tuple)
+        )
+        if len(contexts) != len(specs_tuple):
+            raise ValueError(
+                "ModalRunner.run_many expected one workflow context per spec: "
+                f"got {len(contexts)} contexts for {len(specs_tuple)} specs"
+            )
+        for spec in specs_tuple:
+            self.plan(spec).validate()
+            if not isinstance(spec, (CaptureSpec, GenerationRunSpec, PatchedGenerationSpec, *_ARTIFACT_BOUND_SPECS)):
+                raise NotImplementedError(f"ModalRunner cannot run {spec.kind!r} specs yet")
+        manifest_payloads = run_many_on_modal(
+            runner_config=self.identity(),
+            store_config=self.artifacts.identity(),
+            spec_payloads=[spec.to_dict() for spec in specs_tuple],
+            workflow_contexts=[
+                context.to_manifest_dict() if context is not None else None
+                for context in contexts
+            ],
+            progress_callback=progress_callback,
+        )
+        if len(manifest_payloads) != len(specs_tuple):
+            raise RuntimeError(
+                "Modal runner received a different number of batch results than specs: "
+                f"got {len(manifest_payloads)}, expected {len(specs_tuple)}"
+            )
+        artifacts: list[CaptureArtifact | OperationArtifact] = []
+        for manifest_payload in manifest_payloads:
+            if manifest_payload is None:
+                raise RuntimeError("Modal runner did not receive a manifest payload for one batched spec")
+            manifest = ArtifactManifest.from_dict(manifest_payload)
+            try:
+                self.catalog.record_artifact(manifest)
+            except NotImplementedError:
+                pass
+            if manifest.artifact_kind == "capture":
+                artifacts.append(CaptureArtifact(_manifest=manifest, store=self.artifacts))
+            else:
+                artifacts.append(OperationArtifact(_manifest=manifest, store=self.artifacts))
+        return artifacts
 
     def _run_remote(
         self,

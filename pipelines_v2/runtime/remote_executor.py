@@ -7,7 +7,7 @@ import logging
 import uuid
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from pipelines_v2.core.types import OperationSpec, stable_hash, utc_now_iso
 from pipelines_v2.data.datasets import Dataset
@@ -38,6 +38,53 @@ def execute_remote(
 ) -> dict[str, Any]:
     """Execute a serialized operation in a remote worker."""
     spec = operation_spec_from_dict(spec_payload)
+    return _execute_remote_spec(
+        runner_config=runner_config,
+        store_config=store_config,
+        spec=spec,
+        workflow_context=workflow_context,
+        execution_session=None,
+    )
+
+
+def execute_remote_many(
+    *,
+    runner_config: dict[str, Any],
+    store_config: dict[str, Any],
+    spec_payloads: list[dict[str, Any]],
+    workflow_contexts: list[dict[str, Any] | None] | None = None,
+) -> list[dict[str, Any]]:
+    """Execute multiple serialized operations in one remote worker process."""
+    contexts = list(workflow_contexts) if workflow_contexts is not None else [None] * len(spec_payloads)
+    if len(contexts) != len(spec_payloads):
+        raise ValueError(
+            "execute_remote_many expected one workflow context per spec payload: "
+            f"got {len(contexts)} contexts for {len(spec_payloads)} specs"
+        )
+    specs = [operation_spec_from_dict(spec_payload) for spec_payload in spec_payloads]
+    execution_session = _RemoteExecutionSession(specs=specs)
+    results: list[dict[str, Any]] = []
+    for spec, workflow_context in zip(specs, contexts, strict=True):
+        results.append(
+            _execute_remote_spec(
+                runner_config=runner_config,
+                store_config=store_config,
+                spec=spec,
+                workflow_context=workflow_context,
+                execution_session=execution_session,
+            )
+        )
+    return results
+
+
+def _execute_remote_spec(
+    *,
+    runner_config: dict[str, Any],
+    store_config: dict[str, Any],
+    spec: OperationSpec,
+    workflow_context: dict[str, Any] | None,
+    execution_session: "_RemoteExecutionSession | None",
+) -> dict[str, Any]:
     _emit_remote_progress(
         workflow_context=workflow_context,
         status="running",
@@ -53,6 +100,7 @@ def execute_remote(
             store=store,
             spec=spec,
             workflow_context=workflow_context,
+            execution_session=execution_session,
         )
     if isinstance(spec, GenerationRunSpec):
         return _execute_generation(
@@ -60,6 +108,7 @@ def execute_remote(
             store=store,
             spec=spec,
             workflow_context=workflow_context,
+            execution_session=execution_session,
         )
     if isinstance(spec, PatchedGenerationSpec):
         return _execute_intervention(
@@ -67,6 +116,7 @@ def execute_remote(
             store=store,
             spec=spec,
             workflow_context=workflow_context,
+            execution_session=execution_session,
         )
     if isinstance(spec, _ARTIFACT_BOUND_SPECS):
         return _execute_artifact_operation(
@@ -76,6 +126,127 @@ def execute_remote(
             workflow_context=workflow_context,
         )
     raise NotImplementedError(f"Remote executor cannot run {spec.kind!r} specs yet")
+
+
+class _RemoteExecutionSession:
+    """Remote process-local caches shared by one execute_remote_many call."""
+
+    def __init__(self, *, specs: Sequence[OperationSpec] = ()) -> None:
+        self._specs = tuple(specs)
+        self._vllm_sessions: dict[str, Any] = {}
+        self._vllm_intervention_runtimes: dict[str, Any] = {}
+
+    def capture(self, *, engine: Any, spec: CaptureSpec) -> Any:
+        session = self._vllm_session(engine=engine, spec=spec)
+        if session is None:
+            return engine.capture(spec)
+        return session.capture(spec)
+
+    def generate(
+        self,
+        *,
+        engine: Any,
+        spec: GenerationRunSpec,
+        batch_callback: Any | None = None,
+    ) -> Any:
+        session = self._vllm_session(engine=engine, spec=spec)
+        if session is None:
+            incremental_generate = getattr(engine, "generate_incremental", None)
+            if batch_callback is not None and callable(incremental_generate):
+                return incremental_generate(spec, batch_callback=batch_callback)
+            result = engine.generate(spec)
+            if batch_callback is not None:
+                batch_callback(list(result.rows), dict(result.metadata))
+            return result
+        return session.generate(spec, batch_callback=batch_callback)
+
+    def intervene(self, *, engine: Any, spec: PatchedGenerationSpec) -> Any:
+        session = self._vllm_session(engine=engine, spec=spec)
+        if session is not None:
+            return session.intervene(spec)
+        identity = engine.identity() if callable(getattr(engine, "identity", None)) else {}
+        if dict(identity).get("kind") != "vllm":
+            return engine.intervene(spec)
+
+        from pipelines_v2.engine.vllm.intervene import (
+            build_vllm_intervention_runtime,
+            run_vllm_intervention_with_runtime,
+            vllm_intervention_session_key,
+        )
+
+        session_key = vllm_intervention_session_key(engine=engine, spec=spec)
+        runtime = self._vllm_intervention_runtimes.get(session_key)
+        if runtime is None:
+            runtime = build_vllm_intervention_runtime(engine=engine, spec=spec)
+            self._vllm_intervention_runtimes[session_key] = runtime
+        return run_vllm_intervention_with_runtime(runtime=runtime, spec=spec)
+
+    def _vllm_session(self, *, engine: Any, spec: OperationSpec) -> Any | None:
+        identity = engine.identity() if callable(getattr(engine, "identity", None)) else {}
+        if dict(identity).get("kind") != "vllm":
+            return None
+
+        from pipelines_v2.engine.vllm.session import (
+            build_vllm_session_runtime,
+            vllm_session_key,
+        )
+
+        session_specs = self._vllm_session_specs(engine=engine, spec=spec)
+        session_key = vllm_session_key(engine=engine, specs=session_specs)
+        runtime = self._vllm_sessions.get(session_key)
+        if runtime is None:
+            runtime = build_vllm_session_runtime(engine=engine, specs=session_specs)
+            self._vllm_sessions[session_key] = runtime
+        return runtime
+
+    def _vllm_session_specs(self, *, engine: Any, spec: OperationSpec) -> tuple[OperationSpec, ...]:
+        identity = engine.identity() if callable(getattr(engine, "identity", None)) else {}
+
+        from pipelines_v2.engine.vllm.session import vllm_modal_batch_family
+
+        candidates = tuple(
+            candidate
+            for candidate in self._specs
+            if isinstance(candidate, (CaptureSpec, GenerationRunSpec, PatchedGenerationSpec))
+            and _same_engine_identity(candidate.bound_engine(), identity)
+        )
+        if not candidates:
+            return (spec,)
+        patch_families = {
+            str(family)
+            for candidate in candidates
+            if isinstance(candidate, PatchedGenerationSpec)
+            for family in (vllm_modal_batch_family(candidate),)
+            if family is not None
+        }
+        if patch_families and patch_families <= {"subspace", "paired"}:
+            return candidates
+        spec_family = vllm_modal_batch_family(spec)
+        if isinstance(spec, PatchedGenerationSpec):
+            return tuple(
+                candidate
+                for candidate in candidates
+                if not isinstance(candidate, PatchedGenerationSpec)
+                or vllm_modal_batch_family(candidate) == spec_family
+            )
+        if len(patch_families) == 1:
+            family = next(iter(patch_families))
+            return tuple(
+                candidate
+                for candidate in candidates
+                if not isinstance(candidate, PatchedGenerationSpec)
+                or vllm_modal_batch_family(candidate) == family
+            )
+        if len(patch_families) > 1:
+            return tuple(candidate for candidate in candidates if not isinstance(candidate, PatchedGenerationSpec))
+        return candidates
+
+
+def _same_engine_identity(engine: Any | None, identity: dict[str, Any]) -> bool:
+    if engine is None:
+        return False
+    engine_identity = engine.identity() if callable(getattr(engine, "identity", None)) else {}
+    return dict(engine_identity) == dict(identity)
 
 
 def merge_remote_shards(
@@ -100,6 +271,14 @@ def merge_remote_shards(
         )
     if isinstance(spec, CaptureSpec):
         return _merge_capture_shards(
+            runner_config=runner_config,
+            store=store,
+            spec=spec,
+            shard_manifests=manifests,
+            workflow_context=workflow_context,
+        )
+    if isinstance(spec, PatchedGenerationSpec):
+        return _merge_intervention_shards(
             runner_config=runner_config,
             store=store,
             spec=spec,
@@ -139,6 +318,7 @@ def _execute_capture(
     store: Any,
     spec: CaptureSpec,
     workflow_context: dict[str, Any] | None = None,
+    execution_session: _RemoteExecutionSession | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
@@ -155,7 +335,10 @@ def _execute_capture(
         result_generations: list[dict[str, Any]] = []
         result_metadata: dict[str, Any] = {"empty_shard": True}
     else:
-        result = engine.capture(resolved_spec)
+        if execution_session is None:
+            result = engine.capture(resolved_spec)
+        else:
+            result = execution_session.capture(engine=engine, spec=resolved_spec)
         result_features = result.features
         result_generations = result.generations
         result_metadata = dict(result.metadata)
@@ -248,19 +431,39 @@ def _execute_intervention(
     store: Any,
     spec: PatchedGenerationSpec,
     workflow_context: dict[str, Any] | None = None,
+    execution_session: _RemoteExecutionSession | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
         raise RuntimeError("PatchedGenerationSpec is missing a bound engine")
     resolved_spec = spec.resolve_dataset()
-    artifact_id = f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
-    store.make_artifact_dir(artifact_id)
-    result = engine.intervene(resolved_spec)
+    resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
+    shard = _execution_shard(workflow_context)
+    artifact_id = (
+        _artifact_id_for(spec=spec, workflow_context=workflow_context)
+        if shard is not None
+        else f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
+    )
+    _ensure_artifact_dir(store, artifact_id)
+    if not resolved_spec.dataset.examples:
+        result_summary = {"example_count": 0, "patched_count": 0, "skipped_count": 0}
+        result_rows: list[dict[str, Any]] = []
+        result_metadata: dict[str, Any] = {"empty_shard": True}
+    elif execution_session is None:
+        result = engine.intervene(resolved_spec)
+        result_summary = dict(result.summary)
+        result_rows = list(result.rows)
+        result_metadata = dict(result.metadata)
+    else:
+        result = execution_session.intervene(engine=engine, spec=resolved_spec)
+        result_summary = dict(result.summary)
+        result_rows = list(result.rows)
+        result_metadata = dict(result.metadata)
 
     payload = {
         "kind": "patched_generation_result",
-        "summary": dict(result.summary),
-        "rows": list(result.rows),
+        "summary": result_summary,
+        "rows": result_rows,
     }
     storage_refs: dict[str, Any] = {
         "result": store.write_json(artifact_id, "result.json", payload),
@@ -275,9 +478,9 @@ def _execute_intervention(
         engine=engine.identity(),
         runner=runner_config,
         input_artifact_refs=tuple(_input_artifact_ids(spec)),
-        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
+        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result_rows),
         storage_refs=storage_refs,
-        metadata=dict(result.metadata),
+        metadata=_with_execution_shard_metadata(result_metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
     )
     storage_refs["manifest"] = store.write_json(
@@ -294,6 +497,7 @@ def _execute_generation(
     store: Any,
     spec: GenerationRunSpec,
     workflow_context: dict[str, Any] | None = None,
+    execution_session: _RemoteExecutionSession | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
@@ -367,7 +571,13 @@ def _execute_generation(
             )
 
         incremental_generate = getattr(engine, "generate_incremental", None)
-        if callable(incremental_generate):
+        if execution_session is not None:
+            result = execution_session.generate(
+                engine=engine,
+                spec=generation_spec,
+                batch_callback=_record_generation_checkpoint,
+            )
+        elif callable(incremental_generate):
             result = incremental_generate(generation_spec, batch_callback=_record_generation_checkpoint)
         else:
             result = engine.generate(generation_spec)
@@ -543,6 +753,83 @@ def _merge_capture_shards(
     return manifest.to_dict()
 
 
+def _merge_intervention_shards(
+    *,
+    runner_config: dict[str, Any],
+    store: Any,
+    spec: PatchedGenerationSpec,
+    shard_manifests: list[ArtifactManifest],
+    workflow_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    resolved_spec = spec.resolve_dataset()
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    if existing is not None:
+        return existing.to_dict()
+    _ensure_artifact_dir(store, artifact_id)
+
+    rows: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    for shard in _ordered_shard_manifests(shard_manifests):
+        ref = shard.storage_refs.get("result")
+        if not isinstance(ref, dict):
+            continue
+        payload = store.read_json_ref(ref)
+        for row in payload.get("rows", []) if isinstance(payload, dict) else []:
+            if not isinstance(row, dict):
+                continue
+            row_key = _patched_generation_row_key(row)
+            if row_key in seen_keys:
+                continue
+            seen_keys.add(row_key)
+            rows.append(dict(row))
+
+    order = {example.key: index for index, example in enumerate(resolved_spec.dataset.examples)}
+    rows.sort(
+        key=lambda row: (
+            order.get(str(row.get("example_key") or ""), len(order)),
+            str(row.get("case_key") or ""),
+            str(row.get("donor_example_key") or ""),
+            str(row.get("request_id") or ""),
+        )
+    )
+    ok_rows = [row for row in rows if str(row.get("status") or "ok") == "ok"]
+    payload = {
+        "kind": "patched_generation_result",
+        "summary": {
+            "example_count": len(rows),
+            "patched_count": len(ok_rows),
+            "skipped_count": len(rows) - len(ok_rows),
+            "sharded": True,
+            "shard_count": len(shard_manifests),
+        },
+        "rows": rows,
+    }
+    storage_refs: dict[str, Any] = {
+        "result": store.write_json(artifact_id, "result.json", payload),
+    }
+    manifest = ArtifactManifest(
+        artifact_id=artifact_id,
+        artifact_kind=spec.kind,
+        schema_version=1,
+        operation_spec_hash=spec.spec_hash(),
+        operation_semantic_hash=spec.semantic_hash(),
+        created_at=utc_now_iso(),
+        engine=spec.engine.identity() if spec.engine is not None else {},
+        runner=runner_config,
+        input_artifact_refs=tuple(_input_artifact_ids(spec)),
+        example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=rows),
+        storage_refs=storage_refs,
+        metadata={
+            "sharded": True,
+            "shards": [_shard_manifest_summary(shard) for shard in _ordered_shard_manifests(shard_manifests)],
+        },
+        workflow_context=dict(workflow_context or {}),
+    )
+    storage_refs["manifest"] = store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+    return manifest.to_dict()
+
+
 def _artifact_id_for(*, spec: OperationSpec, workflow_context: dict[str, Any] | None) -> str:
     context = dict(workflow_context or {})
     step_key = str(context.get("workflow_step_key") or "").strip()
@@ -563,11 +850,7 @@ def _apply_execution_shard(*, spec: Any, workflow_context: dict[str, Any] | None
     if shard is None:
         return spec
     dataset = spec.dataset
-    selected = [
-        example
-        for example in dataset.examples
-        if _prompt_hash_shard(example.prompt_hash, int(shard["count"])) == int(shard["index"])
-    ]
+    selected = _shard_examples_for_spec(spec=spec, shard=shard)
     return replace(
         spec,
         dataset=Dataset.from_examples(
@@ -576,6 +859,55 @@ def _apply_execution_shard(*, spec: Any, workflow_context: dict[str, Any] | None
             name=f"{dataset.name}_shard_{int(shard['index'])}_of_{int(shard['count'])}",
         ),
     )
+
+
+def _shard_examples_for_spec(*, spec: Any, shard: dict[str, int]) -> list[Any]:
+    dataset = spec.dataset
+    examples = list(dataset.examples)
+    count = int(shard["count"])
+    index = int(shard["index"])
+    if isinstance(spec, GenerationRunSpec) and spec.select_when is not None:
+        allowed = _resolved_example_key_set(spec.select_when)
+        examples = [example for example in examples if str(example.key) in allowed]
+    if isinstance(spec, PatchedGenerationSpec):
+        patch = spec.patch
+        if patch is not None and patch.requires_pairing():
+            case_values = _resolved_values_map(spec.pair_by)
+            case_by_key = {
+                str(key): str(value)
+                for key, value in case_values.items()
+                if value is not None
+            }
+            selected_cases = {
+                case_key
+                for case_key in set(case_by_key.values())
+                if _stable_text_shard(case_key, count) == index
+            }
+            return [
+                example
+                for example in examples
+                if case_by_key.get(str(example.key)) in selected_cases
+            ]
+        if spec.select_when is not None:
+            allowed = _resolved_example_key_set(spec.select_when)
+            examples = [example for example in examples if str(example.key) in allowed]
+    return [
+        example
+        for example in examples
+        if _prompt_hash_shard(example.prompt_hash, count) == index
+    ]
+
+
+def _resolved_example_key_set(value: Any) -> set[str]:
+    if not hasattr(value, "resolve_example_keys"):
+        return set()
+    return {str(key) for key in value.resolve_example_keys()}
+
+
+def _resolved_values_map(value: Any) -> dict[str, Any]:
+    if not hasattr(value, "resolve_values"):
+        return {}
+    return {str(key): item for key, item in value.resolve_values().items()}
 
 
 def _execution_shard(workflow_context: dict[str, Any] | None) -> dict[str, int] | None:
@@ -600,6 +932,21 @@ def _prompt_hash_shard(prompt_hash: str, count: int) -> int:
     except ValueError:
         value = int(stable_hash(prompt_hash_text)[:16], 16)
     return value % int(count)
+
+
+def _stable_text_shard(text: str, count: int) -> int:
+    return int(stable_hash(str(text))[:16], 16) % int(count)
+
+
+def _patched_generation_row_key(row: dict[str, Any]) -> str:
+    parts = [
+        str(row.get("case_key") or ""),
+        str(row.get("example_key") or ""),
+        str(row.get("donor_example_key") or ""),
+        str(row.get("request_id") or ""),
+        str(row.get("skip_reason") or ""),
+    ]
+    return stable_hash(parts)
 
 
 def _with_execution_shard_metadata(
