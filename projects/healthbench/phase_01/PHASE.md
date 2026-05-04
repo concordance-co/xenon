@@ -66,6 +66,10 @@ dominated by surface form.
 - Steering smoke run: `wr_6b1a3f6bb4ed_5bc586f5`.
 - Steering target rows: 24 `partial_context` examples from the activation
   subset.
+- Corrected temp-sampled steering rerun: `wr_f1bb092945c8_9e382ebb`.
+- Rerun generation settings: temperature `0.8`, top_p `0.95`, max_tokens
+  `384`, with the same 24 `partial_context` target rows. This gives 4
+  stochastic samples per unique partial-context prompt.
 - Steering variants:
   - baseline partial-context generation
   - user-prompt-end direction at strength `+2`
@@ -105,6 +109,26 @@ dominated by surface form.
   - first-generated-context direction `-2`: `0.2917`
 - These proxy shifts are not the predicted monotone story. Treat them as a
   reason to inspect outputs and patch stats, not as validation.
+- The temp-sampled rerun also completed all 4 patched variants with
+  `patched_count=24` and `skipped_count=0`.
+- Temp-sampled proxy means:
+  - baseline: mean `scope_minus_commit_proxy = 1.25`, sd `2.3848`
+  - user-prompt span `+2`: `1.0833`, sd `2.3079`
+  - user-prompt span `-2`: `1.1667`, sd `1.6997`
+  - prompt-last `+2`: `1.25`, sd `1.3307`
+  - prompt-last `-2`: `0.125`, sd `2.297`
+- Hand grading of 20 outputs across 4 prompts x 5 variants produced:
+  - scope: 7
+  - mixed scope: 6
+  - commit: 7
+  - proxy agreement: 18/20
+- The `general advice:` prefix is not intrinsically a commit. In the hand
+  slice it usually marked scoping, but sometimes coexisted with a modal
+  recommendation.
+- The temp-sampled rerun does not show a clean signed user-span effect.
+  Prompt-last `-2` shows the clearest commit shift, while prompt-last `+2`
+  sits near baseline on the rough proxy. Treat this as a candidate asymmetry to
+  inspect, not a validated gate.
 
 ## Qualitative inspection
 
@@ -172,6 +196,23 @@ dominated by surface form.
   `projects/healthbench/phase_01/reports/scope_vs_commit_activation_smoke/report_bf4bf0476229_7e421859/report.md`
 - Steering review page:
   `/private/tmp/healthbench_actual_context_review/index.html`
+- Temp-sampled steering workflow run: `wr_f1bb092945c8_9e382ebb`
+- Temp-sampled steering baseline artifact: `generation_run_1_6a7f84fdb0af`
+- Temp-sampled steering direction artifacts:
+  - user-prompt end: `direction_1_6e329467`
+  - first-generated-token context: `direction_1_ce3f309c`
+- Temp-sampled steering patched artifacts:
+  - user-prompt span `+2`: `patched_generation_1_5bbfe7fa`
+  - user-prompt span `-2`: `patched_generation_1_20b34745`
+  - prompt-last `+2`: `patched_generation_1_18c0cf00`
+  - prompt-last `-2`: `patched_generation_1_f7bc6b51`
+- Temp-sampled steering summary artifact: `transform_1_2911ca34`
+- Temp-sampled steering report:
+  `projects/healthbench/phase_01/reports/scope_vs_commit_activation_smoke/report_a30d5f2e52c9_16307550/report.md`
+- Temp-sampled pruned export:
+  `/private/tmp/healthbench_actual_context_review/phase01_steering_temp08_pruned_for_claude.json`
+- Temp-sampled manual proxy check:
+  `/private/tmp/healthbench_actual_context_review/phase01_temp08_manual_proxy_check.json`
 
 ## Open threads
 

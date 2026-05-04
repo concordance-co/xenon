@@ -306,8 +306,8 @@ def _steering_generation() -> GenerationSpec:
     return GenerationSpec(
         enabled=True,
         max_tokens=384,
-        temperature=0.0,
-        top_p=1.0,
+        temperature=0.8,
+        top_p=0.95,
         capture_reasoning=False,
     )
 
