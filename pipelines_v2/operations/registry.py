@@ -41,6 +41,12 @@ def _assistant_axis_score_from_dict(payload: dict[str, Any]) -> OperationSpec:
     return AssistantAxisScoreSpec.from_dict(payload)
 
 
+def _assistant_axis_trait_coordinate_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.assistant_axis import AssistantAxisTraitCoordinateSpec
+
+    return AssistantAxisTraitCoordinateSpec.from_dict(payload)
+
+
 def _emotion_precomputed_vector_space_from_dict(payload: dict[str, Any]) -> OperationSpec:
     from pipelines_v2.mechinterp.emotions import EmotionPrecomputedVectorSpaceSpec
 
@@ -71,6 +77,54 @@ def _emotion_geometry_from_dict(payload: dict[str, Any]) -> OperationSpec:
     return EmotionGeometrySpec.from_dict(payload)
 
 
+def _refusal_direction_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.refusal import RefusalDirectionSpec
+
+    return RefusalDirectionSpec.from_dict(payload)
+
+
+def _refusal_score_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.refusal import RefusalScoreSpec
+
+    return RefusalScoreSpec.from_dict(payload)
+
+
+def _refusal_direction_selection_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.refusal import RefusalDirectionSelectionSpec
+
+    return RefusalDirectionSelectionSpec.from_dict(payload)
+
+
+def _refusal_ablation_subspace_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.refusal import RefusalAblationSubspaceSpec
+
+    return RefusalAblationSubspaceSpec.from_dict(payload)
+
+
+def _truthfulness_direction_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.truthfulness import TruthfulnessDirectionSpec
+
+    return TruthfulnessDirectionSpec.from_dict(payload)
+
+
+def _truthfulness_score_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.truthfulness import TruthfulnessScoreSpec
+
+    return TruthfulnessScoreSpec.from_dict(payload)
+
+
+def _truthfulness_direction_selection_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.truthfulness import TruthfulnessDirectionSelectionSpec
+
+    return TruthfulnessDirectionSelectionSpec.from_dict(payload)
+
+
+def _truthfulness_ablation_subspace_from_dict(payload: dict[str, Any]) -> OperationSpec:
+    from pipelines_v2.mechinterp.truthfulness import TruthfulnessAblationSubspaceSpec
+
+    return TruthfulnessAblationSubspaceSpec.from_dict(payload)
+
+
 _OPERATION_LOADERS: dict[str, OperationLoader] = {
     CaptureSpec.kind: CaptureSpec.from_dict,
     ProbeSpec.kind: ProbeSpec.from_dict,
@@ -97,11 +151,20 @@ _OPERATION_LOADERS: dict[str, OperationLoader] = {
     "assistant_axis_precomputed_coordinate": _assistant_axis_precomputed_coordinate_from_dict,
     "assistant_axis_vector": _assistant_axis_vector_from_dict,
     "assistant_axis_score": _assistant_axis_score_from_dict,
+    "assistant_axis_trait_coordinate": _assistant_axis_trait_coordinate_from_dict,
     "emotion_precomputed_vector_space": _emotion_precomputed_vector_space_from_dict,
     "emotion_vector_space": _emotion_vector_space_from_dict,
     "emotion_score": _emotion_score_from_dict,
     "emotion_direction": _emotion_direction_from_dict,
     "emotion_geometry": _emotion_geometry_from_dict,
+    "refusal_direction": _refusal_direction_from_dict,
+    "refusal_score": _refusal_score_from_dict,
+    "refusal_direction_selection": _refusal_direction_selection_from_dict,
+    "refusal_ablation_subspace": _refusal_ablation_subspace_from_dict,
+    "truthfulness_direction": _truthfulness_direction_from_dict,
+    "truthfulness_score": _truthfulness_score_from_dict,
+    "truthfulness_direction_selection": _truthfulness_direction_selection_from_dict,
+    "truthfulness_ablation_subspace": _truthfulness_ablation_subspace_from_dict,
     ReportSpec.kind: ReportSpec.from_dict,
 }
 

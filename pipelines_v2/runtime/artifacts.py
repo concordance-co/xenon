@@ -5,6 +5,7 @@ from __future__ import annotations
 from pipelines_v2.mechinterp.assistant_axis import (
     AssistantAxisPrecomputedCoordinateSpec,
     AssistantAxisScoreSpec,
+    AssistantAxisTraitCoordinateSpec,
     AssistantAxisVectorSpec,
 )
 from pipelines_v2.mechinterp.emotions import (
@@ -13,6 +14,18 @@ from pipelines_v2.mechinterp.emotions import (
     EmotionPrecomputedVectorSpaceSpec,
     EmotionScoreSpec,
     EmotionVectorSpaceSpec,
+)
+from pipelines_v2.mechinterp.refusal import (
+    RefusalAblationSubspaceSpec,
+    RefusalDirectionSelectionSpec,
+    RefusalDirectionSpec,
+    RefusalScoreSpec,
+)
+from pipelines_v2.mechinterp.truthfulness import (
+    TruthfulnessAblationSubspaceSpec,
+    TruthfulnessDirectionSelectionSpec,
+    TruthfulnessDirectionSpec,
+    TruthfulnessScoreSpec,
 )
 from pipelines_v2.operations.specs import (
     ActivationBankSpec,
@@ -61,11 +74,20 @@ ARTIFACT_BOUND_SPECS = (
     AssistantAxisPrecomputedCoordinateSpec,
     AssistantAxisVectorSpec,
     AssistantAxisScoreSpec,
+    AssistantAxisTraitCoordinateSpec,
     EmotionPrecomputedVectorSpaceSpec,
     EmotionVectorSpaceSpec,
     EmotionScoreSpec,
     EmotionDirectionSpec,
     EmotionGeometrySpec,
+    RefusalDirectionSpec,
+    RefusalScoreSpec,
+    RefusalDirectionSelectionSpec,
+    RefusalAblationSubspaceSpec,
+    TruthfulnessDirectionSpec,
+    TruthfulnessScoreSpec,
+    TruthfulnessDirectionSelectionSpec,
+    TruthfulnessAblationSubspaceSpec,
     ReportSpec,
 )
 

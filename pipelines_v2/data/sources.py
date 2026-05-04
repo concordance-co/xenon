@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 import re
+import json
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Protocol, Sequence
+from urllib.request import urlopen
 
 from pipelines_v2.core.types import RuntimeSecret
 from pipelines_v2.data.datasets import Dataset
@@ -64,6 +66,108 @@ class InMemorySource:
     def fetch_dataset(self, **kwargs: Any) -> Dataset:
         """Materialize a dataset from the stored records."""
         return Dataset.from_records(self.records, **kwargs)
+
+
+@dataclass(frozen=True, slots=True)
+class UrlJsonSource:
+    """Deferred source for small public JSON prompt packs."""
+
+    files: tuple[Mapping[str, Any], ...]
+    kind: str = "url_json"
+    defer_to_runtime: bool = True
+
+    def __post_init__(self) -> None:
+        normalized: list[dict[str, Any]] = []
+        for index, raw_file in enumerate(self.files):
+            file_spec = dict(raw_file)
+            url = str(file_spec.get("url") or "").strip()
+            if not url:
+                raise ValueError(f"UrlJsonSource file {index} requires a non-empty url")
+            normalized.append(
+                {
+                    "url": url,
+                    "labels": {str(key): value for key, value in dict(file_spec.get("labels", {})).items()},
+                    "metadata": {str(key): value for key, value in dict(file_spec.get("metadata", {})).items()},
+                    "cases": {str(key): value for key, value in dict(file_spec.get("cases", {})).items()},
+                    "source_name": str(file_spec.get("source_name") or f"file_{index}"),
+                }
+            )
+        object.__setattr__(self, "files", tuple(normalized))
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "UrlJsonSource":
+        return cls(files=tuple(dict(item) for item in payload.get("files", ())))
+
+    def identity(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "files": [dict(file_spec) for file_spec in self.files],
+        }
+
+    def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
+        return ()
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        return ()
+
+    def fetch_dataset(
+        self,
+        *,
+        prompt_column: str = "prompt",
+        prompt_template: Any | None = None,
+        example_key_column: str = "example_id",
+        prompt_hash_column: str | None = None,
+        label_columns: Sequence[str] = (),
+        case_columns: Sequence[str] = (),
+        case_key_column: str | None = None,
+        metadata_columns: Sequence[str] = (),
+        limit: int | None = None,
+        limit_per_file: int | None = None,
+        id: str | None = None,
+        name: str | None = None,
+    ) -> Dataset:
+        """Fetch JSON records, inject file labels, and map them into examples."""
+
+        records: list[dict[str, Any]] = []
+        for file_index, file_spec in enumerate(self.files):
+            with urlopen(str(file_spec["url"])) as response:  # noqa: S310 - explicit public data source
+                payload = json.loads(response.read().decode("utf-8"))
+            raw_records = payload.get("examples") if isinstance(payload, Mapping) and "examples" in payload else payload
+            if not isinstance(raw_records, Sequence) or isinstance(raw_records, str | bytes | bytearray):
+                raise TypeError("UrlJsonSource JSON payload must be a list or object with an examples list")
+            file_count = 0
+            for row_index, raw_record in enumerate(raw_records):
+                if not isinstance(raw_record, Mapping):
+                    raise TypeError("UrlJsonSource JSON records must be mappings")
+                record = dict(raw_record)
+                source_name = str(file_spec.get("source_name") or f"file_{file_index}")
+                record.setdefault(example_key_column, f"{source_name}_{row_index:06d}")
+                record.setdefault("source_name", source_name)
+                record.setdefault("source_url", str(file_spec["url"]))
+                record.update(dict(file_spec.get("labels", {})))
+                record.update(dict(file_spec.get("metadata", {})))
+                record.update(dict(file_spec.get("cases", {})))
+                records.append(record)
+                file_count += 1
+                if limit_per_file is not None and file_count >= int(limit_per_file):
+                    break
+                if limit is not None and len(records) >= int(limit):
+                    break
+            if limit is not None and len(records) >= int(limit):
+                break
+        return Dataset.from_records(
+            records,
+            prompt_column=prompt_column,
+            prompt_template=prompt_template,
+            example_key_column=example_key_column,
+            prompt_hash_column=prompt_hash_column,
+            label_columns=label_columns,
+            case_columns=case_columns,
+            case_key_column=case_key_column,
+            metadata_columns=metadata_columns,
+            id=id,
+            name=name,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -392,6 +496,131 @@ class HuggingFaceSource:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class HuggingFaceListContrastSource:
+    """Deferred HF source that expands positive/negative list columns into rows."""
+
+    path: str
+    name: str | None = None
+    revision: str | None = None
+    token_env_var: str | None = None
+    trust_remote_code: bool = False
+    kind: str = "huggingface_list_contrast"
+    defer_to_runtime: bool = True
+
+    def __post_init__(self) -> None:
+        if not str(self.path).strip():
+            raise ValueError("HuggingFaceListContrastSource path cannot be empty")
+        object.__setattr__(self, "path", str(self.path))
+        if self.name is not None:
+            object.__setattr__(self, "name", str(self.name))
+        if self.revision is not None:
+            object.__setattr__(self, "revision", str(self.revision))
+        if self.token_env_var is not None:
+            object.__setattr__(self, "token_env_var", str(self.token_env_var))
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "HuggingFaceListContrastSource":
+        return cls(
+            path=str(payload["path"]),
+            name=str(payload["name"]) if payload.get("name") is not None else None,
+            revision=str(payload["revision"]) if payload.get("revision") is not None else None,
+            token_env_var=str(payload["token_env_var"]) if payload.get("token_env_var") is not None else None,
+            trust_remote_code=bool(payload.get("trust_remote_code", False)),
+        )
+
+    def identity(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"kind": self.kind, "path": self.path}
+        if self.name is not None:
+            payload["name"] = self.name
+        if self.revision is not None:
+            payload["revision"] = self.revision
+        if self.token_env_var is not None:
+            payload["token_env_var"] = self.token_env_var
+        if self.trust_remote_code:
+            payload["trust_remote_code"] = True
+        return payload
+
+    def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
+        if self.token_env_var is None:
+            return ()
+        return (RuntimeSecret(env_var=self.token_env_var),)
+
+    def runtime_pip_packages(self) -> tuple[str, ...]:
+        return ("datasets",)
+
+    def fetch_dataset(
+        self,
+        *,
+        split: str,
+        prompt_column: str,
+        prompt_template: Any | None = None,
+        example_key_column: str = "example_id",
+        label_name: str = "contrast_label",
+        positive_column: str,
+        negative_column: str,
+        positive_label: str = "positive",
+        negative_label: str = "negative",
+        answer_column: str = "answer",
+        metadata_columns: Sequence[str] = (),
+        limit: int | None = None,
+        id: str | None = None,
+        name: str | None = None,
+    ) -> Dataset:
+        from datasets import load_dataset
+
+        kwargs: dict[str, Any] = {"split": split}
+        if self.revision is not None:
+            kwargs["revision"] = self.revision
+        if self.trust_remote_code:
+            kwargs["trust_remote_code"] = True
+        if self.token_env_var is not None:
+            token = os.environ.get(self.token_env_var)
+            if not token:
+                raise RuntimeError(f"Missing required environment variable: {self.token_env_var}")
+            kwargs["token"] = token
+        loaded = load_dataset(self.path, self.name, **kwargs) if self.name is not None else load_dataset(self.path, **kwargs)
+        rows = loaded.to_list() if hasattr(loaded, "to_list") else [dict(row) for row in loaded]
+        records: list[dict[str, Any]] = []
+        for row_index, row in enumerate(rows):
+            base = dict(row)
+            for label, column in ((positive_label, positive_column), (negative_label, negative_column)):
+                for answer_index, answer in enumerate(_coerce_answer_list(base.get(column))):
+                    record = dict(base)
+                    record[answer_column] = str(answer)
+                    record[label_name] = str(label)
+                    record[example_key_column] = f"{row_index:06d}_{label}_{answer_index:03d}"
+                    records.append(record)
+                    if limit is not None and len(records) >= int(limit):
+                        break
+                if limit is not None and len(records) >= int(limit):
+                    break
+            if limit is not None and len(records) >= int(limit):
+                break
+        return Dataset.from_records(
+            records,
+            prompt_column=prompt_column,
+            prompt_template=prompt_template,
+            example_key_column=example_key_column,
+            label_columns=(label_name,),
+            case_columns=(prompt_column,),
+            case_key_column=prompt_column,
+            metadata_columns=tuple(dict.fromkeys([answer_column, *metadata_columns])),
+            id=id,
+            name=name or self.name or self.path,
+        )
+
+
+def _coerce_answer_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(";") if item.strip()]
+    if isinstance(value, Sequence) and not isinstance(value, bytes | bytearray):
+        return [str(item) for item in value if str(item).strip()]
+    return [str(value)]
+
+
 def _quote_identifier(value: str) -> str:
     if not _IDENTIFIER_RE.fullmatch(value):
         raise ValueError(f"Invalid SQL identifier: {value!r}")
@@ -418,12 +647,16 @@ def source_from_dict(payload: Mapping[str, Any]) -> Source:
     kind = str(payload["kind"])
     if kind == "memory":
         return InMemorySource.from_dict(payload)
+    if kind == "url_json":
+        return UrlJsonSource.from_dict(payload)
     if kind == "artifact_dataset":
         return ArtifactDatasetSource.from_dict(payload)
     if kind == "postgres":
         return PostgresSource.from_dict(payload)
     if kind == "huggingface":
         return HuggingFaceSource.from_dict(payload)
+    if kind == "huggingface_list_contrast":
+        return HuggingFaceListContrastSource.from_dict(payload)
     raise ValueError(f"Unsupported source kind: {kind}")
 
 

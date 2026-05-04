@@ -28,6 +28,7 @@ from pipelines_v2.operations.projections._coordinates import load_coordinate_imp
 from .specs import (
     AssistantAxisPrecomputedCoordinateSpec,
     AssistantAxisScoreSpec,
+    AssistantAxisTraitCoordinateSpec,
     AssistantAxisVectorSpec,
     assistant_axis_model_config,
     _hf_token,
@@ -71,6 +72,54 @@ def run_assistant_axis_precomputed_coordinate(spec: AssistantAxisPrecomputedCoor
         name=spec.name,
         metadata=metadata,
     )
+    return OperationExecutionResult(
+        payload=payload,
+        example_coverage={
+            "materialized": True,
+            "example_count": 0,
+            "example_keys": [],
+        },
+    )
+
+
+def run_assistant_axis_trait_coordinate(spec: AssistantAxisTraitCoordinateSpec) -> OperationExecutionResult:
+    """Download one released trait vector and normalize it for scoring."""
+
+    from huggingface_hub import hf_hub_download
+
+    config = assistant_axis_model_config(spec.model_id)
+    filename = spec.resolved_filename()
+    layer = spec.resolved_layer()
+    path = hf_hub_download(
+        repo_id=spec.repo_id,
+        filename=filename,
+        repo_type="dataset",
+        revision=spec.revision,
+        token=_hf_token(spec.token_env_var),
+    )
+    metadata = {
+        "source": "precomputed_huggingface_trait_vector",
+        "repo_id": spec.repo_id,
+        "revision": spec.revision,
+        "filename": filename,
+        "model_id": spec.model_id,
+        "trait": spec.trait,
+        **(config or {}),
+        **dict(spec.metadata),
+    }
+    payload = load_coordinate_import_payload(
+        path=path,
+        format="torch_tensor_or_axis_dict",
+        select_layer=layer,
+        normalize=spec.normalize,
+        name=spec.coordinate_name(),
+        metadata=metadata,
+    )
+    payload["assistant_axis_trait"] = {
+        "trait": spec.trait,
+        "model_id": spec.model_id,
+        "layer": layer,
+    }
     return OperationExecutionResult(
         payload=payload,
         example_coverage={

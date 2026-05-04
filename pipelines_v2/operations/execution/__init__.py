@@ -11,6 +11,7 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
     from pipelines_v2.mechinterp.assistant_axis import (
         AssistantAxisPrecomputedCoordinateSpec,
         AssistantAxisScoreSpec,
+        AssistantAxisTraitCoordinateSpec,
         AssistantAxisVectorSpec,
     )
     from pipelines_v2.mechinterp.emotions import (
@@ -19,6 +20,18 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
         EmotionPrecomputedVectorSpaceSpec,
         EmotionScoreSpec,
         EmotionVectorSpaceSpec,
+    )
+    from pipelines_v2.mechinterp.refusal import (
+        RefusalAblationSubspaceSpec,
+        RefusalDirectionSelectionSpec,
+        RefusalDirectionSpec,
+        RefusalScoreSpec,
+    )
+    from pipelines_v2.mechinterp.truthfulness import (
+        TruthfulnessAblationSubspaceSpec,
+        TruthfulnessDirectionSelectionSpec,
+        TruthfulnessDirectionSpec,
+        TruthfulnessScoreSpec,
     )
     from pipelines_v2.operations.derive import LabelFieldsSpec, LabelMapSpec, PairDeltaSpec, TransformSpec
     from pipelines_v2.operations.interventions import ActivationBankSpec, ExplicitPathMaskSpec, PatchComparisonSpec
@@ -100,6 +113,9 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
     if isinstance(spec, AssistantAxisScoreSpec):
         from pipelines_v2.mechinterp.assistant_axis.execution import run_assistant_axis_score
         return run_assistant_axis_score(spec)
+    if isinstance(spec, AssistantAxisTraitCoordinateSpec):
+        from pipelines_v2.mechinterp.assistant_axis.execution import run_assistant_axis_trait_coordinate
+        return run_assistant_axis_trait_coordinate(spec)
     if isinstance(spec, EmotionPrecomputedVectorSpaceSpec):
         from pipelines_v2.mechinterp.emotions.execution import run_emotion_precomputed_vector_space
         return run_emotion_precomputed_vector_space(spec)
@@ -115,6 +131,30 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
     if isinstance(spec, EmotionGeometrySpec):
         from pipelines_v2.mechinterp.emotions.execution import run_emotion_geometry
         return run_emotion_geometry(spec)
+    if isinstance(spec, RefusalDirectionSpec):
+        from pipelines_v2.mechinterp.refusal.execution import run_refusal_direction
+        return run_refusal_direction(spec)
+    if isinstance(spec, RefusalScoreSpec):
+        from pipelines_v2.mechinterp.refusal.execution import run_refusal_score
+        return run_refusal_score(spec)
+    if isinstance(spec, RefusalDirectionSelectionSpec):
+        from pipelines_v2.mechinterp.refusal.execution import run_refusal_direction_selection
+        return run_refusal_direction_selection(spec)
+    if isinstance(spec, RefusalAblationSubspaceSpec):
+        from pipelines_v2.mechinterp.refusal.execution import run_refusal_ablation_subspace
+        return run_refusal_ablation_subspace(spec)
+    if isinstance(spec, TruthfulnessDirectionSpec):
+        from pipelines_v2.mechinterp.truthfulness.execution import run_truthfulness_direction
+        return run_truthfulness_direction(spec)
+    if isinstance(spec, TruthfulnessScoreSpec):
+        from pipelines_v2.mechinterp.truthfulness.execution import run_truthfulness_score
+        return run_truthfulness_score(spec)
+    if isinstance(spec, TruthfulnessDirectionSelectionSpec):
+        from pipelines_v2.mechinterp.truthfulness.execution import run_truthfulness_direction_selection
+        return run_truthfulness_direction_selection(spec)
+    if isinstance(spec, TruthfulnessAblationSubspaceSpec):
+        from pipelines_v2.mechinterp.truthfulness.execution import run_truthfulness_ablation_subspace
+        return run_truthfulness_ablation_subspace(spec)
     if isinstance(spec, ReportSpec):
         from .reports import run_report
         return run_report(spec)

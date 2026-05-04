@@ -105,6 +105,20 @@ def assistant_axis_model_config(model_id: str | None) -> dict[str, Any] | None:
     return dict(config)
 
 
+def assistant_axis_trait_filename(*, model_id: str, trait: str) -> str:
+    """Return the released HF filename for one Assistant Axis trait vector."""
+
+    config = assistant_axis_model_config(model_id)
+    if config is None:
+        raise SpecValidationError(
+            "Assistant Axis trait vectors require a known model_id or an explicit filename"
+        )
+    trait_name = _normalize_trait_name(trait)
+    if not trait_name:
+        raise SpecValidationError("Assistant Axis trait name cannot be empty")
+    return f"{config['short_name']}/trait_vectors/{trait_name}.pt"
+
+
 @dataclass(frozen=True, slots=True)
 class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
     """Load a released Assistant Axis coordinate as a canonical coordinate.
@@ -200,6 +214,104 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
             select_layer=int(payload["select_layer"]) if payload.get("select_layer") is not None else None,
             normalize=str(payload.get("normalize", "l2")),
             name=str(payload.get("name", "assistant_axis")),
+            token_env_var=str(payload["token_env_var"]) if payload.get("token_env_var") is not None else None,
+            metadata={str(key): value for key, value in dict(payload.get("metadata", {})).items()},
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AssistantAxisTraitCoordinateSpec(OperationSpec):
+    """Load one released Assistant Axis trait vector as a coordinate.
+
+    The upstream vector repo includes per-trait vectors such as ``calm``,
+    ``concise``, and ``condescending`` under
+    ``<model_short_name>/trait_vectors/<trait>.pt``. This spec normalizes one
+    of those files into the same ``coordinate_result`` payload used by
+    projection scoring.
+    """
+
+    model_id: str = ""
+    trait: str = ""
+    repo_id: str = ASSISTANT_AXIS_VECTOR_REPO
+    revision: str | None = None
+    filename: str | None = None
+    select_layer: int | None = None
+    normalize: str = "l2"
+    name: str | None = None
+    token_env_var: str | None = None
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    kind: ClassVar[str] = "assistant_axis_trait_coordinate"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "model_id", str(self.model_id))
+        object.__setattr__(self, "trait", _normalize_trait_name(self.trait))
+        object.__setattr__(self, "repo_id", str(self.repo_id))
+        if self.revision is not None:
+            object.__setattr__(self, "revision", str(self.revision))
+        if self.filename is not None:
+            object.__setattr__(self, "filename", str(self.filename))
+        if self.select_layer is not None:
+            object.__setattr__(self, "select_layer", int(self.select_layer))
+        if self.name is not None:
+            object.__setattr__(self, "name", str(self.name))
+        if self.token_env_var is not None:
+            object.__setattr__(self, "token_env_var", str(self.token_env_var))
+        object.__setattr__(self, "metadata", {str(key): value for key, value in dict(self.metadata).items()})
+        if not self.trait and self.filename is None:
+            raise SpecValidationError("AssistantAxisTraitCoordinateSpec requires trait=... or filename=...")
+        if assistant_axis_model_config(self.model_id) is None and self.filename is None:
+            raise SpecValidationError(
+                "AssistantAxisTraitCoordinateSpec requires either a known model_id or an explicit filename"
+            )
+
+    def resolved_filename(self) -> str:
+        if self.filename is not None:
+            return str(self.filename)
+        return assistant_axis_trait_filename(model_id=self.model_id, trait=self.trait)
+
+    def resolved_layer(self) -> int | None:
+        if self.select_layer is not None:
+            return int(self.select_layer)
+        config = assistant_axis_model_config(self.model_id)
+        return int(config["target_layer"]) if config is not None else None
+
+    def coordinate_name(self) -> str:
+        if self.name is not None:
+            return str(self.name)
+        return f"assistant_axis_trait__{self.trait}"
+
+    def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
+        if self.token_env_var is None:
+            return ()
+        return (RuntimeSecret(env_var=self.token_env_var),)
+
+    def runtime_spec(self) -> Any | None:
+        from pipelines_v2.engine.base import PythonRuntimeSpec
+
+        base = analysis_runtime_spec(extra_pip_packages=("torch", "huggingface_hub"))
+        if not isinstance(base, PythonRuntimeSpec):
+            return base
+        return PythonRuntimeSpec(
+            python_version=base.python_version,
+            pip_packages=base.pip_packages,
+            env=dict(base.env),
+            secrets=merge_runtime_secrets(base.secrets, self.runtime_secrets()),
+            local_python_sources=base.local_python_sources,
+        )
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "AssistantAxisTraitCoordinateSpec":
+        return cls(
+            schema_version=int(payload.get("schema_version", 1)),
+            model_id=str(payload.get("model_id", "")),
+            trait=str(payload.get("trait", "")),
+            repo_id=str(payload.get("repo_id", ASSISTANT_AXIS_VECTOR_REPO)),
+            revision=str(payload["revision"]) if payload.get("revision") is not None else None,
+            filename=str(payload["filename"]) if payload.get("filename") is not None else None,
+            select_layer=int(payload["select_layer"]) if payload.get("select_layer") is not None else None,
+            normalize=str(payload.get("normalize", "l2")),
+            name=str(payload["name"]) if payload.get("name") is not None else None,
             token_env_var=str(payload["token_env_var"]) if payload.get("token_env_var") is not None else None,
             metadata={str(key): value for key, value in dict(payload.get("metadata", {})).items()},
         )
@@ -366,6 +478,10 @@ def _normalize_model_id(model_id: str | None) -> str:
     return str(model_id or "").strip().lower()
 
 
+def _normalize_trait_name(trait: str | None) -> str:
+    return str(trait or "").strip().lower().replace("-", "_").replace(" ", "_")
+
+
 def _warn_if_unknown_model(model_id: str | None, enabled: bool) -> None:
     if not enabled or model_id is None or assistant_axis_model_config(model_id) is not None:
         return
@@ -384,8 +500,10 @@ __all__ = [
     "ASSISTANT_AXIS_VECTOR_REPO",
     "AssistantAxisPrecomputedCoordinateSpec",
     "AssistantAxisScoreSpec",
+    "AssistantAxisTraitCoordinateSpec",
     "AssistantAxisVectorSpec",
     "KNOWN_ASSISTANT_AXIS_MODELS",
+    "assistant_axis_trait_filename",
     "assistant_axis_model_config",
     "_hf_token",
 ]

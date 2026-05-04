@@ -19,9 +19,11 @@ from pipelines_v2.mechinterp.assistant_axis import (
     ASSISTANT_AXIS_PROMPT_DATASET_REPO,
     AssistantAxisPrecomputedCoordinateSpec,
     AssistantAxisScoreSpec,
+    AssistantAxisTraitCoordinateSpec,
     AssistantAxisVectorSpec,
     assistant_axis_model_config,
     assistant_axis_prompt_dataset,
+    assistant_axis_trait_filename,
 )
 from pipelines_v2.operations import operation_spec_from_dict
 
@@ -55,6 +57,29 @@ def test_precomputed_assistant_axis_helper_resolves_known_hf_vector_and_roundtri
     assert spec.resolved_filename() == "qwen-3-32b/assistant_axis.pt"
     assert assistant_axis_model_config("gemma-2-27b")["target_layer"] == 22
     assert assistant_axis_model_config("meta-llama/Llama-3.3-70B-Instruct")["target_layer"] == 40
+    assert runtime_spec is not None
+    assert [secret.env_var for secret in runtime_spec.secrets] == ["HF_TOKEN"]
+
+
+def test_assistant_axis_trait_vector_helper_resolves_hf_filename_and_roundtrips() -> None:
+    spec = AssistantAxisTraitCoordinateSpec(
+        model_id="llama-3.3-70b",
+        trait="big-picture",
+        revision="abc123",
+        token_env_var="HF_TOKEN",
+    )
+    loaded = operation_spec_from_dict(spec.to_dict())
+    runtime_spec = spec.runtime_spec()
+
+    assert isinstance(loaded, AssistantAxisTraitCoordinateSpec)
+    assert loaded.trait == "big_picture"
+    assert spec.resolved_filename() == "llama-3.3-70b/trait_vectors/big_picture.pt"
+    assert spec.resolved_layer() == 40
+    assert spec.coordinate_name() == "assistant_axis_trait__big_picture"
+    assert assistant_axis_trait_filename(
+        model_id="meta-llama/Llama-3.3-70B-Instruct",
+        trait="calm",
+    ) == "llama-3.3-70b/trait_vectors/calm.pt"
     assert runtime_spec is not None
     assert [secret.env_var for secret in runtime_spec.secrets] == ["HF_TOKEN"]
 

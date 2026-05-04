@@ -25,6 +25,7 @@ tmp/
 # Curated typst/md/pdf and assets/scripts/ stay; the report_<hex>_<hex>/
 # directories that pipelines_v2 emits do not.
 projects/**/reports/**/report_*/
+papers/**/reports/**/report_*/
 
 # Auto-generated review HTML rendered at the phase reports/ root.
 # (Reviews inside report_*/ are already ignored by the rule above.)
