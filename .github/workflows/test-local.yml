@@ -32,7 +32,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --extra interp --extra analysis --extra dev --extra modal
+        run: uv sync --extra interp --extra analysis --extra dev --extra dashboard --extra modal
 
       - name: Run tests
         env:
