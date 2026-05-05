@@ -26,6 +26,12 @@ Data hooks:
 - `EmotionPrecomputedVectorSpaceSpec(...)` remains the path for released or
   user-owned precomputed emotion-space artifacts.
 
+Paper-scale scaffold:
+
+- `replication/` contains TODO-marked prompts, config, data manifest, report
+  directories, and a workflow outline for recreating the paper's story-vector
+  recipe without treating the work as a normal Xenon research phase.
+
 Claim boundary: smoke vectors are fixture-only. Paper-level claims require
 large labeled story/dialogue data, naturalistic transcript checks, preference
 or behavior evaluations, and intervention controls.

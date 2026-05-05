@@ -16,3 +16,6 @@ Xenon mapping:
 
 Deviation: the workflow is residual-stream and fixture-based; it does not claim
 Claude-specific internal emotion functionality.
+
+Replication scaffold: `papers/voice/emotions/replication/` is the place to fill
+paper-specific details manually before paper-scale generation/capture.
