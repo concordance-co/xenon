@@ -4,15 +4,18 @@ Xenon-native smoke replications for direction/intervention papers about model
 "voice": persona, emotion, refusal, and truthfulness. These are public example
 workflows, not normal `projects/<project>/phase_XX` research phases.
 
-Default smoke workflows use `ToyEngine` and tiny in-code fixtures so tests and
-`workflow plan` run without model downloads. Real runs should swap in
-`VLLMEngine(model_id="Qwen/Qwen3-8B")`, move durable datasets to Neon, and keep
-captures/generations in Modal volumes.
+Each paper directory should expose four runnable surfaces: paper rerun, BYOD,
+BYOT, and BYOP. Assistant Axis is the current reference implementation for
+that shape.
 
 ## Workflows
 
 ```bash
-uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_axis/specs/workflow.py
+uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_axis/specs/paper_rerun.py
+uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_axis/specs/byod_axis.py
+uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_axis/specs/byot_score.py
+uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_axis/specs/byop_generate.py
+
 uv run python -m pipelines_v2.cli workflow plan --file papers/voice/emotions/specs/workflow.py
 uv run python -m pipelines_v2.cli workflow plan --file papers/voice/refusal_direction/specs/workflow.py
 uv run python -m pipelines_v2.cli workflow plan --file papers/voice/honest_llama/specs/workflow.py
@@ -20,11 +23,19 @@ uv run python -m pipelines_v2.cli workflow plan --file papers/voice/honest_llama
 
 ## Layout
 
-- `assistant_axis/`: default-assistant vs role-play persona axis.
+- `assistant_axis/`: default-assistant vs role-play persona axis; reference
+  package layout with paper/BYOD/BYOT/BYOP specs.
 - `emotions/`: emotion concept vectors, scoring, geometry, and steering export.
 - `refusal_direction/`: harmful-minus-harmless direction, selection, add-direction, and project-out smoke.
 - `honest_llama/`: residual TruthfulQA-style truthful-minus-untruthful ITI smoke.
 - `common/`: shared smoke constants and local runner fixtures.
+- `schemas/`: method-level BYOD row contracts.
+- `BYOD.md`: where to edit data recipes and how schemas map onto methods.
+
+The paper directory names are historical. BYOD schemas are method schemas, not
+domain schemas. For example, the emotion-concepts workflow can build concept
+vectors over finance labels, support intents, or failure modes if the rows fit
+the concept-vector-space schema.
 
 ## Lightweight Data Hooks
 
@@ -47,7 +58,7 @@ format to match their product.
 
 ## Claim Boundary
 
-Smoke workflows check API plumbing and artifact shapes. They do not reproduce
+Planning a workflow checks API plumbing and artifact shapes. It does not prove
 paper-scale claims. A paper-scale result requires real datasets, behavioral
 sanity checks, confound checks, selected loci that transfer to real data, and
 intervention controls.

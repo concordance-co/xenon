@@ -1,0 +1,501 @@
+{
+  "coordinates": [
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface",
+        "target_layer": 40,
+        "total_layers": 80
+      },
+      "name": "assistant_axis",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/concise.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "concise"
+      },
+      "name": "assistant_axis_trait__concise",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/calm.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "calm"
+      },
+      "name": "assistant_axis_trait__calm",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/supportive.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "supportive"
+      },
+      "name": "assistant_axis_trait__supportive",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/technical.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "technical"
+      },
+      "name": "assistant_axis_trait__technical",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/analytical.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "analytical"
+      },
+      "name": "assistant_axis_trait__analytical",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/confident.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "confident"
+      },
+      "name": "assistant_axis_trait__confident",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/verbose.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "verbose"
+      },
+      "name": "assistant_axis_trait__verbose",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/sycophantic.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "sycophantic"
+      },
+      "name": "assistant_axis_trait__sycophantic",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/hostile.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "hostile"
+      },
+      "name": "assistant_axis_trait__hostile",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/condescending.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "condescending"
+      },
+      "name": "assistant_axis_trait__condescending",
+      "source_kind": "coordinate_result"
+    }
+  ],
+  "example_summaries": [
+    {
+      "coordinate": "assistant_axis",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": 0.5455842614173889
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__concise",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": -0.22545528411865234
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__calm",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": 1.4793564081192017
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__supportive",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": 1.1473493576049805
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__technical",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": 0.6928477883338928
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__analytical",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": 1.2384006977081299
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__confident",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": 0.051925212144851685
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__verbose",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": 0.16717392206192017
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__sycophantic",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": -0.6161258220672607
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__hostile",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": -1.3414794206619263
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__condescending",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "metrics": {
+        "mean": -1.0021345615386963
+      },
+      "slice_count": 1
+    }
+  ],
+  "feature": "residual_full",
+  "kind": "projection_result",
+  "metric": "signed_dot",
+  "pooling": "mean",
+  "rows": [
+    {
+      "coordinate": "assistant_axis",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 0.5455842614173889,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__concise",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": -0.22545528411865234,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__calm",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 1.4793564081192017,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__supportive",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 1.1473493576049805,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__technical",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 0.6928477883338928,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__analytical",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 1.2384006977081299,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__confident",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 0.051925212144851685,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__verbose",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 0.16717392206192017,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__sycophantic",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": -0.6161258220672607,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__hostile",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": -1.3414794206619263,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__condescending",
+      "example_key": "fake_trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": -1.0021345615386963,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 67,
+      "tags": {},
+      "unit": "turn"
+    }
+  ],
+  "summary": {
+    "coordinate_count": 11,
+    "example_summary_count": 11,
+    "layer_count": 1,
+    "slice_row_count": 11
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "concept_vector_space_method.schema.json",
+  "title": "Concept Vector Space Method BYOD Row",
+  "description": "Rows for concept-mean vector spaces with optional neutral/background projection. Concepts can be emotions, market regimes, intents, styles, errors, or any other labeled set.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["example_id", "text", "row_role"],
+  "properties": {
+    "example_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "row_role": {
+      "type": "string",
+      "enum": ["concept", "neutral", "heldout"]
+    },
+    "concept": {
+      "type": "string",
+      "description": "Required for row_role=concept or heldout; ignored for neutral rows."
+    },
+    "split": {
+      "type": "string",
+      "enum": ["train", "heldout", "neutral", "calibration"]
+    },
+    "topic": {
+      "type": "string"
+    },
+    "section": {
+      "$ref": "#/$defs/char_span",
+      "description": "Optional scoring/capture span. If omitted, adapters may use the full text."
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "row_role": {
+            "enum": ["concept", "heldout"]
+          }
+        },
+        "required": ["row_role"]
+      },
+      "then": {
+        "required": ["concept"]
+      }
+    }
+  ],
+  "$defs": {
+    "char_span": {
+      "type": "object",
+      "required": ["char_start", "char_end"],
+      "properties": {
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

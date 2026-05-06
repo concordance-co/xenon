@@ -1,0 +1,22 @@
+{
+  "figures": {},
+  "tables": {},
+  "unsupported_inputs": [
+    {
+      "artifact_id": "projection_1_2345cade",
+      "artifact_kind": "projection",
+      "downloaded_result_path": "scripts/reports/assistant_axis_llama33_70b_trait_trace_score/report_e69214bdedfd_03b8ad57/results/score_trace_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "projection_result",
+      "step_name": "score_trace"
+    },
+    {
+      "artifact_id": "transform_1_6cec472c",
+      "artifact_kind": "transform",
+      "downloaded_result_path": "scripts/reports/assistant_axis_llama33_70b_trait_trace_score/report_e69214bdedfd_03b8ad57/results/score_summary_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "assistant_axis_trait_trace_score_summary",
+      "step_name": "score_summary"
+    }
+  ]
+}

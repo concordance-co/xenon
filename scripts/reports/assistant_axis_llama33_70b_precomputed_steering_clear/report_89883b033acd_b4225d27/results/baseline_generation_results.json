@@ -1,0 +1,129 @@
+{
+  "kind": "generation_run_result",
+  "metadata": {
+    "backend": "vllm",
+    "batch_size": 1,
+    "discovered_router_layers": [],
+    "example_metadata": [
+      {
+        "actual_router_layers": [],
+        "capture_generated_tokens": false,
+        "capture_mode": "single_request",
+        "captured_generated_token_count": 0,
+        "example_key": "deploy_debug_probe",
+        "generated": true,
+        "generated_token_count": 69,
+        "prompt_hash": "ea1fa2b2cd1dc1c82fc84ba19d1f1fbabfd9f3b6ef42670440ff2b7cf2ad549a",
+        "prompt_token_count": 79,
+        "token_count": 79
+      }
+    ],
+    "requested_router_layers": [],
+    "residual_layers": [],
+    "router_enabled": false,
+    "spec_hash": "dcba0997f0a8e63fa0bcbc35ee84c78f31ea901d769b80d85ee915e8db4cdbc7"
+  },
+  "rows": [
+    {
+      "example": {
+        "case_key": null,
+        "cases": {},
+        "key": "deploy_debug_probe",
+        "labels": {
+          "strength": 5.0,
+          "surface": "steering_probe",
+          "trait": "calm"
+        },
+        "metadata": {},
+        "prompt": [
+          {
+            "content": "I am furious. The deploy is broken, executives are pinging me, and the team is arguing in Slack. Write the assistant reply I should send to the incident channel right now. Keep it under 120 words.",
+            "role": "user"
+          }
+        ],
+        "prompt_hash": "ea1fa2b2cd1dc1c82fc84ba19d1f1fbabfd9f3b6ef42670440ff2b7cf2ad549a"
+      },
+      "example_key": "deploy_debug_probe",
+      "finish_reason": "stop",
+      "generated_text": "\"I've acknowledged the issue and am working to resolve it. I'll provide a status update soon. In the meantime, let's focus on troubleshooting and finding a solution. Please refrain from discussing in Slack to avoid noise. If you have relevant info or suggestions, please DM me directly. I'll keep everyone informed of progress and next steps.\"",
+      "generated_token_ids": [
+        7189,
+        3077,
+        26579,
+        279,
+        4360,
+        323,
+        1097,
+        3318,
+        311,
+        9006,
+        433,
+        13,
+        358,
+        3358,
+        3493,
+        264,
+        2704,
+        2713,
+        5246,
+        13,
+        763,
+        279,
+        33953,
+        11,
+        1095,
+        596,
+        5357,
+        389,
+        69771,
+        323,
+        9455,
+        264,
+        6425,
+        13,
+        5321,
+        58608,
+        505,
+        25394,
+        304,
+        58344,
+        311,
+        5766,
+        12248,
+        13,
+        1442,
+        499,
+        617,
+        9959,
+        3630,
+        477,
+        18726,
+        11,
+        4587,
+        20804,
+        757,
+        6089,
+        13,
+        358,
+        3358,
+        2567,
+        5127,
+        16369,
+        315,
+        5208,
+        323,
+        1828,
+        7504,
+        1210,
+        128009
+      ],
+      "request_id": "0"
+    }
+  ],
+  "summary": {
+    "completed_example_count": 1,
+    "example_count": 1,
+    "partial": false,
+    "total_example_count": 1
+  }
+}

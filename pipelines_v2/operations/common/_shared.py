@@ -31,6 +31,7 @@ def analysis_runtime_spec(
                 "safetensors",
                 "pyarrow",
                 "psycopg[binary]",
+                "openai",
             ),
             tuple(str(item) for item in extra_pip_packages),
         ),

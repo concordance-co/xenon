@@ -1,0 +1,459 @@
+{
+  "inputs": [
+    {
+      "artifact_id": "assistant_axis_trait_coordinate_1_0819f1a9",
+      "artifact_kind": "assistant_axis_trait_coordinate",
+      "created_at": "2026-05-06T19:42:52.776959+00:00",
+      "downloaded_result_path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/load_calm_trait_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 0,
+        "example_key_count": 0,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [],
+      "label_names": [],
+      "name": "load_calm_trait",
+      "primary_output": {
+        "bytes": 445976,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/assistant_axis_trait_coordinate_1_0819f1a9/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-UqH59r40Ur86TeuTCj6tAy",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "yora-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 2248,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/assistant_axis_trait_coordinate_1_0819f1a9/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 445976,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/assistant_axis_trait_coordinate_1_0819f1a9/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "layer_count": 1,
+        "normalized": "l2",
+        "selected_layer": 40
+      },
+      "workflow": {
+        "run_id": "wr_e777c120a4bb_4559f201",
+        "step_index": 0,
+        "step_name": "load_calm_trait",
+        "workflow_name": "assistant_axis_llama33_70b_precomputed_steering",
+        "workflow_step_key": "e777c120a4bba13eb9ed8109847073dfefa863e28b7a0e4ac63316b97837dd4b.load_calm_trait"
+      }
+    },
+    {
+      "artifact_id": "transform_1_c99276e9",
+      "artifact_kind": "transform",
+      "created_at": "2026-05-06T19:43:03.164759+00:00",
+      "downloaded_result_path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/calm_unit_direction_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 0,
+        "example_key_count": 0,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "assistant_axis_trait_coordinate_1_0819f1a9"
+      ],
+      "label_names": [],
+      "name": "calm_unit_direction",
+      "primary_output": {
+        "bytes": 502604,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/transform_1_c99276e9/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-BfMpIBed4NCvA07hu9ytTA",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "yora-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 2242,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/transform_1_c99276e9/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 502604,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/transform_1_c99276e9/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "layer_count": 1,
+        "source_coordinate": "assistant_axis_trait__calm",
+        "unit_raw_vector": true
+      },
+      "workflow": {
+        "run_id": "wr_e777c120a4bb_4559f201",
+        "step_index": 2,
+        "step_name": "calm_unit_direction",
+        "workflow_name": "assistant_axis_llama33_70b_precomputed_steering",
+        "workflow_step_key": "e777c120a4bba13eb9ed8109847073dfefa863e28b7a0e4ac63316b97837dd4b.calm_unit_direction"
+      }
+    },
+    {
+      "artifact_id": "generation_run_1_92bffc94f6d5",
+      "artifact_kind": "generation_run",
+      "created_at": "2026-05-06T20:15:52.816641+00:00",
+      "downloaded_result_path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/baseline_generation_results.json",
+      "engine": {
+        "add_generation_prompt": true,
+        "async_scheduling": false,
+        "distributed_executor_backend": null,
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": true,
+        "enable_thinking": null,
+        "enforce_eager": false,
+        "extra": {},
+        "gpu_memory_utilization": 0.88,
+        "kind": "vllm",
+        "max_model_len": 2048,
+        "max_num_batched_tokens": null,
+        "max_num_seqs": 1,
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "model_path_root": "/models",
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 2
+      },
+      "example_coverage": {
+        "dataset_id": "599dd6e633450b9351f5a512",
+        "dataset_name": "assistant_axis_llama33_70b_precomputed_steering_clear",
+        "example_count": 1,
+        "example_key_count": 1,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [],
+      "label_names": [],
+      "name": "baseline_generation",
+      "primary_output": {
+        "bytes": 3052,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/generation_run_1_92bffc94f6d5/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-lEAULEEk0hWFpvHjipjuH2",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "yora-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 3906,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/generation_run_1_92bffc94f6d5/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 3052,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/generation_run_1_92bffc94f6d5/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "completed_example_count": 1,
+        "example_count": 1,
+        "partial": false,
+        "total_example_count": 1
+      },
+      "workflow": {
+        "run_id": "wr_2e37f6aad2d4_be02fc99",
+        "step_index": 1,
+        "step_name": "baseline_generation",
+        "workflow_name": "assistant_axis_llama33_70b_precomputed_steering_clear",
+        "workflow_step_key": "2e37f6aad2d4c38068185b35e77cdc799824747b92e99fc301d2b080ca20674d.baseline_generation"
+      }
+    },
+    {
+      "artifact_id": "patched_generation_1_f6bf1269",
+      "artifact_kind": "patched_generation",
+      "created_at": "2026-05-06T20:17:52.117489+00:00",
+      "downloaded_result_path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/calm_steered_generation_results.json",
+      "engine": {
+        "add_generation_prompt": true,
+        "async_scheduling": false,
+        "distributed_executor_backend": null,
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": false,
+        "enable_thinking": null,
+        "enforce_eager": true,
+        "extra": {},
+        "gpu_memory_utilization": 0.88,
+        "kind": "vllm",
+        "max_model_len": 1024,
+        "max_num_batched_tokens": null,
+        "max_num_seqs": 1,
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "model_path_root": "/models",
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 4
+      },
+      "example_coverage": {
+        "dataset_id": "599dd6e633450b9351f5a512",
+        "dataset_name": "assistant_axis_llama33_70b_precomputed_steering_clear",
+        "example_count": 1,
+        "example_key_count": 1,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "transform_1_c99276e9"
+      ],
+      "label_names": [],
+      "name": "calm_steered_generation",
+      "primary_output": {
+        "bytes": 114602,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/patched_generation_1_f6bf1269/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-GEmxwEKaus7pbGzME9v5f9",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "yora-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 3366,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/patched_generation_1_f6bf1269/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 114602,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/patched_generation_1_f6bf1269/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "example_count": 1,
+        "patched_count": 1,
+        "skipped_count": 0,
+        "target_count": 1
+      },
+      "workflow": {
+        "run_id": "wr_2e37f6aad2d4_be02fc99",
+        "step_index": 3,
+        "step_name": "calm_steered_generation",
+        "workflow_name": "assistant_axis_llama33_70b_precomputed_steering_clear",
+        "workflow_step_key": "2e37f6aad2d4c38068185b35e77cdc799824747b92e99fc301d2b080ca20674d.calm_steered_generation"
+      }
+    },
+    {
+      "artifact_id": "transform_1_fd705815",
+      "artifact_kind": "transform",
+      "created_at": "2026-05-06T20:19:52.187906+00:00",
+      "downloaded_result_path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/steering_summary_results.json",
+      "engine": {},
+      "example_coverage": {
+        "example_count": 1,
+        "example_key_count": 1,
+        "materialized": true
+      },
+      "feature_names": [],
+      "has_generations": false,
+      "input_artifact_refs": [
+        "generation_run_1_92bffc94f6d5",
+        "patched_generation_1_f6bf1269"
+      ],
+      "label_names": [],
+      "name": "steering_summary",
+      "primary_output": {
+        "bytes": 1119,
+        "format": "json",
+        "name": "result",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/transform_1_fd705815/result.json",
+        "store": "modal_volume"
+      },
+      "runtime": {
+        "runner_kind": "modal",
+        "runtime_app_id": "ap-u8lVjDgL5xPkL0PKlV8avz",
+        "volume_mappings": [
+          {
+            "mount_path": "/data",
+            "name": "xenon-data",
+            "role": "artifact_store"
+          },
+          {
+            "mount_path": "/models",
+            "name": "yora-models",
+            "role": "runner_resource"
+          }
+        ]
+      },
+      "storage": {
+        "manifest": {
+          "bytes": 2352,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/transform_1_fd705815/manifest.json",
+          "store": "modal_volume"
+        },
+        "result": {
+          "bytes": 1119,
+          "format": "json",
+          "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/transform_1_fd705815/result.json",
+          "store": "modal_volume"
+        }
+      },
+      "summary": {
+        "layer": 40,
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "strength": 5.0,
+        "trait": "calm"
+      },
+      "workflow": {
+        "run_id": "wr_2e37f6aad2d4_f7f33ea6",
+        "step_index": 4,
+        "step_name": "steering_summary",
+        "workflow_name": "assistant_axis_llama33_70b_precomputed_steering_clear",
+        "workflow_step_key": "2e37f6aad2d4c38068185b35e77cdc799824747b92e99fc301d2b080ca20674d.steering_summary"
+      }
+    }
+  ],
+  "kind": "report_result",
+  "local_results": [
+    {
+      "artifact_id": "assistant_axis_trait_coordinate_1_0819f1a9",
+      "artifact_kind": "assistant_axis_trait_coordinate",
+      "name": "load_calm_trait",
+      "path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/load_calm_trait_results.json",
+      "source": {
+        "bytes": 445976,
+        "format": "json",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/assistant_axis_trait_coordinate_1_0819f1a9/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "transform_1_c99276e9",
+      "artifact_kind": "transform",
+      "name": "calm_unit_direction",
+      "path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/calm_unit_direction_results.json",
+      "source": {
+        "bytes": 502604,
+        "format": "json",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering/transform_1_c99276e9/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "generation_run_1_92bffc94f6d5",
+      "artifact_kind": "generation_run",
+      "name": "baseline_generation",
+      "path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/baseline_generation_results.json",
+      "source": {
+        "bytes": 3052,
+        "format": "json",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/generation_run_1_92bffc94f6d5/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "patched_generation_1_f6bf1269",
+      "artifact_kind": "patched_generation",
+      "name": "calm_steered_generation",
+      "path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/calm_steered_generation_results.json",
+      "source": {
+        "bytes": 114602,
+        "format": "json",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/patched_generation_1_f6bf1269/result.json",
+        "store": "modal_volume"
+      }
+    },
+    {
+      "artifact_id": "transform_1_fd705815",
+      "artifact_kind": "transform",
+      "name": "steering_summary",
+      "path": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear/report_04821b5c6faf_c4c5eb01/results/steering_summary_results.json",
+      "source": {
+        "bytes": 1119,
+        "format": "json",
+        "path": "/data/artifacts/assistant_axis_llama33_70b_precomputed_steering_clear/transform_1_fd705815/result.json",
+        "store": "modal_volume"
+      }
+    }
+  ],
+  "output_dir": "scripts/reports/assistant_axis_llama33_70b_precomputed_steering_clear",
+  "summary": {
+    "example_count": 1,
+    "figures": {},
+    "input_count": 5,
+    "step_summaries": {},
+    "tables": {},
+    "template": "assistant_axis_llama33_70b_precomputed_steering"
+  },
+  "template": "assistant_axis_llama33_70b_precomputed_steering"
+}

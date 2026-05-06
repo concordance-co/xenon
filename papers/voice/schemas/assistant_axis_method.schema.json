@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assistant_axis_method.schema.json",
+  "title": "Assistant Axis Method BYOD Row",
+  "description": "Rows for default-vs-role contrast derivation or precomputed Assistant Axis / trait scoring. Domains are arbitrary; role labels need not be personas.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["example_id", "text", "assistant_response"],
+  "properties": {
+    "example_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Rendered prompt/trace text to capture."
+    },
+    "model_id": {
+      "type": "string",
+      "description": "Model used for capture; must match any precomputed coordinate family."
+    },
+    "split": {
+      "type": "string",
+      "enum": ["train", "heldout", "probe", "reference", "calibration"]
+    },
+    "axis_kind": {
+      "type": "string",
+      "enum": ["default", "role", "probe"],
+      "description": "Required for deriving a new axis. Optional for scoring-only rows."
+    },
+    "role": {
+      "type": "string",
+      "description": "Group name for the non-default condition, e.g. pirate, terse, analyst, policy_mode_a."
+    },
+    "adherence_score": {
+      "type": ["number", "integer", "string", "null"],
+      "description": "Optional quality/intensity score used to filter role examples before axis derivation."
+    },
+    "assistant_response": {
+      "$ref": "#/$defs/char_span"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "char_span": {
+      "type": "object",
+      "required": ["char_start", "char_end"],
+      "properties": {
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

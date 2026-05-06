@@ -1,0 +1,3479 @@
+{
+  "kind": "patched_generation_result",
+  "rows": [
+    {
+      "example": {
+        "case_key": null,
+        "cases": {},
+        "key": "deploy_debug_probe",
+        "labels": {
+          "strength": 5.0,
+          "surface": "steering_probe",
+          "trait": "calm"
+        },
+        "metadata": {},
+        "prompt": [
+          {
+            "content": "I am furious. The deploy is broken, executives are pinging me, and the team is arguing in Slack. Write the assistant reply I should send to the incident channel right now. Keep it under 120 words.",
+            "role": "user"
+          }
+        ],
+        "prompt_hash": "ea1fa2b2cd1dc1c82fc84ba19d1f1fbabfd9f3b6ef42670440ff2b7cf2ad549a"
+      },
+      "example_key": "deploy_debug_probe",
+      "finish_reason": "stop",
+      "generated_text": "\"I'm aware of the deploy issue and its impact. I'm working to assess the situation and identify the root cause. To ensure effective communication, let's focus on troubleshooting and resolution. I'll provide updates and guidance as needed. Please refrain from discussing in Slack, and instead, share relevant information and suggestions directly with me. This will help us to streamline our efforts and resolve the issue efficiently.\"",
+      "generated_token_ids": [
+        7189,
+        2846,
+        8010,
+        315,
+        279,
+        10739,
+        4360,
+        323,
+        1202,
+        5536,
+        13,
+        358,
+        2846,
+        3318,
+        311,
+        8720,
+        279,
+        6671,
+        323,
+        10765,
+        279,
+        3789,
+        5353,
+        13,
+        2057,
+        6106,
+        7524,
+        10758,
+        11,
+        1095,
+        596,
+        5357,
+        389,
+        69771,
+        323,
+        11175,
+        13,
+        358,
+        3358,
+        3493,
+        9013,
+        323,
+        19351,
+        439,
+        4460,
+        13,
+        5321,
+        58608,
+        505,
+        25394,
+        304,
+        58344,
+        11,
+        323,
+        4619,
+        11,
+        4430,
+        9959,
+        2038,
+        323,
+        18726,
+        6089,
+        449,
+        757,
+        13,
+        1115,
+        690,
+        1520,
+        603,
+        311,
+        82703,
+        1057,
+        9045,
+        323,
+        9006,
+        279,
+        4360,
+        30820,
+        1210,
+        128009
+      ],
+      "patch_stats": {
+        "40": {
+          "chunk_count": 81,
+          "chunk_stats": [
+            {
+              "covered_abs_spans": [
+                [
+                  0,
+                  79
+                ]
+              ],
+              "covered_abs_tokens": 79,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 5.083442211151123,
+              "mean_norm_before": 0.7920951247215271,
+              "mean_std_norm_after": 5.083442211151123,
+              "mean_std_norm_before": 0.7920951247215271,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 0,
+                "prompt": 79
+              },
+              "query_span": [
+                0,
+                79
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 79
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  79,
+                  80
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.119741439819336,
+              "mean_norm_before": 3.723360776901245,
+              "mean_std_norm_after": 6.119741439819336,
+              "mean_std_norm_before": 3.723360776901245,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  80,
+                  81
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.3473334312438965,
+              "mean_norm_before": 3.973145008087158,
+              "mean_std_norm_after": 6.3473334312438965,
+              "mean_std_norm_before": 3.973145008087158,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  81,
+                  82
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.2047038078308105,
+              "mean_norm_before": 3.748936653137207,
+              "mean_std_norm_after": 6.2047038078308105,
+              "mean_std_norm_before": 3.748936653137207,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  82,
+                  83
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.28515100479126,
+              "mean_norm_before": 3.9057154655456543,
+              "mean_std_norm_after": 6.28515100479126,
+              "mean_std_norm_before": 3.9057154655456543,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  83,
+                  84
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.619152545928955,
+              "mean_norm_before": 4.294628143310547,
+              "mean_std_norm_after": 6.619152545928955,
+              "mean_std_norm_before": 4.294628143310547,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  84,
+                  85
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.534365177154541,
+              "mean_norm_before": 4.074890613555908,
+              "mean_std_norm_after": 6.534365177154541,
+              "mean_std_norm_before": 4.074890613555908,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  85,
+                  86
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.112915992736816,
+              "mean_norm_before": 3.6468467712402344,
+              "mean_std_norm_after": 6.112915992736816,
+              "mean_std_norm_before": 3.6468467712402344,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  86,
+                  87
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.486233234405518,
+              "mean_norm_before": 4.225082874298096,
+              "mean_std_norm_after": 6.486233234405518,
+              "mean_std_norm_before": 4.225082874298096,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  87,
+                  88
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.703908443450928,
+              "mean_norm_before": 4.334652900695801,
+              "mean_std_norm_after": 6.703908443450928,
+              "mean_std_norm_before": 4.334652900695801,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  88,
+                  89
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.213282585144043,
+              "mean_norm_before": 3.6300156116485596,
+              "mean_std_norm_after": 6.213282585144043,
+              "mean_std_norm_before": 3.6300156116485596,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  89,
+                  90
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.268535137176514,
+              "mean_norm_before": 3.8520028591156006,
+              "mean_std_norm_after": 6.268535137176514,
+              "mean_std_norm_before": 3.8520028591156006,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  90,
+                  91
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.312957763671875,
+              "mean_norm_before": 4.02232027053833,
+              "mean_std_norm_after": 6.312957763671875,
+              "mean_std_norm_before": 4.02232027053833,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  91,
+                  92
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.375396251678467,
+              "mean_norm_before": 4.031428813934326,
+              "mean_std_norm_after": 6.375396251678467,
+              "mean_std_norm_before": 4.031428813934326,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  92,
+                  93
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.272366046905518,
+              "mean_norm_before": 3.8327152729034424,
+              "mean_std_norm_after": 6.272366046905518,
+              "mean_std_norm_before": 3.8327152729034424,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  93,
+                  94
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.4542236328125,
+              "mean_norm_before": 4.052938461303711,
+              "mean_std_norm_after": 6.4542236328125,
+              "mean_std_norm_before": 4.052938461303711,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  94,
+                  95
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.397308826446533,
+              "mean_norm_before": 3.805088758468628,
+              "mean_std_norm_after": 6.397308826446533,
+              "mean_std_norm_before": 3.805088758468628,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  95,
+                  96
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.710232734680176,
+              "mean_norm_before": 4.238971710205078,
+              "mean_std_norm_after": 6.710232734680176,
+              "mean_std_norm_before": 4.238971710205078,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  96,
+                  97
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 5.993700981140137,
+              "mean_norm_before": 3.3642818927764893,
+              "mean_std_norm_after": 5.993700981140137,
+              "mean_std_norm_before": 3.3642818927764893,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  97,
+                  98
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.446007251739502,
+              "mean_norm_before": 4.060274124145508,
+              "mean_std_norm_after": 6.446007251739502,
+              "mean_std_norm_before": 4.060274124145508,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  98,
+                  99
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.521705627441406,
+              "mean_norm_before": 4.021447658538818,
+              "mean_std_norm_after": 6.521705627441406,
+              "mean_std_norm_before": 4.021447658538818,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  99,
+                  100
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.618073463439941,
+              "mean_norm_before": 4.105916500091553,
+              "mean_std_norm_after": 6.618073463439941,
+              "mean_std_norm_before": 4.105916500091553,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  100,
+                  101
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.408177375793457,
+              "mean_norm_before": 3.917020320892334,
+              "mean_std_norm_after": 6.408177375793457,
+              "mean_std_norm_before": 3.917020320892334,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  101,
+                  102
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 5.978135585784912,
+              "mean_norm_before": 3.309532880783081,
+              "mean_std_norm_after": 5.978135585784912,
+              "mean_std_norm_before": 3.309532880783081,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  102,
+                  103
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.228438377380371,
+              "mean_norm_before": 3.801494598388672,
+              "mean_std_norm_after": 6.228438377380371,
+              "mean_std_norm_before": 3.801494598388672,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  103,
+                  104
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.486310958862305,
+              "mean_norm_before": 4.138795375823975,
+              "mean_std_norm_after": 6.486310958862305,
+              "mean_std_norm_before": 4.138795375823975,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  104,
+                  105
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.467770576477051,
+              "mean_norm_before": 4.0979204177856445,
+              "mean_std_norm_after": 6.467770576477051,
+              "mean_std_norm_before": 4.0979204177856445,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  105,
+                  106
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.726831436157227,
+              "mean_norm_before": 4.29019832611084,
+              "mean_std_norm_after": 6.726831436157227,
+              "mean_std_norm_before": 4.29019832611084,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  106,
+                  107
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.247786998748779,
+              "mean_norm_before": 3.648040771484375,
+              "mean_std_norm_after": 6.247786998748779,
+              "mean_std_norm_before": 3.648040771484375,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  107,
+                  108
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.285862445831299,
+              "mean_norm_before": 3.9332101345062256,
+              "mean_std_norm_after": 6.285862445831299,
+              "mean_std_norm_before": 3.9332101345062256,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  108,
+                  109
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.3389201164245605,
+              "mean_norm_before": 4.0676589012146,
+              "mean_std_norm_after": 6.3389201164245605,
+              "mean_std_norm_before": 4.0676589012146,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  109,
+                  110
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.348878860473633,
+              "mean_norm_before": 3.9834554195404053,
+              "mean_std_norm_after": 6.348878860473633,
+              "mean_std_norm_before": 3.9834554195404053,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  110,
+                  111
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.27482271194458,
+              "mean_norm_before": 3.763593912124634,
+              "mean_std_norm_after": 6.27482271194458,
+              "mean_std_norm_before": 3.763593912124634,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  111,
+                  112
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.549126625061035,
+              "mean_norm_before": 4.2086992263793945,
+              "mean_std_norm_after": 6.549126625061035,
+              "mean_std_norm_before": 4.2086992263793945,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  112,
+                  113
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.261191368103027,
+              "mean_norm_before": 3.791057825088501,
+              "mean_std_norm_after": 6.261191368103027,
+              "mean_std_norm_before": 3.791057825088501,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  113,
+                  114
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.7021918296813965,
+              "mean_norm_before": 4.359901428222656,
+              "mean_std_norm_after": 6.7021918296813965,
+              "mean_std_norm_before": 4.359901428222656,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  114,
+                  115
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.305708885192871,
+              "mean_norm_before": 3.822911024093628,
+              "mean_std_norm_after": 6.305708885192871,
+              "mean_std_norm_before": 3.822911024093628,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  115,
+                  116
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.35276460647583,
+              "mean_norm_before": 3.993431329727173,
+              "mean_std_norm_after": 6.35276460647583,
+              "mean_std_norm_before": 3.993431329727173,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  116,
+                  117
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.3164753913879395,
+              "mean_norm_before": 4.022571086883545,
+              "mean_std_norm_after": 6.3164753913879395,
+              "mean_std_norm_before": 4.022571086883545,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  117,
+                  118
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.319225311279297,
+              "mean_norm_before": 3.935943841934204,
+              "mean_std_norm_after": 6.319225311279297,
+              "mean_std_norm_before": 3.935943841934204,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  118,
+                  119
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.386758327484131,
+              "mean_norm_before": 3.8629074096679688,
+              "mean_std_norm_after": 6.386758327484131,
+              "mean_std_norm_before": 3.8629074096679688,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  119,
+                  120
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.246401786804199,
+              "mean_norm_before": 3.749673366546631,
+              "mean_std_norm_after": 6.246401786804199,
+              "mean_std_norm_before": 3.749673366546631,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  120,
+                  121
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.253360748291016,
+              "mean_norm_before": 3.7374181747436523,
+              "mean_std_norm_after": 6.253360748291016,
+              "mean_std_norm_before": 3.7374181747436523,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  121,
+                  122
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.294538974761963,
+              "mean_norm_before": 3.8599441051483154,
+              "mean_std_norm_after": 6.294538974761963,
+              "mean_std_norm_before": 3.8599441051483154,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  122,
+                  123
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.485238552093506,
+              "mean_norm_before": 4.05159854888916,
+              "mean_std_norm_after": 6.485238552093506,
+              "mean_std_norm_before": 4.05159854888916,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  123,
+                  124
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 5.836646556854248,
+              "mean_norm_before": 3.0392613410949707,
+              "mean_std_norm_after": 5.836646556854248,
+              "mean_std_norm_before": 3.0392613410949707,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  124,
+                  125
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.3306565284729,
+              "mean_norm_before": 3.9879608154296875,
+              "mean_std_norm_after": 6.3306565284729,
+              "mean_std_norm_before": 3.9879608154296875,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  125,
+                  126
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.354328155517578,
+              "mean_norm_before": 4.056220531463623,
+              "mean_std_norm_after": 6.354328155517578,
+              "mean_std_norm_before": 4.056220531463623,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  126,
+                  127
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.157968044281006,
+              "mean_norm_before": 3.653481960296631,
+              "mean_std_norm_after": 6.157968044281006,
+              "mean_std_norm_before": 3.653481960296631,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  127,
+                  128
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.534709453582764,
+              "mean_norm_before": 4.222311973571777,
+              "mean_std_norm_after": 6.534709453582764,
+              "mean_std_norm_before": 4.222311973571777,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  128,
+                  129
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.539560794830322,
+              "mean_norm_before": 4.219542503356934,
+              "mean_std_norm_after": 6.539560794830322,
+              "mean_std_norm_before": 4.219542503356934,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  129,
+                  130
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.305191993713379,
+              "mean_norm_before": 3.946258306503296,
+              "mean_std_norm_after": 6.305191993713379,
+              "mean_std_norm_before": 3.946258306503296,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  130,
+                  131
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.301103115081787,
+              "mean_norm_before": 3.948478937149048,
+              "mean_std_norm_after": 6.301103115081787,
+              "mean_std_norm_before": 3.948478937149048,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  131,
+                  132
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.264914035797119,
+              "mean_norm_before": 3.7750372886657715,
+              "mean_std_norm_after": 6.264914035797119,
+              "mean_std_norm_before": 3.7750372886657715,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  132,
+                  133
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.393518447875977,
+              "mean_norm_before": 3.9590044021606445,
+              "mean_std_norm_after": 6.393518447875977,
+              "mean_std_norm_before": 3.9590044021606445,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  133,
+                  134
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.301669597625732,
+              "mean_norm_before": 3.769216537475586,
+              "mean_std_norm_after": 6.301669597625732,
+              "mean_std_norm_before": 3.769216537475586,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  134,
+                  135
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.512570858001709,
+              "mean_norm_before": 4.174261093139648,
+              "mean_std_norm_after": 6.512570858001709,
+              "mean_std_norm_before": 4.174261093139648,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  135,
+                  136
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.5582804679870605,
+              "mean_norm_before": 4.0826735496521,
+              "mean_std_norm_after": 6.5582804679870605,
+              "mean_std_norm_before": 4.0826735496521,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  136,
+                  137
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.642258644104004,
+              "mean_norm_before": 4.217979907989502,
+              "mean_std_norm_after": 6.642258644104004,
+              "mean_std_norm_before": 4.217979907989502,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  137,
+                  138
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.348399639129639,
+              "mean_norm_before": 3.9381792545318604,
+              "mean_std_norm_after": 6.348399639129639,
+              "mean_std_norm_before": 3.9381792545318604,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  138,
+                  139
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.475887298583984,
+              "mean_norm_before": 4.034999370574951,
+              "mean_std_norm_after": 6.475887298583984,
+              "mean_std_norm_before": 4.034999370574951,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  139,
+                  140
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.389605522155762,
+              "mean_norm_before": 4.023738384246826,
+              "mean_std_norm_after": 6.389605522155762,
+              "mean_std_norm_before": 4.023738384246826,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  140,
+                  141
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.332289218902588,
+              "mean_norm_before": 3.8803248405456543,
+              "mean_std_norm_after": 6.332289218902588,
+              "mean_std_norm_before": 3.8803248405456543,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  141,
+                  142
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.198701858520508,
+              "mean_norm_before": 3.712820529937744,
+              "mean_std_norm_after": 6.198701858520508,
+              "mean_std_norm_before": 3.712820529937744,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  142,
+                  143
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.18605899810791,
+              "mean_norm_before": 3.8353099822998047,
+              "mean_std_norm_after": 6.18605899810791,
+              "mean_std_norm_before": 3.8353099822998047,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  143,
+                  144
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.3843255043029785,
+              "mean_norm_before": 3.9580636024475098,
+              "mean_std_norm_after": 6.3843255043029785,
+              "mean_std_norm_before": 3.9580636024475098,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  144,
+                  145
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.448147296905518,
+              "mean_norm_before": 4.087730407714844,
+              "mean_std_norm_after": 6.448147296905518,
+              "mean_std_norm_before": 4.087730407714844,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  145,
+                  146
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.3974690437316895,
+              "mean_norm_before": 3.9668734073638916,
+              "mean_std_norm_after": 6.3974690437316895,
+              "mean_std_norm_before": 3.9668734073638916,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  146,
+                  147
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.169652938842773,
+              "mean_norm_before": 3.5881316661834717,
+              "mean_std_norm_after": 6.169652938842773,
+              "mean_std_norm_before": 3.5881316661834717,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  147,
+                  148
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.428472995758057,
+              "mean_norm_before": 4.029759883880615,
+              "mean_std_norm_after": 6.428472995758057,
+              "mean_std_norm_before": 4.029759883880615,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  148,
+                  149
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.30739164352417,
+              "mean_norm_before": 3.887678861618042,
+              "mean_std_norm_after": 6.30739164352417,
+              "mean_std_norm_before": 3.887678861618042,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  149,
+                  150
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.472035884857178,
+              "mean_norm_before": 3.9623427391052246,
+              "mean_std_norm_after": 6.472035884857178,
+              "mean_std_norm_before": 3.9623427391052246,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  150,
+                  151
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.753224849700928,
+              "mean_norm_before": 4.399110317230225,
+              "mean_std_norm_after": 6.753224849700928,
+              "mean_std_norm_before": 4.399110317230225,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  151,
+                  152
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.263533115386963,
+              "mean_norm_before": 3.731741189956665,
+              "mean_std_norm_after": 6.263533115386963,
+              "mean_std_norm_before": 3.731741189956665,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  152,
+                  153
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.526986598968506,
+              "mean_norm_before": 4.115420818328857,
+              "mean_std_norm_after": 6.526986598968506,
+              "mean_std_norm_before": 4.115420818328857,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  153,
+                  154
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.397216796875,
+              "mean_norm_before": 3.873617649078369,
+              "mean_std_norm_after": 6.397216796875,
+              "mean_std_norm_before": 3.873617649078369,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  154,
+                  155
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.741635322570801,
+              "mean_norm_before": 4.319803714752197,
+              "mean_std_norm_after": 6.741635322570801,
+              "mean_std_norm_before": 4.319803714752197,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  155,
+                  156
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.446529388427734,
+              "mean_norm_before": 3.929777145385742,
+              "mean_std_norm_after": 6.446529388427734,
+              "mean_std_norm_before": 3.929777145385742,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  156,
+                  157
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 6.052759647369385,
+              "mean_norm_before": 3.3822739124298096,
+              "mean_std_norm_after": 6.052759647369385,
+              "mean_std_norm_before": 3.3822739124298096,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  157,
+                  158
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 5.95357084274292,
+              "mean_norm_before": 3.294067144393921,
+              "mean_std_norm_after": 5.95357084274292,
+              "mean_std_norm_before": 3.294067144393921,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            },
+            {
+              "covered_abs_spans": [
+                [
+                  158,
+                  159
+                ]
+              ],
+              "covered_abs_tokens": 1,
+              "delta_norm_raw": 5.000000953674316,
+              "delta_norm_std": 5.000000953674316,
+              "direction_norm_raw": 1.0000001192092896,
+              "layer": 40,
+              "mean_norm_after": 5.741434097290039,
+              "mean_norm_before": 2.799969434738159,
+              "mean_std_norm_after": 5.741434097290039,
+              "mean_std_norm_before": 2.799969434738159,
+              "operator": "add_direction",
+              "phase_counts": {
+                "decode": 1,
+                "prompt": 0
+              },
+              "query_span": [
+                0,
+                1
+              ],
+              "rowwise": true,
+              "selected_coeff_after": [],
+              "selected_coeff_before": [],
+              "selected_component_count": 0,
+              "selected_proj_norm_before": 0.0,
+              "source_layer": 40,
+              "status": "ok",
+              "strength": 5.0,
+              "target_policy": {
+                "config": {},
+                "include_decode": true,
+                "include_prompt": true,
+                "kind": "every_token"
+              },
+              "token_count": 1
+            }
+          ],
+          "covered_abs_spans": [
+            [
+              0,
+              159
+            ]
+          ],
+          "covered_abs_tokens": 159,
+          "direction_norm_raw": 1.0000001192092896,
+          "layer": 40,
+          "operator": "add_direction",
+          "phase_counts": {
+            "decode": 80,
+            "prompt": 79
+          },
+          "query_span": [
+            0,
+            1
+          ],
+          "rowwise": true,
+          "source_layer": 40,
+          "status": "ok",
+          "strength": 5.0,
+          "target_policy": {
+            "config": {},
+            "include_decode": true,
+            "include_prompt": true,
+            "kind": "every_token"
+          },
+          "token_count": 159
+        }
+      },
+      "request_id": "0",
+      "skip_reason": "",
+      "status": "ok",
+      "target_tokens": [
+        78
+      ]
+    }
+  ],
+  "summary": {
+    "example_count": 1,
+    "patched_count": 1,
+    "skipped_count": 0,
+    "target_count": 1
+  }
+}

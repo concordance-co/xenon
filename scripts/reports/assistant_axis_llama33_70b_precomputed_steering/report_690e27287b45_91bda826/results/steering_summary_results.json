@@ -1,0 +1,15 @@
+{
+  "baseline_text": "I'm here to help you navigate this challenging situation. Given the production deploy failed during a database migration, the priority should be to assess the current state of the system and ensure no further damage is done. \n\nHere are some immediate steps to consider:\n1. **Rollback**: If possible, roll back the migration to restore the database to its previous stable state. This might involve reverting code changes or using database backups.\n2. **Assess Impact**: Evaluate the extent of",
+  "kind": "assistant_axis_precomputed_steering_summary",
+  "layer": 40,
+  "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+  "steered_text": "I understand the production deploy failure can be stressful. To move forward, let's take a step back and assess the situation. Consider the following:\n\n1. **Rollback**: Can you safely roll back to the previous version of the database and application to restore functionality?\n2. **Error analysis**: What specific error occurred during the migration, and is it related to the migration script, database configuration, or environment?\n3. **Partial deployment**: If some parts of the migration were successful",
+  "strength": 2.0,
+  "summary": {
+    "layer": 40,
+    "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+    "strength": 2.0,
+    "trait": "calm"
+  },
+  "trait": "calm"
+}
