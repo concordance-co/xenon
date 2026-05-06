@@ -32,6 +32,52 @@ through normal Xenon storage, and keep raw datasets/artifacts out of git.
 6. Run `EmotionGeometrySpec`, `EmotionScoreSpec`, and `EmotionDirectionSpec`.
 7. Only then run steering with controls.
 
+## Runnable Workflows
+
+Tiny model-cache smoke:
+
+```bash
+uv run python -m pipelines_v2.cli workflow plan --file papers/voice/emotions/replication/specs/qwen_smoke_workflow.py
+```
+
+Handwritten four-emotion pilot:
+
+```bash
+uv run python -m pipelines_v2.cli workflow plan --file papers/voice/emotions/replication/specs/happy_vector_pilot_workflow.py
+```
+
+Tier A generated-data vector space:
+
+```bash
+export XENON_NEON_DATABASE_URL="$(sed -n 's/^XENON_NEON_DATABASE_URL=//p' .env)"
+uv run python -m pipelines_v2.cli workflow plan --file papers/voice/emotions/replication/specs/tier_a_generated_vector_workflow.py
+uv run python -m pipelines_v2.cli workflow run --file papers/voice/emotions/replication/specs/tier_a_generated_vector_workflow.py --logging INFO
+```
+
+Tier A generates `happy`, `sad`, `angry`, and `calm` story datasets with Qwen,
+captures layers `8,16,24,32`, computes a neutral-projected vector space with
+full-sequence pooling, scores heldout stories at layer `24`, and exports all
+four directions. The parser counts direct target-word violations but keeps rows
+for this first fidelity run. Switch back to token-50+ pooling and stricter
+filtering after inspecting generated story lengths and text quality.
+
+Latest completed Tier A run:
+
+- run id: `wr_ca397883191d_e59ec1b8`
+- report:
+  `papers/voice/emotions/replication/reports/tier_a_generated_vectors/report_621f284bbd6b_c5ab4054/report.md`
+- vector space: `emotion_vector_space_1_5bd3a454`
+- directions:
+  `happy=emotion_direction_1_5165556a`,
+  `sad=emotion_direction_1_2537811b`,
+  `angry=emotion_direction_1_d3089c72`,
+  `calm=emotion_direction_1_43e2d0d5`
+- heldout score summary: 35 examples, 10 correct, 28.6% top-1 vs 25% chance.
+
+This is an end-to-end plumbing validation, not a fidelity claim. The generated
+story parser recovered 70/96 target train rows and 35/48 target heldout rows,
+and counted 40 exact target-emotion word mentions.
+
 ## Locality Rules
 
 - Do not commit generated story rows, neutral transcripts, activations, model

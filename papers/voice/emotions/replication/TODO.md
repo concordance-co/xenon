@@ -22,9 +22,14 @@
 - [ ] TODO: decide whether downstream dialogue variants beyond the basic emotional-dialogue prompt are in scope.
 - [ ] TODO: implement/upload durable dataset rows behind a loader. Proposed
   Neon tables are in `configs/replication.todo.toml`.
-- [ ] TODO: inspect a smoke slice before scaling.
-- [ ] TODO: verify target emotion word/synonym bans.
-- [ ] TODO: verify parser output columns:
+- [x] Tier A generated-data workflow now parses generated story/dialogue blocks
+  into artifact-backed capture datasets.
+- [ ] TODO: inspect Tier A generated rows before scaling. Latest e2e run
+  `wr_ca397883191d_e59ec1b8` recovered 70/96 target train rows and 35/48
+  target heldout rows.
+- [ ] TODO: inspect Tier A target emotion word violations; the current parser
+  counts exact target-word mentions but keeps rows for the first fidelity run.
+- [x] Tier A parser output columns include:
   `example_id`, `emotion`, `topic`, `story_index`, `text`.
 
 ## Captures
@@ -33,8 +38,10 @@
 - [ ] TODO: prewarm `Qwen/Qwen3-8B` into `xenon-models` at
   `/models/Qwen/Qwen3-8B`, or switch to an already-mounted model.
 - [x] Initial cheap-model capture sweep is set to layers `8, 16, 24, 32`.
-- [x] Story token selector starts at token 50 to match the paper recipe.
-- [ ] TODO: set neutral token selector.
+- [ ] TODO: restore story token selector to token 50+ after Tier A generated
+  story lengths are inspected.
+- [x] Tier A neutral projection uses generated neutral-dialogue captures with
+  full-sequence residual pooling.
 - [x] Residual site is set to `resid_post`.
 
 ## Vector Space
@@ -47,8 +54,8 @@
 
 ## Validation
 
-- [ ] TODO: run geometry diagnostics.
-- [ ] TODO: run held-out scoring on non-training text.
+- [x] Tier A workflow includes geometry diagnostics.
+- [x] Tier A workflow includes held-out scoring on non-training topics.
 - [ ] TODO: compare raw vectors vs neutral-projected vectors.
 - [ ] TODO: inspect high-projection snippets.
 - [ ] TODO: document claim boundary in `reports/`.
@@ -67,5 +74,5 @@
 - [x] Model/cache volume is configured as `xenon-models` at `/models`.
 - [x] Shared catalog uses `XENON_NEON_DATABASE_URL`.
 - [x] Remote jobs should bind Modal secret `xenon-neon`.
-- [ ] TODO: local shell needs `XENON_NEON_DATABASE_URL` exported from `.env`
-  before local Neon-backed CLI runs.
+- [x] Local Neon-backed CLI runs work when the shell exports
+  `XENON_NEON_DATABASE_URL` from `.env`.
