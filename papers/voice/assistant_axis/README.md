@@ -12,6 +12,8 @@ Start here:
 - `judge.py`: OpenAI-compatible role-adherence judge for paper reruns.
 - `method.py`: method/BYOD edit surface for non-paper domains.
 - `runtime.py`: shared transforms/loaders used by runnable specs.
+- `service.py`: warm Modal web service for product iteration over released
+  trait steering and trace scoring.
 - `specs/paper_rerun.py`: paper-rerun scaffold against the released
   prompt-source data.
 - `specs/byod_axis.py`: arbitrary default-vs-role data -> custom axis and
@@ -34,6 +36,9 @@ uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_ax
 
 # BYOP generation + steering + scoring; set ASSISTANT_AXIS_BYOP_PROMPT
 uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_axis/specs/byop_generate.py
+
+# warm product-serving API
+modal deploy papers/voice/assistant_axis/service.py
 ```
 
 Replace `plan` with `run --logging INFO` to launch. Defaults use
@@ -57,6 +62,13 @@ Replace `plan` with `run --logging INFO` to launch. Defaults use
 - `ASSISTANT_AXIS_BYOP_PROMPT`: one prompt for BYOP.
 - `ASSISTANT_AXIS_STEERING_TRAIT`: released trait vector for BYOP steering.
 - `ASSISTANT_AXIS_STEERING_STRENGTH`: add-direction steering strength.
+- `ASSISTANT_AXIS_SERVICE_API_KEY`: optional bearer token required by the warm
+  Modal service.
+- `ASSISTANT_AXIS_SERVICE_GPU`: Modal GPU for the warm service. Defaults to
+  `H100:4`.
+- `ASSISTANT_AXIS_SERVICE_MIN_CONTAINERS`,
+  `ASSISTANT_AXIS_SERVICE_MAX_CONTAINERS`, and
+  `ASSISTANT_AXIS_SERVICE_SCALEDOWN_WINDOW`: warm service container controls.
 - `ASSISTANT_AXIS_ROLE_LIMIT`, `ASSISTANT_AXIS_QUESTION_LIMIT`,
   `ASSISTANT_AXIS_INSTRUCTION_LIMIT`: paper-rerun smoke slice controls.
 - `ASSISTANT_AXIS_MIN_ROLE_EXAMPLES_PER_ROLE`: derivation threshold. Use `50`

@@ -13,7 +13,7 @@ STATE_PATH = ROOT / "policy_conflict_blog_skeleton_state_v2.json"
 MD_PATH = ROOT / "policy_conflict_blog_working.md"
 TYP_PATH = ROOT / "policy_conflict_blog_working.typ"
 PDF_PATH = ROOT / "policy_conflict_blog_working.pdf"
-LOCAL_STORAGE_KEY = "policy-conflict-skeleton-v3"
+LOCAL_STORAGE_KEY = "policy-conflict-skeleton-v7"
 
 
 DEFAULT_SECTIONS = [
@@ -45,25 +45,15 @@ Those settings include:
 
 When deployed, agents are prompted at regular tick intervals with updated market information, and asked to call one of three tools:
 
-- record observation
-- buy
-- sell
+- `record_observation(content, strategy?)`: records an observation without trading. `strategy` is present when the observation is tied to a specific strategy.
+- `buy_token(token, spend_pct, content, strategy?)`: buys `token` using `spend_pct` percent of available ETH, with `content` explaining the decision.
+- `sell_token(token, spend_pct, content, strategy?)`: sells `spend_pct` percent of the current `token` position, with `content` explaining the decision.
 
 Users can also chat with their agent to come up with *strategies* that provide more explicit guidance for the agent. Sometimes, the user curated strategies conflict with the initial vault settings the agent was configured with, and this can lead to strange agent behavior. For example, a user may set their initial vault to `trade_size = 1`, and then after a conversation with the agent create the strategy to "Sell all positions and go full port into X Token if momentum is strong". This would imply the agent should take action with the full portfolio, which contradicts the small setting used to configure the vault.
 
 While there are instructions in the system prompt for how to resolve this kind of conflict ("ACTIVE SETTINGS are binding execution constraints" and "STRATEGY expresses preferences that apply only within what ACTIVE SETTINGS allow"), it can still create undesirable behavior in situations where it's not clear which path to take.
 
 We wanted to see if the model is aware of these conflicts when processing a prompt.""",
-    },
-    {
-        "id": "why",
-        "title": "Why This Matters",
-        "hint": "Your voice goes here: why this matters to agent builders.",
-        "markdown": """One of our primary goals at Concordance is to bring frontier interpretability techniques and tools into the hands of all agent builders to enable them to learn more deeply about the LLMs they are building on every day. Given the field is still immature, and most of the findings from big labs have been directed towards "bigger" problems of safety and alignment, there is little work being done that can directly transfer to real problems on the ground.
-
-The "policy conflict" problem was a real issue that the DXRG team noticed at various points both before and during their DX Terminal experiment, and we felt that it was the right ground for interpretability experiments. The central question became: can we detect policy conflicts in real prompts with a simple set of linear probes?
-
-We selected this question because there was real data to prove it matters, and is scoped enough to sharpen our toolkit with possible downstream applications in monitoring, auditing, prompt optimization/UX redesigns, and deeper learnings that inform DXRG's agent development.""",
     },
     {
         "id": "synthetic_setup",
@@ -125,7 +115,7 @@ TODO: Add lexical variation examples here.""",
     },
     {
         "id": "synthetic_results_intro",
-        "title": "Synthetic Probe Results Intro",
+        "title": "Synthetic Probe Results",
         "hint": "Lead into the locked results table.",
         "markdown": """After a few iterations on the synthetic prompt structure and confound isolation, we achieved the following results:""",
     },
@@ -166,7 +156,7 @@ TODO: Add lexical variation examples here.""",
     },
     {
         "id": "phase13",
-        "title": "Phase 13 Real Signal Discovery",
+        "title": "Direct Projection on Real Prompts",
         "hint": "Explain the simpler question: fixed directions, no classifier, no threshold.",
         "markdown": (
             "Phase 13 asked a simpler question: if we do not train a classifier and do not set thresholds, "
@@ -216,7 +206,6 @@ DATA_BLOCKS = {
                 "`risk_preference`: asset selection by allowed risk posture.",
                 "`diversification_preference`: concentration vs broadening; portfolio-conditioned.",
             ],
-            "source": "Generators: phase_09/scripts/build_phase_09_dataset.py, phase_10/scripts/build_phase_10_dataset.py, phase_12/scripts/build_phase_12_dataset.py.",
         }
     ],
     "synthetic_results_intro": [
@@ -230,7 +219,6 @@ DATA_BLOCKS = {
                     ["diversification_preference", "behavior aligned 1.0000, conflict 0.8542; XOR 0.9896 / 0.9995; strategy 1.0000 / 1.0000; settings 0.9792 / 0.9957", "0.8333 / 0.8819"],
                 ],
             },
-            "source": "phase_12/reports/PROMPT_CONFLICT_FAMILY_CHECKPOINT_2026_04_16.typ",
         },
         {
             "title": "Figures",
@@ -251,7 +239,6 @@ DATA_BLOCKS = {
                     ["diversification_preference vs trade_size", "0.4883"],
                 ],
             },
-            "source": "phase_12/reports/three_family_visuals/summary.json",
         },
         {
             "title": "Geometry Figures",
@@ -273,7 +260,6 @@ DATA_BLOCKS = {
                     ["Stage 1b strict buy-only", "33", "27", "6"],
                 ],
             },
-            "source": "phase_12/outputs/transfer_bridge/*.json",
         }
     ],
     "phase13": [
@@ -286,7 +272,6 @@ DATA_BLOCKS = {
                     ["shared_mean", "3.462", "3.137", "2.760", "+0.703", "+0.377"],
                 ],
             },
-            "source": "phase_13/reports/PHASE13_REAL_TRANSFER_SIGNAL_BRIEF_2026_04_24.typ",
         }
     ],
     "row_reading": [

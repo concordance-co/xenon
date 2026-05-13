@@ -16,15 +16,13 @@
 
 = Opener
 
+Can a synthetic policy-conflict probe trained on clean prompts find anything real inside messy DX Terminal agent traces? In this iteration, yes, but narrowly: the clearest signal is a `trade\_size` direction that ranks real prompts by concrete, current-prefix sized-action conflict, but there is more work required to discover generic conflict geometry.
+
+DXRG, the DX Terminal team, noticed a problem in their agents: strange behaviors when policies collide. Users often ask their agents to execute on strategies they create that directly conflict with the vault settings they inputted when configuring the initial setup.
+
 We tested whether linear probes trained on controlled policy-conflict prompts could recover conflict-like structure in real DX Terminal prompts, with the intention to build real-time mechanistic monitors to catch conflict before misaligned action is taken.
 
-We found a clear signal for a variety of directions that rank real prompts by concrete, current-prefix action conflict, but there is more work required to discover generic conflict geometry.
-
 The result is an early internal handle, not yet a complete detector: three synthetic conflict families share geometry, while one family transfers cleanly enough to expose a narrower real-data concept than the original labels described.
-
-DXRG, the team behind DX Terminal, noticed strange behaviors in their trading agents when policies collide. Users often hand their agents strategies that directly conflict with their vault settings, producing misaligned behaviors downstream.
-
-This is early validation for a methodology to bring mech interp techniques into production environments for monitoring and deeper analysis of LLMs in financial contexts.
 
 = Problem
 

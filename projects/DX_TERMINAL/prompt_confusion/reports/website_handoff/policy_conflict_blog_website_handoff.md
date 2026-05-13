@@ -34,12 +34,6 @@ While there are instructions in the system prompt for how to resolve this kind o
 
 We wanted to see if the model is aware of these conflicts when processing a prompt, and discover resolution circuitry to see how conflict is handled.
 
-## Why This Matters
-
-The central question became: can simple linear probes detect policy conflicts in real prompts?
-
-This inquiry is narrow enough to test, but practical enough to matter for monitoring, auditing, prompt design, and UX around agent configuration.
-
 ## Synthetic Abstraction
 
 Real DX Terminal traces are too noisy to probe for a single conflict type, so we built ~1100 controlled prompts to amplify a candidate signal.
@@ -65,21 +59,19 @@ Using this structure, we developed a synthetic dataset that cleanly splits both 
 
 To avoid lexical confounds, we came up with strategy and other contextual information variation and split the data for strict holdouts to ensure there is minimal leakage between train and test sets. Concretely, `Trade Size` could appear as `Execution Size`, `Size Constraint`, or `Size Setting`; risk language moved between safer/stable and aggressive/explosive phrasing; diversification rows varied whether the portfolio context made concentration or broadening the allowed behavior. The goal was not to hide the concept from the model, but to keep the probe from winning by memorizing one exact phrase.
 
-### DATA: Families Tested
+### Families Tested
 
 - `trade_size`: buy small vs large; output size/action axis.
 - `risk_preference`: asset selection by allowed risk posture.
 - `diversification_preference`: concentration vs broadening; portfolio-conditioned.
 
-Source: Generators: phase_09/scripts/build_phase_09_dataset.py, phase_10/scripts/build_phase_10_dataset.py, phase_12/scripts/build_phase_12_dataset.py.
-
-## Synthetic Probe Results Intro
+## Synthetic Probe Results
 
 After a few iterations on the synthetic prompt structure and confound isolation, we ran the pipeline to examine initial results. 
 
 The standard probe columns ask whether a linear direction can recover each conflict family under the normal synthetic split. The strict holdout column asks whether that signal survives when surface wording changes. The AUROC figures below show the expected shape: weak early-layer signal, stronger mid-to-late-layer separation, and lower but persistent strict-holdout performance.
 
-### DATA: Synthetic Probe Table
+### Synthetic Probe Table
 
 | Family | Standard probe results | Strict holdout |
 | --- | --- | --- |
@@ -87,12 +79,10 @@ The standard probe columns ask whether a linear direction can recover each confl
 | risk_preference | XOR 0.9635 / 0.9766; strategy 0.9844 / 0.9937; settings 0.9740 / 0.9839 | 0.8854 / 0.9119 |
 | diversification_preference | behavior aligned 1.0000, conflict 0.8542; XOR 0.9896 / 0.9995; strategy 1.0000 / 1.0000; settings 0.9792 / 0.9957 | 0.8333 / 0.8819 |
 
-Source: phase_12/reports/PROMPT_CONFLICT_FAMILY_CHECKPOINT_2026_04_16.typ
+### Figures
 
-### DATA: Figures
-
-![Representative within-family AUROC curves.](phase_12/reports/dx_terminal_brief_assets/family_within_auroc_by_layer.png)
-![Strict lexical-holdout AUROC curves.](phase_12/reports/dx_terminal_brief_assets/strict_family_auroc_by_layer.png)
+![Representative within-family AUROC curves.](./assets/family_within_auroc_by_layer.png)
+![Strict lexical-holdout AUROC curves.](./assets/strict_family_auroc_by_layer.png)
 
 ## Synthetic Results Takeaway
 
@@ -100,7 +90,7 @@ While the three families were all readable, the cosine and PCA views show relate
 
 Cosines in the roughly 0.45-0.65 range are meaningfully positive, but far from collinear: `1.0` would mean the same direction, while `0.0` would mean no linear alignment. A useful real-data probe probably needs to respect both facts: conflict has shared structure, and the model may represent different conflicts in distinct subspaces.
 
-### DATA: L36 Same-Capture Geometry
+### L36 Same-Capture Geometry
 
 | Pair | Cosine |
 | --- | --- |
@@ -108,12 +98,10 @@ Cosines in the roughly 0.45-0.65 range are meaningfully positive, but far from c
 | diversification_preference vs risk_preference | 0.4684 |
 | diversification_preference vs trade_size | 0.4883 |
 
-Source: phase_12/reports/three_family_visuals/summary.json
+### Geometry Figures
 
-### DATA: Geometry Figures
-
-![Shared-axis distributions: separation exists, but family baselines are offset.](phase_12/reports/three_family_visuals/shared_axis_distributions.png)
-![Directed subspace view: related conflict geometry, not one collinear axis.](phase_12/reports/three_family_visuals/directed_subspace_scatter_by_family_conflict_v2.png)
+![Shared-axis distributions: separation exists, but family baselines are offset.](./assets/shared_axis_distributions.png)
+![Directed subspace view: related conflict geometry, not one collinear axis.](./assets/directed_subspace_scatter_by_family_conflict_v2.png)
 
 ## First Real Transfer Attempt
 
@@ -129,7 +117,7 @@ The bridge splits involved stages from synthetic prompt structure toward product
 
 The 768 -> 258 -> 118 -> 33 progression is the clue: tightening the bridge did not simply weaken the signal; it concentrated the dataset around a smaller visible-conflict ontology.
 
-### DATA: Bridge Dataset Counts
+### Bridge Dataset Counts
 
 | Dataset | Rows | Aligned | Conflict |
 | --- | --- | --- | --- |
@@ -138,9 +126,7 @@ The 768 -> 258 -> 118 -> 33 progression is the clue: tightening the bridge did n
 | Stage 1b strict adapter | 118 | 81 | 37 |
 | Stage 1b strict buy-only | 33 | 27 | 6 |
 
-Source: phase_12/outputs/transfer_bridge/*.json
-
-## Phase 13 Real Signal Discovery
+## Direct Projection on Real Prompts
 
 This led to a simpler question: if we do not train a classifier and do not set thresholds, do fixed synthetic directions produce scalar structure anywhere on real DX Terminal prompts?
 
@@ -148,14 +134,12 @@ We swept fixed synthetic directions over real prompt sites and found the cleanes
 
 Here, anchors are deliberately constructed real-format examples with visible policy conflict; complaints are real user complaint rows; controls are structure-matched rows without the target conflict.
 
-### DATA: L32 Settings-End Cohort Means
+### L32 Settings-End Cohort Means
 
 | Direction | Anchor | Complaint | Control | Anchor-control | Complaint-control |
 | --- | --- | --- | --- | --- | --- |
 | trade_size | 4.425 | 3.803 | 3.278 | +1.147 | +0.526 |
 | shared_mean | 3.462 | 3.137 | 2.760 | +0.703 | +0.377 |
-
-Source: phase_13/reports/PHASE13_REAL_TRANSFER_SIGNAL_BRIEF_2026_04_24.typ
 
 ## Row Reading / Ontology Correction
 
@@ -165,14 +149,14 @@ The row audit made the signal far clearer. High `trade_size` conflict projection
 
 Cleanly stated: `trade_size` is selective for concrete sized-action conflict in the current prefix, not generic policy conflict.
 
-### DATA: Top/Bottom Shape Audit
+### Top/Bottom Shape Audit
 
 | Direction | Top action/size | Top strategy ignored | Bottom action/size | Bottom strategy ignored |
 | --- | --- | --- | --- | --- |
 | trade_size | 20/25 | 5/25 | 15/25 | 10/25 |
 | shared_mean | 20/25 | 5/25 | 9/25 | 16/25 |
 
-### DATA: Top trade_size Complaint Types
+### Top trade_size Complaint Types
 
 | Type | Count |
 | --- | --- |
@@ -196,4 +180,3 @@ The specific lesson is that the probe read a narrower concept than the label. Co
 The path from interpretability experiment to product value is obviously not an easy jump from synthetic AUROC to deployment. We're discovering a clean iteration loop internally: note behavioral failures to design clean questions, test to find candidate internal signals in synthetic prompts, bring those signals back to production data, and then let the misses sharpen the picture.
 
 For this project, the next work is to audit the `shared_mean` direction more carefully, build real-data labels around current-prefix conflict rather than broad complaint root cause, and test whether prompt or UX changes reduce the ambiguous policy-collision cases that made this problem visible in the first place.
-
