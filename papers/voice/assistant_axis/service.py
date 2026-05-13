@@ -22,6 +22,7 @@ MODEL_VOLUME_NAME = "yora-models"
 MODEL_VOLUME_PATH = "/models"
 DEFAULT_TRAITS = ("calm", "supportive", "technical", "analytical", "confident", "verbose", "hostile", "condescending")
 SERVICE_SOURCE_ROOT = Path("/root/service_src")
+SERVICE_GPU_SPEC = os.getenv("ASSISTANT_AXIS_SERVICE_GPU", "H200:1")
 
 
 def _deploy_root() -> Path:
@@ -83,7 +84,7 @@ app = modal.App("assistant-axis-service")
 
 @app.function(
     image=image,
-    gpu=os.getenv("ASSISTANT_AXIS_SERVICE_GPU", "H100:1"),
+    gpu=SERVICE_GPU_SPEC,
     cpu=8,
     memory=96 * 1024,
     timeout=60 * 60,
@@ -99,6 +100,7 @@ app = modal.App("assistant-axis-service")
         "VLLM_ALLOW_INSECURE_SERIALIZATION": "1",
         "VLLM_USE_DEEP_GEMM": "0",
         "XENON_ACTIVATION_PATCH_MAX_TOKENS": "1",
+        "ASSISTANT_AXIS_SERVICE_GPU": SERVICE_GPU_SPEC,
     },
 )
 @modal.asgi_app()
@@ -205,25 +207,40 @@ class AssistantAxisService:
 
         self.model_key = model_key_from_env()
         self.layer = target_layer(self.model_key)
-        self._runtime: Any | None = None
+        self._steer_runtime: Any | None = None
+        self._score_runtime: Any | None = None
         self._coordinates: dict[str, dict[str, Any]] = {}
         self._directions: dict[str, dict[str, Any]] = {}
 
     def ensure_runtime(self) -> Any:
-        if self._runtime is None:
+        return self.ensure_steer_runtime()
+
+    def ensure_steer_runtime(self) -> Any:
+        if self._steer_runtime is None:
             from pipelines_v2.engine.vllm.session import build_vllm_session_runtime
 
             engine = self._engine(patched=True, add_generation_prompt=True)
-            self._runtime = build_vllm_session_runtime(
+            self._steer_runtime = build_vllm_session_runtime(
                 engine=engine,
-                specs=(self._dummy_patched_spec(engine), self._dummy_capture_spec(engine)),
+                specs=(self._dummy_patched_spec(engine),),
             )
-        return self._runtime
+        return self._steer_runtime
+
+    def ensure_score_runtime(self) -> Any:
+        if self._score_runtime is None:
+            from pipelines_v2.engine.vllm.session import build_vllm_session_runtime
+
+            engine = self._engine(patched=False, add_generation_prompt=False)
+            self._score_runtime = build_vllm_session_runtime(
+                engine=engine,
+                specs=(self._dummy_capture_spec(engine),),
+            )
+        return self._score_runtime
 
     def generate(self, *, prompt: str | list[dict[str, str]], max_tokens: int, temperature: float, top_p: float) -> dict[str, Any]:
         from pipelines_v2.api import Dataset, Example, GenerationRunSpec, GenerationSpec
 
-        runtime = self.ensure_runtime()
+        runtime = self.ensure_steer_runtime()
         spec = GenerationRunSpec(
             engine=runtime.engine,
             dataset=Dataset.from_examples([Example(key="request_0", prompt=prompt)], name="assistant_axis_service_generate"),
@@ -244,7 +261,7 @@ class AssistantAxisService:
     ) -> dict[str, Any]:
         from pipelines_v2.api import Dataset, Example, GenerationSpec, PatchedGenerationSpec
 
-        runtime = self.ensure_runtime()
+        runtime = self.ensure_steer_runtime()
         spec = PatchedGenerationSpec(
             engine=runtime.engine,
             dataset=Dataset.from_examples([Example(key="request_0", prompt=prompt)], name="assistant_axis_service_steer"),
@@ -271,7 +288,7 @@ class AssistantAxisService:
         trace_text = text if text and text.strip() else _turns_to_trace(turns)
         if not trace_text.strip():
             raise ValueError("score-trace requires text or turns")
-        runtime = self.ensure_runtime()
+        runtime = self.ensure_score_runtime()
         dataset = trace_dataset_from_records([{"example_id": "trace_0", "text": trace_text}], name="assistant_axis_service_score")
         capture_spec = CaptureSpec(
             engine=runtime.engine,
@@ -367,15 +384,23 @@ class AssistantAxisService:
         )
 
     def _engine(self, *, patched: bool, add_generation_prompt: bool) -> Any:
+        from dataclasses import replace
+
         from papers.voice.assistant_axis.runtime import vllm_engine
 
-        return vllm_engine(
+        engine = vllm_engine(
             model_key=self.model_key,
             max_model_len=1024,
             max_num_seqs=1,
             patched=patched,
             add_generation_prompt=add_generation_prompt,
         )
+        tensor_parallel_size = _service_tensor_parallel_size()
+        engine = replace(engine, tensor_parallel_size=tensor_parallel_size)
+        if patched:
+            enforce_eager = _env_bool("ASSISTANT_AXIS_SERVICE_ENFORCE_EAGER", default=False)
+            return replace(engine, enforce_eager=enforce_eager)
+        return engine
 
     def _model_id(self) -> str:
         from papers.voice.assistant_axis.runtime import model_id
@@ -411,6 +436,24 @@ def _first_text(rows: list[dict[str, Any]]) -> str:
 
 def _normalize_trait(trait: str) -> str:
     return trait.strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def _env_bool(name: str, *, default: bool) -> bool:
+    value = str(os.getenv(name, "") or "").strip().lower()
+    if not value:
+        return default
+    return value in {"1", "true", "yes", "on"}
+
+
+def _service_tensor_parallel_size() -> int:
+    explicit = str(os.getenv("ASSISTANT_AXIS_SERVICE_TENSOR_PARALLEL_SIZE", "") or "").strip()
+    if explicit:
+        return max(1, int(explicit))
+    gpu_spec = str(os.getenv("ASSISTANT_AXIS_SERVICE_GPU", "") or "").strip()
+    if ":" not in gpu_spec:
+        return 1
+    count = gpu_spec.rsplit(":", 1)[1].strip()
+    return max(1, int(count)) if count.isdigit() else 1
 
 
 def _turns_to_trace(turns: list[dict[str, str]]) -> str:
