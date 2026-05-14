@@ -14,6 +14,7 @@ from pipelines_v2.api import (
     VLLMEngine,
 )
 from pipelines_v2.engine.vllm.session import build_vllm_session_llm_kwargs, vllm_session_key
+from pipelines_v2.engine.vllm.activation_patch_request_worker import compiled_operator_hint_from_config
 from pipelines_v2.operations.capture import CaptureSpec
 
 
@@ -115,3 +116,10 @@ def test_vllm_session_forwards_allowed_extra_llm_kwargs() -> None:
     finally:
         if tempdir is not None:
             tempdir.cleanup()
+
+
+def test_activation_patch_worker_reads_compiled_operator_hint_from_additional_config() -> None:
+    class _Config:
+        additional_config = {"xenon_activation_patch_compiled_operator": "subspace"}
+
+    assert compiled_operator_hint_from_config(_Config()) == "subspace"

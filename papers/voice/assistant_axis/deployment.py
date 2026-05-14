@@ -52,6 +52,10 @@ def build_deployment() -> DeploymentSpec:
                 "TRANSFORMERS_CACHE": f"{MODEL_VOLUME_PATH}/hf_home/transformers",
                 "VLLM_ALLOW_INSECURE_SERIALIZATION": "1",
                 "VLLM_USE_DEEP_GEMM": "0",
+                "XENON_ACTIVATION_PATCH_DEBUG": os.getenv(
+                    "ASSISTANT_AXIS_SERVICE_PATCH_DEBUG",
+                    "",
+                ),
                 "XENON_ACTIVATION_PATCH_MAX_TOKENS": os.getenv(
                     "ASSISTANT_AXIS_SERVICE_PATCH_MAX_TOKENS",
                     "128",

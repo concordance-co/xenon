@@ -999,6 +999,39 @@ def run_custom_op(
 ) -> Any:
     flat_hidden, restore_hidden = flatten_hidden_for_patch(hidden)
     if is_subspace_mode_id(int(operator_id)) and token_spans is not None:
+        namespace = getattr(torch.ops, "xenon_activation_patch_v2", None)
+        direct_batch_op = getattr(namespace, "subspace_batch", None) if namespace is not None else None
+        if direct_batch_op is not None:
+            rowwise_arg = (
+                rowwise
+                if rowwise is not None
+                else torch.zeros_like(active, dtype=torch.int32)
+            )
+            patched = direct_batch_op(
+                flat_hidden,
+                mean,
+                scale,
+                safe_scale,
+                mode_ids,
+                selected_rows,
+                row_counts,
+                token_spans,
+                query_positions,
+                token_counts,
+                strengths,
+                active,
+                stats_valid,
+                stats_scalars,
+                stats_coeff_before,
+                stats_coeff_after,
+                direction_raw,
+                direction_std,
+                donor_means,
+                random_rows,
+                rowwise_arg,
+                match_projected_norm,
+            )
+            return restore_hidden(patched)
         rowwise_arg = (
             rowwise
             if rowwise is not None

@@ -30,6 +30,7 @@ from pipelines_v2.engine.vllm.patching.state import (  # noqa: E402
     collect_patch_stats,
     harvest_batch_patch_stats,
     register_activation_patch_bank,
+    register_activation_patch_directions,
     register_activation_patch_subspace,
     set_batch_patch_specs,
 )
@@ -682,3 +683,140 @@ def test_compiled_subspace_path_supports_query_span_specs() -> None:
     assert stats[0]["covered_abs_spans"] == [[1, 4]]
     assert stats[0]["target_policy"] == {"kind": "every_token"}
     assert stats[0]["rowwise"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.vllm
+@pytest.mark.interp
+def test_compiled_subspace_path_applies_rowwise_add_direction_specs() -> None:
+    register_torch_library_subspace_batch_op()
+    _activation_patch_op("subspace_batch")
+    hidden = _hidden()
+    inputs = _subspace_inputs()
+    model = SimpleNamespace(
+        _v2_activation_patch_initialized=True,
+        _v2_activation_patch_device=torch.device("cpu"),
+        _v2_activation_patch_bank={},
+        _v2_activation_patch_subspace={
+            0: {
+                "mean": inputs["mean"],
+                "scale": inputs["scale"],
+                "safe_scale": inputs["safe_scale"],
+                "components": torch.empty((0, hidden.shape[-1]), dtype=torch.float32),
+                "named_components": {},
+            }
+        },
+        _v2_activation_patch_directions={},
+        _v2_activation_patch_centroids={},
+        _v2_activation_patch_batch_runtime_state={},
+        _v2_activation_patch_batch_tensor_stats={},
+        _v2_activation_patch_stats_by_req={},
+        _v2_activation_patch_force_custom_op_presence=True,
+        _v2_activation_patch_compiled_operator_hint="subspace",
+    )
+    register_activation_patch_directions(
+        model,
+        {0: {"raw_vector": inputs["direction_raw"]}},
+    )
+    batch_specs = [
+        {
+            "req_id": "req-add-direction",
+            "patch_spec": {
+                "operator": ADD_DIRECTION_OPERATOR,
+                "target_layers": [0],
+                "query_span": [1, 4],
+                "covered_abs_spans": [[1, 4]],
+                "source_layer_map": {"0": 0},
+                "strength": 2.0,
+                "target_policy": {"kind": "every_token"},
+                "rowwise": True,
+            },
+        }
+    ]
+    set_batch_patch_specs(model, batch_specs)
+
+    patched = apply_layer_output_patching(
+        owner_model=model,
+        layer_idx=0,
+        custom_op=_TorchPatchCustomOp(),
+        output=hidden,
+    )
+    expected = hidden.clone()
+    expected[1:4] = expected[1:4] + (2.0 * inputs["direction_raw"])
+    torch.testing.assert_close(patched, expected, rtol=1e-5, atol=1e-5)
+
+    harvest_batch_patch_stats(model, batch_specs)
+    stats = collect_patch_stats(model, req_id="req-add-direction")
+
+    assert stats[0]["status"] == "ok"
+    assert stats[0]["dispatch"] == "compiled_custom_op"
+    assert stats[0]["operator"] == ADD_DIRECTION_OPERATOR
+    assert stats[0]["token_count"] == 3
+    assert stats[0]["strength"] == 2.0
+    assert stats[0]["direction_norm_raw"] > 0.0
+
+
+@pytest.mark.unit
+@pytest.mark.vllm
+@pytest.mark.interp
+def test_harvest_repairs_add_direction_strength_from_runtime_buffers() -> None:
+    register_torch_library_subspace_batch_op()
+    _activation_patch_op("subspace_batch")
+    hidden = _hidden()
+    inputs = _subspace_inputs()
+    model = SimpleNamespace(
+        _v2_activation_patch_initialized=True,
+        _v2_activation_patch_device=torch.device("cpu"),
+        _v2_activation_patch_bank={},
+        _v2_activation_patch_subspace={
+            0: {
+                "mean": inputs["mean"],
+                "scale": inputs["scale"],
+                "safe_scale": inputs["safe_scale"],
+                "components": torch.empty((0, hidden.shape[-1]), dtype=torch.float32),
+                "named_components": {},
+            }
+        },
+        _v2_activation_patch_directions={},
+        _v2_activation_patch_centroids={},
+        _v2_activation_patch_batch_runtime_state={},
+        _v2_activation_patch_batch_tensor_stats={},
+        _v2_activation_patch_stats_by_req={},
+        _v2_activation_patch_force_custom_op_presence=True,
+        _v2_activation_patch_compiled_operator_hint="subspace",
+    )
+    register_activation_patch_directions(
+        model,
+        {0: {"raw_vector": inputs["direction_raw"]}},
+    )
+    batch_specs = [
+        {
+            "req_id": "req-add-direction",
+            "patch_spec": {
+                "operator": ADD_DIRECTION_OPERATOR,
+                "target_layers": [0],
+                "query_span": [1, 4],
+                "covered_abs_spans": [[1, 4]],
+                "source_layer_map": {"0": 0},
+                "strength": 2.0,
+                "target_policy": {"kind": "every_token"},
+                "rowwise": True,
+            },
+        }
+    ]
+    set_batch_patch_specs(model, batch_specs)
+    apply_layer_output_patching(
+        owner_model=model,
+        layer_idx=0,
+        custom_op=_TorchPatchCustomOp(),
+        output=hidden,
+    )
+
+    stats_buffers = model._v2_activation_patch_batch_tensor_stats[0]
+    stats_buffers["scalars"][0, 6] = 0.0
+    stats_buffers["scalars"][0, 7] = 0.0
+    harvest_batch_patch_stats(model, batch_specs)
+    stats = collect_patch_stats(model, req_id="req-add-direction")
+
+    assert stats[0]["strength"] == pytest.approx(2.0)
+    assert stats[0]["direction_norm_raw"] == pytest.approx(float(torch.linalg.vector_norm(inputs["direction_raw"])))

@@ -36,6 +36,20 @@ else:
 from pipelines_v2.engine.vllm.patching.base import debug_log
 
 
+def compiled_operator_hint_from_config(vllm_config: Any) -> str:
+    additional_config = getattr(vllm_config, "additional_config", None)
+    config_hint = (
+        dict(additional_config).get("xenon_activation_patch_compiled_operator")
+        if isinstance(additional_config, dict)
+        else None
+    )
+    import os
+
+    return str(
+        config_hint or os.getenv("XENON_ACTIVATION_PATCH_COMPILED_OPERATOR", "") or ""
+    ).strip()
+
+
 class ActivationPatchRequestHelper:
     def __init__(self) -> None:
         self.req_id_to_patch_spec: dict[str, dict[str, Any]] = {}
@@ -271,9 +285,7 @@ class ActivationPatchGPUModelRunner(GPUModelRunner):
             scope="global",
         )
         debug_env = str(os.getenv("XENON_ACTIVATION_PATCH_DEBUG", "") or "").strip()
-        compiled_operator_hint = str(
-            os.getenv("XENON_ACTIVATION_PATCH_COMPILED_OPERATOR", "") or ""
-        ).strip()
+        compiled_operator_hint = compiled_operator_hint_from_config(self.vllm_config)
         if debug_env:
             print(f"[activation-patch] debug_env={debug_env}")
         if self.parallel_config.enable_eplb:

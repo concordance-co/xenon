@@ -372,6 +372,13 @@ def harvest_batch_patch_stats(model: Any, batch_specs: list[dict[str, Any]]) -> 
                     coeff_after=[float(v) for v in coeff_after],
                     covered_abs_positions=list(getattr(spec, "covered_abs_positions", ())),
                 )
+                stats = _repair_harvested_add_direction_stats(
+                    model=model,
+                    spec=spec,
+                    layer_idx=int(layer_idx),
+                    slot_idx=int(slot_idx),
+                    stats=stats,
+                )
             else:
                 stats = {
                     "layer": int(layer_idx),
@@ -396,6 +403,53 @@ def harvest_batch_patch_stats(model: Any, batch_specs: list[dict[str, Any]]) -> 
                 token_count=stats.get("token_count"),
                 delta_norm_raw=stats.get("delta_norm_raw"),
             )
+
+
+def _repair_harvested_add_direction_stats(
+    *,
+    model: Any,
+    spec: Any,
+    layer_idx: int,
+    slot_idx: int,
+    stats: dict[str, Any],
+) -> dict[str, Any]:
+    if str(spec.operator) != "add_direction":
+        return stats
+    runtime_state = getattr(model, "_v2_activation_patch_batch_runtime_state", None)
+    layer_buffers = runtime_state.get(int(layer_idx)) if isinstance(runtime_state, dict) else None
+    if not isinstance(layer_buffers, Mapping):
+        return stats
+    repaired = dict(stats)
+    strength_tensor = layer_buffers.get("strengths")
+    if strength_tensor is not None:
+        repaired["strength"] = float(strength_tensor[slot_idx].detach().cpu().item())
+
+    direction_raw = layer_buffers.get("direction_raw")
+    direction_std = layer_buffers.get("direction_std")
+    raw_norm = 0.0
+    std_norm = 0.0
+    if direction_raw is not None:
+        raw_norm = float(torch.linalg.vector_norm(direction_raw[slot_idx]).detach().cpu().item())
+    if direction_std is not None:
+        std_norm = float(torch.linalg.vector_norm(direction_std[slot_idx]).detach().cpu().item())
+    direction_norm = raw_norm
+    if direction_norm <= 0.0 and std_norm > 0.0:
+        subspace = getattr(model, "_v2_activation_patch_subspace", None)
+        source_layer = spec.source_layer_for(int(layer_idx))
+        layer_payload = subspace.get(int(source_layer)) if isinstance(subspace, dict) else None
+        scale = layer_payload.get("scale") if isinstance(layer_payload, dict) else None
+        if scale is not None:
+            direction_norm = float(
+                torch.linalg.vector_norm(direction_std[slot_idx].to(torch.float32) * scale.to(torch.float32))
+                .detach()
+                .cpu()
+                .item()
+            )
+        else:
+            direction_norm = std_norm
+    if direction_norm > 0.0:
+        repaired["direction_norm_raw"] = float(direction_norm)
+    return repaired
 
 
 def _normalize_chunk_stats(stats: dict[str, Any]) -> list[dict[str, Any]]:
@@ -1048,6 +1102,24 @@ def _load_batch_runtime_state(model: Any, batch_specs: list[dict[str, Any]]) -> 
                     runtime_buffers["random_rows"][slot_idx, : int(subspace_inputs["random_rows"].shape[0])].copy_(
                         subspace_inputs["random_rows"]
                     )
+                debug_log(
+                    "loaded_subspace_runtime_state",
+                    slot=int(slot_idx),
+                    layer=int(layer_idx),
+                    operator=spec.operator,
+                    strength=float(spec.strength),
+                    buffer_strength=float(runtime_buffers["strengths"][slot_idx].detach().cpu().item()),
+                    direction_raw_norm=(
+                        float(torch.linalg.vector_norm(subspace_inputs["direction_raw"]).detach().cpu().item())
+                        if subspace_inputs["direction_raw"] is not None
+                        else 0.0
+                    ),
+                    buffer_direction_raw_norm=float(
+                        torch.linalg.vector_norm(runtime_buffers["direction_raw"][slot_idx]).detach().cpu().item()
+                    ),
+                    active=int(runtime_buffers["active"][slot_idx].detach().cpu().item()),
+                    token_count=int(token_count),
+                )
 
 
 def _spec_token_count(spec: Any) -> int:

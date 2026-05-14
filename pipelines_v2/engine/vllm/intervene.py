@@ -50,6 +50,7 @@ from .intervention_output import (
     normalize_generation_output,
     stats_for_request,
 )
+from .patching.base import debug_log, debug_mode_enabled
 
 if TYPE_CHECKING:
     from pipelines_v2.engine.base import EngineInterventionResult
@@ -394,11 +395,27 @@ def _run_unpaired(
             ),
         )
     if isinstance(spec.patch, AddDirectionPatch):
+        direction_payload = build_direction_runtime_payload(spec.patch, load_direction_source(spec.patch))
+        debug_summary = {
+            int(layer): {
+                "has_raw_vector": "raw_vector" in dict(payload),
+                "raw_vector_len": len(dict(payload).get("raw_vector", ())),
+                "has_subspace_weights": "subspace_weights" in dict(payload),
+            }
+            for layer, payload in direction_payload.items()
+        }
+        if debug_mode_enabled("log", "direction_registration"):
+            debug_log(
+                "direction_registration",
+                layers=sorted(int(layer) for layer in direction_payload),
+                summary=debug_summary,
+                strength=float(spec.patch.strength),
+            )
         _apply_to_model(
             llm,
             partial(
                 register_activation_patch_directions,
-                direction_payload=build_direction_runtime_payload(spec.patch, load_direction_source(spec.patch)),
+                direction_payload=direction_payload,
             ),
         )
     if isinstance(spec.patch, (SwapMeanPatch, SwapComponentsPatch)):
@@ -448,6 +465,14 @@ def _run_unpaired(
                 continue
 
             request_payload = unpaired_request_payload(spec=spec, target=target, target_positions=target_positions)
+            if isinstance(spec.patch, AddDirectionPatch):
+                debug_log(
+                    "add_direction_request_payload",
+                    example_key=target.key,
+                    strength=request_payload.get("strength"),
+                    target_layers=request_payload.get("target_layers"),
+                    target_policy=request_payload.get("target_policy"),
+                )
             planned_rows.append(
                 {
                     "target": target,
