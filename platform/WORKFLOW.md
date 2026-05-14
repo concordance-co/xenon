@@ -7,6 +7,10 @@ The canonical Xenon workflow is:
 For real jobs, capture and analysis run on Modal. Reports are built locally
 from workflow artifacts.
 
+Deployments are separate from workflows. A deployment is a long-lived service
+process with endpoint(s), runtime requirements, and target profiles; it does
+not produce workflow artifacts or participate in workflow resume/reuse.
+
 ## Operator Surface
 
 Typical commands:
@@ -19,6 +23,16 @@ uv run python -m pipelines_v2.cli workflow rerun-step --file projects/.../specs/
 uv run python -m pipelines_v2.cli workflow rerun-from-step --file projects/.../specs/workflow.py --run-id wr_... --step capture_prompt_eos_router
 uv run python -m pipelines_v2.cli workflow runs --file projects/.../specs/workflow.py
 uv run python -m pipelines_v2.cli workflow show --run-id wr_...
+```
+
+Deployment commands:
+
+```bash
+uv run python -m pipelines_v2.cli deployment plan --file projects/.../deployment.py --target prod
+uv run python -m pipelines_v2.cli deployment serve --file projects/.../deployment.py --target prod --logging INFO
+uv run python -m pipelines_v2.cli deployment deploy --file projects/.../deployment.py --target prod --logging INFO
+uv run python -m pipelines_v2.cli deployment status --file projects/.../deployment.py --target prod
+uv run python -m pipelines_v2.cli deployment stop --file projects/.../deployment.py --target prod --yes
 ```
 
 Operational notes:
@@ -136,6 +150,21 @@ The usual pattern is:
 3. `workflow run`
 4. inspect with `workflow runs` and `workflow show`
 5. recover with `workflow resume`, `workflow rerun-step`, or `workflow rerun-from-step`
+
+For deployments, the checked-in Python file exports:
+
+```python
+def build_deployment() -> DeploymentSpec: ...
+def build_deployment_targets() -> dict[str, DeploymentTargetSpec]: ...
+```
+
+The usual deployment pattern is:
+
+1. author `deployment.py`
+2. `deployment plan`
+3. `deployment serve` for an ephemeral/manual check
+4. `deployment deploy` for a long-lived service
+5. inspect or stop with `deployment status` / `deployment stop --yes`
 
 ## Canonical Interfaces
 

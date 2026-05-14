@@ -100,3 +100,18 @@ def test_vllm_session_builds_superset_runtime_for_capture_generation_and_patchin
     finally:
         if tempdir is not None:
             tempdir.cleanup()
+
+
+def test_vllm_session_forwards_allowed_extra_llm_kwargs() -> None:
+    engine = VLLMEngine(
+        model_id="fake-model",
+        enforce_eager=True,
+        extra={"attention_backend": "FLASH_ATTN"},
+    )
+
+    kwargs, _, tempdir = build_vllm_session_llm_kwargs(engine=engine, specs=())
+    try:
+        assert kwargs["attention_backend"] == "FLASH_ATTN"
+    finally:
+        if tempdir is not None:
+            tempdir.cleanup()

@@ -12,8 +12,10 @@ Start here:
 - `judge.py`: OpenAI-compatible role-adherence judge for paper reruns.
 - `method.py`: method/BYOD edit surface for non-paper domains.
 - `runtime.py`: shared transforms/loaders used by runnable specs.
-- `service.py`: warm Modal web service for product iteration over released
-  trait steering and trace scoring.
+- `deployment.py`: deployment spec for the warm product API over released trait
+  steering and trace scoring.
+- `service.py`: compatibility shim for old `modal deploy .../service.py`
+  workflows.
 - `specs/paper_rerun.py`: paper-rerun scaffold against the released
   prompt-source data.
 - `specs/byod_axis.py`: arbitrary default-vs-role data -> custom axis and
@@ -38,7 +40,8 @@ uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_ax
 uv run python -m pipelines_v2.cli workflow plan --file papers/voice/assistant_axis/specs/byop_generate.py
 
 # warm product-serving API
-modal deploy papers/voice/assistant_axis/service.py
+uv run python -m pipelines_v2.cli deployment plan --file papers/voice/assistant_axis/deployment.py --target prod
+uv run python -m pipelines_v2.cli deployment deploy --file papers/voice/assistant_axis/deployment.py --target prod --logging INFO
 ```
 
 Replace `plan` with `run --logging INFO` to launch. Defaults use
@@ -65,7 +68,12 @@ Replace `plan` with `run --logging INFO` to launch. Defaults use
 - `ASSISTANT_AXIS_SERVICE_API_KEY`: optional bearer token required by the warm
   Modal service.
 - `ASSISTANT_AXIS_SERVICE_GPU`: Modal GPU for the warm service. Defaults to
-  `H100:4`.
+  `B200:1`.
+- `ASSISTANT_AXIS_SERVICE_ATTENTION_BACKEND`: vLLM `attention_backend` LLM
+  argument. Defaults to `FLASH_ATTN` to avoid FlashInfer TRTLLM JIT requiring
+  `nvcc`.
+- `ASSISTANT_AXIS_SERVICE_PATCH_MAX_TOKENS`: compiled activation-patching token
+  buffer capacity. Defaults to `128`.
 - `ASSISTANT_AXIS_SERVICE_MIN_CONTAINERS`,
   `ASSISTANT_AXIS_SERVICE_MAX_CONTAINERS`, and
   `ASSISTANT_AXIS_SERVICE_SCALEDOWN_WINDOW`: warm service container controls.

@@ -238,6 +238,7 @@ def _base_llm_kwargs(engine: "VLLMEngine") -> dict[str, Any]:
         llm_kwargs["max_num_batched_tokens"] = int(engine.max_num_batched_tokens)
     if bool(engine.async_scheduling):
         llm_kwargs["async_scheduling"] = True
+    llm_kwargs.update(engine.extra_llm_kwargs())
     return llm_kwargs
 
 

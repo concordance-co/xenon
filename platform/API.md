@@ -51,6 +51,15 @@ Current runner support:
 - `ModalRunner`: remote execution on Modal
 - `LocalRunnerSpec` / `ModalRunnerSpec`: serializable runner-profile definitions for Python workflow files
 
+Current deployment support:
+
+- `DeploymentSpec`: backend-neutral definition of a long-lived service
+- `ServiceFactory`: importable factory that builds the service inside a runtime
+- `HTTPEndpoint`: HTTP endpoint declaration; v1 supports function-style HTTP handlers
+- `DeploymentTargetSpec.modal(...)`: Modal target profile for a deployment
+- `DeploymentContext`: container-local singleton/session cache passed to service factories
+- `ModalDeploymentController`: first concrete deployment backend adapter
+
 Current workflow persistence support:
 
 - workflow runs and workflow step records are persisted when runners share one non-null catalog
@@ -100,6 +109,10 @@ Compatibility note:
   - serializable execution-profile definition that materializes a concrete runner
 - `WorkflowOrchestrator`
   - coordinates multiple steps across named runners
+- `DeploymentSpec`
+  - describes a long-lived process, not a finite artifact-producing job
+- `DeploymentTargetSpec`
+  - describes where and how a deployment runs, analogous to `RunnerSpec`
 
 ## Data Layer
 
@@ -1140,6 +1153,123 @@ Methods:
 Use when:
 - a Python workflow file should fully describe its named runners via `build_runner_specs()`
 - you want one checked-in workflow definition to materialize concrete runners without CLI-only glue
+
+## Deployment Layer
+
+Deployments are for long-lived services. Workflows remain finite jobs that
+produce artifacts; deployments keep containers warm and expose endpoints.
+
+### `DeploymentSpec`
+
+What it is:
+- backend-neutral service definition
+
+Fields:
+- `name`
+- `service`
+  - a `ServiceFactory`
+- `runtime`
+  - a `PythonRuntimeSpec`
+- `endpoints`
+  - v1 supports `HTTPEndpoint.get(...)` and `HTTPEndpoint.post(...)`
+- `config`
+  - a `DeploymentConfig`
+- `schema_version`
+
+Methods:
+- `to_dict()`
+- `from_dict(payload)`
+- `semantic_hash()`
+
+### `ServiceFactory`
+
+What it is:
+- serializable import path for a top-level function that builds the service
+
+Constructors:
+- `ServiceFactory.from_function(fn, local_python_sources=(...))`
+
+Important notes:
+- `local_python_sources` is required; deployments do not implicitly mount `"."`
+- the factory receives a `DeploymentContext`
+- the function can accept `ctx`, `context`, or one positional argument
+
+### `DeploymentContext`
+
+What it is:
+- container-local runtime context passed into the service factory
+
+Fields:
+- `name`
+- `target_name`
+- `config`
+- `env`
+
+Methods:
+- `singleton(key, factory)`
+  - constructs once per container and closes values with a `close()` method
+- `vllm_session(key, engine=..., specs=...)`
+  - caches one loaded vLLM session per key
+- `vllm_intervention_runtime(key, engine=..., spec=...)`
+  - caches one intervention runtime per key
+- `close()`
+
+### `HTTPEndpoint`
+
+What it is:
+- backend-neutral HTTP endpoint declaration
+
+Constructors:
+- `HTTPEndpoint.get(label="health", handler="health")`
+- `HTTPEndpoint.post(label="steer", handler="steer_endpoint")`
+- `HTTPEndpoint.function(label="steer", handler="steer_endpoint", method="POST")`
+
+Current implementation:
+- v1 maps each endpoint to a Modal `@fastapi_endpoint` function
+- `handler` names a callable on the object returned by `ServiceFactory`
+- `GET` handlers receive no payload; `POST` handlers receive the decoded JSON body as `dict`
+- ASGI app endpoints are intentionally unsupported in the Modal adapter for long-lived vLLM services
+
+### `DeploymentTargetSpec`
+
+What it is:
+- serializable target profile for a deployment
+
+Constructors:
+- `DeploymentTargetSpec.modal(app_name=..., resources=..., min_containers=..., startup_timeout_seconds=..., scaledown_window_seconds=...)`
+
+### `ModalDeploymentTargetSpec`
+
+What it is:
+- Modal-specific deployment target configuration
+
+Fields:
+- `app_name`
+- `resources`
+  - existing `ModalResources`
+- `min_containers`
+- `buffer_containers`
+- `startup_timeout_seconds`
+- `scaledown_window_seconds`
+
+### Deployment CLI
+
+Deployment files export:
+
+```python
+def build_deployment() -> DeploymentSpec: ...
+def build_deployment_targets() -> dict[str, DeploymentTargetSpec]: ...
+```
+
+Commands:
+
+```bash
+uv run python -m pipelines_v2.cli deployment plan --file deployment.py --target prod
+uv run python -m pipelines_v2.cli deployment serve --file deployment.py --target prod --logging INFO
+uv run python -m pipelines_v2.cli deployment deploy --file deployment.py --target prod --logging INFO
+uv run python -m pipelines_v2.cli deployment status --file deployment.py --target prod
+uv run python -m pipelines_v2.cli deployment stop --file deployment.py --target prod --yes
+```
 
 ## Storage and Artifacts
 

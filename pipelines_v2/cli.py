@@ -26,6 +26,8 @@ from pipelines_v2.reporting.workflow import resolve_report_step
 from pipelines_v2.api import (
     CompositeCatalog,
     Dataset,
+    DeploymentSpec,
+    DeploymentTargetSpec,
     FileCatalog,
     LocalArtifactStore,
     LocalRunner,
@@ -45,6 +47,7 @@ from pipelines_v2.api import (
     WorkflowSpec,
     WorkflowStep,
 )
+from pipelines_v2.runtime.deployments import controller_for_target
 from pipelines_v2.workflow.records import WorkflowRunRecord
 
 _LOG = logging.getLogger("pipelines_v2.cli")
@@ -73,6 +76,33 @@ def load_python_workflow_file(
     return dataset, workflow, runner_specs
 
 
+def load_python_deployment_file(
+    *,
+    path: str | Path,
+    deployment_fn_name: str = "build_deployment",
+    targets_fn_name: str = "build_deployment_targets",
+) -> tuple[DeploymentSpec, dict[str, DeploymentTargetSpec]]:
+    """Load a deployment spec and target specs from a Python file."""
+
+    module = _load_python_module(path)
+    deployment_fn = _get_callable(module, deployment_fn_name)
+    deployment = deployment_fn()
+    if not isinstance(deployment, DeploymentSpec):
+        raise TypeError(f"{deployment_fn_name}() must return DeploymentSpec, got {type(deployment).__name__}")
+    targets_fn = _get_callable(module, targets_fn_name)
+    targets_payload = targets_fn()
+    if not isinstance(targets_payload, dict):
+        raise TypeError(f"{targets_fn_name}() must return dict[str, DeploymentTargetSpec]")
+    targets: dict[str, DeploymentTargetSpec] = {}
+    for name, target in targets_payload.items():
+        if not isinstance(name, str):
+            raise TypeError(f"{targets_fn_name}() keys must be strings")
+        if not isinstance(target, DeploymentTargetSpec):
+            raise TypeError(f"Deployment target {name!r} must be DeploymentTargetSpec, got {type(target).__name__}")
+        targets[name] = target
+    return deployment, targets
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     load_dotenv_if_present()
     parser = _build_parser()
@@ -95,6 +125,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _workflow_rerun_step(ns, include_downstream=False)
         if ns.workflow_command == "rerun-from-step":
             return _workflow_rerun_step(ns, include_downstream=True)
+    if ns.command == "deployment":
+        if ns.deployment_command == "plan":
+            return _deployment_plan(ns)
+        if ns.deployment_command == "serve":
+            return _deployment_serve(ns)
+        if ns.deployment_command == "deploy":
+            return _deployment_deploy(ns)
+        if ns.deployment_command == "status":
+            return _deployment_status(ns)
+        if ns.deployment_command == "stop":
+            return _deployment_stop(ns)
     parser.print_help()
     return 1
 
@@ -295,6 +336,65 @@ def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) ->
     )
     print(json.dumps(_workflow_result_payload(subworkflow.name, result), indent=2, sort_keys=True))
     return 0
+
+
+def _deployment_plan(ns: argparse.Namespace) -> int:
+    deployment, target_name, target = _load_selected_deployment(ns)
+    controller = controller_for_target(target)
+    plan = controller.plan(deployment, target, target_name=target_name)
+    print(json.dumps(plan.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
+def _deployment_serve(ns: argparse.Namespace) -> int:
+    _configure_workflow_logging(getattr(ns, "logging", None))
+    deployment, target_name, target = _load_selected_deployment(ns)
+    controller = controller_for_target(target)
+    handle = controller.serve(deployment, target, target_name=target_name)
+    print(json.dumps(handle.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
+def _deployment_deploy(ns: argparse.Namespace) -> int:
+    _configure_workflow_logging(getattr(ns, "logging", None))
+    deployment, target_name, target = _load_selected_deployment(ns)
+    controller = controller_for_target(target)
+    handle = controller.deploy(deployment, target, target_name=target_name)
+    print(json.dumps(handle.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
+def _deployment_status(ns: argparse.Namespace) -> int:
+    deployment, target_name, target = _load_selected_deployment(ns)
+    controller = controller_for_target(target)
+    handle = controller.status(deployment, target, target_name=target_name)
+    print(json.dumps(handle.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
+def _deployment_stop(ns: argparse.Namespace) -> int:
+    if not bool(ns.yes):
+        raise RuntimeError("deployment stop requires --yes")
+    deployment, target_name, target = _load_selected_deployment(ns)
+    controller = controller_for_target(target)
+    handle = controller.stop(deployment, target, target_name=target_name)
+    print(json.dumps(handle.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
+def _load_selected_deployment(ns: argparse.Namespace) -> tuple[DeploymentSpec, str, DeploymentTargetSpec]:
+    deployment, targets = load_python_deployment_file(
+        path=ns.file,
+        deployment_fn_name=ns.deployment_fn,
+        targets_fn_name=ns.targets_fn,
+    )
+    target_name = str(ns.target)
+    try:
+        target = targets[target_name]
+    except KeyError as exc:
+        available = ", ".join(sorted(targets)) or "<none>"
+        raise RuntimeError(f"Deployment file does not define target {target_name!r}; available: {available}") from exc
+    return deployment, target_name, target
 
 
 def _mirror_workflow_run_lineage(catalog: Any, run_id: str, *, _seen: set[str] | None = None) -> None:
@@ -1126,6 +1226,27 @@ def _build_parser() -> argparse.ArgumentParser:
     rerun_from.add_argument("--run-id", default=None, help="Source workflow run id. Defaults to latest completed for the workflow file.")
     rerun_from.add_argument("--step", required=True, help="Step name to rerun from.")
 
+    deployment_parser = subparsers.add_parser("deployment", help="Plan, serve, or deploy a long-lived service.")
+    deployment_subparsers = deployment_parser.add_subparsers(dest="deployment_command")
+
+    deployment_plan = deployment_subparsers.add_parser("plan", help="Plan a deployment from a Python file.")
+    _add_deployment_file_args(deployment_plan)
+
+    deployment_serve = deployment_subparsers.add_parser("serve", help="Serve a deployment on its target backend.")
+    _add_deployment_file_args(deployment_serve)
+    _add_workflow_logging_arg(deployment_serve)
+
+    deployment_deploy = deployment_subparsers.add_parser("deploy", help="Deploy a long-lived service.")
+    _add_deployment_file_args(deployment_deploy)
+    _add_workflow_logging_arg(deployment_deploy)
+
+    deployment_status = deployment_subparsers.add_parser("status", help="Inspect a long-lived deployment.")
+    _add_deployment_file_args(deployment_status)
+
+    deployment_stop = deployment_subparsers.add_parser("stop", help="Stop a long-lived deployment.")
+    _add_deployment_file_args(deployment_stop)
+    deployment_stop.add_argument("--yes", action="store_true", help="Required confirmation for stopping a deployment.")
+
     return parser
 
 
@@ -1137,6 +1258,17 @@ def _add_workflow_file_args(parser: argparse.ArgumentParser, *, required: bool) 
     )
     parser.add_argument("--dataset-fn", default="build_dataset", help="Dataset builder function name.")
     parser.add_argument("--workflow-fn", default="build_workflow", help="Workflow builder function name.")
+
+
+def _add_deployment_file_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--file",
+        required=True,
+        help="Python file exporting build_deployment() and build_deployment_targets().",
+    )
+    parser.add_argument("--target", required=True, help="Deployment target name from build_deployment_targets().")
+    parser.add_argument("--deployment-fn", default="build_deployment", help="Deployment builder function name.")
+    parser.add_argument("--targets-fn", default="build_deployment_targets", help="Deployment targets builder function name.")
 
 
 def _add_workflow_logging_arg(parser: argparse.ArgumentParser) -> None:

@@ -97,6 +97,28 @@ class VLLMEngine:
             "extra": self.extra,
         }
 
+    def extra_llm_kwargs(self) -> dict[str, Any]:
+        """Return explicitly allowed passthrough kwargs for ``vllm.LLM``.
+
+        Keep this narrow: ``extra`` is also used for tokenizer/chat-template
+        settings, and letting it override core engine fields would make run
+        identity and safety checks unreliable.
+        """
+        payload = dict(self.extra.get("llm_kwargs") or {})
+        for key in ("attention_backend", "attention_config"):
+            if key in self.extra:
+                payload[key] = self.extra[key]
+        allowed = {"attention_backend", "attention_config"}
+        unsupported = sorted(str(key) for key in payload if key not in allowed)
+        if unsupported:
+            raise ValueError(
+                "Unsupported VLLMEngine.extra llm_kwargs keys: "
+                + ", ".join(unsupported)
+                + ". Supported keys: "
+                + ", ".join(sorted(allowed))
+            )
+        return payload
+
     def resolved_model_path(self) -> str:
         """Return the concrete model path/name vLLM should load."""
         model_id = str(self.model_id)

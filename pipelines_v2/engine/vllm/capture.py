@@ -69,6 +69,7 @@ def run_vllm_capture(
         llm_kwargs["served_model_name"] = engine.canonical_model_name()
     if engine.max_model_len:
         llm_kwargs["max_model_len"] = int(engine.max_model_len)
+    llm_kwargs.update(engine.extra_llm_kwargs())
     reasoning_parser = (engine.reasoning_parser or "").strip()
     if spec.generation.capture_reasoning and not reasoning_parser and "qwen3" in str(engine.model_id).lower():
         reasoning_parser = "qwen3"
