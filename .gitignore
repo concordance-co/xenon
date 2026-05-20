@@ -1,0 +1,51 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.mplconfig/
+.uv-cache/
+.env
+
+# OS-generated files
+.DS_Store
+
+# Virtual environments
+.venv
+
+# Local repo noise
+.codex/
+tmp/
+/artifacts/
+
+# Generated pipelines_v2 report materializations (any reports/ subdir).
+# Curated typst/md/pdf and assets/scripts/ stay; the report_<hex>_<hex>/
+# directories that pipelines_v2 emits do not.
+scripts/**/reports/**/report_*/
+scripts/reports/**/report_*/
+
+# Research paper workspace lives outside the package release.
+/papers/
+
+# Local ingestion artifacts
+/data/
+
+# Data artifacts (locality enforcement — operations/LOCALITY.md)
+*.jsonl
+*.parquet
+*.safetensors
+*.pt
+*.pth
+activations/
+captures/
+
+# Dashboard frontend
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.vite/
+dashboard/tsconfig.tsbuildinfo
+dashboard/src/**/*.js

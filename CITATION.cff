@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use Xenon in your work, please cite it as below."
+title: "Xenon"
+version: "0.1.0"
+date-released: 2026-05-20
+license: MIT
+authors:
+  - name: "Concordance"

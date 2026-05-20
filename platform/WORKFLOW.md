@@ -1,0 +1,173 @@
+# Workflow
+
+The canonical Xenon workflow is:
+
+`workflow.py -> workflow run -> artifacts -> local report`
+
+For real jobs, capture and analysis run on Modal. Reports are built locally
+from workflow artifacts.
+
+Deployments are separate from workflows. A deployment is a long-lived service
+process with endpoint(s), runtime requirements, and target profiles; it does
+not produce workflow artifacts or participate in workflow resume/reuse.
+
+## Operator Surface
+
+Typical commands:
+
+```bash
+uv run python -m pipelines_v2.cli workflow plan --file path/to/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file path/to/workflow.py --logging INFO
+uv run python -m pipelines_v2.cli workflow resume --file path/to/workflow.py --latest-failed
+uv run python -m pipelines_v2.cli workflow rerun-step --file path/to/workflow.py --run-id wr_... --step report
+uv run python -m pipelines_v2.cli workflow rerun-from-step --file path/to/workflow.py --run-id wr_... --step capture
+uv run python -m pipelines_v2.cli workflow runs --file path/to/workflow.py
+uv run python -m pipelines_v2.cli workflow show --run-id wr_...
+```
+
+Deployment commands:
+
+```bash
+uv run python -m pipelines_v2.cli deployment plan --file path/to/deployment.py --target prod
+uv run python -m pipelines_v2.cli deployment serve --file path/to/deployment.py --target prod --logging INFO
+uv run python -m pipelines_v2.cli deployment deploy --file path/to/deployment.py --target prod --logging INFO
+uv run python -m pipelines_v2.cli deployment status --file path/to/deployment.py --target prod
+uv run python -m pipelines_v2.cli deployment stop --file path/to/deployment.py --target prod --yes
+```
+
+Operational notes:
+
+- `--logging INFO` streams structured progress to stderr, including remote
+  stages such as Modal launch, app start, and step heartbeats.
+- `workflow show --run-id ...` includes the latest persisted run- and
+  step-level progress snapshots from the local registry in addition to workflow
+  step metadata.
+- For builder-backed remote workflows, keep `local_python_sources` minimal and
+  explicit. Mounting `"."` into Modal will package the whole repo and can slow
+  startup or fail if local generated files change during upload.
+
+Workspace defaults can live in the repo-root [`xenon.toml`](../xenon.toml).
+That file is git-committable and is the right place for shared defaults such as
+the external catalog env var and dashboard static dir. CLI flags still win when
+you pass them explicitly, and workflow runner specs still win when they set
+their own catalog directly.
+
+## Modal Defaults In `xenon.toml`
+
+Modal-backed workflow defaults live under `[pipelines_v2.modal]`.
+
+Example:
+
+```toml
+[pipelines_v2.modal]
+model_volume = "xenon-models"
+model_volume_path = "/models"
+vllm_cache_volume = "xenon-models"
+vllm_cache_root = "/models"
+use_vllm_torch_compile_cache = true
+```
+
+Meaning:
+
+- `model_volume`
+  - default Modal volume for model weights on GPU runners
+- `model_volume_path`
+  - where that volume is mounted inside the container
+- `vllm_cache_volume`
+  - default Modal volume for the vLLM torch.compile cache
+- `vllm_cache_root`
+  - the `VLLM_CACHE_ROOT` path passed to vLLM
+- `use_vllm_torch_compile_cache`
+  - enables CLI-managed default wiring for `VLLM_CACHE_ROOT` plus a persistent
+    cache volume mount on Modal GPU runners
+
+Operational notes:
+
+- Prefer `VLLM_CACHE_ROOT=/models` or another shared parent directory, not a
+  workflow-specific cache prefix. vLLM already namespaces artifacts by its own
+  cache hash under `torch_compile_cache/` and `torch_aot_compile/`.
+- These settings fill missing values. If a workflow runner already sets its own
+  Modal volume mounts or `VLLM_CACHE_ROOT`, those explicit values win.
+- When `model_volume` and `vllm_cache_volume` are the same, mount the shared
+  volume once at `/models` and let the CLI upgrade that mount for cache
+  persistence.
+- Compile-cache reuse on Modal is still hardware-specific. Reuse is best when
+  the later run lands on the same GPU family and variant that produced the
+  cache.
+
+## Modal Workflow Batching
+
+`ModalResources(enable_workflow_batching=True)` opts a runner into orchestrator
+coalescing for compatible ready steps. The orchestrator keeps workflow semantics
+unchanged, but submits same-runner/same-runtime ready steps through
+`ModalRunner.run_many(...)`, producing normal per-step artifacts and lineage.
+
+This is primarily for vLLM model-bound fanout work: compatible `CaptureSpec`,
+`GenerationRunSpec`, and `PatchedGenerationSpec` steps with the same
+model/resources can execute inside one remote Modal app call. Inside that call,
+the remote worker builds a reusable vLLM session for the batch and dispatches
+capture, raw generation, and patched generation through the same loaded
+`LLM(...)` when their construction-time requirements are compatible.
+
+Operational constraints:
+
+- Batching is conservative and opt-in per runner.
+- Runtime env is merged when values are compatible. Conflicting env values
+  still fail planning for the batch.
+- A single loaded vLLM session is not shared across incompatible patch families;
+  mixed patch-family batches may still share Modal spin-up, but they require
+  separate loaded vLLM sessions.
+- `ModalResources.shard_count > 1` is compatible with model-bound batching.
+  The runner submits one batch per shard in parallel, reuses one loaded vLLM
+  session inside each shard, and then merges each spec's shard artifacts
+  separately.
+- Modal `shard_count` is data parallelism over examples or paired cases. It is
+  separate from vLLM tensor/pipeline parallelism, which is configured on
+  `VLLMEngine` and happens inside one engine instance.
+- Dependent workflow steps still wait for upstream artifacts; batching applies
+  to ready fanout groups, not arbitrary DAG collapsing.
+
+## Source Of Truth
+
+The executable source of truth is the checked-in Python workflow file:
+
+```text
+workflows/<name>/workflow.py
+workflows/<name>/specs/workflow.py
+```
+
+Optional checked-in snapshots can live alongside it:
+
+```text
+workflows/<name>/workflow.json
+workflows/<name>/specs/workflow.json
+```
+
+The usual pattern is:
+
+1. author `workflow.py`
+2. `workflow plan`
+3. `workflow run`
+4. inspect with `workflow runs` and `workflow show`
+5. recover with `workflow resume`, `workflow rerun-step`, or `workflow rerun-from-step`
+
+For deployments, the checked-in Python file exports:
+
+```python
+def build_deployment() -> DeploymentSpec: ...
+def build_deployment_targets() -> dict[str, DeploymentTargetSpec]: ...
+```
+
+The usual deployment pattern is:
+
+1. author `deployment.py`
+2. `deployment plan`
+3. `deployment serve` for an ephemeral/manual check
+4. `deployment deploy` for a long-lived service
+5. inspect or stop with `deployment status` / `deployment stop --yes`
+
+## Canonical Interfaces
+
+- [pipelines_v2/cli.py](../pipelines_v2/cli.py)
+- [pipelines_v2/api.py](../pipelines_v2/api.py)
+- [pipelines_v2/workflow/orchestrator.py](../pipelines_v2/workflow/orchestrator.py)

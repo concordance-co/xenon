@@ -1,0 +1,13 @@
+[pipelines_v2]
+catalog_postgres_env = "XENON_NEON_DATABASE_URL"
+
+[pipelines_v2.modal]
+model_volume = "xenon-models"
+model_volume_path = "/models"
+vllm_cache_volume = "xenon-models"
+vllm_cache_root = "/models"
+use_vllm_torch_compile_cache = true
+
+[pipelines_v2.dashboard]
+use_workspace_catalog = true
+static_dir = "dashboard/dist"

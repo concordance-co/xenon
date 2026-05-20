@@ -1,0 +1,68 @@
+[project]
+name = "xenon"
+version = "0.1.0"
+description = "Mechanistic interpretability workflow infrastructure for capture, analysis, intervention, and reporting."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+dependencies = [
+    "aiohttp>=3.13.3",
+    "numpy>=1.26.0",
+    "openai>=2.35.0",
+    "psycopg[binary]>=3.2.0",
+    "pyarrow>=23.0.1",
+    "safetensors>=0.4.0",
+]
+
+[project.optional-dependencies]
+interp = [
+    "torch>=2.4.0",
+    "transformers>=4.51.0",
+    "safetensors>=0.4.0",
+]
+modal = [
+    "modal>=0.73.0",
+]
+analysis = [
+    "torch>=2.4.0",
+    "safetensors>=0.4.0",
+    "scikit-learn>=1.4.0",
+    "matplotlib>=3.8.0",
+]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27.0",
+]
+
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pipelines_v2*"]
+exclude = [
+    "pipelines_v2.dashboard*",
+    "artifacts*",
+    "dashboard*",
+    "methodology*",
+    "operations*",
+    "papers*",
+    "platform*",
+    "references*",
+    "scripts*",
+    "tests*",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: pure deterministic tests with no external services",
+    "contract: reusable implementation contract tests",
+    "integration_local: local runner, local store, or local catalog integration",
+    "integration_remote_fake: remote execution paths exercised with fakes only",
+    "slow: tests that are too slow for the default inner loop",
+    "modal: tests that require Modal",
+    "postgres: tests that require a PostgreSQL service",
+    "vllm: tests that require vLLM or vLLM-specific runtime behavior",
+    "interp: tests that require optional mech-interp dependencies such as torch or scikit-learn",
+    "network: tests that require network access",
+]

@@ -1,0 +1,98 @@
+# Modal — local reference for xenon
+
+Hand-curated reference for the Modal surface area `pipelines_v2` actually uses.
+Not a full mirror; if you need something not covered here, fetch the upstream
+docs at https://modal.com/docs.
+
+Primary call site: `pipelines_v2/runtime/modal_worker.py`. Read it to see how
+these primitives compose in practice.
+
+## Core primitives used in this repo
+
+### `modal.App(name)`
+Per-workflow app, named dynamically (see `_modal_app_name`). One app per
+workflow run; functions are registered on it then invoked via `.remote(...)`.
+
+### `modal.Image.debian_slim(python_version=...)`
+Base image. Chained with:
+
+- `.pip_install(*packages)` — installs into the image layer.
+- `.env({...})` — sets container env vars.
+- `.add_local_dir(local_path, remote_path=...)` — mounts local source into the
+  container. Used to ship `pipelines_v2`, `scripts`, and project code remotely.
+
+### `modal.Volume.from_name(name, create_if_missing=...)`
+Persistent volumes. Mounted via the `volumes={mount_path: vol}` kwarg on
+`@app.function(...)`. After writes, the running container does not see those
+writes from other containers until the volume is committed — see
+`_commit_mounted_volumes` in `modal_worker.py`.
+
+### `modal.Secret.from_name(name)`
+Named secrets, attached via the `secrets=[...]` kwarg. Resolved at function
+launch.
+
+### `@app.function(...)` kwargs xenon passes
+- `image` — the built `modal.Image`
+- `volumes` — `{mount_path: Volume}`
+- `secrets` — list of `Secret`
+- `timeout` — int seconds (xenon defaults to 7200)
+- `serialized=True` — required for runtime-built functions; image is built once
+  and the function body is pickled
+- `gpu` — string or list, e.g. `"A10G"`, `"H100:2"`
+- `cpu`, `memory` (MB), `max_containers`, `env`
+
+### Invocation
+`fn.remote(*args, **kwargs)` — synchronous remote call returning the result.
+Async variants (`.remote.aio(...)`, `.spawn(...)`) exist but xenon does not
+currently use them in the runtime path.
+
+## Gotchas (xenon-specific, debugged in past work)
+
+These were captured before `pipelines_v2` settled on dynamic `@app.function`
+registration. They still apply if you author a NEW modal app from scratch
+(e.g. one-off scripts under `scripts/`).
+
+### `from __future__ import annotations` breaks `modal.parameter()`
+Modal introspects class parameter type annotations at class-definition time.
+With `from __future__ import annotations` they become strings instead of types,
+and `parameter()` fails. If you use modal classes with `parameter()`, do NOT
+add that future import to the file.
+
+### `local_entrypoint` runs LOCALLY, not in the container
+Decorators like `@app.local_entrypoint()` execute on the host. They need full
+local dependencies, not just the image deps. In xenon, the canonical wrapper
+for this is `uv run --extra modal` (or the broader `uv run --extra interp
+--extra modal`).
+
+### Modal CLI is Click-based — no `--` separator
+Pass args inline, not after a `--`:
+
+    # right
+    modal run path/to/app.py::function --my-arg value
+
+    # wrong (treats --my-arg as positional)
+    modal run path/to/app.py::function -- --my-arg value
+
+### Use `add_local_python_source("pkg")` for class-based apps
+For modal classes, `image.add_local_python_source("pipelines_v2", "scripts")`
+is cleaner than `add_local_dir` + PYTHONPATH. The `pipelines_v2` runtime path
+manipulates PYTHONPATH explicitly because it builds images dynamically; for
+hand-written modal apps, prefer the named-source form.
+
+## What xenon does NOT use (skip these in upstream docs)
+
+- `modal.Cls` with `parameter()` — runtime path uses dynamic functions instead
+- `modal.Sandbox` — not used
+- `modal.Queue`, `modal.Dict` — not used in the platform path
+- Web endpoints / `@web_endpoint` — dashboard runs locally, not on Modal
+- Modal's scheduling primitives (`modal.Cron`, schedules) — workflows are
+  user-triggered, not scheduled
+
+If a task seems to need any of these, escalate to the user before adopting.
+
+## Where to look in the repo
+
+- `pipelines_v2/runtime/modal_worker.py` — the canonical example of building
+  a Modal app dynamically per workflow
+- `xenon.toml` — Modal volume name and vLLM cache defaults
+- `scripts/` — historical one-off Modal scripts

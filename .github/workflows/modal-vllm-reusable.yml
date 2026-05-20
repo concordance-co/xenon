@@ -1,0 +1,95 @@
+name: Modal vLLM Reusable
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref or SHA to test.
+        required: true
+        type: string
+      suite:
+        description: "Modal suite to run: smoke, contracts, or full."
+        required: true
+        type: string
+      shard_count:
+        description: Number of shards for sharded contract coverage.
+        required: false
+        default: "2"
+        type: string
+      max_containers:
+        description: Max Modal containers for sharded contract coverage.
+        required: false
+        default: "2"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: modal-vllm-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  modal-vllm:
+    name: Modal vLLM ${{ inputs.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment: modal-gpu
+
+    steps:
+      - name: Validate suite
+        run: |
+          case "${{ inputs.suite }}" in
+            smoke|contracts|full) ;;
+            *)
+              echo "Unknown suite: ${{ inputs.suite }}" >&2
+              exit 2
+              ;;
+          esac
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --extra interp --extra analysis --extra dev --extra modal
+
+      - name: Run Modal vLLM suite
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+          PYTHONDONTWRITEBYTECODE: "1"
+          XENON_MODAL_VLLM_ENGINE_CONTRACT_SHARD_COUNT: ${{ inputs.shard_count }}
+          XENON_MODAL_VLLM_ENGINE_CONTRACT_MAX_CONTAINERS: ${{ inputs.max_containers }}
+        run: |
+          case "${{ inputs.suite }}" in
+            smoke)
+              XENON_RUN_MODAL_VLLM_GPU_SMOKE=1 \
+                uv run pytest -q \
+                  tests/pipelines_v2/engine/test_modal_vllm_gpu_smoke.py::test_modal_vllm_compiled_project_out_smoke \
+                  -s
+              ;;
+            contracts)
+              XENON_RUN_MODAL_VLLM_GPU_SMOKE=1 \
+              XENON_RUN_MODAL_VLLM_ENGINE_CONTRACTS=1 \
+                uv run pytest -q tests/pipelines_v2/engine/test_modal_vllm_gpu_smoke.py -s
+              ;;
+            full)
+              XENON_RUN_MODAL_VLLM_GPU_SMOKE=1 \
+              XENON_RUN_MODAL_VLLM_ENGINE_CONTRACTS=1 \
+              XENON_RUN_MODAL_VLLM_PATCH_OPERATOR_CONTRACTS=1 \
+              XENON_RUN_MODAL_VLLM_PAIRED_PATCH_CONTRACTS=1 \
+                uv run pytest -q tests/pipelines_v2/engine/test_modal_vllm_gpu_smoke.py -s
+              ;;
+          esac

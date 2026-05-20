@@ -1,0 +1,89 @@
+"""Engine contracts."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Protocol
+
+from pipelines_v2.core.types import EngineCapability, RuntimeSecret
+from pipelines_v2.operations.capture import CaptureSpec
+from pipelines_v2.operations.interventions import GenerationRunSpec, PatchedGenerationSpec
+
+
+class RuntimeSpec(Protocol):
+    """Runner-agnostic runtime requirements declared by an engine or spec."""
+
+    kind: str
+    secrets: tuple[RuntimeSecret, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PythonRuntimeSpec:
+    """Concrete runtime description for Python-based execution environments."""
+    kind: str = "python"
+    python_version: str = "3.13"
+    pip_packages: tuple[str, ...] = field(default_factory=tuple)
+    env: dict[str, str] = field(default_factory=dict)
+    secrets: tuple[RuntimeSecret, ...] = field(default_factory=tuple)
+    local_python_sources: tuple[str, ...] = field(default_factory=tuple)
+
+
+class Engine(Protocol):
+    """Model-backed execution surface for model-bound operation specs."""
+
+    def identity(self) -> dict[str, Any]:
+        """Return a serializable engine descriptor."""
+        ...
+
+    def semantic_identity(self) -> dict[str, Any]:
+        """Return the semantic engine descriptor used for reuse and invalidation."""
+        ...
+
+    def capabilities(self) -> set[EngineCapability]:
+        """Return the feature set this engine can satisfy."""
+        ...
+
+    def runtime_spec(self) -> RuntimeSpec:
+        """Return runtime requirements needed to execute this engine."""
+        ...
+
+    def planning_errors(self, spec: Any) -> tuple[str, ...]:
+        """Return engine-specific planning errors for this spec."""
+        ...
+
+    def capture(self, spec: CaptureSpec) -> "EngineCaptureResult":
+        """Execute one capture spec and return features/generations."""
+        ...
+
+    def generate(self, spec: GenerationRunSpec) -> "EngineGenerationResult":
+        """Execute one generation spec and return row outputs."""
+        ...
+
+    def intervene(self, spec: PatchedGenerationSpec) -> "EngineInterventionResult":
+        """Execute one patched-generation spec and return row outputs."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class EngineCaptureResult:
+    """Raw engine output before the runner persists it into an artifact."""
+    features: dict[str, dict[str, Any]]
+    generations: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class EngineGenerationResult:
+    """Raw engine output for model-bound generation before artifact persistence."""
+
+    rows: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class EngineInterventionResult:
+    """Raw engine output for patched generations before artifact persistence."""
+
+    summary: dict[str, Any] = field(default_factory=dict)
+    rows: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
