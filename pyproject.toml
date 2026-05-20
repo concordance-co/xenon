@@ -21,6 +21,7 @@ interp = [
     "safetensors>=0.4.0",
 ]
 modal = [
+    "fastapi>=0.115.0",
     "modal>=0.73.0",
 ]
 analysis = [
