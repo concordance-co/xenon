@@ -6,12 +6,13 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
+from pipelines_v2.core.types import SpecValidationError
 from pipelines_v2.data.datasets import Example
 from pipelines_v2.engine.base import EngineCaptureResult
 from pipelines_v2.engine.prompt_metadata import rebase_section_records, rebase_token_sections
 from pipelines_v2.engine.prompt_metadata import resolve_prompt_metadata, section_records_from_metadata, token_sections_from_metadata
 from pipelines_v2.engine.routing import requested_topk_from_gate_k, routing_record_payload
-from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord
+from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord, TokenPooling
 
 if TYPE_CHECKING:
     from pipelines_v2.engine.vllm.engine import VLLMEngine
@@ -327,12 +328,15 @@ def _apply_to_model(llm: Any, fn: Any) -> Any:
 
 def _empty_feature(site: ResidualSite | MoERoutingSite) -> dict[str, Any]:
     if isinstance(site, ResidualSite):
-        return {
+        payload = {
             "kind": "residual",
             "site": site.site,
             "storage": {"dtype": site.storage.dtype, "format": site.storage.format},
             "layers": {str(layer): {} for layer in site.layers},
         }
+        if site.pooling is not None:
+            payload["pooling"] = {"kind": site.pooling.kind}
+        return payload
     return {
         "kind": "moe_routing",
         "routing_policy": {
@@ -602,13 +606,76 @@ def _fill_residual_features(
         for layer in site.layers:
             idx = layer_index[int(layer)]
             values = residual[idx, positions, :]
+            if site.pooling is not None:
+                values, pooling_indices = _pool_capture_values(values, pooling=site.pooling)
+                record_token_sections, record_section_records = _pooled_feature_metadata(
+                    token_sections=feature_token_sections,
+                    section_records=feature_section_records,
+                    pooled_indices=pooling_indices,
+                )
+                record_tokens = [0]
+            else:
+                record_token_sections = feature_token_sections
+                record_section_records = feature_section_records
+                record_tokens = positions
             feature_payloads[site.name]["layers"][str(layer)][example.key] = {
-                "tokens": positions,
+                "tokens": record_tokens,
                 "values": values,
                 "prompt_hash": example.prompt_hash,
-                "token_sections": feature_token_sections,
-                "section_records": feature_section_records,
+                "token_sections": record_token_sections,
+                "section_records": record_section_records,
             }
+            if site.pooling is not None:
+                feature_payloads[site.name]["layers"][str(layer)][example.key]["pooled"] = True
+                feature_payloads[site.name]["layers"][str(layer)][example.key]["pooling"] = {"kind": site.pooling.kind}
+                feature_payloads[site.name]["layers"][str(layer)][example.key]["pooled_token_count"] = len(pooling_indices)
+
+
+def _pool_capture_values(values: Any, *, pooling: TokenPooling) -> tuple[Any, list[int]]:
+    import numpy as np
+
+    indices = pooling.from_count(int(values.shape[0]))
+    if not indices:
+        raise SpecValidationError("Capture-time token pooling did not match any token positions")
+    selected = values[np.asarray(indices, dtype=np.int64)]
+    if pooling.kind == "mean":
+        pooled = selected.mean(axis=0).astype(np.float32)
+    elif pooling.kind == "last":
+        pooled = selected[-1].astype(np.float32)
+    elif pooling.kind == "first":
+        pooled = selected[0].astype(np.float32)
+    else:
+        raise SpecValidationError(f"Unsupported capture-time pooling mode: {pooling.kind}")
+    return pooled[None, :], indices
+
+
+def _pooled_feature_metadata(
+    *,
+    token_sections: dict[str, list[int]],
+    section_records: list[dict[str, Any]],
+    pooled_indices: list[int],
+) -> tuple[dict[str, list[int]], list[dict[str, Any]]]:
+    from collections.abc import Sequence
+
+    pooled_set = {int(index) for index in pooled_indices}
+    pooled_token_sections = {
+        name: [0]
+        for name, positions in token_sections.items()
+        if any(int(position) in pooled_set for position in positions)
+    }
+    pooled_section_records: list[dict[str, Any]] = []
+    for record in section_records:
+        positions = record.get("token_positions")
+        if not isinstance(positions, Sequence) or isinstance(positions, str | bytes | bytearray):
+            continue
+        overlap_count = sum(1 for position in positions if int(position) in pooled_set)
+        if overlap_count <= 0:
+            continue
+        pooled_record = dict(record)
+        pooled_record["token_positions"] = [0]
+        pooled_record["pooled_token_count"] = overlap_count
+        pooled_section_records.append(pooled_record)
+    return pooled_token_sections, pooled_section_records
 
 
 def _capture_prompt_batch(

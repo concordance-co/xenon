@@ -5333,6 +5333,75 @@ def test_feature_matrix_pooling_respects_selected_token_segment(tmp_path: Path) 
     assert np.allclose(last_matrices[0][0], ex_a_values[3])
 
 
+def test_residual_capture_can_pool_selected_tokens_before_persisting(tmp_path: Path) -> None:
+    from pipelines_v2.operations.execute import _feature_matrices
+
+    dataset = Dataset.from_examples(
+        [
+            Example(
+                key="ex_a",
+                prompt="prompt a",
+                metadata={"token_sections": {"SPAN": [1, 2, 3]}},
+            )
+        ]
+    )
+    runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / "artifacts"))
+    engine = ToyEngine(hidden_size=3, num_layers=1, sequence_length=6)
+    pooled_spec = CaptureSpec(
+        engine=engine,
+        dataset=dataset,
+        sites=[
+            ResidualSite(
+                name="resid_span_mean",
+                site="resid_post",
+                layers=[0],
+                tokens=TokenSelector.section("SPAN"),
+                pooling=TokenPooling.mean(),
+            )
+        ],
+    )
+    restored_spec = CaptureSpec.from_dict(pooled_spec.to_dict())
+    assert restored_spec.to_dict() == pooled_spec.to_dict()
+
+    full = runner.run(
+        CaptureSpec(
+            engine=engine,
+            dataset=dataset,
+            sites=[
+                ResidualSite(
+                    name="resid_full",
+                    site="resid_post",
+                    layers=[0],
+                    tokens=TokenSelector.full_sequence(),
+                )
+            ],
+        )
+    )
+    pooled = runner.run(pooled_spec)
+
+    full_values = np.asarray(full.feature("resid_full").load()["layers"]["0"]["ex_a"]["values"], dtype=np.float32)
+    pooled_feature = pooled.feature("resid_span_mean")
+    pooled_payload = pooled_feature.load()
+    pooled_record = pooled_payload["layers"]["0"]["ex_a"]
+    pooled_values = np.asarray(pooled_record["values"], dtype=np.float32)
+    matrices, example_keys = _feature_matrices(
+        pooled_feature,
+        token_selector=TokenSelector.full_sequence(),
+        token_pooling=TokenPooling.mean(),
+    )
+
+    assert example_keys == ["ex_a"]
+    assert pooled_payload["pooling"] == {"kind": "mean"}
+    assert pooled_record["tokens"] == [0]
+    assert pooled_record["pooled"] is True
+    assert pooled_record["pooling"] == {"kind": "mean"}
+    assert pooled_record["pooled_token_count"] == 3
+    assert pooled_record["token_sections"]["SPAN"] == [0]
+    assert pooled_values.shape == (1, 3)
+    assert np.allclose(pooled_values[0], full_values[[1, 2, 3]].mean(axis=0), atol=5e-4)
+    assert np.allclose(matrices[0][0], pooled_values[0])
+
+
 def test_capture_spec_rejects_section_selector_without_explicit_metadata_source() -> None:
     dataset = Dataset.from_examples(
         [
