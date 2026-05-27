@@ -7,7 +7,7 @@ from typing import Any, Mapping, Sequence
 
 from pipelines_v2.core.types import EngineCapability
 from pipelines_v2.operations.common.schemas import TensorStorage
-from pipelines_v2.operations.common.tokens import TokenSelector
+from pipelines_v2.operations.common.tokens import TokenPooling, TokenSelector
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +18,7 @@ class ResidualSite:
     site: str
     layers: Sequence[int]
     tokens: TokenSelector = field(default_factory=TokenSelector.last)
+    pooling: TokenPooling | None = None
     storage: TensorStorage = field(default_factory=TensorStorage)
 
     def required_capabilities(self) -> set[EngineCapability]:
@@ -30,6 +31,11 @@ class ResidualSite:
             site=str(payload["site"]),
             layers=[int(layer) for layer in payload.get("layers", ())],
             tokens=TokenSelector.from_dict(payload.get("tokens", {"kind": "last"})),
+            pooling=(
+                TokenPooling.from_dict(dict(payload["pooling"]))
+                if payload.get("pooling") is not None
+                else None
+            ),
             storage=TensorStorage.from_dict(payload.get("storage", {})),
         )
 

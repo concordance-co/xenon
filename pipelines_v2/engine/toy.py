@@ -54,7 +54,7 @@ from pipelines_v2.operations.interventions.runtime import (
     resolve_patched_generation_cases,
     resolve_patched_generation_targets,
 )
-from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord
+from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord, TokenPooling
 
 
 @dataclass(frozen=True, slots=True)
@@ -587,20 +587,37 @@ class ToyEngine:
                     section_records=section_records,
                     selected_positions=positions,
                 )
+                if site.pooling is not None:
+                    values, pooling_indices = _pool_capture_values(values, pooling=site.pooling)
+                    feature_token_sections, feature_section_records = _pooled_feature_metadata(
+                        token_sections=feature_token_sections,
+                        section_records=feature_section_records,
+                        pooled_indices=pooling_indices,
+                    )
+                    record_tokens = [0]
+                else:
+                    record_tokens = positions
                 layer_payload[example.key] = {
-                    "tokens": positions,
+                    "tokens": record_tokens,
                     "values": values,
                     "prompt_hash": example.prompt_hash,
                     "token_sections": feature_token_sections,
                     "section_records": feature_section_records,
                 }
+                if site.pooling is not None:
+                    layer_payload[example.key]["pooled"] = True
+                    layer_payload[example.key]["pooling"] = {"kind": site.pooling.kind}
+                    layer_payload[example.key]["pooled_token_count"] = len(pooling_indices)
             layers[str(layer)] = layer_payload
-        return {
+        payload = {
             "kind": "residual",
             "site": site.site,
             "storage": {"dtype": site.storage.dtype, "format": site.storage.format},
             "layers": layers,
         }
+        if site.pooling is not None:
+            payload["pooling"] = {"kind": site.pooling.kind}
+        return payload
 
     def _capture_routing(self, site: MoERoutingSite, spec: CaptureSpec) -> dict[str, Any]:
         layers: dict[str, Any] = {}
@@ -714,6 +731,49 @@ def _toy_section_metadata(example: Example, builder: Any | None) -> tuple[dict[s
         allow_char_spans=False,
     )
     return token_sections, section_records
+
+
+def _pool_capture_values(values: np.ndarray, *, pooling: TokenPooling) -> tuple[np.ndarray, list[int]]:
+    indices = pooling.from_count(int(values.shape[0]))
+    if not indices:
+        raise SpecValidationError("Capture-time token pooling did not match any token positions")
+    selected = values[np.asarray(indices, dtype=np.int64)]
+    if pooling.kind == "mean":
+        pooled = selected.mean(axis=0).astype(np.float32)
+    elif pooling.kind == "last":
+        pooled = selected[-1].astype(np.float32)
+    elif pooling.kind == "first":
+        pooled = selected[0].astype(np.float32)
+    else:
+        raise SpecValidationError(f"Unsupported capture-time pooling mode: {pooling.kind}")
+    return pooled[None, :], indices
+
+
+def _pooled_feature_metadata(
+    *,
+    token_sections: dict[str, list[int]],
+    section_records: list[dict[str, Any]],
+    pooled_indices: list[int],
+) -> tuple[dict[str, list[int]], list[dict[str, Any]]]:
+    pooled_set = {int(index) for index in pooled_indices}
+    pooled_token_sections = {
+        name: [0]
+        for name, positions in token_sections.items()
+        if any(int(position) in pooled_set for position in positions)
+    }
+    pooled_section_records: list[dict[str, Any]] = []
+    for record in section_records:
+        positions = record.get("token_positions")
+        if not isinstance(positions, Sequence) or isinstance(positions, str | bytes | bytearray):
+            continue
+        overlap_count = sum(1 for position in positions if int(position) in pooled_set)
+        if overlap_count <= 0:
+            continue
+        pooled_record = dict(record)
+        pooled_record["token_positions"] = [0]
+        pooled_record["pooled_token_count"] = overlap_count
+        pooled_section_records.append(pooled_record)
+    return pooled_token_sections, pooled_section_records
 
 
 def _with_generated_section_records(
