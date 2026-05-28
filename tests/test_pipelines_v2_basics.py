@@ -13,7 +13,7 @@ import sys
 import time
 import types
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import numpy as np
 import pytest
@@ -110,7 +110,7 @@ from pipelines_v2.engine.vllm.intervention_build import build_llm_kwargs, paired
 from pipelines_v2.operations.execution.interventions import run_patch_comparison
 from pipelines_v2.runtime import ExecutionPlan
 from pipelines_v2.runtime.specs import runner_spec_from_dict
-from pipelines_v2.runtime.remote_executor import _artifact_id_for, execute_remote, merge_remote_shards
+from pipelines_v2.runtime.remote_executor import _artifact_id_for, execute_remote, execute_remote_many, merge_remote_shards
 from pipelines_v2.runtime.modal_worker import (
     _modal_shard_count,
     _mounted_volumes,
@@ -1484,6 +1484,130 @@ def test_postgres_source_query_mode_wraps_sql_and_applies_limit(monkeypatch: pyt
     ]
 
 
+def test_postgres_source_query_mode_pushes_prompt_hash_shard(monkeypatch: pytest.MonkeyPatch) -> None:
+    executed: list[tuple[str, list[object] | None]] = []
+
+    class FakeResult:
+        def fetchall(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "example_id": "ex_a",
+                    "prompt": "hello",
+                    "prompt_hash": "00000000000000000000000000000000",
+                    "class": "positive",
+                }
+            ]
+
+    class FakeConnection:
+        def __enter__(self) -> "FakeConnection":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def execute(self, sql: str, params: list[object] | None = None) -> FakeResult:
+            executed.append((" ".join(sql.split()), params))
+            return FakeResult()
+
+    fake_psycopg = types.ModuleType("psycopg")
+    fake_psycopg.connect = lambda url, row_factory=None: FakeConnection()
+    fake_rows = types.ModuleType("psycopg.rows")
+    fake_rows.dict_row = object()
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    monkeypatch.setitem(sys.modules, "psycopg.rows", fake_rows)
+
+    dataset = PostgresSource(url="postgresql://example/xenon").fetch_dataset(
+        sql="""
+            SELECT example_id, prompt, prompt_hash, class
+            FROM public.capture_examples
+            WHERE active = true
+        """,
+        prompt_column="prompt",
+        example_key_column="example_id",
+        prompt_hash_column="prompt_hash",
+        label_columns=["class"],
+        execution_shard={"index": 2, "count": 4},
+        limit=5,
+    )
+
+    assert dataset.example_keys() == ["ex_a"]
+    assert executed
+    sql, params = executed[0]
+    assert 'FROM (SELECT example_id, prompt, prompt_hash, class FROM public.capture_examples WHERE active = true) AS src WHERE MOD(' in sql
+    assert 'src."prompt_hash"' in sql
+    assert params == [4, 2, 5]
+
+
+def test_postgres_source_iter_dataset_batches_streams_with_shard_predicate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executed: list[tuple[str, list[object] | None]] = []
+    records = [
+        {
+            "example_id": f"ex_{idx}",
+            "prompt": f"prompt {idx}",
+            "prompt_hash": f"{idx:032x}",
+            "class": "positive",
+        }
+        for idx in range(3)
+    ]
+
+    class FakeCursor:
+        def __init__(self) -> None:
+            self._offset = 0
+
+        def __enter__(self) -> "FakeCursor":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def execute(self, sql: str, params: list[object] | None = None) -> None:
+            executed.append((" ".join(sql.split()), params))
+
+        def fetchmany(self, batch_size: int) -> list[dict[str, object]]:
+            batch = records[self._offset : self._offset + int(batch_size)]
+            self._offset += int(batch_size)
+            return batch
+
+    class FakeConnection:
+        def __enter__(self) -> "FakeConnection":
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+        def cursor(self, *, name: str, row_factory: object = None) -> FakeCursor:
+            assert name == "pipelines_v2_dataset_stream"
+            assert row_factory is not None
+            return FakeCursor()
+
+    fake_psycopg = types.ModuleType("psycopg")
+    fake_psycopg.connect = lambda url, row_factory=None: FakeConnection()
+    fake_rows = types.ModuleType("psycopg.rows")
+    fake_rows.dict_row = object()
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    monkeypatch.setitem(sys.modules, "psycopg.rows", fake_rows)
+
+    batches = list(
+        PostgresSource(url="postgresql://example/xenon").iter_dataset_batches(
+            batch_size=2,
+            sql="SELECT example_id, prompt, prompt_hash, class FROM public.capture_examples",
+            prompt_column="prompt",
+            example_key_column="example_id",
+            prompt_hash_column="prompt_hash",
+            label_columns=["class"],
+            execution_shard={"index": 1, "count": 4},
+        )
+    )
+
+    assert [batch.example_keys() for batch in batches] == [["ex_0", "ex_1"], ["ex_2"]]
+    sql, params = executed[0]
+    assert " AS src WHERE MOD(" in sql
+    assert 'src."prompt_hash"' in sql
+    assert params == [4, 1]
+
+
 def test_capture_spec_exposes_runtime_secret_requirements() -> None:
     dataset = Dataset.from_postgres(
         source=PostgresSource.from_env("XENON_DATABASE_URL"),
@@ -1537,12 +1661,15 @@ def test_local_runner_capture_writes_manifest_features_and_generations(tmp_path:
     assert (tmp_path / "catalog" / f"{artifact.id}.json").exists()
     resid_ref = artifact.manifest().storage_refs["features"]["resid_last"]
     router_ref = artifact.manifest().storage_refs["features"]["router_last"]
-    assert resid_ref["format"] == "residual_safetensors_v1"
+    assert resid_ref["format"] == "residual_safetensors_v2"
     assert resid_ref["tensor_path"].endswith("features/feature_tensors.safetensors")
     assert resid_ref["metadata_path"].endswith("features/resid_last.metadata.json")
     assert router_ref["format"] == "moe_routing_safetensors_v1"
     assert router_ref["tensor_path"] == resid_ref["tensor_path"]
     assert router_ref["metadata_path"].endswith("features/router_last.metadata.json")
+    tensors = load_file(artifact.localize() / "features" / "feature_tensors.safetensors")
+    assert "feature_0_layer_0_values_0" in tensors
+    assert "feature_0_layer_1_values_0" in tensors
 
     resid = artifact.feature("resid_last").load()
     assert resid["kind"] == "residual"
@@ -1643,7 +1770,9 @@ def test_local_runner_bundles_tensor_features_into_one_safetensors_file(tmp_path
     assert shared_tensor.name == "feature_tensors.safetensors"
     assert shared_tensor.exists()
     bundle = load_file(str(shared_tensor))
-    assert len(bundle) == 6
+    assert len(bundle) == 4
+    assert "feature_0_layer_0_values_0" in bundle
+    assert "feature_2_layer_1_values_0" in bundle
 
 
 def test_local_runner_applies_runtime_env_and_runner_env_overrides(
@@ -2432,7 +2561,7 @@ def test_remote_executor_uses_engine_and_store_registries(tmp_path: Path) -> Non
         saved = json.load(f)
     assert saved["engine"]["kind"] == "toy"
     assert saved["storage_refs"]["features"]["resid_last"]["store"] == "local"
-    assert saved["storage_refs"]["features"]["resid_last"]["format"] == "residual_safetensors_v1"
+    assert saved["storage_refs"]["features"]["resid_last"]["format"] == "residual_safetensors_v2"
     assert saved["storage_refs"]["features"]["resid_last"]["tensor_path"].endswith("features/feature_tensors.safetensors")
 
 
@@ -2469,6 +2598,165 @@ def test_remote_executor_resolves_deferred_dataset_in_runtime(tmp_path: Path) ->
 
     assert manifest["example_coverage"]["example_count"] == 1
     assert manifest["example_coverage"]["dataset_name"] == "remote_runtime_bound"
+
+
+def test_deferred_label_resolution_uses_label_only_source_fetch() -> None:
+    dataset = Dataset.from_source(
+        source=InMemorySource.from_records(
+            [
+                {"example_id": "a", "emotion": "happy"},
+                {"example_id": "b", "emotion": "sad"},
+            ]
+        ),
+        defer=True,
+        prompt_column="missing_prompt",
+        example_key_column="example_id",
+        label_columns=["emotion"],
+        name="label_only",
+    )
+
+    assert dataset.labels("emotion").resolve_values() == {"a": "happy", "b": "sad"}
+
+
+def test_remote_executor_pushes_shard_into_deferred_postgres_dataset(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    fetch_calls: list[dict[str, Any]] = []
+
+    def fake_fetch(self: PostgresSource, **kwargs: Any) -> Dataset:
+        fetch_calls.append(dict(kwargs))
+        return Dataset.from_records(
+            [
+                {
+                    "example_id": "ex_a",
+                    "prompt": "hello",
+                    "prompt_hash": "00000000000000000000000000000000",
+                    "class": "positive",
+                }
+            ],
+            prompt_column="prompt",
+            example_key_column="example_id",
+            prompt_hash_column="prompt_hash",
+            label_columns=["class"],
+            name=str(kwargs.get("name") or "postgres_shard"),
+        )
+
+    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon")
+    monkeypatch.setattr(PostgresSource, "fetch_dataset", fake_fetch)
+    dataset = Dataset.from_postgres(
+        source=PostgresSource.from_env("XENON_DATABASE_URL"),
+        sql="SELECT example_id, prompt, prompt_hash, class FROM public.capture_examples",
+        prompt_column="prompt",
+        example_key_column="example_id",
+        prompt_hash_column="prompt_hash",
+        label_columns=["class"],
+        name="remote_postgres_shard",
+    )
+    spec = CaptureSpec(
+        engine=ToyEngine(),
+        dataset=dataset,
+        sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0], tokens=TokenSelector.last())],
+    )
+
+    manifest = execute_remote(
+        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
+        store_config={"kind": "local", "root": str(tmp_path / "artifacts")},
+        spec_payload=spec.to_dict(),
+        workflow_context={
+            "run_id": "wr_postgres_shard",
+            "workflow_step_key": "wf.capture",
+            "execution_shard": {"index": 0, "count": 2},
+        },
+    )
+
+    assert fetch_calls[0]["execution_shard"] == {"index": 0, "count": 2}
+    assert manifest["example_coverage"]["example_keys"] == ["ex_a"]
+
+
+def test_remote_executor_streams_deferred_postgres_capture_batches(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    iter_calls: list[dict[str, Any]] = []
+
+    def fail_fetch(self: PostgresSource, **kwargs: Any) -> Dataset:
+        raise AssertionError("streaming capture should not fetch the full Postgres dataset")
+
+    def fake_iter(self: PostgresSource, *, batch_size: int, **kwargs: Any) -> Any:
+        iter_calls.append({"batch_size": batch_size, **dict(kwargs)})
+        del self
+        common = {
+            "prompt_column": "prompt",
+            "example_key_column": "example_id",
+            "prompt_hash_column": "prompt_hash",
+            "label_columns": ["class"],
+        }
+        yield Dataset.from_records(
+            [
+                {
+                    "example_id": "ex_a",
+                    "prompt": "hello",
+                    "prompt_hash": "00000000000000000000000000000000",
+                    "class": "positive",
+                },
+                {
+                    "example_id": "ex_b",
+                    "prompt": "world",
+                    "prompt_hash": "00000000000000020000000000000000",
+                    "class": "positive",
+                },
+            ],
+            **common,
+        )
+        yield Dataset.from_records(
+            [
+                {
+                    "example_id": "ex_c",
+                    "prompt": "again",
+                    "prompt_hash": "00000000000000040000000000000000",
+                    "class": "positive",
+                }
+            ],
+            **common,
+        )
+
+    monkeypatch.setenv("XENON_DATABASE_URL", "postgresql://example/xenon")
+    monkeypatch.setattr(PostgresSource, "fetch_dataset", fail_fetch)
+    monkeypatch.setattr(PostgresSource, "iter_dataset_batches", fake_iter)
+    dataset = Dataset.from_postgres(
+        source=PostgresSource.from_env("XENON_DATABASE_URL"),
+        sql="SELECT example_id, prompt, prompt_hash, class FROM public.capture_examples",
+        prompt_column="prompt",
+        example_key_column="example_id",
+        prompt_hash_column="prompt_hash",
+        label_columns=["class"],
+        name="remote_postgres_stream",
+    )
+    spec = CaptureSpec(
+        engine=ToyEngine(),
+        dataset=dataset,
+        sites=[ResidualSite(name="resid_last", site="resid_post", layers=[0], tokens=TokenSelector.last())],
+    )
+
+    (manifest,) = execute_remote_many(
+        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
+        store_config={"kind": "local", "root": str(tmp_path / "artifacts")},
+        spec_payloads=[spec.to_dict()],
+        workflow_contexts=[
+            {
+                "run_id": "wr_postgres_stream",
+                "workflow_step_key": "wf.capture",
+                "execution_shard": {"index": 0, "count": 2},
+            }
+        ],
+    )
+
+    assert iter_calls[0]["execution_shard"] == {"index": 0, "count": 2}
+    assert manifest["metadata"]["streamed_deferred_dataset"] is True
+    assert manifest["metadata"]["streamed_dataset_batches"] == 2
+    assert manifest["example_coverage"]["example_count"] == 3
+    assert manifest["example_coverage"]["example_keys"] == ["ex_a", "ex_b", "ex_c"]
 
 
 def test_remote_executor_shards_generation_by_prompt_hash_and_merges(tmp_path: Path) -> None:
@@ -5742,19 +6030,21 @@ def test_workflow_plan_reports_missing_section_metadata_builder_for_probe(tmp_pa
 
 
 def test_label_predicate_resolves_deferred_dataset_once(monkeypatch: pytest.MonkeyPatch) -> None:
-    fetch_count = {"value": 0}
+    fetch_count = {"dataset": 0, "labels": 0}
 
     def fake_fetch(self: PostgresSource, **kwargs: Any) -> Dataset:
-        fetch_count["value"] += 1
-        return Dataset.from_examples(
-            [
-                Example(key="a", prompt="alpha", labels={"class": "positive"}),
-                Example(key="b", prompt="beta", labels={"class": "negative"}),
-                Example(key="c", prompt="gamma", labels={"class": "positive"}),
-            ]
-        )
+        del self, kwargs
+        fetch_count["dataset"] += 1
+        raise AssertionError("label predicate should not fetch full deferred dataset")
+
+    def fake_fetch_label_values(self: PostgresSource, **kwargs: Any) -> Mapping[str, Any]:
+        del self
+        fetch_count["labels"] += 1
+        assert kwargs["label_name"] == "class"
+        return {"a": "positive", "b": "negative", "c": "positive"}
 
     monkeypatch.setattr(PostgresSource, "fetch_dataset", fake_fetch)
+    monkeypatch.setattr(PostgresSource, "fetch_label_values", fake_fetch_label_values)
 
     dataset = Dataset.from_postgres(
         source=PostgresSource.from_env("XENON_DATABASE_URL"),
@@ -5767,7 +6057,7 @@ def test_label_predicate_resolves_deferred_dataset_once(monkeypatch: pytest.Monk
     predicate = dataset.labels("class").equals("positive")
 
     assert predicate.resolve_example_keys() == ["a", "c"]
-    assert fetch_count["value"] == 1
+    assert fetch_count == {"dataset": 0, "labels": 1}
 
 
 def test_local_runner_label_map_spec_emits_derived_labels(tmp_path: Path) -> None:

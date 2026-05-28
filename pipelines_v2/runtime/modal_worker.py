@@ -104,6 +104,7 @@ def run_on_modal(
         remote_spec_payload: dict[str, Any],
         remote_workflow_context: dict[str, Any] | None,
     ) -> dict[str, Any]:
+        _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import execute_remote
 
         result = execute_remote(
@@ -125,6 +126,7 @@ def run_on_modal(
         remote_shard_manifests: list[dict[str, Any]],
         remote_workflow_context: dict[str, Any] | None,
     ) -> dict[str, Any]:
+        _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import merge_remote_shards
 
         result = merge_remote_shards(
@@ -336,6 +338,7 @@ def run_many_on_modal(
         remote_spec_payloads: list[dict[str, Any]],
         remote_workflow_contexts: list[dict[str, Any] | None],
     ) -> list[dict[str, Any]]:
+        _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import execute_remote_many
 
         results = execute_remote_many(
@@ -358,6 +361,7 @@ def run_many_on_modal(
         remote_shard_manifests: list[dict[str, Any]],
         remote_workflow_context: dict[str, Any] | None,
     ) -> dict[str, Any]:
+        _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import merge_remote_shards
 
         result = merge_remote_shards(
@@ -708,6 +712,30 @@ def _validate_secret_bindings(*, runtime_spec: PythonRuntimeSpec, resources: dic
     missing = sorted(required - provided)
     if missing:
         raise RuntimeError(f"Modal runtime is missing secret bindings for env vars: {missing}")
+
+
+def _configure_remote_logging() -> None:
+    import os
+
+    level_name = str(os.getenv("PIPELINES_V2_REMOTE_LOGGING", "INFO")).strip().upper()
+    numeric_level = getattr(logging, level_name, None)
+    if not isinstance(numeric_level, int):
+        numeric_level = logging.INFO
+        level_name = "INFO"
+    logger = logging.getLogger("pipelines_v2")
+    handler = next(
+        (candidate for candidate in logger.handlers if getattr(candidate, "_pipelines_v2_modal_handler", False)),
+        None,
+    )
+    if handler is None:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        setattr(handler, "_pipelines_v2_modal_handler", True)
+        logger.addHandler(handler)
+    handler.setLevel(numeric_level)
+    logger.setLevel(numeric_level)
+    logger.propagate = False
+    logger.debug("remote Modal logging configured level=%s", level_name)
 
 
 def _resolved_local_python_sources(sources: tuple[str, ...]) -> tuple[tuple[tuple[Path, str], ...], tuple[str, ...]]:

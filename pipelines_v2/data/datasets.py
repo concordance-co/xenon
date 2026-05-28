@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import ast
 import json
+import logging
+import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -12,6 +14,7 @@ from typing import Any, ClassVar
 from pipelines_v2.core.types import RuntimeSecret, stable_hash
 
 Prompt = str | Sequence[Mapping[str, Any]]
+logger = logging.getLogger(__name__)
 
 
 def prompt_hash(prompt: Prompt) -> str:
@@ -173,8 +176,9 @@ class LabelSet:
 
     def resolve_values(self) -> Mapping[str, Any]:
         """Resolve values even when the underlying dataset is deferred."""
-        dataset = self.dataset.resolve() if self.dataset.is_deferred else self.dataset
-        return _label_values_from_dataset(dataset, self.name)
+        if self.dataset.is_deferred:
+            return self.dataset.resolve_label_values(self.name)
+        return _label_values_from_dataset(self.dataset, self.name)
 
     def resolve_example_keys(self) -> list[str]:
         """Return the example keys covered by this label ref."""
@@ -725,8 +729,17 @@ class Dataset:
             return self
         from pipelines_v2.data.sources import source_from_dict
 
+        start = time.monotonic()
+        logger.info("Resolving deferred dataset name=%s id=%s", self.name, self.id)
         source = source_from_dict(dict(self.source or {}))
         dataset = source.fetch_dataset(**dict(self.fetch or {}))
+        logger.info(
+            "Resolved deferred dataset name=%s id=%s examples=%s elapsed_s=%.2f",
+            self.name,
+            self.id,
+            len(dataset.examples),
+            time.monotonic() - start,
+        )
         selection_keys = self.selection.get("keys")
         selection_limit = self.selection.get("limit")
         if selection_keys is not None or selection_limit is not None:
@@ -741,6 +754,50 @@ class Dataset:
                 name=self.name or dataset.name,
             )
         return dataset
+
+    def resolve_label_values(self, name: str) -> Mapping[str, Any]:
+        """Resolve one label column without materializing prompts when the source supports it."""
+        if not self.is_deferred:
+            return _label_values_from_dataset(self, name)
+        from pipelines_v2.data.sources import source_from_dict
+
+        source = source_from_dict(dict(self.source or {}))
+        start = time.monotonic()
+        if hasattr(source, "fetch_label_values"):
+            logger.info("Resolving deferred label values name=%s dataset=%s id=%s", name, self.name, self.id)
+            values = dict(source.fetch_label_values(label_name=name, **dict(self.fetch or {})))
+            selection_keys = self.selection.get("keys")
+            selection_limit = self.selection.get("limit")
+            if selection_keys is not None:
+                allowed = {str(key) for key in selection_keys}
+                values = {key: value for key, value in values.items() if key in allowed}
+            if selection_limit is not None:
+                values = dict(list(values.items())[: int(selection_limit)])
+            logger.info(
+                "Resolved deferred label values name=%s dataset=%s count=%s elapsed_s=%.2f",
+                name,
+                self.name,
+                len(values),
+                time.monotonic() - start,
+            )
+            return values
+
+        logger.info(
+            "Deferred source lacks label-only fetch; resolving full dataset for label name=%s dataset=%s id=%s",
+            name,
+            self.name,
+            self.id,
+        )
+        dataset = self.resolve()
+        values = _label_values_from_dataset(dataset, name)
+        logger.info(
+            "Resolved deferred label values through full dataset name=%s dataset=%s count=%s elapsed_s=%.2f",
+            name,
+            self.name,
+            len(values),
+            time.monotonic() - start,
+        )
+        return values
 
     @staticmethod
     def _example_ref(example: Example) -> dict[str, Any]:

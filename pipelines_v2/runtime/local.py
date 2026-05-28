@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
+import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -29,6 +31,9 @@ from pipelines_v2.storage.local import LocalArtifactStore, NullCatalog
 from pipelines_v2.workflow.records import WorkflowStepContext
 from pipelines_v2.operations.interventions.runtime import rows_example_coverage
 from pipelines_v2.runtime.planning import spec_plan_errors
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,11 +165,31 @@ class LocalRunner:
 
         artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
         self.artifacts.make_artifact_dir(artifact_id)
+        if isinstance(spec, ReportSpec):
+            logger.info(
+                "Starting local report operation artifact_id=%s template=%s inputs=%d output_dir=%s",
+                artifact_id,
+                spec.template,
+                len(spec.inputs),
+                spec.output_dir,
+            )
+            operation_started = time.perf_counter()
+        else:
+            operation_started = None
         result = execute_artifact_operation(spec)
+        if isinstance(spec, ReportSpec):
+            logger.info(
+                "Finished local report operation artifact_id=%s elapsed=%.2fs payload_keys=%s",
+                artifact_id,
+                time.perf_counter() - operation_started if operation_started is not None else 0.0,
+                sorted(result.payload),
+            )
 
         storage_refs: dict[str, Any] = {}
         if result.payload:
             storage_refs["result"] = self.artifacts.write_json(artifact_id, "result.json", result.payload)
+            if isinstance(spec, ReportSpec):
+                logger.info("Wrote report operation payload artifact_id=%s", artifact_id)
         if result.features:
             storage_refs["features"] = write_capture_features(self.artifacts, artifact_id, result.features)
         if result.labels:
@@ -182,6 +207,12 @@ class LocalRunner:
             storage_refs.update(report_refs)
             if published:
                 metadata["published_report"] = published
+                logger.info(
+                    "Published local report artifact_id=%s report_path=%s downloaded_results=%d",
+                    artifact_id,
+                    published.get("report_path"),
+                    len(published.get("downloaded_results", [])),
+                )
         manifest = ArtifactManifest(
             artifact_id=artifact_id,
             artifact_kind=spec.kind,
@@ -199,6 +230,12 @@ class LocalRunner:
         )
         storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
         self.catalog.record_artifact(manifest)
+        if isinstance(spec, ReportSpec):
+            logger.info(
+                "Recorded local report artifact artifact_id=%s storage_refs=%s",
+                artifact_id,
+                sorted(storage_refs),
+            )
         return OperationArtifact(_manifest=manifest, store=self.artifacts)
 
     def _run_generation(
@@ -389,27 +426,64 @@ def _materialize_local_report_outputs(
     from pipelines_v2.reporting import generate_report_assets
 
     if not spec.output_dir:
+        logger.info(
+            "Skipping local report materialization artifact_id=%s template=%s output_dir unset",
+            artifact_id,
+            spec.template,
+        )
         return {}, None
     output_dir = Path(spec.output_dir) / artifact_id
     output_dir.mkdir(parents=True, exist_ok=True)
+    materialize_started = time.perf_counter()
+    logger.info(
+        "Materializing local report outputs artifact_id=%s template=%s output_dir=%s inputs=%d",
+        artifact_id,
+        spec.template,
+        output_dir,
+        len(spec.inputs),
+    )
 
     report_json_path = output_dir / "report.json"
     summary_json_path = output_dir / "summary.json"
     report_md_path = output_dir / "report.md"
     materialized_payload = json.loads(json.dumps(payload))
+    download_started = time.perf_counter()
     downloaded_results = _materialize_report_input_results(
         spec=spec,
         payload=materialized_payload,
         output_dir=output_dir,
     )
+    logger.info(
+        "Materialized report input results artifact_id=%s downloaded=%d elapsed=%.2fs",
+        artifact_id,
+        len(downloaded_results),
+        time.perf_counter() - download_started,
+    )
     if downloaded_results:
         materialized_payload["local_results"] = list(downloaded_results)
-    from pipelines_v2.reporting import generate_report_assets
+    assets_started = time.perf_counter()
+    logger.info("Generating report assets artifact_id=%s report_root=%s", artifact_id, output_dir)
     asset_outputs = generate_report_assets(report_root=output_dir, payload=materialized_payload)
+    logger.info(
+        "Generated report assets artifact_id=%s elapsed=%.2fs manifest=%s",
+        artifact_id,
+        time.perf_counter() - assets_started,
+        asset_outputs.get("manifest_path"),
+    )
 
+    write_started = time.perf_counter()
     _write_json(report_json_path, materialized_payload)
     _write_json(summary_json_path, materialized_payload.get("summary", materialized_payload))
     _write_text(report_md_path, _render_report_markdown(spec=spec, payload=materialized_payload, report_root=output_dir))
+    logger.info(
+        "Wrote local report files artifact_id=%s elapsed=%.2fs report=%s summary=%s payload=%s total_elapsed=%.2fs",
+        artifact_id,
+        time.perf_counter() - write_started,
+        report_md_path,
+        summary_json_path,
+        report_json_path,
+        time.perf_counter() - materialize_started,
+    )
 
     return (
         {
@@ -448,29 +522,74 @@ def _materialize_report_input_results(
 ) -> list[dict[str, Any]]:
     payload_inputs = payload.get("inputs")
     if not isinstance(payload_inputs, list):
+        logger.info("Skipping report input result materialization: payload inputs missing or not a list")
         return []
     results_dir = output_dir / "results"
     used_names: dict[str, int] = {}
     downloaded: list[dict[str, Any]] = []
-    for spec_input, payload_input in zip(spec.inputs, payload_inputs, strict=False):
+    materializable_total = sum(1 for item in spec.inputs if isinstance(item, OperationArtifact))
+    logger.info(
+        "Starting report input result materialization inputs=%d operation_artifacts=%d output_dir=%s",
+        len(spec.inputs),
+        materializable_total,
+        results_dir,
+    )
+    for input_index, (spec_input, payload_input) in enumerate(zip(spec.inputs, payload_inputs, strict=False), start=1):
         if not isinstance(spec_input, OperationArtifact):
+            logger.debug(
+                "Skipping report input result input_index=%d/%d reason=not_operation_artifact type=%s",
+                input_index,
+                len(spec.inputs),
+                type(spec_input).__name__,
+            )
             continue
-        result_ref = spec_input.manifest().storage_refs.get("result")
+        manifest = spec_input.manifest()
+        result_ref = manifest.storage_refs.get("result")
         if not isinstance(result_ref, dict):
+            logger.debug(
+                "Skipping report input result input_index=%d/%d artifact_id=%s reason=no_result_ref",
+                input_index,
+                len(spec.inputs),
+                spec_input.id,
+            )
             continue
         results_dir.mkdir(parents=True, exist_ok=True)
         step_name = str(
-            spec_input.manifest().workflow_context.get("step_name")
+            manifest.workflow_context.get("step_name")
             or (payload_input.get("name") if isinstance(payload_input, dict) else None)
             or spec_input.id
         )
         stem = _unique_report_result_stem(step_name, used_names)
         result_path = results_dir / f"{stem}_results.json"
-        _write_json(result_path, spec_input.result())
+        fetch_started = time.perf_counter()
+        logger.info(
+            "Fetching report input result %d/%d step=%s artifact_id=%s kind=%s store=%s bytes=%s",
+            input_index,
+            len(spec.inputs),
+            step_name,
+            spec_input.id,
+            manifest.artifact_kind,
+            result_ref.get("store"),
+            result_ref.get("bytes"),
+        )
+        result_payload = spec_input.result()
+        fetched_elapsed = time.perf_counter() - fetch_started
+        write_started = time.perf_counter()
+        _write_json(result_path, result_payload)
+        logger.info(
+            "Wrote report input result %d/%d step=%s artifact_id=%s fetch_elapsed=%.2fs write_elapsed=%.2fs path=%s",
+            input_index,
+            len(spec.inputs),
+            step_name,
+            spec_input.id,
+            fetched_elapsed,
+            time.perf_counter() - write_started,
+            result_path,
+        )
         result_entry = {
             "name": step_name,
             "artifact_id": spec_input.id,
-            "artifact_kind": spec_input.manifest().artifact_kind,
+            "artifact_kind": manifest.artifact_kind,
             "path": str(result_path),
             "source": {
                 "store": result_ref.get("store"),
