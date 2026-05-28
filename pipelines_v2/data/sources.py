@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import re
 import json
+import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Protocol, Sequence
 from urllib.request import urlopen
@@ -13,6 +15,7 @@ from pipelines_v2.core.types import RuntimeSecret
 from pipelines_v2.data.datasets import Dataset
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+logger = logging.getLogger(__name__)
 
 
 class Source(Protocol):
@@ -66,6 +69,19 @@ class InMemorySource:
     def fetch_dataset(self, **kwargs: Any) -> Dataset:
         """Materialize a dataset from the stored records."""
         return Dataset.from_records(self.records, **kwargs)
+
+    def fetch_label_values(
+        self,
+        *,
+        label_name: str,
+        example_key_column: str = "example_id",
+        **_: Any,
+    ) -> Mapping[str, Any]:
+        return {
+            str(record[example_key_column]): record[label_name]
+            for record in self.records
+            if label_name in record and example_key_column in record
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,6 +245,13 @@ class ArtifactDatasetSource:
 
 
 @dataclass(frozen=True, slots=True)
+class _PostgresDatasetQuery:
+    sql: str
+    params: list[Any]
+    default_name: str
+
+
+@dataclass(frozen=True, slots=True)
 class PostgresSource:
     """Postgres-backed source for examples, labels, cases, and metadata."""
 
@@ -292,6 +315,7 @@ class PostgresSource:
         limit: int | None = None,
         name: str | None = None,
         id: str | None = None,
+        execution_shard: Mapping[str, int] | None = None,
     ) -> Dataset:
         """Fetch a dataset from either a relation or a SQL query.
 
@@ -302,33 +326,37 @@ class PostgresSource:
         import psycopg
         from psycopg.rows import dict_row
 
-        if bool(table) == bool(sql):
-            raise ValueError("PostgresSource.fetch_dataset requires exactly one of table or sql")
+        dataset_query = _postgres_dataset_query(
+            table=table,
+            sql=sql,
+            prompt_column=prompt_column,
+            example_key_column=example_key_column,
+            prompt_hash_column=prompt_hash_column,
+            label_columns=label_columns,
+            case_columns=case_columns,
+            case_key_column=case_key_column,
+            metadata_columns=metadata_columns,
+            limit=limit,
+            execution_shard=execution_shard,
+        )
 
-        columns = [
-            example_key_column,
-            prompt_column,
-            *([prompt_hash_column] if prompt_hash_column else []),
-            *label_columns,
-            *case_columns,
-            *([case_key_column] if case_key_column else []),
-            *metadata_columns,
-        ]
-        unique_columns = list(dict.fromkeys(columns))
-        select_sql = ", ".join(_quote_identifier(column) for column in unique_columns)
-        if table is not None:
-            query = f"SELECT {select_sql} FROM {_quote_relation(table)}"
-        else:
-            assert sql is not None
-            base_sql = _normalize_sql_query(sql)
-            query = f"SELECT {select_sql} FROM ({base_sql}) AS src"
-        params: list[Any] = []
-        if limit is not None:
-            query += " LIMIT %s"
-            params.append(limit)
-
+        start = time.monotonic()
+        logger.info(
+            "Fetching Postgres dataset name=%s table=%s sql=%s labels=%s limit=%s shard=%s",
+            name or dataset_query.default_name,
+            table,
+            bool(sql),
+            tuple(label_columns),
+            limit,
+            dict(execution_shard) if execution_shard is not None else None,
+        )
         with psycopg.connect(self._resolved_url(), row_factory=dict_row) as conn:
-            records = conn.execute(query, params).fetchall()
+            records = conn.execute(dataset_query.sql, dataset_query.params).fetchall()
+        logger.info(
+            "Fetched Postgres dataset rows=%s elapsed_s=%.2f",
+            len(records),
+            time.monotonic() - start,
+        )
 
         return Dataset.from_records(
             records,
@@ -340,8 +368,119 @@ class PostgresSource:
             case_key_column=case_key_column,
             metadata_columns=metadata_columns,
             id=id,
-            name=name or (table if table is not None else "postgres_query"),
+            name=name or dataset_query.default_name,
         )
+
+    def fetch_label_values(
+        self,
+        *,
+        label_name: str,
+        table: str | None = None,
+        sql: str | None = None,
+        prompt_column: str,
+        example_key_column: str,
+        prompt_hash_column: str | None = None,
+        label_columns: Sequence[str] = (),
+        case_columns: Sequence[str] = (),
+        case_key_column: str | None = None,
+        metadata_columns: Sequence[str] = (),
+        limit: int | None = None,
+        name: str | None = None,
+        id: str | None = None,
+        execution_shard: Mapping[str, int] | None = None,
+    ) -> Mapping[str, Any]:
+        """Fetch one label column keyed by example id without materializing prompts."""
+        import psycopg
+        from psycopg.rows import dict_row
+
+        del prompt_column, label_columns, case_columns, case_key_column, metadata_columns, id
+        dataset_query = _postgres_label_query(
+            table=table,
+            sql=sql,
+            example_key_column=example_key_column,
+            label_name=label_name,
+            prompt_hash_column=prompt_hash_column,
+            limit=limit,
+            execution_shard=execution_shard,
+        )
+        start = time.monotonic()
+        logger.info(
+            "Fetching Postgres label values name=%s dataset=%s table=%s sql=%s limit=%s shard=%s",
+            label_name,
+            name or dataset_query.default_name,
+            table,
+            bool(sql),
+            limit,
+            dict(execution_shard) if execution_shard is not None else None,
+        )
+        with psycopg.connect(self._resolved_url(), row_factory=dict_row) as conn:
+            records = conn.execute(dataset_query.sql, dataset_query.params).fetchall()
+        logger.info(
+            "Fetched Postgres label values name=%s rows=%s elapsed_s=%.2f",
+            label_name,
+            len(records),
+            time.monotonic() - start,
+        )
+        return {str(record[example_key_column]): record[label_name] for record in records}
+
+    def iter_dataset_batches(
+        self,
+        *,
+        batch_size: int,
+        table: str | None = None,
+        sql: str | None = None,
+        prompt_column: str,
+        example_key_column: str,
+        prompt_hash_column: str | None = None,
+        label_columns: Sequence[str] = (),
+        case_columns: Sequence[str] = (),
+        case_key_column: str | None = None,
+        metadata_columns: Sequence[str] = (),
+        limit: int | None = None,
+        name: str | None = None,
+        id: str | None = None,
+        execution_shard: Mapping[str, int] | None = None,
+    ) -> Iterable[Dataset]:
+        """Stream a Postgres dataset as materialized ``Dataset`` batches."""
+        import psycopg
+        from psycopg.rows import dict_row
+
+        batch_size = int(batch_size)
+        if batch_size <= 0:
+            raise ValueError("PostgresSource.iter_dataset_batches requires batch_size > 0")
+        dataset_query = _postgres_dataset_query(
+            table=table,
+            sql=sql,
+            prompt_column=prompt_column,
+            example_key_column=example_key_column,
+            prompt_hash_column=prompt_hash_column,
+            label_columns=label_columns,
+            case_columns=case_columns,
+            case_key_column=case_key_column,
+            metadata_columns=metadata_columns,
+            limit=limit,
+            execution_shard=execution_shard,
+        )
+
+        with psycopg.connect(self._resolved_url(), row_factory=dict_row) as conn:
+            with conn.cursor(name="pipelines_v2_dataset_stream", row_factory=dict_row) as cur:
+                cur.execute(dataset_query.sql, dataset_query.params)
+                while True:
+                    records = cur.fetchmany(batch_size)
+                    if not records:
+                        break
+                    yield Dataset.from_records(
+                        records,
+                        prompt_column=prompt_column,
+                        example_key_column=example_key_column,
+                        prompt_hash_column=prompt_hash_column,
+                        label_columns=label_columns,
+                        case_columns=case_columns,
+                        case_key_column=case_key_column,
+                        metadata_columns=metadata_columns,
+                        id=id,
+                        name=name or dataset_query.default_name,
+                    )
 
     def connection_url(self) -> str:
         """Resolve the concrete connection string for local runtime use."""
@@ -625,6 +764,122 @@ def _quote_identifier(value: str) -> str:
     if not _IDENTIFIER_RE.fullmatch(value):
         raise ValueError(f"Invalid SQL identifier: {value!r}")
     return f'"{value}"'
+
+
+def _postgres_prompt_hash_shard_predicate(
+    *,
+    prompt_hash_column: str | None,
+    execution_shard: Mapping[str, int] | None,
+) -> str | None:
+    if execution_shard is None:
+        return None
+    if prompt_hash_column is None:
+        return None
+    count = int(execution_shard.get("count") or 1)
+    index = int(execution_shard.get("index") or 0)
+    if count <= 1:
+        return None
+    if index < 0 or index >= count:
+        raise ValueError(f"Invalid execution shard index {index} for shard count {count}")
+    column = f"src.{_quote_identifier(prompt_hash_column)}"
+    # Match runtime _prompt_hash_shard(): int(hash[:16], 16) % count, without
+    # overflowing signed int64 for hashes whose top bit is set.
+    value_expr = (
+        f"((('x' || substr({column}, 1, 8))::bit(32)::bigint::numeric * 4294967296) + "
+        f"(('x' || substr({column}, 9, 8))::bit(32)::bigint::numeric))"
+    )
+    return f"MOD({value_expr}, %s) = %s"
+
+
+def _postgres_dataset_query(
+    *,
+    table: str | None,
+    sql: str | None,
+    prompt_column: str,
+    example_key_column: str,
+    prompt_hash_column: str | None,
+    label_columns: Sequence[str],
+    case_columns: Sequence[str],
+    case_key_column: str | None,
+    metadata_columns: Sequence[str],
+    limit: int | None,
+    execution_shard: Mapping[str, int] | None,
+) -> _PostgresDatasetQuery:
+    if bool(table) == bool(sql):
+        raise ValueError("PostgresSource.fetch_dataset requires exactly one of table or sql")
+
+    columns = [
+        example_key_column,
+        prompt_column,
+        *([prompt_hash_column] if prompt_hash_column else []),
+        *label_columns,
+        *case_columns,
+        *([case_key_column] if case_key_column else []),
+        *metadata_columns,
+    ]
+    unique_columns = list(dict.fromkeys(columns))
+    select_sql = ", ".join(_quote_identifier(column) for column in unique_columns)
+    if table is not None:
+        source_sql = _quote_relation(table)
+        default_name = str(table)
+    else:
+        assert sql is not None
+        base_sql = _normalize_sql_query(sql)
+        source_sql = f"({base_sql})"
+        default_name = "postgres_query"
+    query = f"SELECT {select_sql} FROM {source_sql} AS src"
+    params: list[Any] = []
+    shard_predicate = _postgres_prompt_hash_shard_predicate(
+        prompt_hash_column=prompt_hash_column,
+        execution_shard=execution_shard,
+    )
+    if shard_predicate is not None:
+        query += f" WHERE {shard_predicate}"
+        assert execution_shard is not None
+        params.extend([int(execution_shard["count"]), int(execution_shard["index"])])
+    if limit is not None:
+        query += " LIMIT %s"
+        params.append(limit)
+    return _PostgresDatasetQuery(sql=query, params=params, default_name=default_name)
+
+
+def _postgres_label_query(
+    *,
+    table: str | None,
+    sql: str | None,
+    example_key_column: str,
+    label_name: str,
+    prompt_hash_column: str | None,
+    limit: int | None,
+    execution_shard: Mapping[str, int] | None,
+) -> _PostgresDatasetQuery:
+    if bool(table) == bool(sql):
+        raise ValueError("PostgresSource.fetch_label_values requires exactly one of table or sql")
+
+    unique_columns = list(dict.fromkeys([example_key_column, label_name, *([prompt_hash_column] if prompt_hash_column else [])]))
+    select_sql = ", ".join(_quote_identifier(column) for column in unique_columns)
+    if table is not None:
+        source_sql = _quote_relation(table)
+        default_name = str(table)
+    else:
+        assert sql is not None
+        base_sql = _normalize_sql_query(sql)
+        source_sql = f"({base_sql})"
+        default_name = "postgres_query"
+    query = f"SELECT {select_sql} FROM {source_sql} AS src"
+    params: list[Any] = []
+    shard_predicate = _postgres_prompt_hash_shard_predicate(
+        prompt_hash_column=prompt_hash_column,
+        execution_shard=execution_shard,
+    )
+    if shard_predicate is not None:
+        query += f" WHERE {shard_predicate}"
+        assert execution_shard is not None
+        params.extend([int(execution_shard["count"]), int(execution_shard["index"])])
+    if limit is not None:
+        query += " LIMIT %s"
+        params.append(limit)
+    return _PostgresDatasetQuery(sql=query, params=params, default_name=default_name)
 
 
 def _quote_relation(value: str) -> str:

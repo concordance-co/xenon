@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
@@ -14,6 +15,8 @@ from pipelines_v2.data.datasets import CaseSet, LabelSet
 from pipelines_v2.operations.common.builders import TransformResult
 from pipelines_v2.operations.common.tokens import TokenPooling, TokenSelector
 from pipelines_v2.storage.artifacts import ArtifactLabelRef, CaptureArtifact, FeatureLayerRef, FeatureRef, OperationArtifact
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +36,11 @@ def feature_matrices(
     token_pooling: TokenPooling | None = None,
 ) -> tuple[dict[int, NDArray[np.float32]], list[str]]:
     if isinstance(feature, FeatureLayerRef):
+        logger.info(
+            "Loading feature matrix from layer ref feature=%s layer=%s",
+            feature.feature.name,
+            feature.layer,
+        )
         layer_payload = feature.load()
         example_keys = sorted(layer_payload)
         return {
@@ -44,12 +52,20 @@ def feature_matrices(
             )
         }, example_keys
     if isinstance(feature, FeatureRef):
+        logger.info("Loading feature matrices feature=%s", feature.name)
         payload = feature.load()
         payload_kind = payload.get("kind")
         available_layers = sorted(int(layer) for layer in payload["layers"])
         selected_layers = [layer for layer in available_layers if layers is None or layer in set(layers)]
         if not selected_layers:
             raise SpecValidationError("No requested layers were present in the feature payload")
+        logger.info(
+            "Building feature matrices feature=%s kind=%s selected_layers=%s available_layer_count=%s",
+            feature.name,
+            payload_kind,
+            selected_layers,
+            len(available_layers),
+        )
         example_keys = sorted(payload["layers"][str(selected_layers[0])])
         if payload_kind == "residual":
             return {
@@ -93,8 +109,14 @@ def matrix_from_layer_payload(
             "Feature layer payload is missing selected examples: "
             f"{preview}{suffix} ({len(missing)} missing)"
         )
+    logger.info(
+        "Building residual matrix examples=%s token_selector=%s token_pooling=%s",
+        len(example_keys),
+        getattr(token_selector, "kind", None),
+        getattr(token_pooling, "kind", None),
+    )
     rows: list[NDArray[np.float32]] = []
-    for key in example_keys:
+    for index, key in enumerate(example_keys, start=1):
         record = dict(layer_payload[key])
         values = np.asarray(record["values"], dtype=np.float32)
         if values.ndim != 2:
@@ -108,7 +130,11 @@ def matrix_from_layer_payload(
                 raise SpecValidationError("Token selector did not match any captured positions")
             values = values[selected]
         rows.append(pool_token_values(values, token_pooling=token_pooling))
-    return np.stack(rows, axis=0).astype(np.float32)
+        if index % 25000 == 0:
+            logger.info("Built residual matrix rows=%s/%s", index, len(example_keys))
+    matrix = np.stack(rows, axis=0).astype(np.float32)
+    logger.info("Built residual matrix shape=%s dtype=%s", matrix.shape, matrix.dtype)
+    return matrix
 
 
 def router_matrix_from_layer_payload(
@@ -120,7 +146,13 @@ def router_matrix_from_layer_payload(
     routing_policy: Mapping[str, Any] | None,
 ) -> NDArray[np.float32]:
     rows: list[NDArray[np.float32]] = []
-    for key in example_keys:
+    logger.info(
+        "Building router matrix examples=%s token_selector=%s token_pooling=%s",
+        len(example_keys),
+        getattr(token_selector, "kind", None),
+        getattr(token_pooling, "kind", None),
+    )
+    for index, key in enumerate(example_keys, start=1):
         record = dict(layer_payload[key])
         token_positions = [int(position) for position in record.get("tokens", ())]
         token_records = record.get("records")
@@ -149,7 +181,11 @@ def router_matrix_from_layer_payload(
             vectors.append(routing_vector_from_record(token_record, routing_policy=routing_policy))
         values = np.stack(vectors, axis=0).astype(np.float32)
         rows.append(pool_token_values(values, token_pooling=token_pooling))
-    return np.stack(rows, axis=0).astype(np.float32)
+        if index % 25000 == 0:
+            logger.info("Built router matrix rows=%s/%s", index, len(example_keys))
+    matrix = np.stack(rows, axis=0).astype(np.float32)
+    logger.info("Built router matrix shape=%s dtype=%s", matrix.shape, matrix.dtype)
+    return matrix
 
 
 def routing_vector_from_record(

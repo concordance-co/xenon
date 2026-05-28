@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -12,6 +13,7 @@ from pipelines_v2.core.types import SpecValidationError
 from pipelines_v2.operations.execution.common import (
     OperationExecutionResult,
     feature_matrices,
+    matrix_from_layer_payload,
     resolve_values_map,
 )
 from pipelines_v2.operations.common.vectors import coordinate_name_key, normalize_vector
@@ -27,6 +29,10 @@ from .specs import (
     EmotionVectorSpaceSpec,
     _hf_token,
 )
+
+logger = logging.getLogger(__name__)
+
+_VECTOR_SPACE_CACHE: dict[str, Mapping[str, Any]] = {}
 
 
 def run_emotion_precomputed_vector_space(spec: EmotionPrecomputedVectorSpaceSpec) -> OperationExecutionResult:
@@ -59,27 +65,38 @@ def run_emotion_vector_space(spec: EmotionVectorSpaceSpec) -> OperationExecution
 
     if spec.concept_by is None:
         raise SpecValidationError("EmotionVectorSpaceSpec requires concept_by")
-    matrices, example_keys = feature_matrices(
-        spec.feature,
-        layers=tuple(spec.layers) if spec.layers else None,
-        token_selector=spec.tokens,
-        token_pooling=spec.pooling,
+    logger.info(
+        "Emotion vector space analysis starting feature=%s layers=%s min_examples_per_concept=%s neutral_project_out=%s",
+        _feature_name(spec.feature),
+        tuple(spec.layers) if spec.layers else None,
+        spec.min_examples_per_concept,
+        spec.neutral_feature is not None,
     )
+    matrix_items, example_keys = _iter_emotion_vector_space_matrices(spec)
+    logger.info("Emotion vector space feature examples resolved count=%s", len(example_keys))
+    logger.info("Emotion vector space resolving concept labels")
     concept_values = {str(key): str(value) for key, value in resolve_values_map(spec.concept_by, label="concept_by").items()}
     concepts = sorted({concept_values[key] for key in example_keys if key in concept_values and concept_values[key]})
     if not concepts:
         raise SpecValidationError("EmotionVectorSpaceSpec concept_by resolved no concepts for captured examples")
+    logger.info(
+        "Emotion vector space concepts resolved count=%s value_count=%s",
+        len(concepts),
+        len(concept_values),
+    )
 
     neutral_components = _neutral_components_by_layer(spec)
+    logger.info("Emotion vector space neutral components loaded layers=%s", sorted(neutral_components))
     layers: dict[str, Any] = {}
     dropped: dict[str, int] = {}
     used_keys: set[str] = set()
 
-    for layer, matrix in matrices.items():
+    for layer, matrix in matrix_items:
+        logger.info("Emotion vector space layer starting layer=%s matrix_shape=%s", layer, matrix.shape)
         index_by_key = {str(key): index for index, key in enumerate(example_keys)}
         concept_means: dict[str, np.ndarray] = {}
         counts: dict[str, int] = {}
-        for concept in concepts:
+        for concept_index, concept in enumerate(concepts, start=1):
             keys = [key for key in example_keys if concept_values.get(key) == concept]
             if len(keys) < int(spec.min_examples_per_concept):
                 dropped[concept] = len(keys)
@@ -88,6 +105,13 @@ def run_emotion_vector_space(spec: EmotionVectorSpaceSpec) -> OperationExecution
             counts[concept] = len(indices)
             used_keys.update(keys)
             concept_means[concept] = matrix[np.asarray(indices, dtype=np.int64)].mean(axis=0).astype(np.float32)
+            if concept_index % 25 == 0:
+                logger.info(
+                    "Emotion vector space layer=%s concept_means=%s/%s",
+                    layer,
+                    concept_index,
+                    len(concepts),
+                )
         if not concept_means:
             raise SpecValidationError("EmotionVectorSpaceSpec retained no concepts after min_examples_per_concept")
 
@@ -116,6 +140,12 @@ def run_emotion_vector_space(spec: EmotionVectorSpaceSpec) -> OperationExecution
                 "count": int(counts[concept]),
             }
         layers[str(int(layer))] = layer_payload
+        logger.info(
+            "Emotion vector space layer completed layer=%s retained_concepts=%s used_examples_so_far=%s",
+            layer,
+            len(concept_means),
+            len(used_keys),
+        )
 
     payload = {
         "kind": EMOTION_VECTOR_SPACE_KIND,
@@ -138,6 +168,12 @@ def run_emotion_vector_space(spec: EmotionVectorSpaceSpec) -> OperationExecution
             "normalized": spec.normalize,
         },
     }
+    logger.info(
+        "Emotion vector space analysis completed layer_count=%s concept_count=%s used_example_count=%s",
+        len(layers),
+        len(_all_concepts(layers)),
+        len(used_keys),
+    )
     return OperationExecutionResult(
         payload=payload,
         example_coverage={
@@ -148,9 +184,66 @@ def run_emotion_vector_space(spec: EmotionVectorSpaceSpec) -> OperationExecution
     )
 
 
+def _iter_emotion_vector_space_matrices(
+    spec: EmotionVectorSpaceSpec,
+) -> tuple[Sequence[tuple[int, np.ndarray]] | Any, list[str]]:
+    logger.info("Loading emotion vector space feature payload feature=%s", _feature_name(spec.feature))
+    payload = spec.feature.load()
+    if isinstance(payload, Mapping) and payload.get("kind") == "residual" and isinstance(payload.get("layers"), Mapping):
+        layers_payload = payload["layers"]
+        available_layers = sorted(int(layer) for layer in layers_payload)
+        requested_layers = set(int(layer) for layer in spec.layers) if spec.layers else None
+        selected_layers = [layer for layer in available_layers if requested_layers is None or layer in requested_layers]
+        if not selected_layers:
+            raise SpecValidationError("No requested layers were present in the feature payload")
+        example_keys = sorted(layers_payload[str(selected_layers[0])])
+        logger.info(
+            "Emotion vector space residual payload loaded selected_layers=%s example_count=%s",
+            selected_layers,
+            len(example_keys),
+        )
+
+        def iter_matrices() -> Any:
+            for layer_index, layer in enumerate(selected_layers, start=1):
+                logger.info(
+                    "Emotion vector space matrix build starting layer=%s index=%s/%s",
+                    layer,
+                    layer_index,
+                    len(selected_layers),
+                )
+                matrix = matrix_from_layer_payload(
+                    layers_payload[str(layer)],
+                    example_keys,
+                    token_selector=spec.tokens,
+                    token_pooling=spec.pooling,
+                )
+                logger.info(
+                    "Emotion vector space matrix build completed layer=%s shape=%s",
+                    layer,
+                    matrix.shape,
+                )
+                yield int(layer), matrix
+
+        return iter_matrices(), example_keys
+
+    matrices, example_keys = feature_matrices(
+        spec.feature,
+        layers=tuple(spec.layers) if spec.layers else None,
+        token_selector=spec.tokens,
+        token_pooling=spec.pooling,
+    )
+    return matrices.items(), example_keys
+
+
 def run_emotion_score(spec: EmotionScoreSpec) -> OperationExecutionResult:
     """Score activation slices against selected emotion concepts."""
 
+    logger.info(
+        "Emotion score analysis starting feature=%s concepts=%s layers=%s",
+        _feature_name(spec.feature),
+        len(spec.concepts),
+        tuple(spec.layers) if spec.layers else None,
+    )
     vector_space = _resolve_vector_space(spec.vector_space)
     coordinates = _coordinates_from_vector_space(
         vector_space,
@@ -170,6 +263,11 @@ def run_emotion_score(spec: EmotionScoreSpec) -> OperationExecutionResult:
         emit_labels=spec.emit_labels,
     )
     result = run_projection(projection)
+    logger.info(
+        "Emotion score projection completed rows=%s example_summaries=%s",
+        len(result.payload.get("rows", ())),
+        len(result.payload.get("example_summaries", ())),
+    )
     payload = dict(result.payload)
     payload["kind"] = "emotion_score_result"
     payload["vector_space_kind"] = str(vector_space.get("vector_space_kind") or "")
@@ -191,10 +289,17 @@ def run_emotion_score(spec: EmotionScoreSpec) -> OperationExecutionResult:
 def run_emotion_direction(spec: EmotionDirectionSpec) -> OperationExecutionResult:
     """Export one emotion concept as a direction_result for steering."""
 
+    logger.info(
+        "Emotion direction analysis starting concept=%s source=%s layers=%s",
+        spec.concept,
+        spec.source,
+        tuple(spec.layers) if spec.layers else None,
+    )
     vector_space = _resolve_vector_space(spec.vector_space)
     available_layers = _selected_layers(vector_space, layers=spec.layers)
     if not available_layers:
         raise SpecValidationError("EmotionDirectionSpec did not resolve any layers")
+    logger.info("Emotion direction selected layers concept=%s layers=%s", spec.concept, available_layers)
 
     layers: dict[str, Any] = {}
     for layer in available_layers:
@@ -218,6 +323,7 @@ def run_emotion_direction(spec: EmotionDirectionSpec) -> OperationExecutionResul
             "scale": float(spec.scale),
             "residual_norm": residual_norm,
         }
+        logger.info("Emotion direction layer completed concept=%s layer=%s norm=%s", spec.concept, layer, norm)
 
     payload = {
         "kind": "direction_result",
@@ -250,11 +356,20 @@ def run_emotion_geometry(spec: EmotionGeometrySpec) -> OperationExecutionResult:
     from sklearn.cluster import KMeans
     from sklearn.decomposition import PCA
 
+    logger.info(
+        "Emotion geometry analysis starting concepts=%s layers=%s pca_components=%s cluster_count=%s",
+        len(spec.concepts),
+        tuple(spec.layers) if spec.layers else None,
+        spec.pca_components,
+        spec.cluster_count,
+    )
     vector_space = _resolve_vector_space(spec.vector_space)
     layers = _selected_layers(vector_space, layers=spec.layers)
+    logger.info("Emotion geometry selected layers=%s", layers)
     layer_results: dict[str, Any] = {}
     for layer in layers:
         concepts = _selected_concepts(vector_space, layer=layer, concepts=spec.concepts)
+        logger.info("Emotion geometry layer starting layer=%s concepts=%s", layer, len(concepts))
         matrix = np.stack(
             [
                 np.asarray(_concept_payload(vector_space, layer=layer, concept=concept)["vector"], dtype=np.float32)
@@ -280,6 +395,7 @@ def run_emotion_geometry(spec: EmotionGeometrySpec) -> OperationExecutionResult:
             labels = KMeans(n_clusters=k, n_init=10, random_state=0).fit_predict(matrix)
             layer_payload["clusters"] = {concept: int(label) for concept, label in zip(concepts, labels, strict=True)}
         layer_results[str(layer)] = layer_payload
+        logger.info("Emotion geometry layer completed layer=%s pca_components=%s", layer, pca_components)
 
     payload = {
         "kind": "emotion_geometry_result",
@@ -451,6 +567,12 @@ def _neutral_components_by_layer(spec: EmotionVectorSpaceSpec) -> dict[int, np.n
         return {}
     from sklearn.decomposition import PCA
 
+    logger.info(
+        "Neutral projector analysis starting feature=%s layers=%s variance_threshold=%s",
+        _feature_name(spec.neutral_feature),
+        tuple(spec.layers) if spec.layers else None,
+        spec.neutral_variance_threshold,
+    )
     matrices, _ = feature_matrices(
         spec.neutral_feature,
         layers=tuple(spec.layers) if spec.layers else None,
@@ -459,6 +581,7 @@ def _neutral_components_by_layer(spec: EmotionVectorSpaceSpec) -> dict[int, np.n
     )
     components: dict[int, np.ndarray] = {}
     for layer, matrix in matrices.items():
+        logger.info("Neutral projector layer starting layer=%s matrix_shape=%s", layer, matrix.shape)
         if matrix.shape[0] < 2:
             components[int(layer)] = np.zeros((0, matrix.shape[1]), dtype=np.float32)
             continue
@@ -469,11 +592,36 @@ def _neutral_components_by_layer(spec: EmotionVectorSpaceSpec) -> dict[int, np.n
         count = int(np.searchsorted(cumulative, float(spec.neutral_variance_threshold), side="left") + 1)
         count = max(1, min(count, n_components))
         components[int(layer)] = pca.components_[:count].astype(np.float32)
+        logger.info("Neutral projector layer completed layer=%s component_count=%s", layer, count)
     return components
 
 
 def _resolve_vector_space(source: Any) -> Mapping[str, Any]:
+    cache_key = _vector_space_cache_key(source)
+    if cache_key is not None and cache_key in _VECTOR_SPACE_CACHE:
+        logger.info("Resolving emotion vector space source=%s cache=hit", type(source).__name__)
+        return _validate_vector_space_payload(_VECTOR_SPACE_CACHE[cache_key])
+
+    logger.info(
+        "Resolving emotion vector space source=%s cache=%s",
+        type(source).__name__,
+        "miss" if cache_key is not None else "disabled",
+    )
     payload = source.result() if hasattr(source, "result") else source
+    vector_space = _validate_vector_space_payload(payload)
+    if cache_key is not None:
+        _VECTOR_SPACE_CACHE[cache_key] = vector_space
+    return vector_space
+
+
+def _vector_space_cache_key(source: Any) -> str | None:
+    artifact_id = getattr(source, "id", None)
+    if artifact_id:
+        return f"{type(source).__name__}:{artifact_id}"
+    return None
+
+
+def _validate_vector_space_payload(payload: Any) -> Mapping[str, Any]:
     if not isinstance(payload, Mapping):
         raise TypeError(f"Emotion vector-space source must resolve to a mapping, got {type(payload).__name__}")
     if str(payload.get("kind") or "") != EMOTION_VECTOR_SPACE_KIND:
@@ -481,6 +629,11 @@ def _resolve_vector_space(source: Any) -> Mapping[str, Any]:
     layers = payload.get("layers")
     if not isinstance(layers, Mapping) or not layers:
         raise SpecValidationError("Emotion vector-space payload must contain non-empty layers")
+    logger.info(
+        "Resolved emotion vector space layer_count=%s concept_count=%s",
+        len(layers),
+        len(_all_concepts(layers)),
+    )
     return payload
 
 

@@ -323,25 +323,36 @@ def _execute_capture(
     engine = spec.bound_engine()
     if engine is None:
         raise RuntimeError("CaptureSpec is missing a bound engine")
-    resolved_spec = spec.resolve_dataset()
-    resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
     existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
     if existing is not None:
         return existing.to_dict()
     _ensure_artifact_dir(store, artifact_id)
-    if not resolved_spec.dataset.examples:
-        result_features = _empty_capture_features(resolved_spec)
-        result_generations: list[dict[str, Any]] = []
-        result_metadata: dict[str, Any] = {"empty_shard": True}
+
+    streamed_result = _execute_streaming_capture_if_available(
+        engine=engine,
+        spec=spec,
+        workflow_context=workflow_context,
+        execution_session=execution_session,
+    )
+    if streamed_result is not None:
+        result_features, result_generations, result_metadata, example_coverage = streamed_result
     else:
-        if execution_session is None:
-            result = engine.capture(resolved_spec)
+        resolved_spec = _resolve_dataset_for_execution(spec=spec, workflow_context=workflow_context)
+        resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
+        if not resolved_spec.dataset.examples:
+            result_features = _empty_capture_features(resolved_spec)
+            result_generations = []
+            result_metadata = {"empty_shard": True}
         else:
-            result = execution_session.capture(engine=engine, spec=resolved_spec)
-        result_features = result.features
-        result_generations = result.generations
-        result_metadata = dict(result.metadata)
+            if execution_session is None:
+                result = engine.capture(resolved_spec)
+            else:
+                result = execution_session.capture(engine=engine, spec=resolved_spec)
+            result_features = result.features
+            result_generations = result.generations
+            result_metadata = dict(result.metadata)
+        example_coverage = resolved_spec.dataset.coverage()
 
     storage_refs: dict[str, Any] = {"features": write_capture_features(store, artifact_id, result_features)}
 
@@ -362,7 +373,7 @@ def _execute_capture(
         engine=engine.identity(),
         runner=runner_config,
         input_artifact_refs=(),
-        example_coverage=resolved_spec.dataset.coverage(),
+        example_coverage=example_coverage,
         storage_refs=storage_refs,
         metadata=_with_execution_shard_metadata(result_metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
@@ -373,6 +384,132 @@ def _execute_capture(
         manifest.to_dict(),
     )
     return manifest.to_dict()
+
+
+def _execute_streaming_capture_if_available(
+    *,
+    engine: Any,
+    spec: CaptureSpec,
+    workflow_context: dict[str, Any] | None,
+    execution_session: _RemoteExecutionSession | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any], dict[str, Any]] | None:
+    """Stream deferred Postgres capture inputs through a reusable execution session."""
+
+    if execution_session is None:
+        return None
+    if not _is_streamable_deferred_postgres_dataset(spec.dataset):
+        return None
+
+    batch_size = max(1, int(getattr(engine, "max_num_seqs", 0) or 1))
+    features = _empty_capture_features(spec)
+    generations: list[dict[str, Any]] = []
+    example_metadata: list[dict[str, Any]] = []
+    prompt_hashes: dict[str, str | None] = {}
+    example_keys: list[str] = []
+    result_metadata: dict[str, Any] = {}
+    batch_count = 0
+
+    for batch_dataset in _iter_streamed_dataset_batches(
+        dataset=spec.dataset,
+        workflow_context=workflow_context,
+        batch_size=batch_size,
+    ):
+        batch_spec = replace(spec, dataset=batch_dataset)
+        batch_spec = _apply_execution_shard(spec=batch_spec, workflow_context=workflow_context)
+        if not batch_spec.dataset.examples:
+            continue
+        batch_count += 1
+        result = execution_session.capture(engine=engine, spec=batch_spec)
+        if not result_metadata:
+            result_metadata = dict(result.metadata)
+        for name, payload in result.features.items():
+            _merge_feature_payload(features, str(name), payload)
+        generations.extend(dict(row) for row in result.generations)
+        for example in batch_spec.dataset.examples:
+            example_keys.append(str(example.key))
+            prompt_hashes[str(example.key)] = str(example.prompt_hash) if example.prompt_hash is not None else None
+        batch_example_metadata = dict(result.metadata).get("example_metadata")
+        if isinstance(batch_example_metadata, list):
+            example_metadata.extend(dict(item) for item in batch_example_metadata if isinstance(item, dict))
+
+    if batch_count == 0:
+        result_metadata = {
+            "empty_shard": True,
+            "streamed_deferred_dataset": True,
+            "streamed_dataset_batches": 0,
+            "dataset_fetch_batch_size": batch_size,
+        }
+    else:
+        result_metadata = {
+            **result_metadata,
+            "example_metadata": example_metadata,
+            "example_count": len(example_keys),
+            "spec_hash": spec.spec_hash(),
+            "streamed_deferred_dataset": True,
+            "streamed_dataset_batches": batch_count,
+            "dataset_fetch_batch_size": batch_size,
+        }
+
+    coverage = {
+        "dataset_id": spec.dataset.id,
+        "dataset_name": spec.dataset.name,
+        "materialized": True,
+        "streamed": True,
+        "example_count": len(example_keys),
+        "example_keys": example_keys,
+        "prompt_hashes": prompt_hashes,
+    }
+    return features, generations, result_metadata, coverage
+
+
+def _is_streamable_deferred_postgres_dataset(dataset: Dataset) -> bool:
+    if not getattr(dataset, "is_deferred", False):
+        return False
+    source = dict(getattr(dataset, "source", {}) or {})
+    return source.get("kind") == "postgres"
+
+
+def _iter_streamed_dataset_batches(
+    *,
+    dataset: Dataset,
+    workflow_context: dict[str, Any] | None,
+    batch_size: int,
+) -> Any:
+    from pipelines_v2.data.sources import source_from_dict
+
+    source = source_from_dict(dict(dataset.source or {}))
+    batch_iter = getattr(source, "iter_dataset_batches", None)
+    if not callable(batch_iter):
+        raise RuntimeError("Deferred Postgres dataset source does not support streaming batches")
+    fetch = dict(dataset.fetch or {})
+    shard = _execution_shard(workflow_context)
+    if shard is not None and fetch.get("prompt_hash_column"):
+        fetch["execution_shard"] = shard
+
+    selection_keys = dataset.selection.get("keys")
+    allowed_keys = {str(key) for key in selection_keys} if isinstance(selection_keys, list) else None
+    selection_limit = dataset.selection.get("limit")
+    remaining = int(selection_limit) if selection_limit is not None else None
+    batch_index = 0
+    for source_batch in batch_iter(batch_size=int(batch_size), **fetch):
+        examples = []
+        for example in source_batch.examples:
+            if allowed_keys is not None and str(example.key) not in allowed_keys:
+                continue
+            if remaining is not None and remaining <= 0:
+                break
+            examples.append(example)
+            if remaining is not None:
+                remaining -= 1
+        if examples:
+            yield Dataset.from_examples(
+                examples,
+                id=dataset.id,
+                name=f"{dataset.name or source_batch.name or 'dataset'}_batch_{batch_index}",
+            )
+            batch_index += 1
+        if remaining is not None and remaining <= 0:
+            break
 
 
 def _execute_artifact_operation(
@@ -436,7 +573,7 @@ def _execute_intervention(
     engine = spec.bound_engine()
     if engine is None:
         raise RuntimeError("PatchedGenerationSpec is missing a bound engine")
-    resolved_spec = spec.resolve_dataset()
+    resolved_spec = _resolve_dataset_for_execution(spec=spec, workflow_context=workflow_context)
     resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
     shard = _execution_shard(workflow_context)
     artifact_id = (
@@ -502,7 +639,7 @@ def _execute_generation(
     engine = spec.bound_engine()
     if engine is None:
         raise RuntimeError("GenerationRunSpec is missing a bound engine")
-    resolved_spec = spec.resolve_dataset()
+    resolved_spec = _resolve_dataset_for_execution(spec=spec, workflow_context=workflow_context)
     resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
     existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
@@ -699,14 +836,13 @@ def _merge_capture_shards(
     shard_manifests: list[ArtifactManifest],
     workflow_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    resolved_spec = spec.resolve_dataset()
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
     existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
     if existing is not None:
         return existing.to_dict()
     _ensure_artifact_dir(store, artifact_id)
 
-    features = _empty_capture_features(resolved_spec)
+    features = _empty_capture_features(spec)
     generations: list[dict[str, Any]] = []
     example_metadata: list[dict[str, Any]] = []
     for shard in _ordered_shard_manifests(shard_manifests):
@@ -740,7 +876,7 @@ def _merge_capture_shards(
         engine=spec.engine.identity() if spec.engine is not None else {},
         runner=runner_config,
         input_artifact_refs=(),
-        example_coverage=resolved_spec.dataset.coverage(),
+        example_coverage=spec.dataset.coverage(),
         storage_refs=storage_refs,
         metadata={
             "sharded": True,
@@ -843,6 +979,19 @@ def _artifact_id_for(*, spec: OperationSpec, workflow_context: dict[str, Any] | 
     if shard is None:
         return artifact_id
     return f"{artifact_id}_shard_{shard['index']:05d}_of_{shard['count']:05d}"
+
+
+def _resolve_dataset_for_execution(*, spec: Any, workflow_context: dict[str, Any] | None) -> Any:
+    dataset = getattr(spec, "dataset", None)
+    shard = _execution_shard(workflow_context)
+    if shard is not None and getattr(dataset, "is_deferred", False):
+        source = dict(getattr(dataset, "source", {}) or {})
+        fetch = dict(getattr(dataset, "fetch", {}) or {})
+        if source.get("kind") == "postgres" and fetch.get("prompt_hash_column"):
+            fetch["execution_shard"] = shard
+            dataset = replace(dataset, fetch=fetch)
+            spec = replace(spec, dataset=dataset)
+    return spec.resolve_dataset()
 
 
 def _apply_execution_shard(*, spec: Any, workflow_context: dict[str, Any] | None) -> Any:
@@ -1086,12 +1235,15 @@ def _empty_capture_features(spec: CaptureSpec) -> dict[str, dict[str, Any]]:
     features: dict[str, dict[str, Any]] = {}
     for site in spec.sites:
         if isinstance(site, ResidualSite):
-            features[site.name] = {
+            payload = {
                 "kind": "residual",
                 "site": site.site,
                 "storage": {"dtype": site.storage.dtype, "format": site.storage.format},
                 "layers": {str(layer): {} for layer in site.layers},
             }
+            if site.pooling is not None:
+                payload["pooling"] = {"kind": site.pooling.kind}
+            features[site.name] = payload
         elif isinstance(site, MoERoutingSite):
             features[site.name] = {
                 "kind": "moe_routing",
