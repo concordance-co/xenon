@@ -2,6 +2,7 @@ import type {
   DatasetPreview,
   LabelPreview,
   PromptPreview,
+  ProjectsResponse,
   ReportGenerationResponse,
   ReportDetail,
   ResultPreview,
@@ -54,6 +55,8 @@ function qs(params: Record<string, string | number | undefined | null>): string 
 }
 
 export const api = {
+  listProjects: () => req<ProjectsResponse>("/api/projects"),
+
   listRuns: (filters: { status?: string; workflow_name?: string; limit?: number } = {}) =>
     req<RunsResponse>(`/api/runs${qs(filters)}`),
 
@@ -90,7 +93,13 @@ export const api = {
       `/api/runs/${encodeURIComponent(runId)}/steps/${encodeURIComponent(stepName)}/result`,
     ),
 
-  getReport: (artifactId: string) => req<ReportDetail>(`/api/reports/${encodeURIComponent(artifactId)}`),
+  getReport: (artifactId: string) => {
+    const projectKey = projectReportKey(artifactId);
+    if (projectKey) {
+      return req<ReportDetail>(`/api/project-reports/${encodeURIComponent(projectKey)}`);
+    }
+    return req<ReportDetail>(`/api/reports/${encodeURIComponent(artifactId)}`);
+  },
 
   generateReport: (runId: string, opts: { step_name?: string } = {}) =>
     req<ReportGenerationResponse>(
@@ -98,6 +107,16 @@ export const api = {
       { method: "POST" },
     ),
 
-  reportAssetUrl: (artifactId: string, assetPath: string) =>
-    `/api/reports/${encodeURIComponent(artifactId)}/assets/${assetPath.split("/").map(encodeURIComponent).join("/")}`,
+  reportAssetUrl: (artifactId: string, assetPath: string) => {
+    const encodedPath = assetPath.split("/").map(encodeURIComponent).join("/");
+    const projectKey = projectReportKey(artifactId);
+    if (projectKey) {
+      return `/api/project-reports/${encodeURIComponent(projectKey)}/assets/${encodedPath}`;
+    }
+    return `/api/reports/${encodeURIComponent(artifactId)}/assets/${encodedPath}`;
+  },
 };
+
+function projectReportKey(artifactId: string): string | null {
+  return artifactId.startsWith("project:") ? artifactId.slice("project:".length) : null;
+}

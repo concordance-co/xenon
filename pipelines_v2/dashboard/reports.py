@@ -66,9 +66,33 @@ def resolve_report_root(manifest: ArtifactManifest) -> Path:
 
 def build_report_detail(manifest: ArtifactManifest) -> ReportDetail:
     root = resolve_report_root(manifest)
+    workflow_context = manifest.workflow_context if isinstance(manifest.workflow_context, Mapping) else {}
+    return build_report_detail_from_root(
+        root,
+        artifact_id=manifest.artifact_id,
+        artifact_kind=manifest.artifact_kind,
+        run_id=str(workflow_context.get("run_id")) if workflow_context.get("run_id") else None,
+    )
 
+
+def build_report_detail_from_root(
+    root: Path,
+    *,
+    artifact_id: str,
+    artifact_kind: str = "report",
+    run_id: str | None = None,
+) -> ReportDetail:
+    """Build a report detail response from an already-trusted report directory.
+
+    This is used for project reports that live in xenon-projects and may not be
+    registered in the workflow catalog. Callers are responsible for resolving
+    `root` from an allowlisted project tree before using this function.
+    """
+    root = root.resolve()
+    if not root.is_dir():
+        raise ReportUnavailable(f"report root does not exist: {root}")
     report = _read_json_optional(root / "report.json")
-    summary = _read_json_optional(root / "summary.json")
+    summary = _read_json_optional(root / "summary.json") or _read_legacy_summary(root)
     assets_manifest = _read_json_optional(root / "assets" / "manifest.json") or {}
 
     figures = _collect_figures(assets_manifest)
@@ -76,11 +100,10 @@ def build_report_detail(manifest: ArtifactManifest) -> ReportDetail:
     results = _collect_results(root / "results")
     headline = _extract_headline(summary or report)
 
-    workflow_context = manifest.workflow_context if isinstance(manifest.workflow_context, Mapping) else {}
     return ReportDetail(
-        artifact_id=manifest.artifact_id,
-        artifact_kind=manifest.artifact_kind,
-        run_id=str(workflow_context.get("run_id")) if workflow_context.get("run_id") else None,
+        artifact_id=artifact_id,
+        artifact_kind=artifact_kind,
+        run_id=run_id,
         report=report,
         summary=summary,
         headline=headline,
@@ -115,6 +138,14 @@ def _read_json_optional(path: Path) -> dict[str, Any] | None:
     return read_json_object_optional(path)
 
 
+def _read_legacy_summary(root: Path) -> dict[str, Any] | None:
+    for path in sorted(root.glob("*.summary.json")):
+        payload = _read_json_optional(path)
+        if payload is not None:
+            return payload
+    return None
+
+
 def _collect_figures(assets_manifest: Mapping[str, Any]) -> list[ReportFigure]:
     figures = assets_manifest.get("figures") if isinstance(assets_manifest, Mapping) else None
     if not isinstance(figures, Mapping):
@@ -143,7 +174,7 @@ def _collect_figures(assets_manifest: Mapping[str, Any]) -> list[ReportFigure]:
 def _collect_tables(assets_manifest: Mapping[str, Any], root: Path) -> list[ReportTableSummary]:
     tables = assets_manifest.get("tables") if isinstance(assets_manifest, Mapping) else None
     if not isinstance(tables, Mapping):
-        return []
+        return _collect_tables_from_dir(root / "tables")
     out: list[ReportTableSummary] = []
     for slug, record in tables.items():
         if not isinstance(record, Mapping):
@@ -167,6 +198,25 @@ def _collect_tables(assets_manifest: Mapping[str, Any], root: Path) -> list[Repo
             )
         )
     out.sort(key=lambda t: t.slug)
+    return out
+
+
+def _collect_tables_from_dir(tables_dir: Path) -> list[ReportTableSummary]:
+    if not tables_dir.is_dir():
+        return []
+    out: list[ReportTableSummary] = []
+    for path in sorted(tables_dir.glob("*.json")):
+        rows, columns = _table_shape(path)
+        out.append(
+            ReportTableSummary(
+                slug=path.stem,
+                step_name=path.stem.removesuffix("_results") or None,
+                result_kind=None,
+                rows=rows,
+                columns=columns,
+                path=str(path.relative_to(tables_dir.parent)),
+            )
+        )
     return out
 
 

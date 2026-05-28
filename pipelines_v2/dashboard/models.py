@@ -378,6 +378,89 @@ class ReportGenerationResponse(BaseModel):
     report: ReportDetail
 
 
+# ---------------------------------------------------------------------------
+# Phase G — project / experiment report index
+# ---------------------------------------------------------------------------
+
+
+class ProjectLabelExplanation(BaseModel):
+    name: str
+    description: str | None = None
+    source: str | None = None
+
+
+class ProjectDataSource(BaseModel):
+    name: str | None = None
+    dataset_id: str | None = None
+    description: str | None = None
+    source: str | None = None
+    example_count: int | None = None
+    label_names: list[str] = Field(default_factory=list)
+
+
+class ProjectReportSummary(BaseModel):
+    report_key: str
+    report_id: str
+    title: str
+    path: str
+    relative_path: str
+    artifact_id: str | None = None
+    run_id: str | None = None
+    generated_at: str | None = None
+    summary_text: str | None = None
+    headline: dict[str, Any] | None = None
+    data_sources: list[ProjectDataSource] = Field(default_factory=list)
+    labels: list[ProjectLabelExplanation] = Field(default_factory=list)
+    workflow_names: list[str] = Field(default_factory=list)
+    result_kinds: list[str] = Field(default_factory=list)
+    figure_count: int = 0
+    table_count: int = 0
+    result_count: int = 0
+
+
+class ProjectExperimentSummary(BaseModel):
+    experiment_id: str
+    title: str
+    experiment_category: str = "other"
+    path: str
+    relative_path: str
+    summary_text: str | None = None
+    workflow_names: list[str] = Field(default_factory=list)
+    spec_paths: list[str] = Field(default_factory=list)
+    data_sources: list[ProjectDataSource] = Field(default_factory=list)
+    labels: list[ProjectLabelExplanation] = Field(default_factory=list)
+    reports: list[ProjectReportSummary] = Field(default_factory=list)
+
+
+class ProjectPhaseSummary(BaseModel):
+    phase_id: str
+    title: str
+    path: str
+    relative_path: str
+    phase_doc_path: str | None = None
+    summary_text: str | None = None
+    experiments: list[ProjectExperimentSummary] = Field(default_factory=list)
+
+
+class ProjectSummary(BaseModel):
+    project_id: str
+    title: str
+    path: str
+    relative_path: str
+    status: str | None = None
+    primary_question: str | None = None
+    thin_waist: str | None = None
+    description: str | None = None
+    core_labels: list[str] = Field(default_factory=list)
+    candidate_datasets: list[str] = Field(default_factory=list)
+    phases: list[ProjectPhaseSummary] = Field(default_factory=list)
+
+
+class ProjectsResponse(BaseModel):
+    project_roots: list[str] = Field(default_factory=list)
+    projects: list[ProjectSummary] = Field(default_factory=list)
+
+
 # Resolve the forward reference for StepDetailList now that StepDetail is
 # defined above.
 RunDetail.model_rebuild()

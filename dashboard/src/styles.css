@@ -3,15 +3,20 @@
 @tailwind utilities;
 
 /* =========================================================================
- * Industrial utility theme. Warm dark neutrals, sharp status accents.
- * Written to feel like machine tooling, not an AI app shell.
+ * Concordance research dashboard theme.
+ * Dark product surface, brand red accent, support colors for measurements.
  * ========================================================================= */
 
 @layer base {
   :root {
     color-scheme: dark;
-    --grid-line: rgba(255, 255, 255, 0.025);
-    --grid-line-strong: rgba(255, 255, 255, 0.055);
+    --brand-red: #ef3333;
+    --brand-ink: #080808;
+    --brand-blue: #4a6fe0;
+    --brand-green: #2e8c43;
+    --brand-yellow: #f5cd2f;
+    --grid-line: rgba(239, 51, 51, 0.025);
+    --grid-line-strong: rgba(255, 255, 255, 0.045);
   }
 
   html,
@@ -21,14 +26,14 @@
   }
 
   body {
-    /* Dual-layer blueprint grid. Fine 24px lattice + a stronger 96px major grid.
-       Reads as machinist graph paper rather than generic texture. */
     background-image:
+      radial-gradient(circle at top left, rgba(239, 51, 51, 0.08), transparent 26rem),
       linear-gradient(var(--grid-line-strong) 1px, transparent 1px),
       linear-gradient(90deg, var(--grid-line-strong) 1px, transparent 1px),
       linear-gradient(var(--grid-line) 1px, transparent 1px),
       linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size:
+      auto,
       96px 96px,
       96px 96px,
       24px 24px,
@@ -43,8 +48,8 @@
   }
 
   ::selection {
-    background: rgba(224, 164, 88, 0.3);
-    color: #f6f3ea;
+    background: rgba(239, 51, 51, 0.34);
+    color: #f8fafc;
   }
 
   /* Tighter scrollbars, warm tone */
@@ -56,11 +61,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #322e27;
+    background: #2b3240;
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #44403a;
+    background: #3b4454;
   }
 }
 
@@ -129,41 +134,41 @@
   display: none;
 }
 .react-flow__edge-path {
-  stroke: #44403a;
+  stroke: #3b4454;
   stroke-width: 1.25;
 }
 .react-flow__edge.selected .react-flow__edge-path,
 .react-flow__edge:focus .react-flow__edge-path,
 .react-flow__edge:focus-visible .react-flow__edge-path,
 .react-flow__edge-highlighted .react-flow__edge-path {
-  stroke: #e0a458 !important;
+  stroke: #ef3333 !important;
   stroke-width: 1.75 !important;
 }
 .react-flow__edge-resolved .react-flow__edge-path {
   stroke-dasharray: 4 3;
 }
 .react-flow__controls {
-  background: #221f1a;
-  border: 1px solid #322e27;
+  background: #191d25;
+  border: 1px solid #2b3240;
   box-shadow: none;
 }
 .react-flow__controls button {
   background: transparent;
-  border-bottom: 1px solid #322e27;
-  color: #b7b1a5;
-  fill: #b7b1a5;
+  border-bottom: 1px solid #2b3240;
+  color: #b7bec8;
+  fill: #b7bec8;
 }
 .react-flow__controls button:hover {
-  background: #2a2621;
-  color: #f6f3ea;
+  background: #202632;
+  color: #f8fafc;
 }
 .react-flow__minimap {
-  background: #15130f !important;
-  border: 1px solid #322e27;
+  background: #0e1014 !important;
+  border: 1px solid #2b3240;
 }
 .react-flow__handle {
-  background: #615c54;
-  border: 1px solid #1a1814;
+  background: #596272;
+  border: 1px solid #12151b;
   width: 6px;
   height: 6px;
 }

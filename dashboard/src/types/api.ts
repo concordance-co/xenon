@@ -332,3 +332,82 @@ export interface ReportGenerationResponse {
   artifact_id: string;
   report: ReportDetail;
 }
+
+// Phase G — project / experiment report index
+export interface ProjectLabelExplanation {
+  name: string;
+  description: string | null;
+  source: string | null;
+}
+
+export interface ProjectDataSource {
+  name: string | null;
+  dataset_id: string | null;
+  description: string | null;
+  source: string | null;
+  example_count: number | null;
+  label_names: string[];
+}
+
+export interface ProjectReportSummary {
+  report_key: string;
+  report_id: string;
+  title: string;
+  path: string;
+  relative_path: string;
+  artifact_id: string | null;
+  run_id: string | null;
+  generated_at: string | null;
+  summary_text: string | null;
+  headline: Record<string, unknown> | null;
+  data_sources: ProjectDataSource[];
+  labels: ProjectLabelExplanation[];
+  workflow_names: string[];
+  result_kinds: string[];
+  figure_count: number;
+  table_count: number;
+  result_count: number;
+}
+
+export interface ProjectExperimentSummary {
+  experiment_id: string;
+  title: string;
+  experiment_category: string;
+  path: string;
+  relative_path: string;
+  summary_text: string | null;
+  workflow_names: string[];
+  spec_paths: string[];
+  data_sources: ProjectDataSource[];
+  labels: ProjectLabelExplanation[];
+  reports: ProjectReportSummary[];
+}
+
+export interface ProjectPhaseSummary {
+  phase_id: string;
+  title: string;
+  path: string;
+  relative_path: string;
+  phase_doc_path: string | null;
+  summary_text: string | null;
+  experiments: ProjectExperimentSummary[];
+}
+
+export interface ProjectSummary {
+  project_id: string;
+  title: string;
+  path: string;
+  relative_path: string;
+  status: string | null;
+  primary_question: string | null;
+  thin_waist: string | null;
+  description: string | null;
+  core_labels: string[];
+  candidate_datasets: string[];
+  phases: ProjectPhaseSummary[];
+}
+
+export interface ProjectsResponse {
+  project_roots: string[];
+  projects: ProjectSummary[];
+}

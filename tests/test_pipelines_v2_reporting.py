@@ -214,6 +214,67 @@ def test_text_baseline_result_split_holdout_assets(tmp_path: Path) -> None:
     _assert_exists(rendered["report_root"] / "assets" / "text_split" / "lexical_split_auroc.png")
 
 
+def test_generation_run_result_assets_expose_prompt_response_rows(tmp_path: Path) -> None:
+    rendered = _materialize_assets(
+        report_root=tmp_path / "generation",
+        step_name="generate_cases",
+        result_payload={
+            "kind": "generation_run_result",
+            "summary": {
+                "example_count": 1,
+                "completed_example_count": 1,
+                "total_example_count": 1,
+                "partial": False,
+            },
+            "rows": [
+                {
+                    "example_key": "case_a",
+                    "finish_reason": "stop",
+                    "generated_text": "The answer is ready.",
+                    "example": {
+                        "key": "case_a",
+                        "case_key": "case",
+                        "prompt_hash": "abc123",
+                        "labels": {
+                            "condition": "policy_conflict",
+                            "expected_selected_source": "user_policy",
+                            "positive_authority_risk": True,
+                        },
+                        "metadata": {
+                            "span_specs": [
+                                {
+                                    "name": "user_policy",
+                                    "span_label": "policy",
+                                    "source_type": "user",
+                                    "assigned_authority": "full",
+                                    "instruction_like": True,
+                                    "content_text": "Follow user policy.",
+                                }
+                            ]
+                        },
+                        "prompt": [
+                            {"role": "system", "content": "You are careful."},
+                            {"role": "user", "content": "Use the policy."},
+                        ],
+                    },
+                }
+            ],
+        },
+    )
+
+    assert rendered["manifest"]["unsupported_inputs"] == []
+    _assert_exists(rendered["report_root"] / "tables" / "generate_cases.json")
+    _assert_exists(rendered["report_root"] / "assets" / "generate_cases" / "response_lengths.png")
+    table = json.loads((rendered["report_root"] / "tables" / "generate_cases.json").read_text())
+    assert table["result_kind"] == "generation_run_result"
+    row = table["rows"][0]
+    assert row["example_key"] == "case_a"
+    assert "system: You are careful." in row["prompt"]
+    assert row["response"] == "The answer is ready."
+    assert "expected_selected_source=user_policy" in row["label_summary"]
+    assert row["span_names"] == "user_policy"
+
+
 def test_residualized_probe_result_assets(tmp_path: Path) -> None:
     rendered = _materialize_assets(
         report_root=tmp_path / "residualized",

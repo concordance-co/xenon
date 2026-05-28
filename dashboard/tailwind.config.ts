@@ -1,9 +1,8 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Industrial/utilitarian palette. Warm dark neutrals with sharp status accents.
- * Intentionally NOT the default "glassy AI dashboard" look — slate/gray replaced
- * with warm stone, status accents kept saturated.
+ * Concordance research palette. Keeps the dashboard dark, with brand red as the
+ * primary accent and the pedantic support colors reserved for status/data cues.
  */
 const config: Config = {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
@@ -28,31 +27,34 @@ const config: Config = {
       },
       colors: {
         ink: {
-          950: "#0c0b09",
-          900: "#15130f",
-          850: "#1a1814",
-          800: "#221f1a",
-          750: "#2a2621",
-          700: "#322e27",
-          600: "#44403a",
-          500: "#615c54",
-          400: "#8c867c",
-          300: "#b7b1a5",
-          200: "#d7d1c4",
-          100: "#ebe7db",
-          50: "#f6f3ea",
+          950: "#080808",
+          900: "#0e1014",
+          850: "#12151b",
+          800: "#191d25",
+          750: "#202632",
+          700: "#2b3240",
+          600: "#3b4454",
+          500: "#596272",
+          400: "#858d9a",
+          300: "#b7bec8",
+          200: "#d9dee6",
+          100: "#edf0f5",
+          50: "#f8fafc",
         },
         status: {
-          ok: "#7fb069",
-          warn: "#e0a458",
-          fail: "#d4675a",
-          run: "#6ea8c9",
-          reuse: "#a384c4",
-          idle: "#615c54",
+          ok: "#2E8C43",
+          warn: "#F5CD2F",
+          fail: "#EF3333",
+          run: "#4A6FE0",
+          reuse: "#8a68d6",
+          idle: "#596272",
         },
         accent: {
-          DEFAULT: "#e0a458",
-          hot: "#d4675a",
+          DEFAULT: "#EF3333",
+          hot: "#ff6b5f",
+          blue: "#4A6FE0",
+          green: "#2E8C43",
+          yellow: "#F5CD2F",
         },
       },
       boxShadow: {

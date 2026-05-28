@@ -19,6 +19,7 @@ from pipelines_v2.dashboard.models import (
     DatasetPreview,
     LabelPreview,
     PromptPreview,
+    ProjectsResponse,
     ReportDetail,
     ReportGenerationResponse,
     ResultPreview,
@@ -36,10 +37,15 @@ from pipelines_v2.dashboard.previews import (
     clear_resolved_dataset_cache,
 )
 from pipelines_v2.dashboard.prompt_preview import build_prompt_preview, clear_tokenizer_cache
+from pipelines_v2.dashboard.project_index import (
+    build_projects_index,
+    resolve_project_report_root,
+)
 from pipelines_v2.dashboard.result_preview import read_result_payload
 from pipelines_v2.dashboard.reports import (
     ReportUnavailable,
     build_report_detail,
+    build_report_detail_from_root,
     resolve_report_root,
     safe_asset_path,
 )
@@ -749,6 +755,10 @@ def create_app(
             local_cache_root=dash.local_root,
         )
 
+    @app.get("/api/projects", response_model=ProjectsResponse)
+    def projects_index() -> ProjectsResponse:
+        return build_projects_index(workspace_root=workspace_config.workspace_root)
+
     @app.get("/api/reports/{artifact_id}", response_model=ReportDetail)
     def report_detail(artifact_id: str) -> ReportDetail:
         manifest = dash.composite.load_artifact(artifact_id)
@@ -771,6 +781,37 @@ def create_app(
             root = resolve_report_root(manifest)
             file_path = safe_asset_path(root, asset_path)
         except ReportUnavailable as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+        return FileResponse(file_path)
+
+    @app.get("/api/project-reports/{report_key}", response_model=ReportDetail)
+    def project_report_detail(report_key: str) -> ReportDetail:
+        clean_key = report_key.removeprefix("project:")
+        try:
+            root = resolve_project_report_root(
+                clean_key,
+                workspace_root=workspace_config.workspace_root,
+            )
+            return build_report_detail_from_root(
+                root,
+                artifact_id=f"project:{clean_key}",
+                artifact_kind="report",
+            )
+        except (LookupError, ReportUnavailable) as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+
+    @app.get("/api/project-reports/{report_key}/assets/{asset_path:path}")
+    def project_report_asset(report_key: str, asset_path: str):
+        from fastapi.responses import FileResponse
+
+        clean_key = report_key.removeprefix("project:")
+        try:
+            root = resolve_project_report_root(
+                clean_key,
+                workspace_root=workspace_config.workspace_root,
+            )
+            file_path = safe_asset_path(root, asset_path)
+        except (LookupError, ReportUnavailable) as exc:
             raise HTTPException(status_code=404, detail=str(exc))
         return FileResponse(file_path)
 

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
 
 /**
@@ -21,7 +21,7 @@ function TopBar() {
   return (
     <header className="relative flex items-center border-b border-ink-800 bg-ink-900/95">
       <Link
-        to="/runs"
+        to="/projects"
         className="flex items-center gap-2 h-full px-3 hover:bg-ink-850 transition-colors group border-r border-ink-800"
       >
         <span className="flex items-center gap-[2px]">
@@ -33,10 +33,30 @@ function TopBar() {
           pipelines_v2
         </span>
         <span className="text-[0.58rem] uppercase tracking-[0.22em] font-mono text-ink-600 group-hover:text-ink-400">
-          observability
+          research
         </span>
       </Link>
+      <nav className="flex h-full items-center border-r border-ink-800">
+        <TopNavLink to="/projects">projects</TopNavLink>
+        <TopNavLink to="/runs">runs</TopNavLink>
+      </nav>
       <div className="absolute bottom-0 right-0 w-16 h-[2px] bg-gradient-to-r from-transparent via-accent/40 to-accent" />
     </header>
+  );
+}
+
+function TopNavLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        [
+          "flex h-full items-center border-r border-ink-800 px-3 text-[0.65rem] font-mono uppercase tracking-[0.16em] transition-colors",
+          isActive ? "bg-ink-850 text-accent" : "text-ink-500 hover:bg-ink-850 hover:text-ink-100",
+        ].join(" ")
+      }
+    >
+      {children}
+    </NavLink>
   );
 }

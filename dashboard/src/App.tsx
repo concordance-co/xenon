@@ -2,7 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Shell } from "@/components/Shell";
 import { RunsIndex } from "@/routes/RunsIndex";
 import { RunDetail } from "@/routes/RunDetail";
-import { ReportGallery } from "@/routes/ReportGallery";
+import { ProjectReportGallery, ReportGallery } from "@/routes/ReportGallery";
+import { PhaseDetailPage, ProjectDetailPage, ProjectsIndex } from "@/routes/ProjectsIndex";
 
 export function App() {
   return (
@@ -11,7 +12,39 @@ export function App() {
         path="/"
         element={
           <Shell>
-            <Navigate to="/runs" replace />
+            <Navigate to="/projects" replace />
+          </Shell>
+        }
+      />
+      <Route
+        path="/projects"
+        element={
+          <Shell>
+            <ProjectsIndex />
+          </Shell>
+        }
+      />
+      <Route
+        path="/projects/reports/:reportKey"
+        element={
+          <Shell>
+            <ProjectReportGallery />
+          </Shell>
+        }
+      />
+      <Route
+        path="/projects/:projectId"
+        element={
+          <Shell>
+            <ProjectDetailPage />
+          </Shell>
+        }
+      />
+      <Route
+        path="/projects/:projectId/phases/*"
+        element={
+          <Shell>
+            <PhaseDetailPage />
           </Shell>
         }
       />

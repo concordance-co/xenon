@@ -7,11 +7,12 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
-from pipelines_v2.reporting.charts import geometry, probe, residualized, text, transfer
+from pipelines_v2.reporting.charts import generation, geometry, probe, residualized, text, transfer
 
 Renderer = Callable[[str, str, dict[str, Any], Path], dict[str, Any]]
 
 _RENDERERS: dict[str, Renderer] = {
+    "generation_run_result": generation.render,
     "geometry_result": geometry.render,
     "probe_result": probe.render,
     "residualized_probe_result": residualized.render,

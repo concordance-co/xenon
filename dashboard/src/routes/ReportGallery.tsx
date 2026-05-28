@@ -6,10 +6,17 @@ import type { ReportFigure, ReportTableSummary } from "@/types/api";
 import { JsonView } from "@/components/JsonView";
 import { DataTable } from "@/components/DataTable";
 import { formatBytes } from "@/lib/format";
+import { ReportInspection } from "@/routes/ReportInspection";
 
 export function ReportGallery() {
   const params = useParams();
   return <ReportGalleryContent runId={params.runId} artifactId={params.artifactId} />;
+}
+
+export function ProjectReportGallery() {
+  const params = useParams();
+  const artifactId = params.reportKey ? `project:${params.reportKey}` : undefined;
+  return <ReportGalleryContent runId={undefined} artifactId={artifactId} />;
 }
 
 export function ReportGalleryContent({
@@ -141,11 +148,11 @@ function ReportView({
       ) : (
         <header className="px-5 py-4 border-b border-ink-800 bg-ink-900/70 sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <Link to={`/runs/${runId}`} className="btn-ghost">
-              ← run
+            <Link to={runId ? `/runs/${runId}` : "/projects"} className="btn-ghost">
+              {runId ? "← run" : "← projects"}
             </Link>
             <div className="min-w-0">
-              <div className="field-label">report artifact</div>
+              <div className="field-label">{data.artifact_id.startsWith("project:") ? "project report" : "report artifact"}</div>
               <h1 className="mono text-sm text-ink-100 truncate">{data.artifact_id}</h1>
             </div>
             <div className="ml-auto flex items-center gap-3 text-2xs font-mono text-ink-500">
@@ -221,6 +228,7 @@ function ReportView({
             <JsonView value={data.headline} />
           </section>
         ) : null}
+        <ReportInspection data={data} />
         {tables.length > 0 ? (
           <section>
             <SectionTitle>tables</SectionTitle>
@@ -594,4 +602,3 @@ function extractTabular(
   }
   return null;
 }
-

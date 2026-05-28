@@ -98,7 +98,7 @@ export function RunGraph({
       nodesDraggable={false}
       nodesConnectable={false}
     >
-      <Background color="#322e27" gap={24} size={1} />
+      <Background color="#2b3240" gap={24} size={1} />
       <MiniMap
         nodeColor={(n) => miniColor((n.data as GraphNodeData | undefined)?.status)}
         pannable
@@ -195,17 +195,17 @@ function StepNode(props: NodeProps<GraphNodeData>) {
 function miniColor(status: string | undefined): string {
   switch (status) {
     case "completed":
-      return "#7fb069";
+      return "#2E8C43";
     case "failed":
-      return "#d4675a";
+      return "#EF3333";
     case "running":
-      return "#6ea8c9";
+      return "#4A6FE0";
     case "reused":
       return "#a384c4";
     case "pending":
-      return "#44403a";
+      return "#3b4454";
     default:
-      return "#615c54";
+      return "#596272";
   }
 }
 
@@ -254,7 +254,7 @@ function layoutDag(nodes: DagNode[], edges: DagEdge[]): { rfNodes: Node[]; rfEdg
       type: MarkerType.ArrowClosed,
       width: 12,
       height: 12,
-      color: "#615c54",
+      color: "#596272",
     },
   }));
 
