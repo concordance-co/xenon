@@ -1552,38 +1552,32 @@ def test_postgres_source_iter_dataset_batches_streams_with_shard_predicate(
         for idx in range(3)
     ]
 
-    class FakeCursor:
-        def __init__(self) -> None:
-            self._offset = 0
+    class FakeResult:
+        def __init__(self, page: list[dict[str, object]]) -> None:
+            self._page = page
 
-        def __enter__(self) -> "FakeCursor":
-            return self
-
-        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
-            return None
-
-        def execute(self, sql: str, params: list[object] | None = None) -> None:
-            executed.append((" ".join(sql.split()), params))
-
-        def fetchmany(self, batch_size: int) -> list[dict[str, object]]:
-            batch = records[self._offset : self._offset + int(batch_size)]
-            self._offset += int(batch_size)
-            return batch
+        def fetchall(self) -> list[dict[str, object]]:
+            return self._page
 
     class FakeConnection:
+        def __init__(self, row_factory: object = None) -> None:
+            assert row_factory is not None
+
         def __enter__(self) -> "FakeConnection":
             return self
 
         def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
             return None
 
-        def cursor(self, *, name: str, row_factory: object = None) -> FakeCursor:
-            assert name == "pipelines_v2_dataset_stream"
-            assert row_factory is not None
-            return FakeCursor()
+        def execute(self, sql: str, params: list[object] | None = None) -> FakeResult:
+            executed.append((" ".join(sql.split()), params))
+            assert params is not None
+            batch_size = int(params[-2])
+            offset = int(params[-1])
+            return FakeResult(records[offset : offset + batch_size])
 
     fake_psycopg = types.ModuleType("psycopg")
-    fake_psycopg.connect = lambda url, row_factory=None: FakeConnection()
+    fake_psycopg.connect = lambda url, row_factory=None: FakeConnection(row_factory=row_factory)
     fake_rows = types.ModuleType("psycopg.rows")
     fake_rows.dict_row = object()
     monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
@@ -1603,9 +1597,15 @@ def test_postgres_source_iter_dataset_batches_streams_with_shard_predicate(
 
     assert [batch.example_keys() for batch in batches] == [["ex_0", "ex_1"], ["ex_2"]]
     sql, params = executed[0]
+    assert sql.startswith("SELECT * FROM (SELECT")
     assert " AS src WHERE MOD(" in sql
     assert 'src."prompt_hash"' in sql
-    assert params == [4, 1]
+    assert (
+        'AS pipelines_v2_dataset_page ORDER BY pipelines_v2_dataset_page."prompt_hash", '
+        'pipelines_v2_dataset_page."example_id" LIMIT %s OFFSET %s'
+    ) in sql
+    assert params == [4, 1, 2, 0]
+    assert executed[1][1] == [4, 1, 2, 2]
 
 
 def test_capture_spec_exposes_runtime_secret_requirements() -> None:
