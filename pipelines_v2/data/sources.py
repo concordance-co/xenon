@@ -462,25 +462,47 @@ class PostgresSource:
             execution_shard=execution_shard,
         )
 
-        with psycopg.connect(self._resolved_url(), row_factory=dict_row) as conn:
-            with conn.cursor(name="pipelines_v2_dataset_stream", row_factory=dict_row) as cur:
-                cur.execute(dataset_query.sql, dataset_query.params)
-                while True:
-                    records = cur.fetchmany(batch_size)
-                    if not records:
-                        break
-                    yield Dataset.from_records(
-                        records,
-                        prompt_column=prompt_column,
-                        example_key_column=example_key_column,
-                        prompt_hash_column=prompt_hash_column,
-                        label_columns=label_columns,
-                        case_columns=case_columns,
-                        case_key_column=case_key_column,
-                        metadata_columns=metadata_columns,
-                        id=id,
-                        name=name or dataset_query.default_name,
-                    )
+        page_index = 0
+        offset = 0
+        page_order_columns = list(dict.fromkeys([*([prompt_hash_column] if prompt_hash_column else []), example_key_column]))
+        page_order_sql = ", ".join(
+            f"pipelines_v2_dataset_page.{_quote_identifier(column)}" for column in page_order_columns
+        )
+        paged_sql = (
+            f"SELECT * FROM ({dataset_query.sql}) AS pipelines_v2_dataset_page "
+            f"ORDER BY {page_order_sql} LIMIT %s OFFSET %s"
+        )
+        while True:
+            with psycopg.connect(self._resolved_url(), row_factory=dict_row) as conn:
+                records = conn.execute(
+                    paged_sql,
+                    [*dataset_query.params, batch_size, offset],
+                ).fetchall()
+            if not records:
+                break
+            logger.info(
+                "Fetched Postgres dataset batch name=%s rows=%s batch_index=%s offset=%s",
+                name or dataset_query.default_name,
+                len(records),
+                page_index,
+                offset,
+            )
+            yield Dataset.from_records(
+                records,
+                prompt_column=prompt_column,
+                example_key_column=example_key_column,
+                prompt_hash_column=prompt_hash_column,
+                label_columns=label_columns,
+                case_columns=case_columns,
+                case_key_column=case_key_column,
+                metadata_columns=metadata_columns,
+                id=id,
+                name=name or dataset_query.default_name,
+            )
+            if len(records) < batch_size:
+                break
+            page_index += 1
+            offset += batch_size
 
     def connection_url(self) -> str:
         """Resolve the concrete connection string for local runtime use."""
