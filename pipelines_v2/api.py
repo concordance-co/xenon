@@ -93,7 +93,14 @@ from .operations.interventions import (
     SwapMeanPatch,
 )
 from .operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec, SectionSelector
-from .operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
+from .operations.readouts import (
+    PersistedProbeImportSpec,
+    PersistedProbeInferenceSpec,
+    ProbeSpec,
+    ResidualizedProbeSpec,
+    TextBaselineSpec,
+    TransferProbeSpec,
+)
 from .operations.reports import ReportSpec
 from .operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 from .runtime import (
@@ -232,6 +239,8 @@ __all__ = [
     "PostgresCatalog",
     "PostgresSource",
     "PromptMetadataBuilder",
+    "PersistedProbeImportSpec",
+    "PersistedProbeInferenceSpec",
     "ProbeSpec",
     "ProjectionCalibrationSpec",
     "ProjectionSpec",

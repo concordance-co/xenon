@@ -44,6 +44,16 @@ def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
         from .readouts import run_probe
         if isinstance(spec, ProbeSpec):
             return run_probe(spec)
+    if type(spec).__name__ == "PersistedProbeImportSpec":
+        from pipelines_v2.operations.readouts import PersistedProbeImportSpec
+        from .readouts import run_persisted_probe_import
+        if isinstance(spec, PersistedProbeImportSpec):
+            return run_persisted_probe_import(spec)
+    if type(spec).__name__ == "PersistedProbeInferenceSpec":
+        from pipelines_v2.operations.readouts import PersistedProbeInferenceSpec
+        from .readouts import run_persisted_probe_inference
+        if isinstance(spec, PersistedProbeInferenceSpec):
+            return run_persisted_probe_inference(spec)
     if type(spec).__name__ == "TransferProbeSpec":
         from pipelines_v2.operations.readouts import TransferProbeSpec
         from .readouts import run_transfer_probe

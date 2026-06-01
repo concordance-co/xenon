@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+import json
+from pathlib import Path
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,7 +18,14 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 
 from pipelines_v2.core.types import SpecValidationError
-from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
+from pipelines_v2.operations.readouts import (
+    PersistedProbeImportSpec,
+    PersistedProbeInferenceSpec,
+    ProbeSpec,
+    ResidualizedProbeSpec,
+    TextBaselineSpec,
+    TransferProbeSpec,
+)
 
 from .common import (
     OperationExecutionResult,
@@ -25,6 +34,7 @@ from .common import (
     feature_matrices,
     feature_name,
     filter_matrix_by_keys,
+    make_label_payload,
     ordered_groups,
     ordered_values,
     reference_example_keys,
@@ -70,11 +80,17 @@ def run_probe(spec: ProbeSpec) -> OperationExecutionResult:
                 example_keys=example_keys,
                 class_names=classes,
                 persist_predictions=spec.persist_predictions,
+                persist_model=spec.persist_model,
             )
         )
 
     best_metric = "balanced_accuracy" if "balanced_accuracy" in requested_metrics else requested_metrics[0]
     best = max(layer_results, key=lambda item: float(item.get(best_metric, 0.0)))
+    persisted_layers = [
+        layer_result["persisted_probe"]
+        for layer_result in layer_results
+        if isinstance(layer_result.get("persisted_probe"), Mapping)
+    ]
     payload = {
         "kind": "probe_result",
         "feature": feature_name(spec.feature),
@@ -90,8 +106,164 @@ def run_probe(spec: ProbeSpec) -> OperationExecutionResult:
             "split_mode": best.get("split_mode"),
         },
     }
+    if persisted_layers:
+        payload["persisted_probe"] = {
+            "kind": "persisted_probe",
+            "name": getattr(spec.labels, "name", None) or "probe",
+            "feature_name": feature_name(spec.feature),
+            "class_names": classes,
+            "layers": persisted_layers,
+            "metadata": {
+                "source_kind": "ProbeSpec",
+                "label_name": getattr(spec.labels, "name", None),
+                "train_values": [str(value) for value in spec.train_values],
+                "test_values": [str(value) for value in spec.test_values],
+                "train_stages": [[str(value) for value in stage] for stage in spec.train_stages],
+                "stage_epochs": [int(value) for value in spec.stage_epochs],
+                "tokens": {"kind": spec.tokens.kind, "value": spec.tokens.value},
+                "pooling": {"kind": spec.pooling.kind},
+            },
+            "summary": {
+                "layer_count": len(persisted_layers),
+                "layers": [int(layer["layer"]) for layer in persisted_layers],
+                "class_count": len(classes),
+            },
+        }
     return OperationExecutionResult(
         payload=payload,
+        example_coverage={
+            "materialized": True,
+            "example_count": len(example_keys),
+            "example_keys": list(example_keys),
+        },
+    )
+
+
+def run_persisted_probe_import(spec: PersistedProbeImportSpec) -> OperationExecutionResult:
+    payload = _load_persisted_probe_payload(spec)
+    layers = [_normalize_probe_layer(layer, source_path=spec.path) for layer in payload.get("layers", ())]
+    if not layers:
+        raise SpecValidationError("PersistedProbeImportSpec requires at least one layer with coefficients")
+
+    class_names = [str(value) for value in payload.get("class_names", ())]
+    if len(class_names) < 2:
+        raise SpecValidationError("PersistedProbeImportSpec requires at least two class_names")
+
+    imported = {
+        "kind": "persisted_probe",
+        "name": spec.name or str(payload.get("name") or Path(spec.path).stem),
+        "model": spec.model or payload.get("model"),
+        "feature_name": spec.feature_name or payload.get("feature_name"),
+        "class_names": class_names,
+        "layers": layers,
+        "metadata": {
+            **{str(key): value for key, value in dict(payload.get("metadata", {})).items()},
+            **{str(key): value for key, value in dict(spec.metadata).items()},
+            "source_path": spec.path,
+            "source_format": spec.format,
+        },
+        "summary": {
+            "layer_count": len(layers),
+            "layers": [int(layer["layer"]) for layer in layers],
+            "class_count": len(class_names),
+        },
+    }
+    return OperationExecutionResult(payload=imported)
+
+
+def run_persisted_probe_inference(spec: PersistedProbeInferenceSpec) -> OperationExecutionResult:
+    probe = _resolve_persisted_probe(spec.probe)
+    requested_layers = tuple(int(layer) for layer in spec.layers)
+    probe_layers = {
+        int(layer["layer"]): layer
+        for layer in probe.get("layers", ())
+        if isinstance(layer, Mapping) and layer.get("layer") is not None
+    }
+    selected_layers = requested_layers or tuple(sorted(probe_layers))
+    missing_layers = [layer for layer in selected_layers if layer not in probe_layers]
+    if missing_layers:
+        raise SpecValidationError(f"PersistedProbeInferenceSpec probe does not contain requested layers: {missing_layers}")
+
+    matrices, feature_example_keys = feature_matrices(
+        spec.feature,
+        layers=selected_layers,
+        token_selector=spec.tokens,
+        token_pooling=spec.pooling,
+    )
+    example_keys = align_example_keys_to_rows(feature_example_keys, spec.rows, label="PersistedProbeInferenceSpec")
+    matrices = {
+        layer: filter_matrix_by_keys(X, feature_example_keys, example_keys)
+        for layer, X in matrices.items()
+        if layer in selected_layers
+    }
+
+    class_names = [str(value) for value in probe.get("class_names", ())]
+    if len(class_names) < 2:
+        raise SpecValidationError("Persisted probe payload requires at least two class_names")
+    positive_class = class_names[-1]
+    score_base = _safe_label_component(spec.score_name or str(probe.get("name") or "persisted_probe"))
+
+    rows: list[dict[str, Any]] = []
+    labels: dict[str, dict[str, Any]] = {}
+    for layer in selected_layers:
+        X = matrices.get(layer)
+        if X is None:
+            continue
+        layer_payload = probe_layers[layer]
+        scores, probabilities, predictions = _apply_persisted_probe_layer(X, layer_payload, class_names=class_names)
+        positive_index = len(class_names) - 1
+        positive_probabilities = probabilities[:, positive_index]
+        score_values: dict[str, Any] = {}
+        prediction_values: dict[str, Any] = {}
+        for row_index, example_key in enumerate(example_keys):
+            probability_by_class = {
+                class_name: round(float(probabilities[row_index, class_index]), 6)
+                for class_index, class_name in enumerate(class_names)
+            }
+            row = {
+                "example_key": str(example_key),
+                "layer": int(layer),
+                "probe": probe.get("name"),
+                "score": round(float(scores[row_index]), 6),
+                "probability": round(float(positive_probabilities[row_index]), 6),
+                "positive_class": positive_class,
+                "prediction": str(predictions[row_index]),
+                "probability_by_class": probability_by_class,
+            }
+            rows.append(row)
+            score_values[str(example_key)] = row["probability"]
+            prediction_values[str(example_key)] = row["prediction"]
+        if spec.emit_labels:
+            labels[f"{score_base}__layer_{layer}__probability_{_safe_label_component(positive_class)}"] = make_label_payload(
+                f"{score_base}__layer_{layer}__probability_{_safe_label_component(positive_class)}",
+                score_values,
+            )
+            labels[f"{score_base}__layer_{layer}__prediction"] = make_label_payload(
+                f"{score_base}__layer_{layer}__prediction",
+                prediction_values,
+            )
+
+    payload = {
+        "kind": "persisted_probe_inference_result",
+        "feature": feature_name(spec.feature),
+        "probe": {
+            "name": probe.get("name"),
+            "model": probe.get("model"),
+            "feature_name": probe.get("feature_name"),
+            "class_names": class_names,
+        },
+        "layers": list(selected_layers),
+        "rows": rows,
+        "summary": {
+            "row_count": len(rows),
+            "example_count": len(example_keys),
+            "layer_count": len(selected_layers),
+            "positive_class": positive_class,
+        },
+    }
+    return OperationExecutionResult(
+        payload=payload,
+        labels=labels,
         example_coverage={
             "materialized": True,
             "example_count": len(example_keys),
@@ -416,6 +588,182 @@ def run_residualized_probe(spec: ResidualizedProbeSpec) -> OperationExecutionRes
     )
 
 
+def _load_persisted_probe_payload(spec: PersistedProbeImportSpec) -> Mapping[str, Any]:
+    if str(spec.format).strip().lower() != "json":
+        raise SpecValidationError(f"Unsupported persisted probe import format: {spec.format!r}")
+    path = Path(spec.path)
+    if not path.exists():
+        raise SpecValidationError(f"Persisted probe import path does not exist: {spec.path}")
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if not isinstance(payload, Mapping):
+        raise SpecValidationError("Persisted probe import payload must be a JSON object")
+    if payload.get("kind") == "persisted_probe":
+        return payload
+    if payload.get("kind") == "probe_result" and isinstance(payload.get("persisted_probe"), Mapping):
+        return payload["persisted_probe"]
+    return _normalize_external_probe_payload(payload)
+
+
+def _normalize_external_probe_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    layers = payload.get("layers")
+    if not isinstance(layers, Sequence) or isinstance(layers, str):
+        if "coef" in payload or "coefficients" in payload:
+            layers = [payload]
+        else:
+            raise SpecValidationError("Persisted probe import payload must contain layers or coefficients")
+    return {
+        "kind": "persisted_probe",
+        "name": payload.get("name"),
+        "model": payload.get("model"),
+        "feature_name": payload.get("feature_name") or payload.get("feature"),
+        "class_names": payload.get("class_names") or payload.get("classes") or ("negative", "positive"),
+        "layers": list(layers),
+        "metadata": payload.get("metadata", {}),
+    }
+
+
+def _normalize_probe_layer(layer: Any, *, source_path: str) -> dict[str, Any]:
+    if not isinstance(layer, Mapping):
+        raise SpecValidationError("Persisted probe layer must be a JSON object")
+    coef = layer.get("coef", layer.get("coefficients", layer.get("weights")))
+    if coef is None:
+        raise SpecValidationError(f"Persisted probe layer in {source_path} is missing coefficients")
+    coef_array = np.asarray(coef, dtype=np.float64)
+    if coef_array.ndim == 1:
+        coef_array = coef_array.reshape(1, -1)
+    if coef_array.ndim != 2:
+        raise SpecValidationError("Persisted probe coefficients must be rank-1 or rank-2")
+    intercept = np.asarray(layer.get("intercept", layer.get("bias", 0.0)), dtype=np.float64)
+    if intercept.ndim == 0:
+        intercept = intercept.reshape(1)
+    if intercept.ndim != 1:
+        raise SpecValidationError("Persisted probe intercept must be scalar or rank-1")
+    if intercept.size not in {1, coef_array.shape[0]}:
+        raise SpecValidationError("Persisted probe intercept width does not match coefficient rows")
+    scaler_mean = layer.get("scaler_mean", layer.get("mean"))
+    scaler_scale = layer.get("scaler_scale", layer.get("scale"))
+    normalized = {
+        "layer": int(layer.get("layer", 0)),
+        "coef": coef_array.astype(float).tolist(),
+        "intercept": intercept.astype(float).tolist(),
+        "scaler_mean": _optional_float_vector(scaler_mean, label="scaler_mean"),
+        "scaler_scale": _optional_float_vector(scaler_scale, label="scaler_scale"),
+        "threshold": float(layer.get("threshold", 0.5)),
+        "metadata": dict(layer.get("metadata", {})) if isinstance(layer.get("metadata"), Mapping) else {},
+    }
+    for key in ("training_mode", "train_stages", "stage_epochs"):
+        if key in layer:
+            normalized[key] = layer[key]
+    return normalized
+
+
+def _optional_float_vector(value: Any, *, label: str) -> list[float] | None:
+    if value is None:
+        return None
+    vector = np.asarray(value, dtype=np.float64)
+    if vector.ndim != 1:
+        raise SpecValidationError(f"Persisted probe {label} must be rank-1")
+    return vector.astype(float).tolist()
+
+
+def _resolve_persisted_probe(probe: Any) -> Mapping[str, Any]:
+    if isinstance(probe, Mapping):
+        payload = probe
+    elif hasattr(probe, "result"):
+        payload = probe.result()
+    else:
+        raise SpecValidationError(f"PersistedProbeInferenceSpec probe must be a mapping or operation artifact, got {type(probe).__name__}")
+    if isinstance(payload, Mapping) and payload.get("kind") == "probe_result" and isinstance(payload.get("persisted_probe"), Mapping):
+        payload = payload["persisted_probe"]
+    if not isinstance(payload, Mapping) or payload.get("kind") != "persisted_probe":
+        raise SpecValidationError("PersistedProbeInferenceSpec probe must resolve to a persisted_probe payload")
+    return payload
+
+
+def _apply_persisted_probe_layer(
+    X: NDArray[np.float32],
+    layer: Mapping[str, Any],
+    *,
+    class_names: Sequence[str],
+) -> tuple[NDArray[np.float64], NDArray[np.float64], list[str]]:
+    coef = np.asarray(layer.get("coef"), dtype=np.float64)
+    intercept = np.asarray(layer.get("intercept", [0.0]), dtype=np.float64)
+    if coef.ndim != 2:
+        raise SpecValidationError("Persisted probe layer coefficients must be rank-2")
+    X64 = X.astype(np.float64)
+    mean = layer.get("scaler_mean")
+    scale = layer.get("scaler_scale")
+    if mean is not None:
+        mean_array = np.asarray(mean, dtype=np.float64)
+        if mean_array.shape[0] != X64.shape[1]:
+            raise SpecValidationError("Persisted probe scaler_mean width does not match feature width")
+        X64 = X64 - mean_array
+    if scale is not None:
+        scale_array = np.asarray(scale, dtype=np.float64)
+        if scale_array.shape[0] != X64.shape[1]:
+            raise SpecValidationError("Persisted probe scaler_scale width does not match feature width")
+        X64 = X64 / np.where(scale_array == 0.0, 1.0, scale_array)
+    if coef.shape[1] != X64.shape[1]:
+        raise SpecValidationError("Persisted probe coefficient width does not match feature width")
+
+    logits = X64 @ coef.T + intercept.reshape(1, -1)
+    if len(class_names) == 2 and logits.shape[1] == 1:
+        positive = 1.0 / (1.0 + np.exp(-logits[:, 0]))
+        probabilities = np.stack([1.0 - positive, positive], axis=1)
+        predictions = [str(class_names[int(value >= float(layer.get("threshold", 0.5)))]) for value in positive]
+        return logits[:, 0], probabilities, predictions
+    if logits.shape[1] != len(class_names):
+        raise SpecValidationError("Persisted probe class count does not match logits width")
+    shifted = logits - logits.max(axis=1, keepdims=True)
+    exp = np.exp(shifted)
+    probabilities = exp / exp.sum(axis=1, keepdims=True)
+    predictions = [str(class_names[int(index)]) for index in probabilities.argmax(axis=1)]
+    scores = probabilities[:, -1]
+    return scores, probabilities, predictions
+
+
+def _safe_label_component(value: str) -> str:
+    return "".join(char if char.isalnum() else "_" for char in str(value).strip().lower()).strip("_") or "value"
+
+
+def _serialize_probe_model(
+    *,
+    scaler: StandardScaler,
+    model: SGDClassifier,
+    layer: int,
+    class_names: Sequence[str] | None,
+    training_example_count: int,
+    training_mode: str,
+    train_stages: Sequence[Sequence[Any]] = (),
+    stage_epochs: Sequence[int] = (),
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "layer": int(layer),
+        "coef": np.asarray(model.coef_, dtype=np.float64).astype(float).tolist(),
+        "intercept": np.asarray(model.intercept_, dtype=np.float64).astype(float).tolist(),
+        "scaler_mean": np.asarray(scaler.mean_, dtype=np.float64).astype(float).tolist(),
+        "scaler_scale": np.asarray(scaler.scale_, dtype=np.float64).astype(float).tolist(),
+        "threshold": 0.5,
+        "training_mode": training_mode,
+        "metadata": {
+            "estimator": "sklearn.linear_model.SGDClassifier",
+            "loss": "log_loss",
+            "alpha": 1e-4,
+            "class_names": [str(value) for value in class_names] if class_names is not None else [],
+            "training_example_count": int(training_example_count),
+            "training_mode": training_mode,
+        },
+    }
+    if train_stages:
+        resolved_epochs = _resolve_stage_epochs(train_stages, stage_epochs)
+        payload["train_stages"] = [[str(value) for value in stage] for stage in train_stages]
+        payload["stage_epochs"] = [int(value) for value in resolved_epochs]
+        payload["metadata"]["train_stages"] = payload["train_stages"]
+        payload["metadata"]["stage_epochs"] = payload["stage_epochs"]
+    return payload
+
+
 def probe_layer(
     *,
     layer: int,
@@ -433,6 +781,7 @@ def probe_layer(
     example_keys: Sequence[str] | None = None,
     class_names: Sequence[str] | None = None,
     persist_predictions: bool = False,
+    persist_model: bool = False,
 ) -> dict[str, Any]:
     effective_train_values = tuple(train_values)
     normalized_train_stages = tuple(tuple(stage) for stage in train_stages if stage)
@@ -549,6 +898,32 @@ def probe_layer(
         result["training_mode"] = "staged_finetune"
         result["train_stages"] = [list(stage) for stage in normalized_train_stages]
         result["stage_epochs"] = list(_resolve_stage_epochs(normalized_train_stages, stage_epochs))
+    if persist_model:
+        if split_mode == "fixed":
+            train_indices = splits[0][0]
+            training_mode = "staged_finetune" if normalized_train_stages else "fixed_train_values"
+        else:
+            train_indices = np.arange(X.shape[0], dtype=np.int64)
+            training_mode = "all_rows"
+        final_scaler, final_model = _fit_probe_model(
+            X=X,
+            y=y,
+            train_idx=train_indices,
+            split=split,
+            train_stages=normalized_train_stages,
+            stage_epochs=stage_epochs,
+            seed=9000 + int(layer),
+        )
+        result["persisted_probe"] = _serialize_probe_model(
+            scaler=final_scaler,
+            model=final_model,
+            layer=layer,
+            class_names=class_names,
+            training_example_count=int(train_indices.size),
+            training_mode=training_mode,
+            train_stages=normalized_train_stages,
+            stage_epochs=stage_epochs,
+        )
     return result
 
 

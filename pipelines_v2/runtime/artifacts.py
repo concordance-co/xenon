@@ -39,6 +39,8 @@ from pipelines_v2.operations.specs import (
     LabelMapSpec,
     PatchComparisonSpec,
     PairDeltaSpec,
+    PersistedProbeImportSpec,
+    PersistedProbeInferenceSpec,
     ProbeSpec,
     ProjectionCalibrationSpec,
     ProjectionSpec,
@@ -53,6 +55,8 @@ from pipelines_v2.operations.specs import (
 
 ARTIFACT_BOUND_SPECS = (
     ProbeSpec,
+    PersistedProbeImportSpec,
+    PersistedProbeInferenceSpec,
     TransferProbeSpec,
     TextBaselineSpec,
     ResidualizedProbeSpec,
