@@ -27,6 +27,8 @@ class ProbeSpec(OperationSpec):
     tokens: TokenSelector = field(default_factory=TokenSelector.full_sequence)
     pooling: TokenPooling = field(default_factory=TokenPooling.mean)
     train_values: Sequence[Any] = field(default_factory=lambda: ("train",))
+    train_stages: Sequence[Sequence[Any]] = field(default_factory=tuple)
+    stage_epochs: Sequence[int] = field(default_factory=tuple)
     test_values: Sequence[Any] = field(default_factory=lambda: ("test",))
     folds: int = 5
     baselines: Sequence[str] = field(default_factory=tuple)
@@ -53,6 +55,8 @@ class ProbeSpec(OperationSpec):
             tokens=TokenSelector.from_dict(payload.get("tokens", {"kind": "full_sequence"})),
             pooling=TokenPooling.from_dict(payload.get("pooling", {"kind": "mean"})),
             train_values=tuple(payload.get("train_values", ("train",))),
+            train_stages=tuple(tuple(stage) for stage in payload.get("train_stages", ())),
+            stage_epochs=tuple(int(value) for value in payload.get("stage_epochs", ())),
             test_values=tuple(payload.get("test_values", ("test",))),
             folds=int(payload.get("folds", 5)),
             baselines=tuple(str(item) for item in payload.get("baselines", ())),

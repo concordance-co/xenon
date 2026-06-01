@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, roc_auc_sco
 from sklearn.model_selection import GroupKFold, StratifiedGroupKFold, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_class_weight
 
 from pipelines_v2.core.types import SpecValidationError
 from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
@@ -60,6 +61,8 @@ def run_probe(spec: ProbeSpec) -> OperationExecutionResult:
                 groups=groups,
                 split=split,
                 train_values=tuple(spec.train_values),
+                train_stages=tuple(tuple(stage) for stage in spec.train_stages),
+                stage_epochs=tuple(spec.stage_epochs),
                 test_values=tuple(spec.test_values),
                 folds=spec.folds,
                 baselines=tuple(spec.baselines),
@@ -421,6 +424,8 @@ def probe_layer(
     groups: NDArray[np.object_] | None,
     split: NDArray[np.object_] | None,
     train_values: Sequence[Any],
+    train_stages: Sequence[Sequence[Any]],
+    stage_epochs: Sequence[int],
     test_values: Sequence[Any],
     folds: int,
     baselines: Sequence[str],
@@ -429,11 +434,17 @@ def probe_layer(
     class_names: Sequence[str] | None = None,
     persist_predictions: bool = False,
 ) -> dict[str, Any]:
+    effective_train_values = tuple(train_values)
+    normalized_train_stages = tuple(tuple(stage) for stage in train_stages if stage)
+    if normalized_train_stages and not effective_train_values:
+        effective_train_values = tuple(
+            dict.fromkeys(str(value) for stage in normalized_train_stages for value in stage)
+        )
     splits, split_mode = classification_splits(
         y=y,
         groups=groups,
         split=split,
-        train_values=train_values,
+        train_values=effective_train_values,
         test_values=test_values,
         folds=folds,
     )
@@ -449,20 +460,18 @@ def probe_layer(
     prediction_rows: list[dict[str, Any]] = []
 
     for fold_index, (train_idx, test_idx) in enumerate(splits):
-        model = make_pipeline(
-            StandardScaler(),
-            SGDClassifier(
-                loss="log_loss",
-                alpha=1e-4,
-                class_weight="balanced",
-                max_iter=2000,
-                tol=1e-3,
-                random_state=42 + fold_index,
-            ),
+        scaler, model = _fit_probe_model(
+            X=X,
+            y=y,
+            train_idx=train_idx,
+            split=split,
+            train_stages=normalized_train_stages,
+            stage_epochs=stage_epochs,
+            seed=42 + fold_index,
         )
-        model.fit(X[train_idx], y[train_idx])
-        predictions = model.predict(X[test_idx])
-        probabilities = model.predict_proba(X[test_idx]) if "auroc" in metrics else None
+        X_test = scaler.transform(X[test_idx])
+        predictions = model.predict(X_test)
+        probabilities = model.predict_proba(X_test) if "auroc" in metrics else None
         metric_payload = compute_metric_payload(y[test_idx], predictions, probabilities, metrics=metrics)
         if "accuracy" in metric_payload:
             accuracy_scores.append(float(metric_payload["accuracy"]))
@@ -496,19 +505,12 @@ def probe_layer(
             rng = np.random.default_rng(seed=fold_index)
             shuffled = np.array(y[train_idx], copy=True)
             rng.shuffle(shuffled)
-            control = make_pipeline(
-                StandardScaler(),
-                SGDClassifier(
-                    loss="log_loss",
-                    alpha=1e-4,
-                    class_weight="balanced",
-                    max_iter=2000,
-                    tol=1e-3,
-                    random_state=4042 + fold_index,
-                ),
-            )
-            control.fit(X[train_idx], shuffled)
-            shuffled_control_scores.append(float(accuracy_score(y[test_idx], control.predict(X[test_idx]))))
+            control_scaler = StandardScaler()
+            X_train_control = control_scaler.fit_transform(X[train_idx])
+            X_test_control = control_scaler.transform(X[test_idx])
+            control = _make_probe_estimator(seed=4042 + fold_index)
+            control.fit(X_train_control, shuffled)
+            shuffled_control_scores.append(float(accuracy_score(y[test_idx], control.predict(X_test_control))))
 
     if "shuffled_label" in baseline_scores:
         baseline_scores["shuffled_label"] = shuffled_control_scores
@@ -543,7 +545,111 @@ def probe_layer(
     if persist_predictions:
         result["test_predictions"] = prediction_rows
         result["test_prediction_count"] = len(prediction_rows)
+    if normalized_train_stages:
+        result["training_mode"] = "staged_finetune"
+        result["train_stages"] = [list(stage) for stage in normalized_train_stages]
+        result["stage_epochs"] = list(_resolve_stage_epochs(normalized_train_stages, stage_epochs))
     return result
+
+
+def _make_probe_estimator(
+    *,
+    seed: int,
+    class_weight: str | dict[int, float] | None = "balanced",
+) -> SGDClassifier:
+    return SGDClassifier(
+        loss="log_loss",
+        alpha=1e-4,
+        class_weight=class_weight,
+        max_iter=2000,
+        tol=1e-3,
+        random_state=seed,
+    )
+
+
+def _resolve_stage_epochs(
+    train_stages: Sequence[Sequence[Any]],
+    stage_epochs: Sequence[int],
+) -> tuple[int, ...]:
+    if not train_stages:
+        return ()
+    if not stage_epochs:
+        return tuple(1 for _ in train_stages)
+    if len(stage_epochs) != len(train_stages):
+        raise SpecValidationError("ProbeSpec stage_epochs must match train_stages length")
+    resolved = tuple(int(value) for value in stage_epochs)
+    if any(value <= 0 for value in resolved):
+        raise SpecValidationError("ProbeSpec stage_epochs values must be positive")
+    return resolved
+
+
+def _stage_indices_for_split(
+    split: NDArray[np.object_],
+    train_stages: Sequence[Sequence[Any]],
+) -> list[NDArray[np.int64]]:
+    split_labels = np.asarray([str(value) for value in split], dtype=object)
+    stage_indices: list[NDArray[np.int64]] = []
+    for stage in train_stages:
+        allowed = {str(value) for value in stage}
+        indices = np.asarray([index for index, value in enumerate(split_labels) if value in allowed], dtype=np.int64)
+        if indices.size == 0:
+            raise SpecValidationError(f"ProbeSpec train stage {tuple(stage)!r} selected zero rows")
+        stage_indices.append(indices)
+    return stage_indices
+
+
+def _fit_probe_model(
+    *,
+    X: NDArray[np.float32],
+    y: NDArray[np.int64],
+    train_idx: NDArray[np.int64],
+    split: NDArray[np.object_] | None,
+    train_stages: Sequence[Sequence[Any]],
+    stage_epochs: Sequence[int],
+    seed: int,
+) -> tuple[StandardScaler, SGDClassifier]:
+    scaler = StandardScaler()
+    if not train_stages:
+        X_train = scaler.fit_transform(X[train_idx])
+        model = _make_probe_estimator(seed=seed)
+        model.fit(X_train, y[train_idx])
+        return scaler, model
+
+    if split is None:
+        raise SpecValidationError("ProbeSpec train_stages requires a fixed split label source")
+
+    stage_indices = _stage_indices_for_split(split, train_stages)
+    allowed_train = set(train_idx.tolist())
+    for stage in stage_indices:
+        if not set(stage.tolist()).issubset(allowed_train):
+            raise SpecValidationError("ProbeSpec train_stages selected rows outside the fixed training split")
+
+    union_train_idx = np.unique(np.concatenate(stage_indices))
+    scaler.fit(X[union_train_idx])
+    epochs = _resolve_stage_epochs(train_stages, stage_epochs)
+    classes = np.unique(y[union_train_idx]).astype(np.int64)
+    weights = compute_class_weight(
+        class_weight="balanced",
+        classes=classes,
+        y=y[union_train_idx],
+    )
+    class_weight = {int(label): float(weight) for label, weight in zip(classes.tolist(), weights.tolist(), strict=True)}
+    model = _make_probe_estimator(seed=seed, class_weight=class_weight)
+    rng = np.random.default_rng(seed=seed)
+    first_call = True
+    for stage_idx, stage_epoch_count in zip(stage_indices, epochs):
+        X_stage = scaler.transform(X[stage_idx])
+        y_stage = y[stage_idx]
+        for _ in range(stage_epoch_count):
+            order = rng.permutation(X_stage.shape[0])
+            if first_call:
+                model.partial_fit(X_stage[order], y_stage[order], classes=classes)
+                first_call = False
+            else:
+                model.partial_fit(X_stage[order], y_stage[order])
+    if first_call:
+        raise SpecValidationError("ProbeSpec train_stages did not produce any training updates")
+    return scaler, model
 
 
 def classification_splits(
