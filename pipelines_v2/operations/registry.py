@@ -16,7 +16,14 @@ from pipelines_v2.operations.interventions import (
     PatchedGenerationSpec,
 )
 from pipelines_v2.operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec
-from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
+from pipelines_v2.operations.readouts import (
+    PersistedProbeImportSpec,
+    PersistedProbeInferenceSpec,
+    ProbeSpec,
+    ResidualizedProbeSpec,
+    TextBaselineSpec,
+    TransferProbeSpec,
+)
 from pipelines_v2.operations.reports import ReportSpec
 from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 
@@ -128,6 +135,8 @@ def _truthfulness_ablation_subspace_from_dict(payload: dict[str, Any]) -> Operat
 _OPERATION_LOADERS: dict[str, OperationLoader] = {
     CaptureSpec.kind: CaptureSpec.from_dict,
     ProbeSpec.kind: ProbeSpec.from_dict,
+    PersistedProbeImportSpec.kind: PersistedProbeImportSpec.from_dict,
+    PersistedProbeInferenceSpec.kind: PersistedProbeInferenceSpec.from_dict,
     TransferProbeSpec.kind: TransferProbeSpec.from_dict,
     TextBaselineSpec.kind: TextBaselineSpec.from_dict,
     ResidualizedProbeSpec.kind: ResidualizedProbeSpec.from_dict,

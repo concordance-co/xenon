@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -10,6 +12,8 @@ from pipelines_v2.api import (
     LabelFieldsSpec,
     LabelMapSpec,
     PairDeltaSpec,
+    PersistedProbeImportSpec,
+    PersistedProbeInferenceSpec,
     ProbeSpec,
     ProjectionSpec,
     SectionSelector,
@@ -19,7 +23,11 @@ from pipelines_v2.api import (
 from pipelines_v2.core.types import SpecValidationError
 from pipelines_v2.operations.execution.derive import run_label_fields, run_label_map, run_pair_delta
 from pipelines_v2.operations.execution.projections import run_projection
-from pipelines_v2.operations.execution.readouts import run_probe
+from pipelines_v2.operations.execution.readouts import (
+    run_persisted_probe_import,
+    run_persisted_probe_inference,
+    run_probe,
+)
 from pipelines_v2.operations.execution.representation import run_direction
 from tests.pipelines_v2.factories import feature_ref_from_payload, residual_feature_payload
 
@@ -152,6 +160,113 @@ def test_probe_fixed_split_learns_separable_known_answer_and_persists_prediction
     assert {row["example_key"] for row in layer["test_predictions"]} == test_keys
     assert result.payload["summary"]["best_layer"] == 0
     assert result.payload["summary"]["best_value"] == pytest.approx(1.0)
+
+
+@pytest.mark.unit
+@pytest.mark.interp
+def test_probe_fixed_split_supports_staged_finetuning_without_toy_engine() -> None:
+    examples = []
+    rows = {}
+    split_values = {
+        "synthetic_train": [-8, -7, -6, -5, 5, 6, 7, 8],
+        "dev_domain": [-4, -3, 3, 4],
+        "test_domain": [-10, -9, 9, 10],
+    }
+    for split, values in split_values.items():
+        for value in values:
+            key = f"{split}_{value}"
+            label = "negative" if value < 0 else "positive"
+            examples.append(Example(key=key, prompt="unused", labels={"class": label, "split": split}))
+            rows[key] = [[float(value), float(-value)]]
+    dataset = Dataset.from_examples(examples)
+    feature = feature_ref_from_payload(residual_feature_payload(rows=rows))
+
+    spec = ProbeSpec(
+        feature=feature,
+        labels=dataset.labels("class"),
+        split=dataset.labels("split"),
+        train_values=("synthetic_train", "dev_domain"),
+        train_stages=(("synthetic_train",), ("dev_domain",)),
+        stage_epochs=(1, 3),
+        test_values=("test_domain",),
+        tokens=TokenSelector.full_sequence(),
+        pooling=TokenPooling.mean(),
+        metrics=("accuracy", "balanced_accuracy", "auroc"),
+    )
+    serialized = spec.to_dict()
+    assert serialized["train_stages"] == [["synthetic_train"], ["dev_domain"]]
+    assert serialized["stage_epochs"] == [1, 3]
+
+    result = run_probe(spec)
+
+    layer = result.payload["layers"][0]
+    assert layer["split_mode"] == "fixed"
+    assert layer["training_mode"] == "staged_finetune"
+    assert layer["train_stages"] == [["synthetic_train"], ["dev_domain"]]
+    assert layer["stage_epochs"] == [1, 3]
+    assert layer["accuracy"] == pytest.approx(1.0)
+    assert layer["balanced_accuracy"] == pytest.approx(1.0)
+    assert layer["auroc"] == pytest.approx(1.0)
+
+
+@pytest.mark.unit
+@pytest.mark.interp
+def test_persisted_probe_import_and_inference_replay_exported_linear_probe(tmp_path) -> None:
+    examples = []
+    rows = {}
+    for index, value in enumerate(list(range(-20, 0)) + list(range(1, 21))):
+        split = "test" if abs(value) % 5 == 0 else "train"
+        label = "negative" if value < 0 else "positive"
+        key = f"ex_{index}"
+        examples.append(Example(key=key, prompt="unused", labels={"class": label, "split": split}))
+        rows[key] = [[float(value), float(-value)]]
+    dataset = Dataset.from_examples(examples)
+    feature = feature_ref_from_payload(residual_feature_payload(rows=rows))
+
+    exported = run_probe(
+        ProbeSpec(
+            feature=feature,
+            labels=dataset.labels("class"),
+            split=dataset.labels("split"),
+            train_values=("train",),
+            test_values=("test",),
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+            metrics=("accuracy", "balanced_accuracy"),
+            persist_model=True,
+        )
+    )
+    probe_payload = exported.payload["persisted_probe"]
+    assert probe_payload["layers"][0]["training_mode"] == "fixed_train_values"
+
+    probe_path = tmp_path / "probe.json"
+    probe_path.write_text(json.dumps(exported.payload), encoding="utf-8")
+    imported = run_persisted_probe_import(PersistedProbeImportSpec(path=str(probe_path), name="known_answer_probe"))
+    replayed = run_persisted_probe_inference(
+        PersistedProbeInferenceSpec(
+            feature=feature,
+            probe=imported.payload,
+            rows=dataset.labels("split").equals("test"),
+            tokens=TokenSelector.full_sequence(),
+            pooling=TokenPooling.mean(),
+            emit_labels=True,
+            score_name="known_answer",
+        )
+    )
+
+    expected_test_count = sum(1 for example in examples if example.labels["split"] == "test")
+    assert replayed.payload["summary"] == {
+        "row_count": expected_test_count,
+        "example_count": expected_test_count,
+        "layer_count": 1,
+        "positive_class": "positive",
+    }
+    assert {row["prediction"] for row in replayed.payload["rows"]} == {"negative", "positive"}
+    assert all(row["probability_by_class"]["positive"] == pytest.approx(row["probability"]) for row in replayed.payload["rows"])
+    assert sorted(replayed.labels) == [
+        "known_answer__layer_0__prediction",
+        "known_answer__layer_0__probability_positive",
+    ]
 
 
 @pytest.mark.unit

@@ -39,7 +39,14 @@ from pipelines_v2.operations.interventions import (
     SwapMeanPatch,
 )
 from pipelines_v2.operations.projections import CoordinateImportSpec, ProjectionCalibrationSpec, ProjectionSpec, SectionSelector
-from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, TextBaselineSpec, TransferProbeSpec
+from pipelines_v2.operations.readouts import (
+    PersistedProbeImportSpec,
+    PersistedProbeInferenceSpec,
+    ProbeSpec,
+    ResidualizedProbeSpec,
+    TextBaselineSpec,
+    TransferProbeSpec,
+)
 from pipelines_v2.operations.reports import ReportSpec
 from pipelines_v2.operations.representation import BasisSpec, CentroidSpec, DirectionSpec, GeometrySpec, SubspaceSpec
 
@@ -70,6 +77,8 @@ __all__ = [
     "PairDeltaSpec",
     "PatchedGenerationSpec",
     "PromptMetadataBuilder",
+    "PersistedProbeImportSpec",
+    "PersistedProbeInferenceSpec",
     "ProbeSpec",
     "ProjectionCalibrationSpec",
     "ProjectionSpec",
