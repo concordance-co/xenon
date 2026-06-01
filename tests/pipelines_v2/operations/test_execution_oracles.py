@@ -155,6 +155,53 @@ def test_probe_fixed_split_learns_separable_known_answer_and_persists_prediction
 
 
 @pytest.mark.unit
+@pytest.mark.interp
+def test_probe_fixed_split_supports_staged_finetuning_without_toy_engine() -> None:
+    examples = []
+    rows = {}
+    split_values = {
+        "synthetic_train": [-8, -7, -6, -5, 5, 6, 7, 8],
+        "dev_domain": [-4, -3, 3, 4],
+        "test_domain": [-10, -9, 9, 10],
+    }
+    for split, values in split_values.items():
+        for value in values:
+            key = f"{split}_{value}"
+            label = "negative" if value < 0 else "positive"
+            examples.append(Example(key=key, prompt="unused", labels={"class": label, "split": split}))
+            rows[key] = [[float(value), float(-value)]]
+    dataset = Dataset.from_examples(examples)
+    feature = feature_ref_from_payload(residual_feature_payload(rows=rows))
+
+    spec = ProbeSpec(
+        feature=feature,
+        labels=dataset.labels("class"),
+        split=dataset.labels("split"),
+        train_values=("synthetic_train", "dev_domain"),
+        train_stages=(("synthetic_train",), ("dev_domain",)),
+        stage_epochs=(1, 3),
+        test_values=("test_domain",),
+        tokens=TokenSelector.full_sequence(),
+        pooling=TokenPooling.mean(),
+        metrics=("accuracy", "balanced_accuracy", "auroc"),
+    )
+    serialized = spec.to_dict()
+    assert serialized["train_stages"] == [["synthetic_train"], ["dev_domain"]]
+    assert serialized["stage_epochs"] == [1, 3]
+
+    result = run_probe(spec)
+
+    layer = result.payload["layers"][0]
+    assert layer["split_mode"] == "fixed"
+    assert layer["training_mode"] == "staged_finetune"
+    assert layer["train_stages"] == [["synthetic_train"], ["dev_domain"]]
+    assert layer["stage_epochs"] == [1, 3]
+    assert layer["accuracy"] == pytest.approx(1.0)
+    assert layer["balanced_accuracy"] == pytest.approx(1.0)
+    assert layer["auroc"] == pytest.approx(1.0)
+
+
+@pytest.mark.unit
 def test_label_map_and_label_fields_strict_modes_are_known_answer_checks() -> None:
     dataset = Dataset.from_examples(
         [
