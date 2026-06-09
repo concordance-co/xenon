@@ -15,3 +15,5 @@ uv run python -m pipelines_v2.cli ...
   - v2 smoke helper
 - `scripts/pipelines_v2_router_layer_probe.py`
   - v2 router probing helper
+- `scripts/skills.py`
+  - validates repo-local skill conventions and syncs host metadata

@@ -206,6 +206,8 @@ Use simple frontmatter on markdown artifacts:
 - `version`
 - `frozen_date`
 - `input_artifacts`
+- `evidence_rung`
+- `claim_boundary`
 
 Someone reviewing this phase should be able to see:
 
@@ -213,6 +215,31 @@ Someone reviewing this phase should be able to see:
 - what the refined labels are
 - why they were chosen
 - what remains missing
+
+## Evidence discipline
+
+Use `evidence_rung: design_only` for label specs, ontology notes, and gap lists.
+Promote a label family to `behavioral` only when the target model's outputs or
+prompt behavior have been inspected and shown labelable for that family. Do not
+use `representational` here; that rung starts with probe/readout evidence in
+phase 03.
+
+Every label artifact should include a `claim_boundary` that says whether the
+label is direct, derived, blocked, response-side pending generation, or
+augmentation-dependent.
+
+## Gotchas
+
+- Do not translate upstream grader outcomes directly into latent labels without
+  classifying whether they are prompt-side, response-side, derived, or nuisance.
+- Do not freeze labels that require fresh generations before those generations
+  exist and have been inspected.
+- Do not let blocked labels disappear from the frozen set; keep explicit blocker
+  metadata.
+- Do not treat a neat ontology as proof that the benchmark can support the
+  proposed mechanism.
+- Do not send a vague "needs augmentation" note downstream; produce a concrete
+  gap list.
 
 ## Phase Done Criteria
 

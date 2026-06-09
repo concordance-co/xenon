@@ -155,12 +155,33 @@ Use simple frontmatter on markdown artifacts:
 - `version`
 - `frozen_date`
 - `input_artifacts`
+- `evidence_rung`
+- `claim_boundary`
 
 The main thing is that someone should be able to inspect:
 
 - what was reviewed
 - what was concluded
 - why the benchmark was advanced, deferred, or rejected
+
+## Evidence discipline
+
+Use `evidence_rung: design_only` for validation memos. A validation pass is a
+decision to invest, not evidence that a mechanistic claim is true. If the memo
+includes a runnable smoke check, name that separately and keep the
+`claim_boundary` limited to access, label richness, tractability, and confound
+risk.
+
+## Gotchas
+
+- Do not let product relevance substitute for tractability.
+- Do not advance a benchmark whose raw prompts, responses, or labels cannot be
+  inspected.
+- Do not call a benchmark "rich" when its useful labels collapse after
+  nuisance stratification.
+- Do not bury severe but repairable confounds; hand them to phase 02 explicitly.
+- Do not reject a benchmark solely because it needs augmentation if the core
+  mechanistic question is still strong.
 
 ## References
 

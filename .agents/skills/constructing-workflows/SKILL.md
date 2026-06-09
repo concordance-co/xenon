@@ -357,3 +357,21 @@ Before calling a workflow “done”, verify:
 5. the phase has one checked-in workflow source of truth
 6. the checked-in JSON snapshot matches the Python builder
 7. the report step only references what it really needs
+
+## Evidence discipline
+
+Workflow specs and run plans should carry `evidence_rung: operational` unless
+they are also making research claims. If a workflow emits research-facing
+reports, the report inputs or metadata should preserve the upstream
+`evidence_rung` and `claim_boundary` rather than laundering an artifact into a
+stronger claim.
+
+## Gotchas
+
+- Do not let `TransformSpec` become the hiding place for reusable methodology.
+- Do not mount the workspace root into Modal when narrow source roots are enough.
+- Do not put report rendering on remote runners.
+- Do not add multiple competing workflow sources inside one phase when the
+  phase boundary is the real problem.
+- Do not assume row alignment, prompt sections, or runner/catalog identity from
+  naming conventions alone.

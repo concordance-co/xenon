@@ -26,11 +26,12 @@ If the task is malformed, ambiguous, or role-format dependent, probe results may
 1. **Identify the hypothesis**: what information do you believe the model encodes? (e.g., syntax, position, sentiment, factual knowledge)
 2. **Design the labeling function**: map each token position to a ground-truth label
 3. **Choose the split scheme**: lexical holdout, domain holdout, action holdout, or explicit train/test split that matches the claim
-4. **Extract activations**: run inference with `output_hidden_states=True`, collect per-layer hidden states
-5. **Train probes**: fit a linear (or nonlinear) model from activations to labels
-6. **Evaluate**: compare probe metrics against baselines, sweep across layers
-7. **Localize**: compare positions / spans instead of only the last token when the variable is relational
-8. **Analyze**: PCA/SAE on activations, logit lens, intervention experiments
+4. **Choose the capture location**: prompt span, prompt end, generation span, or full prompt-plus-generation sequence
+5. **Extract activations**: run inference with `output_hidden_states=True`, collect per-layer hidden states
+6. **Train probes**: fit a linear (or nonlinear) model from activations to labels
+7. **Evaluate**: compare probe metrics against baselines, sweep across a broad range of layers
+8. **Localize**: compare positions / spans instead of only the last token when the variable is relational
+9. **Analyze**: PCA/SAE on activations, logit lens, intervention experiments
 
 For details on each step, see the reference files:
 - [EXTRACTION.md](EXTRACTION.md) — hidden state extraction patterns (batched, memory-efficient, multi-model)
@@ -97,13 +98,41 @@ print(f"Accuracy: {accuracy_score(y_test, probe.predict(X_test)):.4f}")
 - **Prefer linear probes** for interpretability claims — high linear probe accuracy means the information is *linearly decodable* from the representation
 - **Always compare against baselines**: random labels, majority class, shuffled controls
 - **Selectivity**: real accuracy minus control accuracy; this isolates what the *model* encodes vs what the *probe* memorizes
-- **Sweep layers**: plot probe performance per layer to find where information emerges, peaks, and decays
+- **Sweep layers broadly**: plot probe performance over early, middle, and late layers to find where information emerges, peaks, and decays
 - **Use explicit train/test splits when the benchmark already defines them** — especially for lexical holdout or action holdout claims
-- **For binary probes, report AUROC in addition to thresholded accuracy** — AUROC captures separability even when a single threshold is imperfect
+- **Treat capture location as part of the claim** — prompt-end probes read pre-answer state or prediction of later behavior; generation-token probes read state while the model is producing the behavior
+- **For binary probes, report AUROC and balanced accuracy as the headline metrics** — AUROC captures separability while BA captures thresholded performance under imbalance
 - **For relational tasks, compare multiple spans or positions** — a strong last-token probe does not tell you where the signal first appears
 - **Do not equate best readout layer with best intervention layer** — later layers may be easiest to decode while earlier layers are better causal sites
 - **Report R² for regression, accuracy + F1 for classification, and AUROC / AUPRC for binary tasks when possible**
 - **Mind the dataset size**: linear probes in high-dimensional spaces can overfit; use cross-validation or held-out test sets
+- **Treat early-layer strength as a warning**: high AUROC or BA in very early layers often means lexical, template, role, duplicate-row, or prompt-side leakage
+
+## Evidence discipline
+
+Probe reports must include `evidence_rung` and `claim_boundary`.
+
+Use `evidence_rung: representational` for ordinary readout results. Use
+`localized_representational` only when the result compares layers, positions,
+spans, sections, or tokens and supports a specific localization claim. Do not
+use `causal` or `mechanistic` for probe results without downstream intervention
+evidence.
+
+## Gotchas
+
+- Do not probe before behavioral sanity is established for the target model and
+  task.
+- Do not use random train/test splits when the claim depends on lexical, domain,
+  action, or carrier generalization.
+- Do not equate best readout layer with best intervention site.
+- Do not call within-dataset lexical leakage a blocker by itself; check whether
+  the shortcut transfers across the train-to-heldout split used for the claim.
+- Do not treat prompt-end and generation-token activations as interchangeable;
+  they support different claim ceilings unless both were tested.
+- Do not ignore cheap text baselines on the exact split when response text or
+  prompt wording could carry the label.
+- Do not interpret a nonlinear probe as clean evidence of a simple internal
+  feature without stronger controls.
 
 ## Dependencies
 

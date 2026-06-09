@@ -1,0 +1,7 @@
+interface:
+  display_name: "Constructing LLM Probes"
+  short_description: "Constructs linear and nonlinear probes for LLM interpretability..."
+  default_prompt: "Use $constructing-llm-probes to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

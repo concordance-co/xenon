@@ -149,7 +149,27 @@ Example:
 
 Do not force every result into a symmetric-axis interpretation.
 
-## Common failure modes
+## Required outputs
+
+For any patching or interchange result, leave behind:
+
+- target behavior and intended direction
+- donor-target pairing rule
+- patch operator and site
+- same-label and random/unmatched control results where applicable
+- intended-direction flips, reverse-direction flips, malformed outputs, and
+  control-overlap rates
+- `evidence_rung`
+- `claim_boundary`
+
+## Evidence discipline
+
+Use `evidence_rung: causal` only when the intended intervention effect survives
+the relevant controls. If patching mainly corrupts outputs or tracks same-label
+control flips, mark the result as `representational` or `design_only` and state
+the failed causal interpretation in `claim_boundary`.
+
+## Gotchas
 
 ### Same tiny set of rows always flips
 

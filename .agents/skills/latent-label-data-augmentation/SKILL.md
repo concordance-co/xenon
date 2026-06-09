@@ -26,6 +26,11 @@ Often the right move is:
 
 not whole-cloth synthesis.
 
+If the task is whole-cloth synthetic benchmark design rather than
+gap-list-driven benchmark repair, use
+[synthetic-data-generation](../synthetic-data-generation/SKILL.md) as the owner
+instead.
+
 ## Core rule
 
 `Augment to break surface-label leakage so the experiment can become real.`
@@ -157,26 +162,37 @@ Useful repair patterns include:
 The goal is not just "more variants."
 The goal is to break one-to-one surface recoverability.
 
-### Validate variant equivalence before treating a variant pair as a holdout
+### Validate variant transfer before treating a variant pair as a holdout
 
-Constructing variants is not the same as having a working holdout. A variant pair earns holdout status only when a within-variant text classifier on the responses they produce lands near chance.
+Constructing variants is not the same as having a working holdout. A variant
+pair earns holdout status for a probe claim only when cheap lexical shortcuts
+fail on the same train-to-heldout split the probe will use.
 
 Required validation step:
 
-- train a text classifier (e.g., char TF-IDF 3–5 + ridge) to distinguish the responses produced under variant A from the responses produced under variant B
+- train a text classifier (e.g., char TF-IDF 3-5 + ridge) on the same train
+  split planned for the activation probe
+- evaluate it on the same held-out variant or split planned for the activation
+  probe
 - record balanced accuracy and AUROC
-- a within-variant text classifier at ceiling (AUROC ≥ ~0.95 or BA near 1.0) means the variants are not lexically equivalent and are not functioning as a holdout — the pair is two different prompts with the same target label, and any downstream activation classifier on it remains confounded by the lexical signature the text classifier exploits
+- a text classifier at ceiling on that train-to-heldout split means the holdout
+  is not controlling the lexical shortcut for the current claim
 
 Repair if the validation fails:
 
 - add output-schema constraints (e.g., fixed three-line structure)
 - add length bounds
 - add vocabulary bans on the canonical lexical family of each variant
-- iterate until the within-variant text classifier lands near chance (BA ≤ ~0.65, AUROC ≤ ~0.75)
+- change the split or variant family until the train-to-heldout text baseline is
+  near chance for the current claim
 
-A track that ships variant pairs without running this validation has gestured at the technique rather than executing it. Mark such tracks as `shortcut_stress_unvalidated` in the manifest until validation passes.
+A track that ships variant pairs without this train-to-heldout validation has
+gestured at the technique rather than executing it. Mark such tracks as
+`shortcut_stress_unvalidated` in the manifest until validation passes.
 
-This failure mode has shown up in real benchmark-repair work: a natural-prompt within-variant text classifier landed near ceiling, and the variants were not functioning as holdouts despite being labeled as such. Treat validation as a required gate, not a retrospective explanation.
+Within-dataset lexical recoverability is still useful evidence. Treat it as a
+warning and inspect it, but do not call it a blocker unless the shortcut
+transfers across the split being claimed.
 
 ## Confound-focused design checklist
 
@@ -235,6 +251,8 @@ Produce:
 - expected confounds reduced
 - residual confounds
 - mapping back to the original gap list
+- `evidence_rung`
+- `claim_boundary`
 - current phase status:
   - `scaffold_only`
   - `partial_repair_materialized`
@@ -280,6 +298,7 @@ Use simple frontmatter on markdown artifacts:
 - `version`
 - `frozen_date`
 - `input_artifacts`
+- `evidence_rung`
 
 Someone inspecting this phase should be able to answer:
 
@@ -293,6 +312,7 @@ At minimum, each materialized dataset entry should record:
 - `row_count`
 - `rows_with_all_placeholders_substituted`
 - `controls_structurally_matched_to_target` when applicable
+- `evidence_rung`
 - `known_bugs`
 
 If a materialized family is later shown to be shortcut-dominated, keep it in the manifest and record that explicitly in `known_bugs` rather than silently treating it as clean.
@@ -321,6 +341,29 @@ The behavioral smoke report should distinguish:
 If the smoke is intended to support response-side label work, a pure tripwire pass is not enough by itself.
 The report should include at least one explicit content-inspection section tied to the proposed labels.
 
+## Evidence discipline
+
+Use `evidence_rung: design_only` while the repair is only planned or
+materialized. Promote a track to `behavioral` only after the target model has
+passed the behavioral smoke and cheap-baseline preflight on the repaired data.
+Do not mark phase-03-ready data as `representational` before probe/readout work
+exists, even if the repair looks clean by inspection.
+
+Every phase-02 report should include a `claim_boundary` that states which
+labels are ready, which are shortcut-dominated, and which are still blocked.
+
+## Gotchas
+
+- Rewriting more rows is not progress unless it targets a named gap-list item.
+- Matched pairs must preserve scenario content, stakes, and prompt skeleton; a
+  prefix-only rewrite is not a pair.
+- Variant pairs are not holdouts until the train-to-heldout text baseline fails
+  on the split being claimed.
+- Do not hide shortcut-dominated materialized families; keep them in the
+  manifest with `known_bugs`.
+- Do not advance response-side labels on tripwire-only smokes when substantive
+  labelability has not been inspected.
+
 ## References
 
 Primary references:
@@ -330,10 +373,10 @@ Primary references:
 - [benchmark-to-latent-labels](../benchmark-to-latent-labels/SKILL.md)
 - [activation-patching-causal-evals](../activation-patching-causal-evals/SKILL.md)
 
-Use the synthetic-data-generation skill as the main methodology library for:
+Use the synthetic-data-generation skill as the craft library for:
 
 - lexical controls
-- benchmark repair
+- whole-cloth synthetic design
 - split schemes
 - prompt role placement
 - behavior-validating smoke tests

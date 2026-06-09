@@ -1,0 +1,7 @@
+interface:
+  display_name: "Constructing Workflows"
+  short_description: "Designing or editing `pipelines_v2` workflow files in this repo"
+  default_prompt: "Use $constructing-workflows to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

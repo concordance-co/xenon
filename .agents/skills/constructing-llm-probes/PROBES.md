@@ -11,21 +11,31 @@ Before fitting a probe, decide whether the evaluation should be:
 
 If the benchmark already encodes a meaningful split, prefer using it directly instead of defaulting to CV. Otherwise you may overstate abstraction.
 
-### Validate lexical-family holdouts before claiming non-lexical signal
+### Evaluate lexical confounds on the claimed split
 
-A lexical-family holdout (train on one prompt variant, test on another that shares the target latent but differs lexically) only earns a non-lexical-signal claim if the variants produce response text that a text classifier cannot distinguish.
+A lexical-family holdout trains on one prompt variant and tests on another that
+shares the target latent but differs lexically. The review question is not
+"does either dataset contain lexical regularities?" It is:
 
-Mandatory validation step before running the activation probe:
+- can a cheap lexical shortcut learned on the train split transfer to the
+  held-out split used by the probe?
 
-1. train a text classifier (e.g., char TF-IDF 3–5 + ridge) on responses from variant A vs variant B
-2. record balanced accuracy and AUROC
-3. the within-variant text classifier must land near chance (BA ≤ ~0.65, AUROC ≤ ~0.75) for the holdout to be valid
+Mandatory validation step:
 
-If the within-variant text classifier is at ceiling (AUROC ≥ ~0.95), the variants are not functioning as a holdout — they are two different prompts with the same target label, and the activation probe across them remains confounded by the lexical signal the text classifier exploits. Repair by adding format constraints (output schema, length bound, vocabulary bans on each variant's canonical lexical family) until the validation passes.
+1. Train a text baseline, usually char TF-IDF 3-5 + logistic or ridge, on the
+   same train split used by the activation probe.
+2. Evaluate it on the same held-out split used by the activation probe.
+3. Record balanced accuracy and AUROC.
 
-A probe-transfer test that has not passed this within-variant text-classifier validation has not isolated lexical confound. Report results from such transfers as Level 2 representational only, with the lexical confound explicitly listed as not-yet-controlled.
+Interpretation:
 
-This validation is a stricter operationalization of the technique referenced in `methodology/PRINCIPLES.md §12` (response-side probing requires active confound reduction). The skill `latent-label-data-augmentation` covers the variant-construction side of the same loop.
+- high text-baseline AUROC/BA on the train-to-heldout split means the probe
+  claim is lexically confounded until the split, target, or data is repaired
+- low text-baseline transfer with strong activation-probe transfer supports a
+  non-lexical representational claim for that split
+- high within-dataset lexical recoverability is a warning and should be named,
+  but it is not by itself a blocker if the shortcut does not transfer from train
+  to heldout
 
 ## Probe selection guide
 
@@ -142,7 +152,9 @@ The gap between MLP probe accuracy and linear probe accuracy reveals how much in
 
 ## Per-layer sweep
 
-The most informative analysis — shows where information appears, peaks, and fades across depth:
+The most informative analysis shows where information appears, peaks, and fades
+across depth. By default, sweep a broad range covering early, middle, and late
+layers rather than a single convenient layer.
 
 ```python
 import pandas as pd
@@ -158,11 +170,24 @@ df = pd.DataFrame(results)
 # Plot: df.plot(x="layer", y="r2")  or  y="accuracy"
 ```
 
+For binary probes, plot both AUROC and balanced accuracy by layer. These are the
+default headline metrics for Xenon probe work.
+
+Expected profile:
+
+- AUROC and balanced accuracy generally improve toward higher layers
+- high AUROC or balanced accuracy in very early layers is a warning signal for
+  lexical leakage, template leakage, role-token leakage, duplicated rows,
+  trivial labels, or a prompt-side feature that was already present before the
+  model performed the intended computation
+- early strength is not automatically invalid, but it needs an explicit
+  explanation before promotion
+
 ## Evaluation and baselines
 
 ### Binary metrics beyond accuracy
 
-For binary probes, accuracy alone is often not enough.
+For binary probes, accuracy alone is not enough.
 
 - **Balanced accuracy**: useful when classes are imbalanced or when you want one thresholded operating point
 - **AUROC**: useful when you care about score separability across all thresholds
@@ -180,12 +205,12 @@ If available, also report:
 
 These are especially useful when the downstream use case is monitoring rather than raw classification.
 
-Always report both:
+Always report AUROC and balanced accuracy. Also report:
 
 - thresholded metrics:
-  accuracy / balanced accuracy / F1 as appropriate
+  accuracy / F1 as appropriate
 - threshold-free metrics:
-  AUROC and AUPRC when applicable
+  AUPRC when applicable
 
 ### Mandatory baselines
 

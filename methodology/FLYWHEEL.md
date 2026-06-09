@@ -85,7 +85,7 @@ Artifact: validation report — cheap-baseline numbers, confound check results, 
 
 Goal: small-slice capture plus probe to check where signal might live and whether the shape of the results is consistent with the hypothesis.
 
-Moves: capture on a small slice. Sweep layers and token positions. Inspect AUROC curves. Make pooling decisions. Run behavioral sanity on the generations, not just the probes.
+Moves: capture on a small slice. Sweep a broad range of layers and token positions. Inspect AUROC and balanced-accuracy curves. Make pooling decisions. Run behavioral sanity on the generations, not just the probes.
 
 Exit when: the curves look roughly like the hypothesis predicts and pooling decisions are anchored in something defensible. Especially: measurement loci chosen here must transfer to real data later. Prefer positions identifiable in production traces.
 
@@ -121,7 +121,7 @@ Artifact: discovery notes — directions, subspaces, hypothesized structure with
 
 Goal: with labels and signal confirmed, train probes and characterize the representation precisely.
 
-Moves: probe architectures, cross-validation, transfer tests, geometry analysis. Characterize what the probe reads and what it doesn't.
+Moves: probe architectures, cross-validation, transfer tests, geometry analysis. Characterize what the probe reads and what it doesn't. Review AUROC and balanced accuracy across the layer sweep before choosing a locus.
 
 Exit when: probes at the chosen loci are well-characterized — their strengths, failure modes, and transfer behavior are understood.
 

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Activation Patching Causal Evals"
+  short_description: "Planning, running, or reviewing activation patching or..."
+  default_prompt: "Use $activation-patching-causal-evals to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

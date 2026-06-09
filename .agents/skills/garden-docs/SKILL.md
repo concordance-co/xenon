@@ -134,3 +134,19 @@ was made. Verify commits actually contain the claimed diff.
 Produce the punch list FIRST. Do not start editing until the user has seen it
 and indicated which findings to act on. The user explicitly prefers section-
 by-section review over batched edits + recompile.
+
+## Evidence discipline
+
+Doc-gardening findings should include `evidence_rung: documentation` in any
+summary artifact. Each finding needs a concrete file/line citation and the
+verification action used. Do not promote uncited style preferences into
+findings.
+
+## Gotchas
+
+- Do not rewrite whole docs when the skill asked for a punch list.
+- Do not treat unclear prose as stale unless there is code, CLI, or cross-doc
+  evidence.
+- Do not delete archive material.
+- Do not touch external research workspaces unless the user named them.
+- Do not batch edits before the user has chosen which findings to act on.

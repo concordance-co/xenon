@@ -1,0 +1,7 @@
+interface:
+  display_name: "Pipelines v2 Run Ops"
+  short_description: "Operating existing `pipelines_v2` workflows in this repo"
+  default_prompt: "Use $pipelines-v2-run-ops to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

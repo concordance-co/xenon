@@ -119,7 +119,7 @@ Instruction-following models produce label-adjacent vocabulary when primed with 
 Four complementary confound-reduction technique categories exist, and they stack:
 
 - `viewport reduction` — probe only a portion of the response where the instruction-acknowledgment leakage is absent (tail window, conclusion span, non-header content)
-- `training distribution variation` — train the probe across prompt formats, paraphrases, or prime variants so the learned direction must be format-invariant. **Variants must be validated, not just constructed.** After building variant pairs, train a text classifier (e.g., char-TFIDF + ridge) on the responses they produce. If within-variant text-classifier accuracy is at ceiling (AUROC ≥ ~0.95), the variants are not driving response-level lexical equivalence — they are merely two prompts with the same target label, and an activation classifier on these variants is still confounded by lexical signal. Repair by adding format-level constraints (output schema, length bound, vocabulary bans on each variant's canonical lexical family) until the within-variant text classifier lands near chance. Only then is the variant pair functioning as a holdout. A technique applied without its validation step has been gestured at, not executed.
+- `training distribution variation` — train the probe across prompt formats, paraphrases, or prime variants so the learned direction must be format-invariant. **Variants must be validated on the split the claim uses.** The important question is whether a cheap text classifier trained on the probe's train split transfers to the held-out split. Within-dataset lexical regularities are warnings, not blockers by themselves. A lexical confound blocks a transfer claim only when the lexical shortcut is available across the train-to-heldout evaluation split.
 - `lexical subspace subtraction` — residualize probe features against text-baseline predictions, or erase text-aligned subspaces, before probing
 - `target reformulation` — shift from categorical identity to binary collapse, relational contrast, or behavioral extraction
 
@@ -129,7 +129,7 @@ No single technique reliably pushes text baselines off ceiling. Combinations are
 
 A probe earns nothing if the contrast doesn't drive behavior. Before any activation probe under prompt-conditioned setups, verify the contrasting prompts produce different recommendations / decisions, not merely different activation signatures. This extends §1 (behavioral sanity) into the probing context.
 
-Once behavior divergence is established, the lexical-recoverability of the contrast determines what claim probing can earn:
+Once behavior divergence is established, the lexical-recoverability of the contrast on the claimed evaluation split determines what claim probing can earn:
 
 | lexical leakage | behavior divergence | claim available |
 |---|---|---|
@@ -138,6 +138,34 @@ Once behavior divergence is established, the lexical-recoverability of the contr
 | high | low | **Diagnostic null.** Probe AUROC decorates the instruction signature; do not promote. The most common overclaim under priming. |
 | low | low | Nothing happening. |
 
-When a contrast lands in *high lex / high behavior* and steering is available, accept the confound and use steering. Otherwise redesign toward *low lex / high behavior* via §12 techniques (especially `training distribution variation` with the within-variant text-classifier validation).
+When a contrast lands in *high lex / high behavior* on the claimed split and steering is available, accept the confound and use steering. Otherwise redesign toward *low lex / high behavior* via §12 techniques, especially training distribution variation evaluated on the train-to-heldout split.
 
 Measure behavior divergence per phase: recommendation-overlap rate, action-class distribution by condition, pairwise Jaccard on normalized actions. < ~30% divergence flags the contrast as probing-untractable until divergence is engineered up.
+
+## 14. Probe claims are layer-bound, metric-bound, and split-bound
+
+A probe result is not reviewable unless it names:
+
+- the train/test or transfer split that defines the claim
+- the capture location: prompt span, prompt end, generation span, or full
+  prompt-plus-generation sequence
+- the layers swept, covering early, middle, and late model depth unless there is a documented reason not to
+- AUROC and balanced accuracy for each reviewed layer
+- the text and length baselines run on the same claimed split
+
+Capture location is part of the claim. Prompt-end readouts show what is
+available before answer production, or what predicts later behavior.
+Generation-token readouts show what is present while the behavior is being
+produced. A response-side label should not be treated as generation-time
+evidence from prompt-end activations unless that narrower claim is explicit.
+
+For binary probes, AUROC and balanced accuracy are the default headline metrics.
+AUROC captures separability across thresholds; balanced accuracy captures one
+thresholded operating point while respecting class imbalance.
+
+Layer profiles should usually strengthen toward higher layers. High AUROC or
+balanced accuracy in very early layers is a warning signal for lexical leakage,
+role/template leakage, duplicated rows, trivial labels, or prompt-side features
+that were already present before the model did the intended computation. Early
+strength is not automatically invalid, but it needs an explicit explanation
+before the claim is promoted.

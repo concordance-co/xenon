@@ -1,0 +1,7 @@
+interface:
+  display_name: "Synthetic Data Generation"
+  short_description: "Designing controlled synthetic benchmarks, prompt variants, or..."
+  default_prompt: "Use $synthetic-data-generation to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

@@ -45,6 +45,25 @@ Each research phase should keep a canonical `PHASE.md` per
 premise/design/orientation surface, stays current as work runs, and becomes the
 closure artifact when the phase ends.
 
+## Skills
+
+Canonical repo-local skills live in `.agents/skills`. Claude sees them through
+the `.claude/skills -> ../.agents/skills` symlink; Codex-facing metadata is
+generated per skill under `agents/openai.yaml`.
+
+After editing non-vendored skills, run:
+
+```bash
+python3 scripts/skills.py sync-hosts
+python3 scripts/skills.py check
+```
+
+Vendored skills listed in `skills-lock.json` should not be edited as part of
+Xenon methodology changes.
+
+When asking another agent to review the skill revamp against real Xenon agent
+sessions, use `methodology/templates/SKILL_REVIEW_PROMPT.md`.
+
 ## Canonical Execution Model
 
 ```text

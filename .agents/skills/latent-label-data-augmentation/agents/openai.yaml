@@ -1,0 +1,7 @@
+interface:
+  display_name: "Latent Label Data Augmentation"
+  short_description: "A benchmark cannot support the desired latent labels cleanly..."
+  default_prompt: "Use $latent-label-data-augmentation to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

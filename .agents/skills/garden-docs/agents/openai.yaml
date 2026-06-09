@@ -1,0 +1,7 @@
+interface:
+  display_name: "Garden Docs"
+  short_description: "Walk the documentation tree, cross-check claims against current..."
+  default_prompt: "Use $garden-docs to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

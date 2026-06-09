@@ -1,0 +1,7 @@
+interface:
+  display_name: "Mechanistic Interventions"
+  short_description: "Moving from benchmark-driven analysis into causal or..."
+  default_prompt: "Use $mechanistic-interventions to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

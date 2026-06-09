@@ -154,6 +154,8 @@ Use simple frontmatter on markdown artifacts:
 - `version`
 - `frozen_date`
 - `input_artifacts`
+- `evidence_rung`
+- `claim_boundary`
 
 Someone inspecting this phase should be able to answer:
 
@@ -161,6 +163,23 @@ Someone inspecting this phase should be able to answer:
 - why the chosen site is plausible
 - what counts as success vs destabilization
 - what technique skill should be invoked next
+
+## Evidence discipline
+
+Use `evidence_rung: design_only` for intervention plans and site hypotheses.
+Only an executed intervention with controls can earn `causal`. If the site
+choice is based on probes or localization, preserve that as the prior evidence
+and state the causal claim as not-yet-tested in `claim_boundary`.
+
+## Gotchas
+
+- Do not pick an intervention site solely because it is the best readout layer.
+- Do not omit same-label controls; they distinguish directional causality from
+  destabilization.
+- Do not define success after seeing flips.
+- Do not treat a weak matched-pair design as an execution detail; repair the
+  benchmark or pairs first.
+- Do not blur planning-time plausibility with causal evidence.
 
 ## Handoff
 

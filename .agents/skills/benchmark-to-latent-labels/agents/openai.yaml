@@ -1,0 +1,7 @@
+interface:
+  display_name: "Benchmark To Latent Labels"
+  short_description: "Converting a benchmark's native labels into a..."
+  default_prompt: "Use $benchmark-to-latent-labels to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

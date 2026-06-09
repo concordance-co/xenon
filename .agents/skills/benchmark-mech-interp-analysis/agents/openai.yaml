@@ -1,0 +1,7 @@
+interface:
+  display_name: "Benchmark Mech Interp Analysis"
+  short_description: "A benchmark already has a validated latent label spec and the..."
+  default_prompt: "Use $benchmark-mech-interp-analysis to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true

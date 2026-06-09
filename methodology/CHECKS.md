@@ -8,6 +8,8 @@ Each check is a concrete question that surfaces a principle from `PRINCIPLES.md`
 
 - Will the chosen layer / token / position be identifiable on real data, not just synth? (P3, P11)
 - Is this a read location or a write location, and which do you need? (P3)
+- Is the variable expected at prompt end, during generation, or only after the generated answer exists? (P14)
+- If the label is response-side, are you capturing generation activations or only prompt-end prediction of later behavior? (P14)
 - Would an adjacent locus transfer more cleanly to the real system? (P11)
 - What happens at this locus on a same-label control? (P7)
 
@@ -17,6 +19,9 @@ Each check is a concrete question that surfaces a principle from `PRINCIPLES.md`
 - Has the next level's test been run, or are you extrapolating? (P2)
 - Could a cheap baseline have produced the same number? (P7)
 - Does the result survive a second split? (P11)
+- For probe claims, have AUROC and balanced accuracy been reviewed across a broad layer sweep? (P14)
+- For probe claims, is the capture location explicit enough to separate prompt-end evidence from generation-time evidence? (P14)
+- For probe transfer claims, was the lexical baseline evaluated on the same train-to-heldout split as the probe? (P14)
 
 ## Before committing to a synth design
 
@@ -41,6 +46,7 @@ Each check is a concrete question that surfaces a principle from `PRINCIPLES.md`
 - What does the probe read on synth, precisely? (P6)
 - What kinds of real-data cases would you expect the probe to miss? (P11)
 - When did you last read real data directly? (P5, flywheel stage 1)
+- Did the synth probe artifacts include layer sweep, AUROC, BA, and split-bound lexical checks? (P14)
 
 ## Before designing an intervention
 

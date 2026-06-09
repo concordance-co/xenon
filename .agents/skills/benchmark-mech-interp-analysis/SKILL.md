@@ -75,6 +75,7 @@ Minimum expectation:
 - one strong text baseline, usually `char-TFIDF + logistic`
 - one trivial non-semantic baseline, usually `length`
 - the actual held-out evaluation split, not just random train/test
+- AUROC and balanced accuracy for each baseline
 
 If the experiment will rely on multiple generalization claims, test the baseline on each relevant split family before probing, for example:
 
@@ -93,7 +94,8 @@ Do not treat this as a box-check. The purpose is to identify what kind of shortc
 
 Default rule:
 
-- if a cheap lexical baseline is already near ceiling on the intended split, probing is blocked until you either redesign the split, redesign the target, or redesign the data
+- if a cheap lexical baseline is already near ceiling on the train-to-heldout split used for the claim, probing is blocked until you either redesign the split, redesign the target, or redesign the data
+- within-dataset lexical leakage is a warning, not automatically a blocker, when the held-out split breaks that shortcut
 
 This gate is as important as behavioral sanity. A benchmark can be behaviorally coherent and still be probe-invalid because the target is shortcut-satisfiable from text alone.
 
@@ -310,6 +312,8 @@ Use simple frontmatter on markdown artifacts:
 - `version`
 - `frozen_date`
 - `input_artifacts`
+- `evidence_rung`
+- `claim_boundary`
 
 Someone inspecting this phase should be able to answer:
 
@@ -318,6 +322,28 @@ Someone inspecting this phase should be able to answer:
 - what level of claim we think is realistic
 - what the first concrete experiments are
 - what each executed experiment implies about the next phase of work
+
+## Evidence discipline
+
+Planning artifacts start at `evidence_rung: design_only`. Executed readout
+reports may use `representational`; localization reports may use
+`localized_representational` only when the span, section, token, layer, or
+position comparison is actually part of the result. Promotion to `causal`
+requires an intervention verdict, not just a strong probe.
+
+Each experiment spec and triage log should include `claim_boundary` and
+`claim_ceiling` so a later harness gate can reject over-strong conclusions.
+
+## Gotchas
+
+- Do not start phase 03 until the behavioral gate artifact is named and
+  sufficient for the target model.
+- Do not treat a high AUROC probe as causal evidence.
+- Do not claim transfer or abstraction without the split family that tests it.
+- Do not skip cheap lexical and length baselines on the exact split used for the
+  planned claim.
+- Do not promote to phase 04 without a concrete `PROMOTE_TO_CAUSAL` triage
+  verdict and controls.
 
 ## Phase Done Criteria
 

@@ -35,7 +35,9 @@ Treat these as reasons to slow down and stress test the result, not as interesti
 - `Cheap baseline match is not a win`
   If a bag-of-words, keyword, template, or positional baseline matches the neural probe closely, treat the result as shortcut-dominated until the experiment is repaired.
 - `Perfect strength across every layer is suspicious`
-  If balanced accuracy is effectively perfect from very early layers through late layers, first ask whether the task is trivially surface-decodable before interpreting any layer profile.
+  If AUROC or balanced accuracy is effectively perfect from very early layers through late layers, first ask whether the task is trivially surface-decodable before interpreting any layer profile.
+- `Early-layer strength needs an explanation`
+  AUROC and balanced accuracy should generally improve toward higher layers. High values in very early layers are a warning for lexical, template, role-token, duplicate-row, or prompt-side leakage.
 - `Late-only strength is not automatically process`
   If the signal appears only in late or conclusion windows, do not call it a transition or deliberative process signal without stronger earlier-window evidence.
 - `One-family success is not abstraction`
@@ -69,7 +71,7 @@ Force the probe to find what is invariant across training examples.
 - evaluate with leave-one-format-out transfer
 
 Moderately expensive: requires the data to exist across formats.
-Strongest when paired with a cross-format-holdout evaluation, since that separates "probe memorized training formats" from "probe found a format-invariant direction."
+Strongest when paired with a cross-format-holdout evaluation, since that separates "probe memorized training formats" from "probe found a format-invariant direction." Judge lexical confounds on the train-to-heldout split used by the probe. Within-dataset lexical recoverability is a warning, not automatically a blocker, if the shortcut does not transfer to heldout.
 
 ### Lexical subspace subtraction
 

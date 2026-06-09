@@ -138,3 +138,23 @@ When a run fails:
    - `rerun-from-step`
 
 Do not manually reconstruct prior artifacts unless the CLI surface is genuinely missing a needed operation.
+
+## Evidence discipline
+
+Operational notes, run summaries, and recovery logs should include
+`evidence_rung: operational` plus the run id, workflow file, command used, and
+artifact paths inspected. If a run result is used to support a research claim,
+preserve the producing step's `evidence_rung` and `claim_boundary` instead of
+upgrading it because the run completed successfully.
+
+## Gotchas
+
+- Do not rerun the whole workflow when `rerun-step --step report` can regenerate
+  a local report from existing artifacts.
+- Do not use `resume` for intentional branch experiments; use `rerun-step` or
+  `rerun-from-step`.
+- Do not treat a green run as evidence that the behavioral or scientific gate
+  passed.
+- Do not mix source rows, workflow relations, capture metadata, and behavior
+  outputs in one storage surface.
+- Do not manually patch catalog state before exhausting the CLI recovery paths.

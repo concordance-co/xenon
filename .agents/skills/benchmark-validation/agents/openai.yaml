@@ -1,0 +1,7 @@
+interface:
+  display_name: "Benchmark Validation"
+  short_description: "Deciding whether a benchmark is worth deeper benchmark-first..."
+  default_prompt: "Use $benchmark-validation to apply this Xenon workflow to the current task."
+
+policy:
+  allow_implicit_invocation: true
