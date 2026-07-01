@@ -72,6 +72,4 @@ markers = [
     "model_assets/**/*.toml",
     "emotions/replication/data/*.txt",
     "schemas/*.json",
-    "assistant_axis/reports/**/*.json",
-    "assistant_axis/reports/**/*.md",
 ]

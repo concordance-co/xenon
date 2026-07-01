@@ -33,6 +33,7 @@ scripts/reports/**/report_*/
 !/papers/__init__.py
 !/papers/voice/
 !/papers/voice/**
+/papers/voice/**/reports/
 /papers/**/__pycache__/
 /papers/**/*.py[cod]
 
