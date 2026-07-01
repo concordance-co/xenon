@@ -27,8 +27,15 @@ tmp/
 scripts/**/reports/**/report_*/
 scripts/reports/**/report_*/
 
-# Research paper workspace lives outside the package release.
-/papers/
+# Research paper workspace lives outside the package release, except the
+# packaged voice helper APIs consumed by sibling products.
+/papers/*
+!/papers/__init__.py
+!/papers/voice/
+!/papers/voice/**
+/papers/voice/**/reports/
+/papers/**/__pycache__/
+/papers/**/*.py[cod]
 
 # Local ingestion artifacts
 /data/
