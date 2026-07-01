@@ -70,6 +70,10 @@ def run_vllm_capture(
         llm_kwargs["served_model_name"] = engine.canonical_model_name()
     if engine.max_model_len:
         llm_kwargs["max_model_len"] = int(engine.max_model_len)
+    if engine.max_num_batched_tokens is not None:
+        llm_kwargs["max_num_batched_tokens"] = int(engine.max_num_batched_tokens)
+    if engine.async_scheduling:
+        llm_kwargs["async_scheduling"] = True
     llm_kwargs.update(engine.extra_llm_kwargs())
     reasoning_parser = (engine.reasoning_parser or "").strip()
     if spec.generation.capture_reasoning and not reasoning_parser and "qwen3" in str(engine.model_id).lower():
@@ -107,7 +111,21 @@ def run_vllm_capture(
                 )
 
         tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-        llm = LLM(**llm_kwargs)
+        _preflight_prompt_lengths(
+            tokenizer=tokenizer,
+            examples=examples,
+            max_model_len=engine.max_model_len,
+            add_generation_prompt=bool(engine.add_generation_prompt),
+            generation_max_tokens=spec.generation.max_tokens if wants_generation else None,
+            tools=spec.generation.chat_tools,
+            tool_choice=spec.generation.tool_choice,
+            enable_thinking=engine.enable_thinking,
+            chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
+        )
+        try:
+            llm = LLM(**llm_kwargs)
+        except RuntimeError as exc:
+            raise RuntimeError(_engine_init_error_message(exc, llm_kwargs=llm_kwargs)) from exc
         reasoning_parser = _build_reasoning_parser(
             tokenizer=tokenizer,
             parser_name=reasoning_parser,
@@ -121,6 +139,83 @@ def run_vllm_capture(
             reasoning_parser=reasoning_parser,
             batch_callback=batch_callback,
         )
+
+
+def _preflight_prompt_lengths(
+    *,
+    tokenizer: Any,
+    examples: list[Example],
+    max_model_len: int | None,
+    add_generation_prompt: bool,
+    generation_max_tokens: int | None,
+    tools: Any = None,
+    tool_choice: Any = None,
+    enable_thinking: bool | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
+) -> None:
+    """Fail fast (before model weights load) if any prompt exceeds the context window.
+
+    A single over-long prompt otherwise surfaces minutes later as a per-request
+    vLLM error after the engine has spun up, which wastes a GPU cold start and
+    buries the offending example.
+    """
+
+    if not max_model_len:
+        return
+    reserved = max(1, int(generation_max_tokens or 0))
+    limit = int(max_model_len) - reserved
+    offenders: list[tuple[str, int]] = []
+    for example in examples:
+        token_ids = _tokenize_prompt(
+            tokenizer=tokenizer,
+            prompt=example.prompt,
+            add_generation_prompt=add_generation_prompt,
+            tools=tools,
+            tool_choice=tool_choice,
+            enable_thinking=enable_thinking,
+            chat_template_kwargs=chat_template_kwargs,
+        )
+        if len(token_ids) > limit:
+            offenders.append((str(example.key), len(token_ids)))
+    if offenders:
+        preview = ", ".join(f"{key}={count} tokens" for key, count in offenders[:10])
+        raise SpecValidationError(
+            f"{len(offenders)} example(s) exceed the usable context window "
+            f"({limit} tokens = max_model_len {max_model_len} minus {reserved} reserved for generation): "
+            f"{preview}"
+            + ("" if len(offenders) <= 10 else f" … and {len(offenders) - 10} more")
+            + ". Raise max_model_len, shorten the examples, or drop them from the dataset."
+        )
+
+
+def _engine_init_error_message(exc: BaseException, *, llm_kwargs: dict[str, Any]) -> str:
+    """Attach actionable engine config context to vLLM's opaque init failures.
+
+    vLLM's EngineCore subprocess prints the root cause (commonly: KV cache does
+    not fit) to stdout and re-raises a generic RuntimeError, which is all that
+    survives into run catalogs.
+    """
+
+    summary_keys = (
+        "model",
+        "max_model_len",
+        "tensor_parallel_size",
+        "gpu_memory_utilization",
+        "enforce_eager",
+        "max_num_seqs",
+        "max_num_batched_tokens",
+        "enable_chunked_prefill",
+        "enable_prefix_caching",
+    )
+    config = ", ".join(f"{key}={llm_kwargs[key]!r}" for key in summary_keys if key in llm_kwargs)
+    return (
+        f"{exc} | engine config: {config} | The root cause is printed by the EngineCore "
+        "process in the worker logs above this traceback. A common cause is the KV cache "
+        "not fitting at max_model_len after model weights and the profiled activation peak: "
+        "enable chunked prefill with a bounded max_num_batched_tokens (the activation peak "
+        "is profiled at max_model_len when chunked prefill is off), reduce max_model_len, "
+        "or use a GPU with more memory."
+    )
 
 
 def run_vllm_capture_with_runtime(

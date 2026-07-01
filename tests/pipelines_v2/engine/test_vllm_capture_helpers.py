@@ -212,3 +212,64 @@ def test_generation_rows_preserve_reasoning_and_structured_payloads_and_reject_m
 
     with pytest.raises(RuntimeError, match="output count does not match"):
         _generation_rows_from_outputs(examples, rows[:1])
+
+
+class _CountingTokenizer:
+    """Tokenizer stub: one token per character of the prompt string."""
+
+    def __call__(self, text: str, *, add_special_tokens: bool, return_offsets_mapping: bool) -> Any:
+        return types.SimpleNamespace(
+            input_ids=list(range(len(text))),
+            offset_mapping=[(i, i + 1) for i in range(len(text))],
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.vllm
+def test_preflight_prompt_lengths_rejects_overlong_examples() -> None:
+    from pipelines_v2.core.types import SpecValidationError
+    from pipelines_v2.engine.vllm.capture import _preflight_prompt_lengths
+
+    tokenizer = _CountingTokenizer()
+    examples = [
+        Example(key="fits", prompt="ab"),
+        Example(key="too_long", prompt="abcdefgh"),
+    ]
+
+    # limit = max_model_len - 1 reserved token = 7; "too_long" is 8 tokens.
+    with pytest.raises(SpecValidationError, match=r"too_long=8 tokens"):
+        _preflight_prompt_lengths(
+            tokenizer=tokenizer,
+            examples=examples,
+            max_model_len=8,
+            add_generation_prompt=False,
+            generation_max_tokens=None,
+        )
+
+    # Same prompts pass once the window covers them.
+    _preflight_prompt_lengths(
+        tokenizer=tokenizer,
+        examples=examples,
+        max_model_len=9,
+        add_generation_prompt=False,
+        generation_max_tokens=None,
+    )
+
+    # No max_model_len means no constraint to enforce.
+    _preflight_prompt_lengths(
+        tokenizer=tokenizer,
+        examples=examples,
+        max_model_len=None,
+        add_generation_prompt=False,
+        generation_max_tokens=None,
+    )
+
+    # Generation budget tightens the usable window.
+    with pytest.raises(SpecValidationError, match=r"2 example\(s\) exceed"):
+        _preflight_prompt_lengths(
+            tokenizer=tokenizer,
+            examples=examples,
+            max_model_len=8,
+            add_generation_prompt=False,
+            generation_max_tokens=7,
+        )

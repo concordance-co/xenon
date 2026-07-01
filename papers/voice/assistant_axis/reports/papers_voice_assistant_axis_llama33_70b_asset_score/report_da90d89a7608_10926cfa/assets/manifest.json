@@ -1,0 +1,14 @@
+{
+  "figures": {},
+  "tables": {},
+  "unsupported_inputs": [
+    {
+      "artifact_id": "projection_1_4ba7e075",
+      "artifact_kind": "projection",
+      "downloaded_result_path": "papers/voice/assistant_axis/reports/papers_voice_assistant_axis_llama33_70b_asset_score/report_da90d89a7608_10926cfa/results/score_trace_results.json",
+      "reason": "unsupported_result_kind",
+      "result_kind": "projection_result",
+      "step_name": "score_trace"
+    }
+  ]
+}

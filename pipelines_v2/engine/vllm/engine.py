@@ -150,10 +150,17 @@ class VLLMEngine:
         debug_value = str(os.getenv("XENON_ACTIVATION_PATCH_DEBUG", "") or "").strip()
         if debug_value:
             env["XENON_ACTIVATION_PATCH_DEBUG"] = debug_value
+        # vllm is pinned because residual capture relies on the
+        # `extract_hidden_states` speculative-decoding path, which has changed
+        # shape across minor releases (0.19.1 shipped a regression in the v1
+        # engine's input validator). Unpinned installs mean any Modal image
+        # rebuild can silently change engine behavior; bump deliberately and
+        # re-verify capture before raising the pin. Keep in sync with
+        # yora/modal_base.py.
         return PythonRuntimeSpec(
             pip_packages=(
                 "matplotlib",
-                "vllm",
+                "vllm==0.19.0",
                 "torch",
                 "transformers",
                 "safetensors",

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contrast_direction_method.schema.json",
+  "title": "Contrast Direction Method BYOD Row",
+  "description": "Rows for a binary or two-pole behavior direction. The paper default is refusal, but labels can represent any contrast.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["example_id", "text", "label"],
+  "properties": {
+    "example_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "label": {
+      "type": "string",
+      "description": "One of the two direction poles, or probe for scoring-only rows."
+    },
+    "positive_label": {
+      "type": "string",
+      "description": "Name of the positive/add direction pole for this dataset."
+    },
+    "negative_label": {
+      "type": "string",
+      "description": "Name of the negative/subtract direction pole for this dataset."
+    },
+    "split": {
+      "type": "string",
+      "enum": ["train", "heldout", "probe", "calibration"]
+    },
+    "section": {
+      "$ref": "#/$defs/char_span",
+      "description": "Span to capture or score. Use the instruction, response, or full rendered trace depending on the method locus."
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "char_span": {
+      "type": "object",
+      "required": ["char_start", "char_end"],
+      "properties": {
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

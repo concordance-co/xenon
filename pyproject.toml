@@ -40,14 +40,13 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["pipelines_v2*"]
+include = ["pipelines_v2*", "papers*"]
 exclude = [
     "pipelines_v2.dashboard*",
     "artifacts*",
     "dashboard*",
     "methodology*",
     "operations*",
-    "papers*",
     "platform*",
     "references*",
     "scripts*",
@@ -66,4 +65,13 @@ markers = [
     "vllm: tests that require vLLM or vLLM-specific runtime behavior",
     "interp: tests that require optional mech-interp dependencies such as torch or scikit-learn",
     "network: tests that require network access",
+]
+
+[tool.setuptools.package-data]
+"papers.voice" = [
+    "model_assets/**/*.toml",
+    "emotions/replication/data/*.txt",
+    "schemas/*.json",
+    "assistant_axis/reports/**/*.json",
+    "assistant_axis/reports/**/*.md",
 ]

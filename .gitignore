@@ -27,8 +27,14 @@ tmp/
 scripts/**/reports/**/report_*/
 scripts/reports/**/report_*/
 
-# Research paper workspace lives outside the package release.
-/papers/
+# Research paper workspace lives outside the package release, except the
+# packaged voice helper APIs consumed by sibling products.
+/papers/*
+!/papers/__init__.py
+!/papers/voice/
+!/papers/voice/**
+/papers/**/__pycache__/
+/papers/**/*.py[cod]
 
 # Local ingestion artifacts
 /data/
@@ -49,3 +55,4 @@ dashboard/dist/
 dashboard/.vite/
 dashboard/tsconfig.tsbuildinfo
 dashboard/src/**/*.js
+projects/proxy_readers/reports/assistant_axis_message_score/report_22bceb208eaf_fc421b6a/

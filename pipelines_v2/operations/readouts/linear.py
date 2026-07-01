@@ -7,6 +7,7 @@ from typing import Any, ClassVar, Mapping, Sequence
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret
 from pipelines_v2.operations.common._shared import (
+    analysis_runtime_spec,
     analysis_runtime_spec_for_refs,
     row_selector_from_dict,
     runtime_secrets_from_refs,
@@ -79,6 +80,9 @@ class PersistedProbeImportSpec(OperationSpec):
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     kind: ClassVar[str] = "persisted_probe_import"
+
+    def runtime_spec(self) -> Any | None:
+        return analysis_runtime_spec()
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "PersistedProbeImportSpec":
