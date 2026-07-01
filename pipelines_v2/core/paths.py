@@ -7,7 +7,17 @@ from pathlib import Path
 
 
 def find_workspace_root(start: Path | None = None) -> Path:
-    """Best-effort repository/workspace root for the current checkout."""
+    """Best-effort repository/workspace root for the current checkout.
+
+    ``XENON_WORKSPACE_ROOT`` overrides detection entirely. Set it to the Xenon
+    checkout when running workflows from a sibling repo (non-editable install),
+    where module-path/cwd detection would otherwise land on the wrong repo and
+    Modal source mounts like ``<root>/pipelines_v2`` would not exist.
+    """
+
+    override = os.environ.get("XENON_WORKSPACE_ROOT")
+    if override:
+        return Path(override).expanduser().resolve()
 
     candidates: list[Path] = []
     if start is not None:

@@ -104,6 +104,26 @@ release.
 - Helpers that repeat across downstream workspaces should be promoted into
   `pipelines_v2/`; keep one-off workflow code next to the workflow file.
 
+## Running Workflows From A Sibling Repo
+
+Downstream repos (e.g. `persona-audit`) consume Xenon as a Git dependency and
+run their own workflow files through this CLI. The Modal runner mounts local
+sources (`pipelines_v2/`, `papers/`, ...) from the detected workspace root
+(`pipelines_v2.core.paths.find_workspace_root`: module path, then cwd, first
+ancestor with `pyproject.toml`/`.git`). From a sibling repo with a
+non-editable install, detection lands on the wrong root and Modal fails with
+`local dir .../pipelines_v2 does not exist`.
+
+Two supported fixes:
+
+- Set `XENON_WORKSPACE_ROOT=/path/to/xenon` — overrides detection entirely and
+  also anchors `xenon.toml` config loading to this checkout.
+- Or run the CLI with cwd inside this checkout and `PYTHONPATH` pointing at
+  the sibling repo so its workflow-file imports resolve.
+
+Either way, `--file` paths must be absolute or resolvable from the effective
+cwd.
+
 ## Workspace Defaults
 
 Defaults live in repo-root `xenon.toml`:

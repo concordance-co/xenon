@@ -52,6 +52,19 @@ the external catalog env var and dashboard static dir. CLI flags still win when
 you pass them explicitly, and workflow runner specs still win when they set
 their own catalog directly.
 
+## Workspace Root And Modal Source Mounts
+
+Modal runners mount each entry of `local_python_sources` from the workspace
+root detected by `pipelines_v2.core.paths.find_workspace_root` (module path,
+then cwd; first ancestor containing `pyproject.toml` or `.git`). If the
+detected root does not actually contain the source directory (typical when a
+sibling repo installs Xenon non-editable and runs from its own checkout),
+image build fails with `local dir .../pipelines_v2 does not exist`.
+
+Set `XENON_WORKSPACE_ROOT=/path/to/xenon` to override detection explicitly.
+The override also anchors `xenon.toml` loading, so Modal volume and cache
+defaults come from that checkout.
+
 ## Modal Defaults In `xenon.toml`
 
 Modal-backed workflow defaults live under `[pipelines_v2.modal]`.
