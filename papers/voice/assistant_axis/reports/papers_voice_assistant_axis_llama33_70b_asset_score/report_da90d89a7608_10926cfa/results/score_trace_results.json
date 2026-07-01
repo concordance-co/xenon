@@ -1,0 +1,127 @@
+{
+  "coordinates": [
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "asset_id": "assistant-axis-llama-3.3-70b-released-v1",
+        "asset_root": "/data/artifacts/model-assets/vectors/assistant-axis/llama-3.3-70b/released/v1",
+        "asset_status": "released",
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "model_key": "llama_3_3_70b",
+        "model_volume": "yora-models",
+        "model_volume_status": "transitional",
+        "paper": "assistant_axis",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface",
+        "source_repo_id": "lu-christina/assistant-axis-vectors",
+        "target_layer": 40,
+        "total_layers": 80
+      },
+      "name": "assistant_axis",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        40
+      ],
+      "metadata": {
+        "asset_id": "assistant-axis-llama-3.3-70b-released-v1",
+        "asset_root": "/data/artifacts/model-assets/vectors/assistant-axis/llama-3.3-70b/released/v1",
+        "asset_status": "released",
+        "capping_experiment": "layers_56:72-p0.25",
+        "display_name": "Llama 3.3 70B",
+        "filename": "llama-3.3-70b/trait_vectors/calm.pt",
+        "hf_axis_filename": "llama-3.3-70b/assistant_axis.pt",
+        "hf_capping_config_filename": "llama-3.3-70b/capping_config.pt",
+        "hf_default_vector_filename": "llama-3.3-70b/default_vector.pt",
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "model_key": "llama_3_3_70b",
+        "model_volume": "yora-models",
+        "model_volume_status": "transitional",
+        "paper": "assistant_axis",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "short_name": "llama-3.3-70b",
+        "source": "precomputed_huggingface_trait_vector",
+        "source_repo_id": "lu-christina/assistant-axis-vectors",
+        "target_layer": 40,
+        "total_layers": 80,
+        "trait": "calm"
+      },
+      "name": "assistant_axis_trait__calm",
+      "source_kind": "coordinate_result"
+    }
+  ],
+  "example_summaries": [
+    {
+      "coordinate": "assistant_axis",
+      "example_key": "trace_0",
+      "layer": 40,
+      "metrics": {
+        "max": 0.6912977695465088,
+        "mean": 0.6912977695465088,
+        "min": 0.6912977695465088,
+        "trend": 0.0
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "assistant_axis_trait__calm",
+      "example_key": "trace_0",
+      "layer": 40,
+      "metrics": {
+        "max": 1.7051053047180176,
+        "mean": 1.7051053047180176,
+        "min": 1.7051053047180176,
+        "trend": 0.0
+      },
+      "slice_count": 1
+    }
+  ],
+  "feature": "response_residual",
+  "kind": "projection_result",
+  "metric": "signed_dot",
+  "pooling": "mean",
+  "rows": [
+    {
+      "coordinate": "assistant_axis",
+      "example_key": "trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 0.6912977695465088,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 30,
+      "tags": {},
+      "unit": "turn"
+    },
+    {
+      "coordinate": "assistant_axis_trait__calm",
+      "example_key": "trace_0",
+      "layer": 40,
+      "role": "assistant",
+      "score": 1.7051053047180176,
+      "slice_index": 0,
+      "slice_name": "assistant_response",
+      "slice_token_count": 30,
+      "tags": {},
+      "unit": "turn"
+    }
+  ],
+  "summary": {
+    "coordinate_count": 2,
+    "example_summary_count": 2,
+    "layer_count": 1,
+    "slice_row_count": 2
+  }
+}

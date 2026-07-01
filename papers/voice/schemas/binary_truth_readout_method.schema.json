@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "binary_truth_readout_method.schema.json",
+  "title": "Binary Truth/Correctness Readout Method BYOD Row",
+  "description": "Rows for truthful-vs-untruthful or correct-vs-incorrect answer contrasts. The method is domain-agnostic.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["example_id", "prompt", "answer", "label"],
+  "properties": {
+    "example_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "answer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "label": {
+      "type": "string",
+      "description": "Usually true/false or correct/incorrect, but any binary correctness labels are allowed if mapped in the recipe."
+    },
+    "claim_id": {
+      "type": "string",
+      "description": "Optional group id for paired true/false variants of the same underlying item."
+    },
+    "split": {
+      "type": "string",
+      "enum": ["train", "heldout", "probe", "calibration"]
+    },
+    "answer_section": {
+      "$ref": "#/$defs/char_span",
+      "description": "Optional span in the rendered prompt+answer. If omitted, adapters should mark the full answer span."
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "char_span": {
+      "type": "object",
+      "required": ["char_start", "char_end"],
+      "properties": {
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,103 @@
+# TODO: Fill from the emotion-vector paper before running paper-scale jobs.
+
+[paper]
+title = "Emotion Concepts and their Function in a Large Language Model"
+url = "https://transformer-circuits.pub/2026/emotions/index.html"
+citation = "Sofroniew et al., \"Emotion Concepts and their Function in a Large Language Model\", Transformer Circuits, 2026."
+bibtex_file = "../paper.bib"
+notes = "Appendix details copied into prompts/ and data/*.txt from user-provided paper excerpt."
+
+[models]
+# Cheap first-pass target. This is the voice-paper default in papers/voice.
+# Prefer prewarming it into xenon-models at /models/Qwen/Qwen3-8B, then use
+# model_path_root=/models so runs do not redownload weights.
+target_model_id = "Qwen/Qwen3-8B"
+model_path_root = "/models"
+candidate_target_model_ids = [
+  "Qwen/Qwen3-8B",
+  "/models/Qwen/Qwen3-8B",
+  "/models/Qwen/Qwen3-30B-A3B",
+  "Qwen/Qwen3-30B-A3B",
+  "meta-llama/Llama-3.1-8B-Instruct",
+]
+# TODO: choose the actual generator for dataset construction. This can be the
+# same Qwen target for self-generated replication data, or an external API model
+# if matching the paper's generation setup more closely.
+dataset_generator_model_id = "TODO"
+
+[dataset.emotional_stories]
+emotion_count = 171
+topic_count = 100
+stories_per_topic_per_emotion = 12
+emotion_list = "../data/emotions.txt"
+topic_list = "../data/topics.txt"
+prompt_template = "../prompts/emotional_stories.md"
+required_columns = [
+  "example_id",
+  "emotion",
+  "topic",
+  "story_index",
+  "text",
+]
+storage = "TODO: Neon table or deferred external dataset"
+neon_table = "papers_voice_emotions_story_generation_v1"
+
+[dataset.neutral_transcripts]
+# TODO: Fill exact neutral dialogue count per topic if different from story generation.
+example_count = 0
+topic_count = 100
+topic_list = "../data/topics.txt"
+prompt_template = "../prompts/neutral_transcripts.md"
+storage = "TODO: Neon table or deferred external dataset"
+neon_table = "papers_voice_emotions_neutral_dialogues_v1"
+
+[dataset.emotional_dialogues]
+enabled = true
+topic_count = 100
+emotion_list = "../data/emotions.txt"
+topic_list = "../data/topics.txt"
+prompt_template = "../prompts/emotional_dialogues.md"
+storage = "TODO"
+neon_table = "papers_voice_emotions_emotional_dialogues_v1"
+
+[capture]
+residual_site = "resid_post"
+# Cheap 8B sweep. Revisit for the final target model.
+layers = [8, 16, 24, 32]
+story_token_start = 50
+story_token_stop = "none"
+pooling = "mean"
+
+[neutral_projection]
+enabled = true
+variance_threshold = 0.5
+
+[vector_space]
+normalize = "l2"
+min_examples_per_concept = 1
+vector_space_kind = "story"
+
+[validation]
+# TODO: fill with exact held-out datasets/evals once chosen.
+heldout_sources = []
+geometry_layers = [24]
+score_emotions = ["happy", "sad", "afraid", "angry", "calm"]
+
+[steering]
+enabled = false
+target_emotions = ["happy", "sad", "afraid", "angry", "calm"]
+write_layers = [16, 24, 32]
+strengths = [0.25, 0.5, 1.0]
+controls = [
+  "random direction matched to target norm",
+  "same-topic neutral baseline",
+  "unsteered baseline",
+]
+
+[storage]
+artifact_volume = "xenon-data"
+artifact_root = "/data/artifacts/model-assets/vectors/emotions/replication"
+model_volume = "xenon-models"
+model_volume_path = "/models"
+catalog_postgres_env = "XENON_NEON_DATABASE_URL"
+modal_secret = "xenon-neon"

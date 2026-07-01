@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assistant_axis_trace.schema.json",
+  "title": "Assistant Axis BYOT Trace Row",
+  "description": "Rows for scoring existing human/assistant traces against released Assistant Axis and trait coordinates.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["example_id", "text"],
+  "properties": {
+    "example_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Rendered trace text. If assistant_response is omitted, the final 'Assistant:' span is used."
+    },
+    "assistant_response": {
+      "$ref": "#/$defs/char_span"
+    },
+    "turn_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "labels": {
+      "type": "object"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "char_span": {
+      "type": "object",
+      "required": ["char_start", "char_end"],
+      "properties": {
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

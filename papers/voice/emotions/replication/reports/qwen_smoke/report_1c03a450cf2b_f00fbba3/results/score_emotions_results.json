@@ -1,0 +1,251 @@
+{
+  "coordinates": [
+    {
+      "layers": [
+        24
+      ],
+      "metadata": {
+        "emotion": "happy",
+        "vector_space_kind": "story"
+      },
+      "name": "emotion__happy",
+      "source_kind": "coordinate_result"
+    },
+    {
+      "layers": [
+        24
+      ],
+      "metadata": {
+        "emotion": "sad",
+        "vector_space_kind": "story"
+      },
+      "name": "emotion__sad",
+      "source_kind": "coordinate_result"
+    }
+  ],
+  "emotion_vector_space": {
+    "concept_count": 2,
+    "kind": "emotion_vector_space_result",
+    "layer_count": 4,
+    "metadata": {
+      "formula": "mean(concept examples) - mean(concept means)",
+      "model_id": "Qwen/Qwen3-8B",
+      "neutral_project_out": true,
+      "paper": "sofroniew2026twheemotion",
+      "pooling": "mean",
+      "source": "emotion_vector_space_spec",
+      "token_selector": {
+        "kind": "full_sequence",
+        "value": null
+      }
+    },
+    "vector_space_kind": "story"
+  },
+  "example_summaries": [
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "happy_a",
+      "layer": 24,
+      "metrics": {
+        "max": -164.4060821533203,
+        "mean": -164.4060821533203
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "happy_a",
+      "layer": 24,
+      "metrics": {
+        "max": 164.40609741210938,
+        "mean": 164.40609741210938
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "happy_b",
+      "layer": 24,
+      "metrics": {
+        "max": -137.0406951904297,
+        "mean": -137.0406951904297
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "happy_b",
+      "layer": 24,
+      "metrics": {
+        "max": 137.0406951904297,
+        "mean": 137.0406951904297
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "sad_a",
+      "layer": 24,
+      "metrics": {
+        "max": -263.2185974121094,
+        "mean": -263.2185974121094
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "sad_a",
+      "layer": 24,
+      "metrics": {
+        "max": 263.2185974121094,
+        "mean": 263.2185974121094
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "sad_b",
+      "layer": 24,
+      "metrics": {
+        "max": -233.8968963623047,
+        "mean": -233.8968963623047
+      },
+      "slice_count": 1
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "sad_b",
+      "layer": 24,
+      "metrics": {
+        "max": 233.8968963623047,
+        "mean": 233.8968963623047
+      },
+      "slice_count": 1
+    }
+  ],
+  "feature": "story_residual",
+  "kind": "emotion_score_result",
+  "metric": "signed_dot",
+  "pooling": "mean",
+  "rows": [
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "happy_a",
+      "layer": 24,
+      "role": null,
+      "score": -164.4060821533203,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 28,
+      "tags": {},
+      "unit": "assistant_response"
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "happy_a",
+      "layer": 24,
+      "role": null,
+      "score": 164.40609741210938,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 28,
+      "tags": {},
+      "unit": "assistant_response"
+    },
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "happy_b",
+      "layer": 24,
+      "role": null,
+      "score": -137.0406951904297,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 31,
+      "tags": {},
+      "unit": "assistant_response"
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "happy_b",
+      "layer": 24,
+      "role": null,
+      "score": 137.0406951904297,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 31,
+      "tags": {},
+      "unit": "assistant_response"
+    },
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "sad_a",
+      "layer": 24,
+      "role": null,
+      "score": -263.2185974121094,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 22,
+      "tags": {},
+      "unit": "assistant_response"
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "sad_a",
+      "layer": 24,
+      "role": null,
+      "score": 263.2185974121094,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 22,
+      "tags": {},
+      "unit": "assistant_response"
+    },
+    {
+      "coordinate": "emotion__happy",
+      "emotion": "happy",
+      "example_key": "sad_b",
+      "layer": 24,
+      "role": null,
+      "score": -233.8968963623047,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 20,
+      "tags": {},
+      "unit": "assistant_response"
+    },
+    {
+      "coordinate": "emotion__sad",
+      "emotion": "sad",
+      "example_key": "sad_b",
+      "layer": 24,
+      "role": null,
+      "score": 233.8968963623047,
+      "slice_index": 1,
+      "slice_name": "assistant_response",
+      "slice_token_count": 20,
+      "tags": {},
+      "unit": "assistant_response"
+    }
+  ],
+  "summary": {
+    "coordinate_count": 2,
+    "example_summary_count": 8,
+    "layer_count": 1,
+    "slice_row_count": 8
+  },
+  "vector_space_kind": "story"
+}

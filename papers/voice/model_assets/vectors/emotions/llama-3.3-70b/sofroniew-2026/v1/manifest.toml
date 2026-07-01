@@ -1,0 +1,70 @@
+[asset]
+id = "emotions-llama-3.3-70b-sofroniew-2026-v1"
+status = "materialized"
+asset_kind = "emotion_vector_space"
+owner = "voice"
+description = "Materialized Llama 3.3 70B emotion vector-space replication for Sofroniew et al. 2026."
+
+[model]
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
+model_key = "llama_3_3_70b"
+model_short_name = "llama-3.3-70b"
+model_volume = "yora-models"
+model_volume_status = "transitional"
+model_mount_path = "/models"
+target_layer = 52
+candidate_layers = [16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68]
+total_layers = 80
+default_max_model_len = 16384
+
+[source]
+paper = "sofroniew2026twheemotion"
+paper_title = "Emotion Concepts and their Function in a Large Language Model"
+paper_url = "https://transformer-circuits.pub/2026/emotions/index.html"
+emotion_list = "papers/voice/emotions/replication/data/emotions.txt"
+topic_list = "papers/voice/emotions/replication/data/topics.txt"
+story_prompt_template = "papers/voice/emotions/replication/prompts/emotional_stories.md"
+neutral_prompt_template = "papers/voice/emotions/replication/prompts/neutral_transcripts.md"
+concept_count = 171
+topic_count = 100
+
+[method]
+generator_model_id = "meta-llama/Llama-3.3-70B-Instruct"
+formula = "mean(concept examples) - mean(concept means)"
+residual_site = "resid_post"
+token_selector = "slice(50, None)"
+pilot_token_selector = "full_sequence"
+pooling = "mean"
+neutral_projection_variance_threshold = 0.5
+coordinate_normalization = "l2"
+vector_space_kind = "story"
+
+[usage]
+pilot_concepts = ["happy", "sad", "angry", "calm"]
+full_concept_source = "source.emotion_list"
+default_mode = "pilot"
+final_mode = "full"
+
+[storage]
+artifact_volume = "xenon-data"
+asset_root = "/data/artifacts/model-assets/vectors/emotions/llama-3.3-70b/sofroniew-2026/v1"
+local_asset_root = "artifacts/model-assets/vectors/emotions/llama-3.3-70b/sofroniew-2026/v1"
+generated_rows_table = "papers_voice_emotions_llama70b_generated_rows_v1"
+
+[artifacts]
+pilot_run_id = ""
+full_run_id = "wr_7f3d043025cd_90d9e8d6"
+capture_train_artifact_id = "capture_1_f9ba2f5eeb0d"
+capture_neutral_artifact_id = "capture_1_9c04ce270a82"
+vector_space_artifact_id = "emotion_vector_space_1_e3027ecb"
+vector_space_path = "/data/artifacts/model-assets/vectors/emotions/llama-3.3-70b/sofroniew-2026/v1/emotion_vector_space_1_e3027ecb/result.json"
+geometry_artifact_id = "emotion_geometry_1_cdaef63f"
+geometry_path = "/data/artifacts/model-assets/vectors/emotions/llama-3.3-70b/sofroniew-2026/v1/emotion_geometry_1_cdaef63f/result.json"
+heldout_score_artifact_id = ""
+validation_summary_artifact_id = "transform_22e308665ea0_b4a16780"
+direction_artifact_prefix = ""
+
+[validation]
+claim = "Full 171-concept Llama 3.3 70B emotion vector-space artifact has been generated and local paper-graph validation has completed."
+heldout_accuracy = ""
+notes = "Use pilot mode only for plumbing. Production analyses should use emotion_vector_space_1_e3027ecb from run wr_7f3d043025cd_90d9e8d6."

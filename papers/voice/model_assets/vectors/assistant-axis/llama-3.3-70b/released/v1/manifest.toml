@@ -1,0 +1,62 @@
+[asset]
+id = "assistant-axis-llama-3.3-70b-released-v1"
+status = "released"
+asset_kind = "assistant_axis_coordinate_set"
+owner = "voice"
+description = "Released Assistant Axis and trait vectors for Llama 3.3 70B Instruct."
+
+[model]
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
+model_key = "llama_3_3_70b"
+model_short_name = "llama-3.3-70b"
+model_volume = "yora-models"
+model_volume_status = "transitional"
+model_mount_path = "/models"
+target_layer = 40
+total_layers = 80
+
+[source]
+kind = "huggingface_dataset"
+repo_id = "lu-christina/assistant-axis-vectors"
+revision = ""
+assistant_axis_file = "llama-3.3-70b/assistant_axis.pt"
+default_vector_file = "llama-3.3-70b/default_vector.pt"
+trait_vector_prefix = "llama-3.3-70b/trait_vectors"
+capping_config_file = "llama-3.3-70b/capping_config.pt"
+capping_experiment = "layers_56:72-p0.25"
+
+[method]
+paper = "assistant_axis"
+paper_title = "The Assistant Axis: Situating and Stabilizing the Default Persona of Language Models"
+formula = "mean(default_response_activations) - mean(per_role_role_playing_vectors)"
+residual_site = "resid_post"
+response_pooling = "assistant_response_mean"
+coordinate_normalization = "l2"
+
+[usage]
+default_traits = [
+  "calm",
+  "supportive",
+  "technical",
+  "analytical",
+  "confident",
+  "verbose",
+  "hostile",
+  "condescending",
+]
+trait_filename_pattern = "llama-3.3-70b/trait_vectors/{trait}.pt"
+supports_arbitrary_released_traits = true
+token_env_var = "HF_TOKEN"
+
+[storage]
+artifact_volume = "xenon-data"
+asset_root = "/data/artifacts/model-assets/vectors/assistant-axis/llama-3.3-70b/released/v1"
+local_asset_root = "artifacts/model-assets/vectors/assistant-axis/llama-3.3-70b/released/v1"
+
+[validation]
+claim = "Released-vector scoring and add-direction steering are supported; full paper rerun is scaffolded separately."
+known_trace_score_run_id = "wr_fe6ec0ba5ec8_5b28235a"
+known_steering_run_id = "wr_96588bb43527_9c18a1da"
+modal_asset_score_smoke_run_id = "wr_ec0db66d3034_dd11f07d"
+modal_asset_score_projection_artifact_id = "projection_1_4ba7e075"
+modal_asset_score_report_artifact_id = "report_da90d89a7608_10926cfa"
