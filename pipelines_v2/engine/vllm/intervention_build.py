@@ -57,6 +57,11 @@ def build_llm_kwargs(
     if not bool(engine.enforce_eager):
         llm_kwargs["compilation_config"] = {
             "custom_ops": ["none", "+activation_patch_hidden_states"],
+            # FULL graphs capture dummy requests before real patch state is
+            # registered and can freeze an inactive operator path. Piecewise
+            # graphs retain the runtime request-scoped custom-op dispatch that
+            # Xenon's MRv2 bridge validates.
+            "cudagraph_mode": "PIECEWISE",
         }
         additional_config = {
             "xenon_activation_patch_worker_cls": _PATCH_WORKER_CLS,

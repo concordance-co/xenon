@@ -86,6 +86,14 @@ def _subspace_inputs() -> dict[str, Any]:
 @pytest.mark.unit
 @pytest.mark.vllm
 @pytest.mark.interp
+def test_batch_patch_specs_rejects_more_than_compiled_slot_capacity() -> None:
+    with pytest.raises(ValueError, match="65 > 64"):
+        set_batch_patch_specs(SimpleNamespace(), [{} for _ in range(65)])
+
+
+@pytest.mark.unit
+@pytest.mark.vllm
+@pytest.mark.interp
 def test_register_activation_patch_subspace_materializes_runtime_unit_basis() -> None:
     layer = SimpleNamespace(
         input_layernorm=SimpleNamespace(weight=torch.empty((4,), dtype=torch.float32))

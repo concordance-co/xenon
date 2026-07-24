@@ -82,6 +82,12 @@ def evaluate_patch_row(
 
 def validate_compiled_patch_smoke(*, patched: Any) -> dict[str, Any]:
     payload = patched.result() if hasattr(patched, "result") else dict(patched)
+    manifest = patched.manifest() if hasattr(patched, "manifest") else None
+    metadata = dict(
+        getattr(manifest, "metadata", None)
+        or payload.get("metadata")
+        or {}
+    )
     rows = list(payload.get("rows") or [])
     ok_rows = [dict(row) for row in rows if str(row.get("status") or "ok") == "ok"]
     failures: list[str] = []
@@ -95,6 +101,11 @@ def validate_compiled_patch_smoke(*, patched: Any) -> dict[str, Any]:
         failures.append("patched generation returned no rows")
     if not ok_rows:
         failures.append("patched generation returned no ok rows")
+    if metadata.get("model_runner") != "v2":
+        failures.append(
+            "patched generation did not prove Model Runner V2 selection: "
+            f"{metadata.get('model_runner')!r}"
+        )
 
     for row in ok_rows:
         row_key = str(row.get("example_key") or row.get("case_key") or "<unknown>")
@@ -123,8 +134,14 @@ def validate_compiled_patch_smoke(*, patched: Any) -> dict[str, Any]:
                 failures.append(f"{row_key}: layer {layer} dispatch={dispatch!r}")
             if int(raw_stats.get("token_count") or 0) <= 0:
                 failures.append(f"{row_key}: layer {layer} token_count did not show an applied patch")
+            phase_counts = dict(raw_stats.get("phase_counts") or {})
+            if int(phase_counts.get("prompt") or 0) != 0:
+                failures.append(f"{row_key}: layer {layer} unexpectedly patched prompt tokens")
+            if int(phase_counts.get("decode") or 0) <= 0:
+                failures.append(f"{row_key}: layer {layer} did not patch decode tokens")
 
     summary = {
+        "model_runner": metadata.get("model_runner"),
         "row_count": len(rows),
         "patched_count": len(ok_rows),
         "checked_patch_stat_layers": checked_layers,

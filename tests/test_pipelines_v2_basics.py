@@ -3452,9 +3452,11 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
     assert function_kwargs["max_containers"] == 1
     assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert function_kwargs["env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+    assert function_kwargs["env"]["VLLM_USE_V2_MODEL_RUNNER"] == "1"
     assert function_kwargs["env"]["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
     assert captured["image_env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert captured["image_env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+    assert captured["image_env"]["VLLM_USE_V2_MODEL_RUNNER"] == "1"
     assert captured["image_env"]["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
     assert result["runner"]["runtime_app_id"] == "ap-test-env"
     assert [event["stage"] for event in progress_events] == [
@@ -9396,6 +9398,7 @@ def test_build_llm_kwargs_adds_additional_config_for_compiled_patch_worker() -> 
     )
     assert llm_kwargs["compilation_config"] == {
         "custom_ops": ["none", "+activation_patch_hidden_states"],
+        "cudagraph_mode": "PIECEWISE",
     }
     assert llm_kwargs["additional_config"] == {
         "xenon_activation_patch_worker_cls": (

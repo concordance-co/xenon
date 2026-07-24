@@ -15,5 +15,8 @@ Live operator and API surface for `pipelines_v2`.
 - `VLLM_0_25_1_UPGRADE.md`
   Compatibility decisions, validation evidence, and benchmark results for the
   vLLM 0.19.0 to 0.25.1 runtime upgrade.
+- `VLLM_MODEL_RUNNER_V2.md`
+  Hybrid Model Runner V2 policy, residual-capture boundary, intervention port,
+  and GPU validation evidence.
 - `examples/`
   Runnable expected-usage snippets for the API.

@@ -43,6 +43,7 @@ class VLLMSessionRuntime:
     reasoning_parser_instance: Any | None
     batch_size: int
     session_key: str
+    model_runner: str
     load_performance: dict[str, float]
     _tempdir: tempfile.TemporaryDirectory[str] | None = None
 
@@ -98,14 +99,23 @@ def build_vllm_session_runtime(
     """Construct one loaded vLLM runtime for a compatible operation group."""
 
     specs_tuple = tuple(specs)
-    if any(isinstance(spec, PatchedGenerationSpec) for spec in specs_tuple):
-        from .activation_patch_request_worker import (
-            force_v1_model_runner_for_activation_patching,
-        )
+    patch_specs = [spec for spec in specs_tuple if isinstance(spec, PatchedGenerationSpec)]
+    residual_layers = _residual_layers_for_specs(specs_tuple)
+    from .activation_patch_request_worker import (
+        select_model_runner_for_activation_patching,
+    )
 
-        # Model Runner V2 is vLLM 0.25's dense-model default, but request-
-        # scoped activation patching currently integrates with the V1 runner.
-        force_v1_model_runner_for_activation_patching()
+    model_runner = "v1" if residual_layers else "v2"
+    if residual_layers:
+        # vLLM 0.25.1 marks the extract_hidden_states speculative method as
+        # unsupported by Model Runner V2. A reusable session that includes
+        # residual capture must therefore remain on V1, including mixed
+        # capture/intervention sessions.
+        select_model_runner_for_activation_patching(use_v2=False)
+    else:
+        # Select explicitly for warm processes so a prior residual session
+        # cannot leak its V1 selection into generation, routing, or patching.
+        select_model_runner_for_activation_patching(use_v2=True)
 
     from transformers import AutoTokenizer
     from vllm import LLM
@@ -153,6 +163,7 @@ def build_vllm_session_runtime(
         reasoning_parser_instance=reasoning_parser_instance,
         batch_size=max(1, int(engine.max_num_seqs or 1)),
         session_key=vllm_session_key(engine=engine, specs=specs_tuple),
+        model_runner=model_runner,
         load_performance=load_performance,
         _tempdir=tempdir,
     )

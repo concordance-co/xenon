@@ -52,9 +52,6 @@ def run_vllm_capture(
 ) -> EngineCaptureResult:
     """Run a capture spec with vLLM in the current process."""
 
-    from transformers import AutoTokenizer
-    from vllm import LLM
-
     examples = list(spec.dataset.examples)
     residual_sites = [site for site in spec.sites if isinstance(site, ResidualSite)]
     routing_sites = [site for site in spec.sites if isinstance(site, MoERoutingSite)]
@@ -73,6 +70,23 @@ def run_vllm_capture(
     requires_prompt_metadata_sections = wants_sections and not (
         capture_generated_tokens and all(name in {"prompt", "generated", "full"} for name in section_names)
     )
+
+    from .activation_patch_request_worker import (
+        select_model_runner_for_activation_patching,
+    )
+
+    model_runner = "v1" if wants_residual else "v2"
+    if wants_residual:
+        # vLLM 0.25.1 rejects extract_hidden_states when Model Runner V2 is
+        # forced. Select its supported runner before constructing VllmConfig.
+        select_model_runner_for_activation_patching(use_v2=False)
+    else:
+        # Select explicitly for warm processes: a preceding residual workload
+        # may have changed vLLM's process-global environment cache to V1.
+        select_model_runner_for_activation_patching(use_v2=True)
+
+    from transformers import AutoTokenizer
+    from vllm import LLM
 
     if wants_routing and bool(engine.enable_prefix_caching):
         raise ValueError(
@@ -194,6 +208,7 @@ def run_vllm_capture(
             reasoning_parser=reasoning_parser,
             batch_callback=batch_callback,
             progress_callback=progress_callback,
+            model_runner=model_runner,
             load_performance={
                 "tokenizer_load_seconds": float(tokenizer_seconds),
                 "prompt_preflight_seconds": float(preflight_seconds),
@@ -297,6 +312,7 @@ def run_vllm_capture_with_runtime(
         reasoning_parser=runtime.reasoning_parser_instance,
         batch_callback=batch_callback,
         progress_callback=progress_callback,
+        model_runner=str(runtime.model_runner),
         load_performance=dict(getattr(runtime, "load_performance", {}) or {}),
     )
 
@@ -310,6 +326,7 @@ def _run_vllm_capture_loaded(
     reasoning_parser: Any | None,
     batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    model_runner: str,
     load_performance: dict[str, float] | None = None,
 ) -> EngineCaptureResult:
     from functools import partial
@@ -516,6 +533,7 @@ def _run_vllm_capture_loaded(
         generations=generations,
         metadata={
             "backend": "vllm",
+            "model_runner": str(model_runner),
             "example_metadata": example_metadata,
             "router_enabled": router_enabled,
             "requested_router_layers": sorted({int(layer) for site in routing_sites for layer in site.layers}),

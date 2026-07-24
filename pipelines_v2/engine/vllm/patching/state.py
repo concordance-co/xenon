@@ -233,6 +233,12 @@ def register_activation_patch_centroids(model: Any, centroid_payload: dict[int, 
 
 
 def set_batch_patch_specs(model: Any, batch_specs: list[dict[str, Any]]) -> None:
+    if len(batch_specs) > _MAX_BATCH_PATCH_SLOTS:
+        raise ValueError(
+            "Activation patch batch exceeds the compiled request-slot capacity: "
+            f"{len(batch_specs)} > {_MAX_BATCH_PATCH_SLOTS}. Reduce max_num_seqs "
+            "or increase the fixed buffer capacity and revalidate compiled execution."
+        )
     model = unwrap_model(model)
     model._v2_activation_patch_batch_specs = [dict(spec) for spec in batch_specs]
     _load_batch_runtime_state(model, list(batch_specs))

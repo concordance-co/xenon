@@ -41,15 +41,15 @@ class _FakeLLM:
         self.outputs = list(outputs)
         self.prompts: list[dict[str, Any]] = []
         self.sampling_params: list[Any] = []
+        self.model = types.SimpleNamespace(_xenon_vllm_model_runner="v2")
 
     def generate(self, *, prompts: list[dict[str, Any]], sampling_params: list[Any]) -> list[Any]:
         self.prompts.extend(prompts)
         self.sampling_params.extend(sampling_params)
         return list(self.outputs)
 
-    def apply_model(self, fn: Any) -> list[dict[str, Any]]:
-        del fn
-        return [{}]
+    def apply_model(self, fn: Any) -> list[Any]:
+        return [fn(self.model)]
 
 
 def _install_fake_vllm(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -159,6 +159,7 @@ def test_unpaired_patched_generation_forwards_chat_template_kwargs_and_builds_re
     assert result.summary == {"example_count": 1, "patched_count": 1, "skipped_count": 0, "target_count": 1}
     assert result.rows[0]["generated_text"] == "patched answer"
     assert result.rows[0]["target_tokens"] == [2]
+    assert result.metadata["model_runner"] == "v2"
     assert llm.prompts == [{"prompt_token_ids": [11, 22, 33]}]
     assert tokenizer.chat_template_calls[0]["add_generation_prompt"] is True
     assert tokenizer.chat_template_calls[0]["tokenize_extra_flag"] == "kept"

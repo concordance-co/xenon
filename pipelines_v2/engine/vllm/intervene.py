@@ -62,6 +62,10 @@ _SUBSPACE_PATCH_OPERATORS = frozenset(
 )
 
 
+def _activation_patch_model_runner_on_model(model: Any) -> str:
+    return str(getattr(model, "_xenon_vllm_model_runner", "unknown"))
+
+
 @dataclass(slots=True)
 class VLLMInterventionRuntime:
     """Loaded vLLM intervention runtime reused within one remote execution session."""
@@ -87,13 +91,13 @@ def build_vllm_intervention_runtime(
     """Construct one vLLM intervention runtime for a compatible patch family."""
 
     from .activation_patch_request_worker import (
-        force_v1_model_runner_for_activation_patching,
+        force_v2_model_runner_for_activation_patching,
     )
 
-    # vLLM 0.25 defaults dense generation models to Model Runner V2.
-    # Xenon's intervention worker instruments the V1 request lifecycle, so
-    # select it before importing/constructing the vLLM engine and scheduler.
-    force_v1_model_runner_for_activation_patching()
+    # Select Model Runner V2 before vLLM constructs its config, scheduler,
+    # worker, and runner. The custom worker installs Xenon's MRv2 lifecycle
+    # bridge for request registration, batch row mapping, and cleanup.
+    force_v2_model_runner_for_activation_patching()
 
     from transformers import AutoTokenizer
     from vllm import LLM
@@ -104,6 +108,12 @@ def build_vllm_intervention_runtime(
         compiled_operator_hint=_compiled_operator_hint(spec),
     )
     llm = LLM(**llm_kwargs)
+    model_runner = _apply_to_model(llm, _activation_patch_model_runner_on_model)
+    if model_runner != "v2":
+        raise RuntimeError(
+            "Standalone vLLM intervention runtime requested Model Runner V2 "
+            f"but constructed {model_runner!r}."
+        )
     reasoning_parser_instance = _build_reasoning_parser(
         tokenizer=tokenizer,
         parser_name=reasoning_parser,
@@ -195,6 +205,7 @@ def _run_paired(
 ) -> "EngineInterventionResult":
     from pipelines_v2.engine.base import EngineInterventionResult
 
+    model_runner = _apply_to_model(llm, _activation_patch_model_runner_on_model)
     activation_bank = load_activation_bank_source(spec.patch)
     resolved_cases, skipped_cases = resolve_patched_generation_cases(spec)
     resolved_cases, source_skips = partition_cases_by_activation_bank(
@@ -380,6 +391,7 @@ def _run_paired(
             "write_site": spec.patch.write_site.site,
             "write_layers": [int(layer) for layer in spec.patch.write_site.layers],
             "operator": spec.patch.operator,
+            "model_runner": model_runner,
         },
     )
 
@@ -395,6 +407,7 @@ def _run_unpaired(
 ) -> "EngineInterventionResult":
     from pipelines_v2.engine.base import EngineInterventionResult
 
+    model_runner = _apply_to_model(llm, _activation_patch_model_runner_on_model)
     if spec.patch.uses_subspace() and getattr(spec.patch, "subspace", None) is not None:
         _apply_to_model(
             llm,
@@ -554,6 +567,7 @@ def _run_unpaired(
             "write_site": spec.patch.write_site.site,
             "write_layers": [int(layer) for layer in spec.patch.write_site.layers],
             "operator": spec.patch.operator,
+            "model_runner": model_runner,
         },
     )
 

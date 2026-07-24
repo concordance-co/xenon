@@ -16,6 +16,7 @@ _CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_ENGINE_CONTRACTS"
 _PATCH_OPERATOR_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_PATCH_OPERATOR_CONTRACTS"
 _PAIRED_PATCH_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_PAIRED_PATCH_CONTRACTS"
 _CAPTURE_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_CAPTURE_CONTRACTS"
+_ROUTING_V2_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_ROUTING_V2_CONTRACT"
 _OUTPUT_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_OUTPUT_CONTRACTS"
 _TIMEOUT_ENV = "XENON_MODAL_VLLM_GPU_SMOKE_TIMEOUT_SECONDS"
 _CONTRACT_SHARD_COUNT_ENV = "XENON_MODAL_VLLM_ENGINE_CONTRACT_SHARD_COUNT"
@@ -28,6 +29,7 @@ def test_compiled_project_out_smoke_validator_returns_transform_payload() -> Non
 
     raw = validate_compiled_patch_smoke(
         patched={
+            "metadata": {"model_runner": "v2"},
             "rows": [
                 {
                     "status": "ok",
@@ -38,6 +40,7 @@ def test_compiled_project_out_smoke_validator_returns_transform_payload() -> Non
                             "operator": "project_out",
                             "dispatch": "compiled_custom_op",
                             "token_count": 1,
+                            "phase_counts": {"prompt": 0, "decode": 1},
                         }
                     },
                 }
@@ -48,6 +51,7 @@ def test_compiled_project_out_smoke_validator_returns_transform_payload() -> Non
     result = coerce_transform_result(raw)
     assert result.payload["summary"]["patched_count"] == 1
     assert result.payload["summary"]["missing_runtime_stats_count"] == 0
+    assert result.payload["summary"]["model_runner"] == "v2"
 
 
 @pytest.mark.modal
@@ -253,6 +257,7 @@ def test_modal_vllm_generated_residual_and_moe_routing_contract(tmp_path: Path) 
     )
 
     metadata = artifact.manifest().metadata
+    assert metadata["model_runner"] == "v1"
     assert metadata["router_enabled"] is True
     assert {0, 24}.issubset(set(metadata["discovered_router_layers"]))
     example_metadata = list(metadata["example_metadata"])
@@ -264,6 +269,111 @@ def test_modal_vllm_generated_residual_and_moe_routing_contract(tmp_path: Path) 
         assert int(performance["request_count"]) == 2
         assert int(performance["generated_tokens"]) > 0
         assert float(performance["generation_seconds"]) > 0.0
+
+
+@pytest.mark.contract
+@pytest.mark.modal
+@pytest.mark.vllm
+@pytest.mark.network
+@pytest.mark.slow
+def test_modal_vllm_moe_routing_only_model_runner_v2_contract(
+    tmp_path: Path,
+) -> None:
+    if os.getenv(_ROUTING_V2_CONTRACT_RUN_ENV) != "1":
+        pytest.skip(
+            f"set {_ROUTING_V2_CONTRACT_RUN_ENV}=1 to run the Model Runner V2 "
+            "routing-only contract"
+        )
+    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+
+    from pipelines_v2.api import (
+        CaptureSpec,
+        Dataset,
+        Example,
+        GenerationSpec,
+        MoERoutingSite,
+        ModalResources,
+        ModalRunner,
+        ModalVolumeMount,
+        ModalVolumeStore,
+        RoutingRecord,
+        TokenSelector,
+        VLLMEngine,
+    )
+
+    runner = ModalRunner(
+        resources=ModalResources(
+            gpu=os.getenv("XENON_MODAL_VLLM_ENGINE_CONTRACT_GPU", "A100-80GB"),
+            timeout_seconds=int(os.getenv(_TIMEOUT_ENV, "7200")),
+            max_containers=1,
+            volumes=(
+                ModalVolumeMount(
+                    name=os.getenv("XENON_MODAL_MODEL_VOLUME", "xenon-models"),
+                    mount_path=os.getenv("XENON_MODAL_MODEL_VOLUME_PATH", "/models"),
+                ),
+            ),
+        ),
+        artifacts=ModalVolumeStore(
+            name="xenon-data",
+            root="/data/artifacts/pipelines_v2_vllm_routing_v2_contract",
+            local_cache_root=tmp_path / "modal_cache",
+        ),
+    )
+    artifact = runner.run(
+        CaptureSpec(
+            engine=VLLMEngine(
+                model_id=os.getenv(
+                    "XENON_MODAL_VLLM_ENGINE_CONTRACT_MODEL_ID",
+                    "/models/Qwen/Qwen3-30B-A3B",
+                ),
+                max_model_len=256,
+                enforce_eager=False,
+                max_num_seqs=2,
+                max_num_batched_tokens=512,
+                enable_prefix_caching=False,
+                enable_chunked_prefill=True,
+                enable_thinking=False,
+            ),
+            dataset=Dataset.from_examples(
+                [
+                    Example(
+                        key="routing_v2_a",
+                        prompt="Name one advantage of diversification.",
+                    ),
+                    Example(
+                        key="routing_v2_b",
+                        prompt="Name one advantage of holding cash.",
+                    ),
+                ],
+                name="vllm_routing_v2_contract",
+            ),
+            sites=(
+                MoERoutingSite(
+                    name="moe_routing",
+                    layers=(0, 24),
+                    tokens=TokenSelector.full_sequence(),
+                    record=(
+                        RoutingRecord.gate_logits(dtype="float16"),
+                        RoutingRecord.routing_decisions(required=True),
+                    ),
+                ),
+            ),
+            generation=GenerationSpec(
+                enabled=True,
+                max_tokens=8,
+                temperature=0.0,
+            ),
+        )
+    )
+
+    metadata = artifact.manifest().metadata
+    assert metadata["model_runner"] == "v2"
+    assert metadata["router_enabled"] is True
+    assert {0, 24}.issubset(set(metadata["discovered_router_layers"]))
+    assert all(
+        int(row["generated_token_count"]) > 0
+        for row in metadata["example_metadata"]
+    )
 
 
 @pytest.mark.contract
@@ -350,6 +460,7 @@ def test_modal_vllm_structured_output_contract(tmp_path: Path) -> None:
     )
 
     rows = list(artifact.result()["rows"])
+    assert artifact.manifest().metadata["model_runner"] == "v2"
     assert len(rows) == 1
     parsed = json.loads(str(rows[0]["generated_text"]))
     assert parsed == {"action": "hold", "confidence": 73}

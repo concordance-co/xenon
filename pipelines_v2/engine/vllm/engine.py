@@ -146,6 +146,11 @@ class VLLMEngine:
         env = {
             "VLLM_ALLOW_INSECURE_SERIALIZATION": "1",
             "VLLM_COMPILE_CACHE_SAVE_FORMAT": "binary",
+            # Use vLLM's current model runner for ordinary generation,
+            # structured output, routing-only capture, and request-scoped
+            # interventions. Residual capture selects V1 in-process because
+            # vLLM 0.25.1 rejects extract_hidden_states under Model Runner V2.
+            "VLLM_USE_V2_MODEL_RUNNER": "1",
             # vLLM 0.25.1's FlashInfer sampler attempts to JIT CUDA sources on
             # first use. Xenon's intentionally slim Modal runtime has the CUDA
             # runtime but not nvcc, so select vLLM's built-in sampler instead.

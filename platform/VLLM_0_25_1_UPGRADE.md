@@ -49,11 +49,10 @@ Primary upstream references:
 
 ## Xenon Compatibility Work
 
-- Keep residual capture and intervention workloads on Model Runner v1.
-  `extract_hidden_states` makes vLLM select the compatible runner for capture;
-  Xenon sets `VLLM_USE_V2_MODEL_RUNNER=0` before constructing an intervention
-  runtime. Model Runner v2 is rejected explicitly for activation patching
-  rather than silently losing intervention behavior.
+- Keep residual capture on Model Runner v1 because vLLM 0.25.1 rejects
+  `extract_hidden_states` under Model Runner v2. A follow-on compatibility
+  branch ports request-scoped interventions to V2 and uses a documented hybrid
+  runner policy; see `platform/VLLM_MODEL_RUNNER_V2.md`.
 - Use vLLM's native hidden-state connector protocol, including output-token
   opt-in and synchronized cleanup. Retain a direct safetensors fallback for
   CPU-only tests and controlled compatibility failures.
@@ -150,9 +149,10 @@ uv run python -m pytest -q tests/pipelines_v2/engine/test_modal_vllm_gpu_smoke.p
 
 ## Known Boundaries
 
-- Xenon residual capture and activation patching intentionally remain on Model
-  Runner v1. Supporting Model Runner v2 requires new, verified hidden-state
-  and intervention boundaries.
+- Xenon residual capture intentionally remains on Model Runner v1. The
+  follow-on V2 integration covers generation, structured output, routing-only
+  capture, and activation patching while retaining V1 for the unsupported
+  hidden-state connector path.
 - Monolithic fused-MoE kernels are rejected for routing capture because they do
   not expose the router-selection observations required by Xenon's artifact
   contract.

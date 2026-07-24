@@ -44,6 +44,16 @@ def _benchmark_label() -> str:
     return re.sub(r"[^a-zA-Z0-9_.-]+", "-", raw).strip("-") or "unlabeled"
 
 
+def _benchmark_model_runner() -> str:
+    value = str(os.getenv("XENON_VLLM_BENCHMARK_MODEL_RUNNER", "v1") or "v1")
+    model_runner = value.strip().lower()
+    if model_runner not in {"v1", "v2"}:
+        raise ValueError(
+            "XENON_VLLM_BENCHMARK_MODEL_RUNNER must be either 'v1' or 'v2'"
+        )
+    return model_runner
+
+
 def build_dataset() -> Dataset:
     examples = []
     for index in range(16):
@@ -99,6 +109,7 @@ def summarize_generation(*, generation: Any) -> dict[str, Any]:
         },
         "metadata": {
             "benchmark_label": _benchmark_label(),
+            "model_runner": _benchmark_model_runner(),
             "model_id": str(os.getenv("XENON_VLLM_BENCHMARK_MODEL_ID", DEFAULT_MODEL_ID)),
         },
         "example_keys": sorted(output_digests),
@@ -158,6 +169,7 @@ def build_workflow(dataset: Dataset | None = None) -> WorkflowSpec:
 
 def build_runner_specs() -> dict[str, object]:
     label = _benchmark_label()
+    model_runner = _benchmark_model_runner()
     artifact_root = Path("/data/artifacts/pipelines_v2_vllm_upgrade_benchmark") / label
     artifact_store = ModalVolumeStore(
         name=ARTIFACT_VOLUME_NAME,
@@ -169,6 +181,9 @@ def build_runner_specs() -> dict[str, object]:
                 gpu=str(os.getenv("XENON_VLLM_BENCHMARK_GPU", "A100-80GB")),
                 timeout_seconds=3600,
                 max_containers=1,
+                env={
+                    "VLLM_USE_V2_MODEL_RUNNER": "1" if model_runner == "v2" else "0",
+                },
                 volumes=(
                     ModalVolumeMount(
                         name=MODEL_VOLUME_NAME,
@@ -197,6 +212,7 @@ def build_runner_specs() -> dict[str, object]:
 
 
 __all__ = [
+    "_benchmark_model_runner",
     "build_dataset",
     "build_runner_specs",
     "build_workflow",
