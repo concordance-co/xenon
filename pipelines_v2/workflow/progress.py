@@ -6,6 +6,8 @@ import json
 import logging
 import os
 import threading
+import uuid
+from itertools import count
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
@@ -14,6 +16,8 @@ from pipelines_v2.core.types import utc_now_iso
 from pipelines_v2.storage.json import json_default
 
 _PROGRESS_LOG = logging.getLogger("pipelines_v2.progress")
+_PROGRESS_SEQUENCE = count(1)
+_PROGRESS_SCHEMA_VERSION = "xenon.progress.v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +28,9 @@ class WorkflowProgressEvent:
     workflow_name: str | None
     status: str
     stage: str
+    schema_version: str = _PROGRESS_SCHEMA_VERSION
+    event_id: str = field(default_factory=lambda: f"xpe_{uuid.uuid4().hex}")
+    sequence: int = field(default_factory=lambda: next(_PROGRESS_SEQUENCE))
     created_at: str = field(default_factory=utc_now_iso)
     step_name: str | None = None
     step_index: int | None = None
@@ -38,6 +45,9 @@ class WorkflowProgressEvent:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "schema_version": self.schema_version,
+            "event_id": self.event_id,
+            "sequence": self.sequence,
             "run_id": self.run_id,
             "workflow_name": self.workflow_name,
             "status": self.status,
@@ -62,6 +72,9 @@ class WorkflowProgressEvent:
             workflow_name=str(payload["workflow_name"]) if payload.get("workflow_name") is not None else None,
             status=str(payload["status"]),
             stage=str(payload["stage"]),
+            schema_version=str(payload.get("schema_version") or _PROGRESS_SCHEMA_VERSION),
+            event_id=str(payload.get("event_id") or f"xpe_{uuid.uuid4().hex}"),
+            sequence=int(payload.get("sequence") or next(_PROGRESS_SEQUENCE)),
             created_at=str(payload["created_at"]),
             step_name=str(payload["step_name"]) if payload.get("step_name") is not None else None,
             step_index=int(payload["step_index"]) if payload.get("step_index") is not None else None,
@@ -120,6 +133,19 @@ class FileWorkflowProgressStore:
         else:
             path = self._step_snapshot_path(event.run_id, event.step_name)
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            try:
+                with path.open("r", encoding="utf-8") as f:
+                    previous = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                previous = {}
+            for key in ("runtime_kind", "runtime_app_id"):
+                if payload.get(key) is None and previous.get(key) is not None:
+                    payload[key] = previous[key]
+            payload["metrics"] = {
+                **dict(previous.get("metrics") or {}),
+                **dict(payload.get("metrics") or {}),
+            }
         tmp = path.with_suffix(path.suffix + ".tmp")
         with tmp.open("w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, sort_keys=True, default=json_default)

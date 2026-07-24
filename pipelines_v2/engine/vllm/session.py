@@ -44,13 +44,20 @@ class VLLMSessionRuntime:
     session_key: str
     _tempdir: tempfile.TemporaryDirectory[str] | None = None
 
-    def capture(self, spec: CaptureSpec, *, batch_callback: Any | None = None) -> "EngineCaptureResult":
+    def capture(
+        self,
+        spec: CaptureSpec,
+        *,
+        batch_callback: Any | None = None,
+        progress_callback: Any | None = None,
+    ) -> "EngineCaptureResult":
         from .capture import run_vllm_capture_with_runtime
 
         return run_vllm_capture_with_runtime(
             runtime=self,
             spec=spec,
             batch_callback=batch_callback,
+            progress_callback=progress_callback,
         )
 
     def generate(
@@ -58,6 +65,7 @@ class VLLMSessionRuntime:
         spec: GenerationRunSpec,
         *,
         batch_callback: Any | None = None,
+        progress_callback: Any | None = None,
     ) -> "EngineGenerationResult":
         from .generate import run_vllm_generation_with_runtime
 
@@ -65,6 +73,7 @@ class VLLMSessionRuntime:
             runtime=self,
             spec=spec,
             batch_callback=batch_callback,
+            progress_callback=progress_callback,
         )
 
     def intervene(self, spec: PatchedGenerationSpec) -> "EngineInterventionResult":
@@ -82,6 +91,7 @@ def build_vllm_session_runtime(
     *,
     engine: "VLLMEngine",
     specs: Sequence[OperationSpec],
+    progress_callback: Any | None = None,
 ) -> VLLMSessionRuntime:
     """Construct one loaded vLLM runtime for a compatible operation group."""
 
@@ -93,9 +103,16 @@ def build_vllm_session_runtime(
         engine=engine,
         specs=specs_tuple,
     )
+    from .model_load_progress import (
+        enable_model_load_progress,
+        model_load_progress_monitor,
+    )
+
+    enable_model_load_progress(llm_kwargs, progress_callback)
     tokenizer = AutoTokenizer.from_pretrained(engine.resolved_model_path(), trust_remote_code=True)
     try:
-        llm = LLM(**llm_kwargs)
+        with model_load_progress_monitor(progress_callback):
+            llm = LLM(**llm_kwargs)
     except Exception:
         if tempdir is not None:
             tempdir.cleanup()

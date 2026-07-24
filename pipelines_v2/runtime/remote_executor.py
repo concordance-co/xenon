@@ -6,8 +6,9 @@ import json
 import logging
 import uuid
 from dataclasses import replace
+from itertools import count
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from pipelines_v2.core.types import OperationSpec, stable_hash, utc_now_iso
 from pipelines_v2.data.datasets import Dataset
@@ -27,6 +28,8 @@ from pipelines_v2.storage.features import load_feature_payload, write_capture_fe
 from pipelines_v2.operations.interventions.runtime import rows_example_coverage
 
 _PROGRESS_LOG = logging.getLogger("pipelines_v2.remote_progress")
+_REMOTE_PROGRESS_SEQUENCE = count(1)
+RemoteProgressCallback = Callable[[Mapping[str, Any]], None]
 
 
 def execute_remote(
@@ -35,6 +38,7 @@ def execute_remote(
     store_config: dict[str, Any],
     spec_payload: dict[str, Any],
     workflow_context: dict[str, Any] | None = None,
+    progress_callback: RemoteProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Execute a serialized operation in a remote worker."""
     spec = operation_spec_from_dict(spec_payload)
@@ -44,6 +48,7 @@ def execute_remote(
         spec=spec,
         workflow_context=workflow_context,
         execution_session=None,
+        progress_callback=progress_callback,
     )
 
 
@@ -53,6 +58,7 @@ def execute_remote_many(
     store_config: dict[str, Any],
     spec_payloads: list[dict[str, Any]],
     workflow_contexts: list[dict[str, Any] | None] | None = None,
+    progress_callback: RemoteProgressCallback | None = None,
 ) -> list[dict[str, Any]]:
     """Execute multiple serialized operations in one remote worker process."""
     contexts = list(workflow_contexts) if workflow_contexts is not None else [None] * len(spec_payloads)
@@ -72,6 +78,7 @@ def execute_remote_many(
                 spec=spec,
                 workflow_context=workflow_context,
                 execution_session=execution_session,
+                progress_callback=progress_callback,
             )
         )
     return results
@@ -84,6 +91,7 @@ def _execute_remote_spec(
     spec: OperationSpec,
     workflow_context: dict[str, Any] | None,
     execution_session: "_RemoteExecutionSession | None",
+    progress_callback: RemoteProgressCallback | None,
 ) -> dict[str, Any]:
     _emit_remote_progress(
         workflow_context=workflow_context,
@@ -91,6 +99,7 @@ def _execute_remote_spec(
         stage="remote_started",
         spec_kind=spec.kind,
         message=f"remote execution started for {spec.kind}",
+        progress_callback=progress_callback,
     )
     store = artifact_store_from_dict(store_config)
 
@@ -101,6 +110,7 @@ def _execute_remote_spec(
             spec=spec,
             workflow_context=workflow_context,
             execution_session=execution_session,
+            remote_progress_callback=progress_callback,
         )
     if isinstance(spec, GenerationRunSpec):
         return _execute_generation(
@@ -109,6 +119,7 @@ def _execute_remote_spec(
             spec=spec,
             workflow_context=workflow_context,
             execution_session=execution_session,
+            remote_progress_callback=progress_callback,
         )
     if isinstance(spec, PatchedGenerationSpec):
         return _execute_intervention(
@@ -117,6 +128,7 @@ def _execute_remote_spec(
             spec=spec,
             workflow_context=workflow_context,
             execution_session=execution_session,
+            remote_progress_callback=progress_callback,
         )
     if isinstance(spec, _ARTIFACT_BOUND_SPECS):
         return _execute_artifact_operation(
@@ -136,11 +148,26 @@ class _RemoteExecutionSession:
         self._vllm_sessions: dict[str, Any] = {}
         self._vllm_intervention_runtimes: dict[str, Any] = {}
 
-    def capture(self, *, engine: Any, spec: CaptureSpec) -> Any:
-        session = self._vllm_session(engine=engine, spec=spec)
+    def capture(
+        self,
+        *,
+        engine: Any,
+        spec: CaptureSpec,
+        progress_callback: Any | None = None,
+    ) -> Any:
+        session = self._vllm_session(
+            engine=engine,
+            spec=spec,
+            progress_callback=progress_callback,
+        )
         if session is None:
+            incremental_capture = getattr(engine, "capture_incremental", None)
+            if progress_callback is not None and callable(incremental_capture):
+                return incremental_capture(spec, progress_callback=progress_callback)
             return engine.capture(spec)
-        return session.capture(spec)
+        if progress_callback is None:
+            return session.capture(spec)
+        return session.capture(spec, progress_callback=progress_callback)
 
     def generate(
         self,
@@ -148,20 +175,41 @@ class _RemoteExecutionSession:
         engine: Any,
         spec: GenerationRunSpec,
         batch_callback: Any | None = None,
+        progress_callback: Any | None = None,
     ) -> Any:
-        session = self._vllm_session(engine=engine, spec=spec)
+        session = self._vllm_session(
+            engine=engine,
+            spec=spec,
+            progress_callback=progress_callback,
+        )
         if session is None:
             incremental_generate = getattr(engine, "generate_incremental", None)
             if batch_callback is not None and callable(incremental_generate):
-                return incremental_generate(spec, batch_callback=batch_callback)
+                kwargs = {"batch_callback": batch_callback}
+                if progress_callback is not None:
+                    kwargs["progress_callback"] = progress_callback
+                return incremental_generate(spec, **kwargs)
             result = engine.generate(spec)
             if batch_callback is not None:
                 batch_callback(list(result.rows), dict(result.metadata))
             return result
-        return session.generate(spec, batch_callback=batch_callback)
+        kwargs = {"batch_callback": batch_callback}
+        if progress_callback is not None:
+            kwargs["progress_callback"] = progress_callback
+        return session.generate(spec, **kwargs)
 
-    def intervene(self, *, engine: Any, spec: PatchedGenerationSpec) -> Any:
-        session = self._vllm_session(engine=engine, spec=spec)
+    def intervene(
+        self,
+        *,
+        engine: Any,
+        spec: PatchedGenerationSpec,
+        progress_callback: Any | None = None,
+    ) -> Any:
+        session = self._vllm_session(
+            engine=engine,
+            spec=spec,
+            progress_callback=progress_callback,
+        )
         if session is not None:
             return session.intervene(spec)
         identity = engine.identity() if callable(getattr(engine, "identity", None)) else {}
@@ -181,7 +229,13 @@ class _RemoteExecutionSession:
             self._vllm_intervention_runtimes[session_key] = runtime
         return run_vllm_intervention_with_runtime(runtime=runtime, spec=spec)
 
-    def _vllm_session(self, *, engine: Any, spec: OperationSpec) -> Any | None:
+    def _vllm_session(
+        self,
+        *,
+        engine: Any,
+        spec: OperationSpec,
+        progress_callback: Any | None = None,
+    ) -> Any | None:
         identity = engine.identity() if callable(getattr(engine, "identity", None)) else {}
         if dict(identity).get("kind") != "vllm":
             return None
@@ -195,7 +249,40 @@ class _RemoteExecutionSession:
         session_key = vllm_session_key(engine=engine, specs=session_specs)
         runtime = self._vllm_sessions.get(session_key)
         if runtime is None:
-            runtime = build_vllm_session_runtime(engine=engine, specs=session_specs)
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "stage": "model_loading",
+                        "status": "running",
+                        "message": "Loading model runtime",
+                    }
+                )
+            try:
+                runtime = build_vllm_session_runtime(
+                    engine=engine,
+                    specs=session_specs,
+                    progress_callback=progress_callback,
+                )
+            except Exception:
+                if progress_callback is not None:
+                    progress_callback(
+                        {
+                            "stage": "model_loading",
+                            "status": "error",
+                            "message": "Model runtime failed to load",
+                        }
+                    )
+                raise
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "stage": "model_loading",
+                        "status": "complete",
+                        "current": 1,
+                        "total": 1,
+                        "message": "Model runtime ready",
+                    }
+                )
             self._vllm_sessions[session_key] = runtime
         return runtime
 
@@ -296,20 +383,82 @@ def _emit_remote_progress(
     spec_kind: str,
     message: str,
     metrics: dict[str, Any] | None = None,
+    progress_callback: RemoteProgressCallback | None = None,
 ) -> None:
+    context = dict(workflow_context or {})
+    event_metrics = dict(metrics or {})
+    shard = context.get("execution_shard")
+    if isinstance(shard, dict):
+        container_index = int(shard.get("index") or 0)
+        event_metrics.setdefault("container_index", container_index)
+        event_metrics.setdefault("container_count", int(shard.get("count") or 1))
+        event_metrics.setdefault("container_id", f"container-{container_index + 1}")
+        event_metrics.setdefault("container_label", f"Container {container_index + 1}")
+    else:
+        event_metrics.setdefault("container_index", int(context.get("container_index") or 0))
+        event_metrics.setdefault("container_count", int(context.get("container_count") or 1))
+        event_metrics.setdefault(
+            "container_id",
+            str(context.get("container_id") or "container-1"),
+        )
+        event_metrics.setdefault(
+            "container_label",
+            str(context.get("container_label") or "Container 1"),
+        )
+    if context.get("runtime_app_name"):
+        event_metrics.setdefault("app_name", str(context["runtime_app_name"]))
     payload = {
-        "run_id": workflow_context.get("run_id") if workflow_context else None,
-        "workflow_name": workflow_context.get("workflow_name") if workflow_context else None,
-        "step_name": workflow_context.get("step_name") if workflow_context else None,
-        "step_index": workflow_context.get("step_index") if workflow_context else None,
-        "runner": workflow_context.get("runner") if workflow_context else None,
+        "schema_version": "xenon.progress.v1",
+        "event_id": f"xpe_{uuid.uuid4().hex}",
+        "sequence": next(_REMOTE_PROGRESS_SEQUENCE),
+        "created_at": utc_now_iso(),
+        "run_id": context.get("run_id"),
+        "workflow_name": context.get("workflow_name"),
+        "step_name": context.get("step_name"),
+        "step_index": context.get("step_index"),
+        "runner": context.get("runner"),
         "status": status,
         "stage": stage,
         "spec_kind": spec_kind,
         "message": message,
-        "metrics": dict(metrics or {}),
+        "runtime_kind": context.get("runtime_kind"),
+        "runtime_app_id": context.get("runtime_app_id"),
+        "metrics": event_metrics,
     }
     _PROGRESS_LOG.info("XENON_PROGRESS %s", json.dumps(payload, sort_keys=True))
+    if progress_callback is not None:
+        try:
+            progress_callback(payload)
+        except Exception:
+            _PROGRESS_LOG.warning(
+                "remote progress callback failed",
+                exc_info=True,
+            )
+
+
+def _engine_progress_callback(
+    *,
+    workflow_context: dict[str, Any] | None,
+    spec_kind: str,
+    remote_progress_callback: RemoteProgressCallback | None = None,
+) -> Any:
+    def _callback(payload: dict[str, Any]) -> None:
+        metrics = {
+            key: payload[key]
+            for key in ("current", "total", "unit")
+            if payload.get(key) is not None
+        }
+        _emit_remote_progress(
+            workflow_context=workflow_context,
+            status=str(payload.get("status") or "running"),
+            stage=str(payload.get("stage") or "running"),
+            spec_kind=spec_kind,
+            message=str(payload.get("message") or ""),
+            metrics=metrics,
+            progress_callback=remote_progress_callback,
+        )
+
+    return _callback
 
 
 def _execute_capture(
@@ -319,6 +468,7 @@ def _execute_capture(
     spec: CaptureSpec,
     workflow_context: dict[str, Any] | None = None,
     execution_session: _RemoteExecutionSession | None = None,
+    remote_progress_callback: RemoteProgressCallback | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
@@ -328,12 +478,22 @@ def _execute_capture(
     if existing is not None:
         return existing.to_dict()
     _ensure_artifact_dir(store, artifact_id)
+    engine_progress_callback = (
+        _engine_progress_callback(
+            workflow_context=workflow_context,
+            spec_kind=spec.kind,
+            remote_progress_callback=remote_progress_callback,
+        )
+        if remote_progress_callback is not None
+        else None
+    )
 
     streamed_result = _execute_streaming_capture_if_available(
         engine=engine,
         spec=spec,
         workflow_context=workflow_context,
         execution_session=execution_session,
+        progress_callback=engine_progress_callback,
     )
     if streamed_result is not None:
         result_features, result_generations, result_metadata, example_coverage = streamed_result
@@ -346,9 +506,20 @@ def _execute_capture(
             result_metadata = {"empty_shard": True}
         else:
             if execution_session is None:
-                result = engine.capture(resolved_spec)
+                incremental_capture = getattr(engine, "capture_incremental", None)
+                if engine_progress_callback is not None and callable(incremental_capture):
+                    result = incremental_capture(
+                        resolved_spec,
+                        progress_callback=engine_progress_callback,
+                    )
+                else:
+                    result = engine.capture(resolved_spec)
             else:
-                result = execution_session.capture(engine=engine, spec=resolved_spec)
+                result = execution_session.capture(
+                    engine=engine,
+                    spec=resolved_spec,
+                    progress_callback=engine_progress_callback,
+                )
             result_features = result.features
             result_generations = result.generations
             result_metadata = dict(result.metadata)
@@ -392,6 +563,7 @@ def _execute_streaming_capture_if_available(
     spec: CaptureSpec,
     workflow_context: dict[str, Any] | None,
     execution_session: _RemoteExecutionSession | None,
+    progress_callback: Any | None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any], dict[str, Any]] | None:
     """Stream deferred Postgres capture inputs through a reusable execution session."""
 
@@ -419,7 +591,11 @@ def _execute_streaming_capture_if_available(
         if not batch_spec.dataset.examples:
             continue
         batch_count += 1
-        result = execution_session.capture(engine=engine, spec=batch_spec)
+        result = execution_session.capture(
+            engine=engine,
+            spec=batch_spec,
+            progress_callback=progress_callback,
+        )
         if not result_metadata:
             result_metadata = dict(result.metadata)
         for name, payload in result.features.items():
@@ -569,6 +745,7 @@ def _execute_intervention(
     spec: PatchedGenerationSpec,
     workflow_context: dict[str, Any] | None = None,
     execution_session: _RemoteExecutionSession | None = None,
+    remote_progress_callback: RemoteProgressCallback | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
@@ -586,13 +763,47 @@ def _execute_intervention(
         result_summary = {"example_count": 0, "patched_count": 0, "skipped_count": 0}
         result_rows: list[dict[str, Any]] = []
         result_metadata: dict[str, Any] = {"empty_shard": True}
-    elif execution_session is None:
-        result = engine.intervene(resolved_spec)
-        result_summary = dict(result.summary)
-        result_rows = list(result.rows)
-        result_metadata = dict(result.metadata)
     else:
-        result = execution_session.intervene(engine=engine, spec=resolved_spec)
+        total_examples = len(resolved_spec.dataset.examples)
+        _emit_remote_progress(
+            workflow_context=workflow_context,
+            status="running",
+            stage="generation",
+            spec_kind=spec.kind,
+            message="Running patched generation",
+            metrics={"current": 0, "total": total_examples, "unit": "prompts"},
+            progress_callback=remote_progress_callback,
+        )
+        engine_progress_callback = (
+            _engine_progress_callback(
+                workflow_context=workflow_context,
+                spec_kind=spec.kind,
+                remote_progress_callback=remote_progress_callback,
+            )
+            if remote_progress_callback is not None
+            else None
+        )
+        if execution_session is None:
+            result = engine.intervene(resolved_spec)
+        else:
+            result = execution_session.intervene(
+                engine=engine,
+                spec=resolved_spec,
+                progress_callback=engine_progress_callback,
+            )
+        _emit_remote_progress(
+            workflow_context=workflow_context,
+            status="complete",
+            stage="generation",
+            spec_kind=spec.kind,
+            message="Patched generation complete",
+            metrics={
+                "current": total_examples,
+                "total": total_examples,
+                "unit": "prompts",
+            },
+            progress_callback=remote_progress_callback,
+        )
         result_summary = dict(result.summary)
         result_rows = list(result.rows)
         result_metadata = dict(result.metadata)
@@ -635,6 +846,7 @@ def _execute_generation(
     spec: GenerationRunSpec,
     workflow_context: dict[str, Any] | None = None,
     execution_session: _RemoteExecutionSession | None = None,
+    remote_progress_callback: RemoteProgressCallback | None = None,
 ) -> dict[str, Any]:
     engine = spec.bound_engine()
     if engine is None:
@@ -646,6 +858,15 @@ def _execute_generation(
     if existing is not None:
         return existing.to_dict()
     _ensure_artifact_dir(store, artifact_id)
+    engine_progress_callback = (
+        _engine_progress_callback(
+            workflow_context=workflow_context,
+            spec_kind=spec.kind,
+            remote_progress_callback=remote_progress_callback,
+        )
+        if remote_progress_callback is not None
+        else None
+    )
     partial_rows = _load_partial_generation_rows(store=store, artifact_id=artifact_id)
     result_rows = _merge_generation_rows(dataset=resolved_spec.dataset, rows=partial_rows)
     completed_keys = _generation_resume_keys(result_rows)
@@ -697,14 +918,18 @@ def _execute_generation(
             _emit_remote_progress(
                 workflow_context=workflow_context,
                 status="running",
-                stage="generation_checkpoint",
+                stage="generation",
                 spec_kind=spec.kind,
                 message="generation checkpoint written",
                 metrics={
+                    "current": len(result_rows),
+                    "total": len(resolved_spec.dataset.examples),
+                    "unit": "prompts",
                     "completed_examples": len(result_rows),
                     "remaining_examples": max(0, len(resolved_spec.dataset.examples) - len(result_rows)),
                     "total_examples": len(resolved_spec.dataset.examples),
                 },
+                progress_callback=remote_progress_callback,
             )
 
         incremental_generate = getattr(engine, "generate_incremental", None)
@@ -713,9 +938,13 @@ def _execute_generation(
                 engine=engine,
                 spec=generation_spec,
                 batch_callback=_record_generation_checkpoint,
+                progress_callback=engine_progress_callback,
             )
         elif callable(incremental_generate):
-            result = incremental_generate(generation_spec, batch_callback=_record_generation_checkpoint)
+            kwargs = {"batch_callback": _record_generation_checkpoint}
+            if engine_progress_callback is not None:
+                kwargs["progress_callback"] = engine_progress_callback
+            result = incremental_generate(generation_spec, **kwargs)
         else:
             result = engine.generate(generation_spec)
             _record_generation_checkpoint(list(result.rows), dict(result.metadata))

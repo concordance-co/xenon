@@ -19,7 +19,12 @@ class RuntimeSpec(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class PythonRuntimeSpec:
-    """Concrete runtime description for Python-based execution environments."""
+    """Concrete runtime description for Python-based execution environments.
+
+    Relative ``local_python_sources`` entries resolve from the workspace that
+    contains the workflow file supplied to the Xenon CLI, with the Xenon
+    package workspace as a fallback for library-owned sources.
+    """
     kind: str = "python"
     python_version: str = "3.13"
     pip_packages: tuple[str, ...] = field(default_factory=tuple)

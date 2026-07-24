@@ -192,15 +192,40 @@ class VLLMEngine:
 
         return run_vllm_capture(engine=self, spec=spec)
 
+    def capture_incremental(
+        self,
+        spec: CaptureSpec,
+        *,
+        progress_callback: Any,
+    ) -> EngineCaptureResult:
+        from .capture import run_vllm_capture
+
+        return run_vllm_capture(
+            engine=self,
+            spec=spec,
+            progress_callback=progress_callback,
+        )
+
     def generate(self, spec: GenerationRunSpec) -> EngineGenerationResult:
         from .generate import run_vllm_generation
 
         return run_vllm_generation(engine=self, spec=spec)
 
-    def generate_incremental(self, spec: GenerationRunSpec, *, batch_callback: Any) -> EngineGenerationResult:
+    def generate_incremental(
+        self,
+        spec: GenerationRunSpec,
+        *,
+        batch_callback: Any,
+        progress_callback: Any | None = None,
+    ) -> EngineGenerationResult:
         from .generate import run_vllm_generation
 
-        return run_vllm_generation(engine=self, spec=spec, batch_callback=batch_callback)
+        return run_vllm_generation(
+            engine=self,
+            spec=spec,
+            batch_callback=batch_callback,
+            progress_callback=progress_callback,
+        )
 
     def intervene(self, spec: PatchedGenerationSpec) -> EngineInterventionResult:
         from .intervene import run_vllm_intervention

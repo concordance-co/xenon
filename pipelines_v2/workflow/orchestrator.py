@@ -99,6 +99,7 @@ class WorkflowOrchestrator:
         self,
         workflow: WorkflowSpec,
         *,
+        new_run_id: str | None = None,
         resume_run_id: str | None = None,
         reuse_completed: bool = False,
         reuse_from_run_id: str | None = None,
@@ -121,7 +122,9 @@ class WorkflowOrchestrator:
             raise SpecValidationError(f"Unknown forced rerun steps: {unknown_forced}")
         workflow_hash = workflow.semantic_hash()
         workflow_spec_hash = workflow.spec_hash()
-        run_id = resume_run_id or f"wr_{workflow_hash[:12]}_{uuid.uuid4().hex[:8]}"
+        if new_run_id is not None and resume_run_id is not None:
+            raise SpecValidationError("new_run_id cannot be combined with resume_run_id")
+        run_id = resume_run_id or new_run_id or f"wr_{workflow_hash[:12]}_{uuid.uuid4().hex[:8]}"
         _LOG.info(
             "workflow started name=%s run_id=%s step_count=%d",
             workflow.name,
@@ -157,6 +160,8 @@ class WorkflowOrchestrator:
 
         if catalog is not None:
             if resume_run_id is None:
+                if new_run_id is not None and catalog.load_workflow_run(run_id) is not None:
+                    raise SpecValidationError(f"Workflow run id already exists: {run_id}")
                 catalog.record_workflow_run(
                     WorkflowRunRecord(
                         run_id=run_id,
@@ -870,7 +875,21 @@ class WorkflowOrchestrator:
             return None
 
         def _callback(payload: Mapping[str, Any]) -> None:
-            for step_context, spec_kind in zip(step_contexts, spec_kinds, strict=False):
+            targets = list(zip(step_contexts, spec_kinds, strict=False))
+            payload_step_name = str(payload.get("step_name") or "").strip()
+            if payload_step_name:
+                targets = [
+                    (step_context, spec_kind)
+                    for step_context, spec_kind in targets
+                    if step_context.step_name == payload_step_name
+                ]
+                if not targets:
+                    _LOG.warning(
+                        "ignored batched progress for unknown step name=%s",
+                        payload_step_name,
+                    )
+                    return
+            for step_context, spec_kind in targets:
                 self._emit_progress(
                     WorkflowProgressEvent(
                         run_id=step_context.run_id,

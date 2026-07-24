@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Sequence
 
 from pipelines_v2.core.types import OperationSpec, stable_hash
@@ -123,6 +124,7 @@ class ModalRunner:
     resources: ModalResources
     artifacts: ModalVolumeStore
     catalog: Catalog = field(default_factory=NullCatalog)
+    workspace_root: Path | None = field(default=None, repr=False, compare=False)
 
     kind: str = "modal"
 
@@ -252,6 +254,7 @@ class ModalRunner:
                 context.to_manifest_dict() if context is not None else None
                 for context in contexts
             ],
+            workspace_root=self.workspace_root,
             progress_callback=progress_callback,
         )
         if len(manifest_payloads) != len(specs_tuple):
@@ -296,6 +299,8 @@ class ModalRunner:
             )
         if signature is None or "progress_callback" in signature.parameters:
             run_kwargs["progress_callback"] = progress_callback
+        if signature is None or "workspace_root" in signature.parameters:
+            run_kwargs["workspace_root"] = self.workspace_root
         manifest_payload = run_on_modal(**run_kwargs)
         if manifest_payload is None:
             raise RuntimeError("Modal runner did not receive a manifest payload; the remote run was likely cancelled")

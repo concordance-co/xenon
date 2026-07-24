@@ -9,6 +9,7 @@ import inspect
 import json
 import logging
 import os
+import subprocess
 import sys
 from collections import defaultdict, deque
 from pathlib import Path, PurePosixPath
@@ -18,10 +19,15 @@ from typing import Any, Mapping, Sequence
 from pipelines_v2.core.config import WorkspaceConfig, load_workspace_config
 from pipelines_v2.core.env import load_dotenv_if_present
 from pipelines_v2.core.paths import pipelines_v2_catalog_root
+from pipelines_v2.core.types import utc_now_iso
 from pipelines_v2.storage.artifacts import InlineOperationArtifact, artifact_from_manifest
 from pipelines_v2.storage.composite import iter_catalogs_depth_first
 from pipelines_v2.storage.inference import artifact_store_from_manifest
-from pipelines_v2.workflow.progress import FileWorkflowProgressStore, WorkflowProgressSink
+from pipelines_v2.workflow.progress import (
+    FileWorkflowProgressStore,
+    WorkflowProgressEvent,
+    WorkflowProgressSink,
+)
 from pipelines_v2.api import (
     CompositeCatalog,
     Dataset,
@@ -124,6 +130,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _workflow_runs(ns)
         if ns.workflow_command == "show":
             return _workflow_show(ns)
+        if ns.workflow_command == "cancel":
+            return _workflow_cancel(ns)
         if ns.workflow_command == "rerun-step":
             return _workflow_rerun_step(ns, include_downstream=False)
         if ns.workflow_command == "rerun-from-step":
@@ -187,6 +195,7 @@ def _workflow_run(ns: argparse.Namespace) -> int:
     )
     result = orchestrator.run(
         workflow,
+        new_run_id=ns.run_id,
         resume_run_id=ns.resume_run_id,
         reuse_completed=bool(ns.reuse_completed),
     )
@@ -297,6 +306,121 @@ def _workflow_show(ns: argparse.Namespace) -> int:
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
+
+
+def _workflow_cancel(ns: argparse.Namespace) -> int:
+    if not ns.yes:
+        raise RuntimeError("workflow cancel requires --yes")
+    catalog = _registry_catalog(ns)
+    run = catalog.load_workflow_run(ns.run_id)
+    if run is None:
+        raise RuntimeError(f"Unknown workflow run id: {ns.run_id}")
+    if run.status in {"completed", "failed", "cancelled", "canceled"}:
+        print(
+            json.dumps(
+                {
+                    "run_id": run.run_id,
+                    "status": run.status,
+                    "canceled": run.status in {"cancelled", "canceled"},
+                    "runtime_app_ids": [],
+                    "stopped_runtime_app_ids": [],
+                    "warnings": ["The workflow run is already terminal."],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    progress_root = _workflow_progress_root(ns)
+    progress_store = FileWorkflowProgressStore(root=progress_root)
+    progress_steps = progress_store.load_step_snapshots(ns.run_id)
+    runtime_apps: dict[str, str] = {}
+    for step in catalog.list_workflow_steps(ns.run_id):
+        if step.runtime_app_id:
+            runtime_apps[step.runtime_app_id] = step.status
+    for snapshot in progress_steps.values():
+        app_id = str(snapshot.get("runtime_app_id") or "").strip()
+        if app_id:
+            runtime_apps[app_id] = str(snapshot.get("status") or "")
+
+    terminal_step_statuses = {
+        "blocked",
+        "cancelled",
+        "canceled",
+        "complete",
+        "completed",
+        "error",
+        "failed",
+        "skipped",
+        "succeeded",
+    }
+    active_app_ids = sorted(
+        app_id
+        for app_id, status in runtime_apps.items()
+        if str(status).strip().lower() not in terminal_step_statuses
+    )
+    stopped_app_ids: list[str] = []
+    errors: list[str] = []
+    for app_id in active_app_ids:
+        try:
+            completed = subprocess.run(
+                [sys.executable, "-m", "modal", "app", "stop", app_id],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            errors.append(f"{app_id}: {error}")
+            continue
+        if completed.returncode == 0:
+            stopped_app_ids.append(app_id)
+            continue
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        errors.append(f"{app_id}: {detail or f'exit {completed.returncode}'}")
+
+    canceled = not errors
+    if canceled:
+        now = utc_now_iso()
+        catalog.record_workflow_run(
+            dataclasses.replace(
+                run,
+                status="cancelled",
+                finished_at=now,
+                error=None,
+            )
+        )
+        progress_store.record_event(
+            WorkflowProgressEvent(
+                run_id=run.run_id,
+                workflow_name=run.workflow_name,
+                status="cancelled",
+                stage="cancelled",
+                created_at=now,
+                message="Workflow cancellation confirmed.",
+                metrics={
+                    "runtime_app_ids": active_app_ids,
+                    "stopped_runtime_app_ids": stopped_app_ids,
+                },
+            )
+        )
+
+    print(
+        json.dumps(
+            {
+                "run_id": run.run_id,
+                "status": "cancelled" if canceled else "error",
+                "canceled": canceled,
+                "runtime_app_ids": active_app_ids,
+                "stopped_runtime_app_ids": stopped_app_ids,
+                "warnings": errors,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0 if canceled else 2
 
 
 def _workflow_rerun_step(ns: argparse.Namespace, *, include_downstream: bool) -> int:
@@ -441,6 +565,7 @@ def _build_runners(
         runners = _build_runners_from_args(ns)
         _apply_workspace_catalog_defaults(runners, ns)
     _apply_workspace_modal_defaults(runners, ns)
+    _attach_workspace_root_to_modal_runners(runners, ns)
     return _attach_local_registry(runners, _local_registry_catalog(ns))
 
 
@@ -593,7 +718,21 @@ def _apply_workspace_catalog_defaults(runners: dict[str, object], ns: argparse.N
 
 def _apply_workspace_modal_defaults(runners: dict[str, object], ns: argparse.Namespace) -> None:
     modal_defaults = _workspace_config_for_ns(ns).modal
-    if modal_defaults.model_volume is None and not modal_defaults.use_vllm_torch_compile_cache:
+    vllm_progress_env = {
+        key: value
+        for key in (
+            "XENON_VLLM_SHARD_PROGRESS",
+            "XENON_VLLM_CUSTOM_WORKER",
+            "XENON_VLLM_PROGRESS_TRANSPORT",
+            "XENON_VLLM_PROGRESS_WRITES",
+        )
+        if (value := str(os.environ.get(key) or "").strip())
+    }
+    if (
+        modal_defaults.model_volume is None
+        and not modal_defaults.use_vllm_torch_compile_cache
+        and not vllm_progress_env
+    ):
         return
     for runner in runners.values():
         if not isinstance(runner, ModalRunner):
@@ -603,13 +742,31 @@ def _apply_workspace_modal_defaults(runners: dict[str, object], ns: argparse.Nam
         runner.resources = _modal_resources_with_workspace_defaults(
             resources=runner.resources,
             modal_defaults=modal_defaults,
+            vllm_progress_env=vllm_progress_env,
         )
 
 
-def _modal_resources_with_workspace_defaults(*, resources: ModalResources, modal_defaults: Any) -> ModalResources:
+def _attach_workspace_root_to_modal_runners(runners: dict[str, object], ns: argparse.Namespace) -> None:
+    workspace_root = _workspace_config_for_ns(ns).workspace_root
+    for runner in runners.values():
+        if isinstance(runner, ModalRunner):
+            runner.workspace_root = workspace_root
+
+
+def _modal_resources_with_workspace_defaults(
+    *,
+    resources: ModalResources,
+    modal_defaults: Any,
+    vllm_progress_env: Mapping[str, str] | None = None,
+) -> ModalResources:
     env = dict(resources.env)
     volumes = list(resources.volumes)
     changed = False
+
+    for key, value in (vllm_progress_env or {}).items():
+        if env.get(key) != value:
+            env[key] = value
+            changed = True
 
     model_volume = str(modal_defaults.model_volume or "").strip()
     model_volume_path = str(modal_defaults.model_volume_path or "").strip() or "/models"
@@ -1145,6 +1302,11 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_workflow_runner_args(run)
     _add_workflow_logging_arg(run)
     run.add_argument(
+        "--run-id",
+        default=None,
+        help="Use this id for a new workflow run.",
+    )
+    run.add_argument(
         "--resume-run-id",
         default=None,
         help="Resume a previously recorded workflow run id.",
@@ -1213,6 +1375,27 @@ def _build_parser() -> argparse.ArgumentParser:
         "--local-catalog-root",
         default=None,
         help="Optional local workflow state root; defaults under ~/.xenon/pipelines_v2/catalog.",
+    )
+
+    cancel = workflow_subparsers.add_parser(
+        "cancel",
+        help="Stop active Modal apps and mark a tracked workflow run cancelled.",
+    )
+    cancel.add_argument("--run-id", required=True, help="Workflow run id to cancel.")
+    cancel.add_argument(
+        "--local-catalog-root",
+        default=None,
+        help="Optional local workflow state root; defaults under ~/.xenon/pipelines_v2/catalog.",
+    )
+    cancel.add_argument(
+        "--catalog-postgres-env",
+        default=None,
+        help="Optional env var name for a Postgres-backed catalog.",
+    )
+    cancel.add_argument(
+        "--yes",
+        action="store_true",
+        help="Required confirmation for stopping remote workflow apps.",
     )
 
     rerun_step = workflow_subparsers.add_parser("rerun-step", help="Rerun one workflow step using artifacts from a prior run.")

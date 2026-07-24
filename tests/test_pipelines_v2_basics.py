@@ -114,6 +114,7 @@ from pipelines_v2.runtime.remote_executor import _artifact_id_for, execute_remot
 from pipelines_v2.runtime.modal_worker import (
     _modal_shard_count,
     _mounted_volumes,
+    _resolved_local_python_sources,
     _resolved_runtime_spec,
     run_many_on_modal,
     run_on_modal,
@@ -2865,6 +2866,104 @@ def test_modal_runner_uses_generic_engine_identity(monkeypatch: pytest.MonkeyPat
     }
 
 
+def test_modal_runner_forwards_workspace_root_without_serializing_it(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_run_on_modal(
+        *,
+        runner_config: dict[str, object],
+        store_config: dict[str, object],
+        spec_payload: dict[str, object],
+        workspace_root: Path | None = None,
+    ) -> dict[str, object]:
+        del store_config
+        observed["workspace_root"] = workspace_root
+        return {
+            "artifact_id": "capture_workspace_root",
+            "artifact_kind": "capture",
+            "schema_version": 1,
+            "operation_spec_hash": "abc123",
+            "operation_semantic_hash": "abc123",
+            "created_at": "2026-07-23T00:00:00+00:00",
+            "engine": spec_payload["engine"],
+            "runner": runner_config,
+            "input_artifact_refs": [],
+            "example_coverage": make_toy_dataset().coverage(),
+            "storage_refs": {"features": {}},
+            "metadata": {},
+        }
+
+    monkeypatch.setattr("pipelines_v2.runtime.modal.run_on_modal", fake_run_on_modal)
+    workspace = tmp_path / "selected-project"
+    workspace.mkdir()
+    runner = ModalRunner(
+        resources=ModalResources(gpu="L4"),
+        artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
+        workspace_root=workspace,
+    )
+
+    artifact = runner.run(make_toy_capture_spec())
+
+    assert artifact.id == "capture_workspace_root"
+    assert observed["workspace_root"] == workspace
+    assert "workspace_root" not in runner.identity()
+
+
+def test_modal_runner_batch_forwards_workspace_root(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_run_many_on_modal(
+        *,
+        runner_config: dict[str, object],
+        store_config: dict[str, object],
+        spec_payloads: list[dict[str, object]],
+        workflow_contexts: list[dict[str, object] | None],
+        workspace_root: Path | None = None,
+        progress_callback: Any | None = None,
+    ) -> list[dict[str, object]]:
+        del store_config, workflow_contexts, progress_callback
+        observed["workspace_root"] = workspace_root
+        return [
+            {
+                "artifact_id": "capture_batch_workspace_root",
+                "artifact_kind": "capture",
+                "schema_version": 1,
+                "operation_spec_hash": "abc123",
+                "operation_semantic_hash": "abc123",
+                "created_at": "2026-07-23T00:00:00+00:00",
+                "engine": spec_payloads[0]["engine"],
+                "runner": runner_config,
+                "input_artifact_refs": [],
+                "example_coverage": make_toy_dataset().coverage(),
+                "storage_refs": {"features": {}},
+                "metadata": {},
+            }
+        ]
+
+    monkeypatch.setattr(
+        "pipelines_v2.runtime.modal.run_many_on_modal",
+        fake_run_many_on_modal,
+    )
+    workspace = tmp_path / "selected-project"
+    workspace.mkdir()
+    runner = ModalRunner(
+        resources=ModalResources(gpu="L4"),
+        artifacts=ModalVolumeStore(name="xenon-data", root=str(tmp_path / "mounted")),
+        workspace_root=workspace,
+    )
+
+    artifacts = runner.run_many([make_toy_capture_spec()])
+
+    assert [artifact.id for artifact in artifacts] == ["capture_batch_workspace_root"]
+    assert observed["workspace_root"] == workspace
+
+
 def test_modal_runner_serializes_additional_volume_mounts(tmp_path: Path) -> None:
     runner = ModalRunner(
         resources=ModalResources(
@@ -3027,6 +3126,72 @@ def test_mounted_volumes_reject_duplicate_mount_paths_for_different_volumes() ->
         )
 
 
+def test_modal_worker_resolves_local_sources_against_explicit_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "selected-project"
+    workflows = workspace / "workflows"
+    workflows.mkdir(parents=True)
+    fallback = tmp_path / "xenon-checkout"
+    fallback.mkdir()
+    (fallback / "pyproject.toml").touch()
+    monkeypatch.chdir(fallback)
+
+    mounts, pythonpath = _resolved_local_python_sources(
+        ("workflows",),
+        workspace_root=workspace,
+    )
+
+    assert mounts == ((workflows, "/root/pipelines_v2_workspace/workflows"),)
+    assert pythonpath == ("/root/pipelines_v2_workspace",)
+
+
+def test_modal_worker_resolves_project_and_library_sources_from_distinct_roots(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "selected-project"
+    workflows = workspace / "workflows"
+    workflows.mkdir(parents=True)
+    library = tmp_path / "xenon-checkout"
+    pipelines = library / "pipelines_v2"
+    pipelines.mkdir(parents=True)
+    monkeypatch.setattr(
+        "pipelines_v2.runtime.modal_worker.find_workspace_root",
+        lambda start=None: library,
+    )
+
+    mounts, pythonpath = _resolved_local_python_sources(
+        ("pipelines_v2", "workflows"),
+        workspace_root=workspace,
+    )
+
+    assert mounts == (
+        (pipelines, "/root/pipelines_v2_workspace/pipelines_v2"),
+        (workflows, "/root/pipelines_v2_workspace/workflows"),
+    )
+    assert pythonpath == ("/root/pipelines_v2_workspace",)
+
+
+def test_modal_worker_reports_all_roots_for_missing_local_source(tmp_path: Path) -> None:
+    workspace = tmp_path / "selected-project"
+    workspace.mkdir()
+
+    with pytest.raises(FileNotFoundError, match="tried:"):
+        _resolved_local_python_sources(("missing_package",), workspace_root=workspace)
+
+
+def test_modal_worker_rejects_local_source_outside_explicit_workspace(tmp_path: Path) -> None:
+    workspace = tmp_path / "selected-project"
+    workspace.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+
+    with pytest.raises(ValueError):
+        _resolved_local_python_sources((str(outside),), workspace_root=workspace)
+
+
 def test_modal_worker_merges_spec_runtime_secrets_into_runtime_spec() -> None:
     dataset = Dataset.from_postgres(
         source=PostgresSource.from_env("XENON_DATABASE_URL"),
@@ -3091,6 +3256,9 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
 
         def remote(self, *args: object) -> object:
             return self._fn(*args)
+
+        def remote_gen(self, *args: object):
+            yield from self._fn(*args)
 
     class FakeAppRun:
         app_id = "ap-test-env"
@@ -3225,6 +3393,9 @@ def test_modal_worker_shards_model_bound_specs(
 
         def remote(self, *args: object) -> object:
             return self._fn(*args)
+
+        def remote_gen(self, *args: object):
+            yield from self._fn(*args)
 
     class FakeAppRun:
         app_id = "ap-test-shards"
@@ -3386,6 +3557,9 @@ def test_modal_worker_shards_batched_model_bound_specs(
         def remote(self, *args: object) -> object:
             return self._fn(*args)
 
+        def remote_gen(self, *args: object):
+            yield from self._fn(*args)
+
     class FakeAppRun:
         app_id = "ap-test-batch-shards"
 
@@ -3534,10 +3708,12 @@ def test_modal_worker_shards_batched_model_bound_specs(
         "ap-test-batch-shards",
     ]
     assert len(execute_many_calls) == 2
-    assert [
-        sorted({dict(context["execution_shard"])["index"] for context in contexts})
-        for contexts in execute_many_calls
-    ] == [[0], [1]]
+    assert sorted(
+        [
+            sorted({dict(context["execution_shard"])["index"] for context in contexts})
+            for contexts in execute_many_calls
+        ]
+    ) == [[0], [1]]
     assert [call["kind"] for call in merge_calls] == ["capture", "generation_run", "patched_generation"]
     assert all(len(call["shard_ids"]) == 2 for call in merge_calls)
     assert "remote_batch_shards_submitted" in [event["stage"] for event in progress_events]
@@ -3585,6 +3761,9 @@ def test_modal_worker_runner_env_overrides_spec_runtime_env(
 
         def remote(self, *args: object) -> object:
             return self._fn(*args)
+
+        def remote_gen(self, *args: object):
+            yield from self._fn(*args)
 
     class FakeAppRun:
         app_id = "ap-test-env-override"

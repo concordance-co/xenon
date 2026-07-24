@@ -197,6 +197,32 @@ use_vllm_torch_compile_cache = true
     )
 
 
+def test_cli_attaches_workflow_workspace_root_to_modal_runners(tmp_path: Path) -> None:
+    _write_workspace(tmp_path, config_text="[pipelines_v2]")
+    workflow = tmp_path / "workflows" / "demo" / "specs" / "workflow.py"
+    workflow.parent.mkdir(parents=True)
+    workflow.touch()
+    ns = argparse.Namespace(
+        file=str(workflow),
+        catalog_postgres_env=None,
+        local_catalog_root=None,
+    )
+
+    runners = _build_runners(
+        ns,
+        {
+            "capture_gpu": ModalRunnerSpec(
+                resources=ModalResources(gpu="L4"),
+                artifacts=ModalVolumeStore(name="xenon-data", root="/data/artifacts"),
+            ),
+        },
+    )
+
+    runner = runners["capture_gpu"]
+    assert runner.workspace_root == tmp_path
+    assert "workspace_root" not in runner.identity()
+
+
 def test_cli_workspace_modal_defaults_do_not_override_explicit_gpu_runner_cache_settings(
     monkeypatch,
     tmp_path: Path,

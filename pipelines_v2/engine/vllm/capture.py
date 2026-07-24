@@ -18,11 +18,36 @@ if TYPE_CHECKING:
     from pipelines_v2.engine.vllm.engine import VLLMEngine
 
 
+def _report_progress(
+    callback: Callable[[dict[str, Any]], None] | None,
+    *,
+    stage: str,
+    status: str,
+    message: str,
+    current: int | None = None,
+    total: int | None = None,
+    unit: str | None = None,
+) -> None:
+    if callback is None:
+        return
+    callback(
+        {
+            "stage": stage,
+            "status": status,
+            "message": message,
+            **({"current": current} if current is not None else {}),
+            **({"total": total} if total is not None else {}),
+            **({"unit": unit} if unit is not None else {}),
+        }
+    )
+
+
 def run_vllm_capture(
     *,
     engine: VLLMEngine,
     spec: CaptureSpec,
     batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> EngineCaptureResult:
     """Run a capture spec with vLLM in the current process."""
 
@@ -110,22 +135,52 @@ def run_vllm_capture(
                     "pipelines_v2.engine.vllm.hidden_states_connector"
                 )
 
-        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-        _preflight_prompt_lengths(
-            tokenizer=tokenizer,
-            examples=examples,
-            max_model_len=engine.max_model_len,
-            add_generation_prompt=bool(engine.add_generation_prompt),
-            generation_max_tokens=spec.generation.max_tokens if wants_generation else None,
-            tools=spec.generation.chat_tools,
-            tool_choice=spec.generation.tool_choice,
-            enable_thinking=engine.enable_thinking,
-            chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
+        _report_progress(
+            progress_callback,
+            stage="model_loading",
+            status="running",
+            message="Loading tokenizer and model",
         )
+        from .model_load_progress import (
+            enable_model_load_progress,
+            model_load_progress_monitor,
+        )
+
+        enable_model_load_progress(llm_kwargs, progress_callback)
         try:
-            llm = LLM(**llm_kwargs)
-        except RuntimeError as exc:
-            raise RuntimeError(_engine_init_error_message(exc, llm_kwargs=llm_kwargs)) from exc
+            tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+            _preflight_prompt_lengths(
+                tokenizer=tokenizer,
+                examples=examples,
+                max_model_len=engine.max_model_len,
+                add_generation_prompt=bool(engine.add_generation_prompt),
+                generation_max_tokens=spec.generation.max_tokens if wants_generation else None,
+                tools=spec.generation.chat_tools,
+                tool_choice=spec.generation.tool_choice,
+                enable_thinking=engine.enable_thinking,
+                chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
+            )
+            try:
+                with model_load_progress_monitor(progress_callback):
+                    llm = LLM(**llm_kwargs)
+            except RuntimeError as exc:
+                raise RuntimeError(_engine_init_error_message(exc, llm_kwargs=llm_kwargs)) from exc
+        except Exception:
+            _report_progress(
+                progress_callback,
+                stage="model_loading",
+                status="error",
+                message="Tokenizer or model failed to load",
+            )
+            raise
+        _report_progress(
+            progress_callback,
+            stage="model_loading",
+            status="complete",
+            current=1,
+            total=1,
+            message="Model ready",
+        )
         reasoning_parser = _build_reasoning_parser(
             tokenizer=tokenizer,
             parser_name=reasoning_parser,
@@ -138,6 +193,7 @@ def run_vllm_capture(
             tokenizer=tokenizer,
             reasoning_parser=reasoning_parser,
             batch_callback=batch_callback,
+            progress_callback=progress_callback,
         )
 
 
@@ -223,6 +279,7 @@ def run_vllm_capture_with_runtime(
     runtime: Any,
     spec: CaptureSpec,
     batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> EngineCaptureResult:
     """Run capture against an already-loaded reusable vLLM runtime."""
 
@@ -233,6 +290,7 @@ def run_vllm_capture_with_runtime(
         tokenizer=runtime.tokenizer,
         reasoning_parser=runtime.reasoning_parser_instance,
         batch_callback=batch_callback,
+        progress_callback=progress_callback,
     )
 
 
@@ -244,6 +302,7 @@ def _run_vllm_capture_loaded(
     tokenizer: Any,
     reasoning_parser: Any | None,
     batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> EngineCaptureResult:
     from functools import partial
 
@@ -285,8 +344,42 @@ def _run_vllm_capture_loaded(
     feature_payloads: dict[str, dict[str, Any]] = {site.name: _empty_feature(site) for site in spec.sites}
     generations: list[dict[str, Any]] = []
     example_metadata: list[dict[str, Any]] = []
+    processed_examples = 0
+    total_examples = len(examples)
+    _report_progress(
+        progress_callback,
+        stage="prompt_preprocessing",
+        status="running" if total_examples else "complete",
+        current=0,
+        total=total_examples,
+        unit="prompts",
+        message="Preparing prompts",
+    )
+    _report_progress(
+        progress_callback,
+        stage="generation",
+        status="running" if total_examples else "complete",
+        current=0,
+        total=total_examples,
+        unit="prompts",
+        message="Waiting for prepared prompts" if total_examples else "No prompts to generate",
+    )
 
     for batch in _iter_batches(examples, batch_size):
+        batch_start = processed_examples
+
+        def _prompt_preprocessed(batch_current: int) -> None:
+            current = batch_start + batch_current
+            _report_progress(
+                progress_callback,
+                stage="prompt_preprocessing",
+                status="complete" if current >= total_examples else "running",
+                current=current,
+                total=total_examples,
+                unit="prompts",
+                message="Prompts ready" if current >= total_examples else "Preparing prompts",
+            )
+
         batch_records = _capture_prompt_batch(
             llm=llm,
             tokenizer=tokenizer,
@@ -309,6 +402,17 @@ def _run_vllm_capture_loaded(
             capture_generated_tokens=capture_generated_tokens,
             enable_thinking=engine.enable_thinking,
             chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
+            preprocess_callback=_prompt_preprocessed,
+        )
+        processed_examples += len(batch)
+        _report_progress(
+            progress_callback,
+            stage="generation",
+            status="complete" if processed_examples >= total_examples else "running",
+            current=processed_examples,
+            total=total_examples,
+            unit="prompts",
+            message="Generation complete" if processed_examples >= total_examples else "Generating",
         )
         batch_generations: list[dict[str, Any]] = []
         batch_example_metadata: list[dict[str, Any]] = []
@@ -796,6 +900,7 @@ def _capture_prompt_batch(
     enable_thinking: bool | None = None,
     capture_generated_tokens: bool = False,
     chat_template_kwargs: dict[str, Any] | None = None,
+    preprocess_callback: Callable[[int], None] | None = None,
 ) -> list[dict[str, Any]]:
     import torch
     from safetensors.torch import load_file
@@ -803,7 +908,7 @@ def _capture_prompt_batch(
 
     prompts: list[dict[str, Any]] = []
     tokenized_by_key: dict[str, dict[str, Any]] = {}
-    for example in examples:
+    for index, example in enumerate(examples, start=1):
         tokenized_prompt = _prompt_token_ids(
             tokenizer=tokenizer,
             example=example,
@@ -818,6 +923,8 @@ def _capture_prompt_batch(
         prompt_token_ids = tokenized_prompt["token_ids"]
         prompts.append({"prompt_token_ids": prompt_token_ids})
         tokenized_by_key[example.key] = tokenized_prompt
+        if preprocess_callback is not None:
+            preprocess_callback(index)
 
     if wants_routing:
         _apply_to_model(llm, _reset_router_buffers_on_model)

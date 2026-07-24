@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-import re
 import logging
+import queue
+import re
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
-from pipelines_v2.core.paths import find_workspace_root, resolve_workspace_path
+from pipelines_v2.core.paths import find_workspace_root
 from pipelines_v2.core.types import RuntimeSecret
 from pipelines_v2.engine import PythonRuntimeSpec
 from pipelines_v2.operations import operation_spec_from_dict
@@ -19,6 +22,8 @@ from pipelines_v2.storage.modal import modal_volume_mount_path
 
 _REMOTE_WORKSPACE_ROOT = "/root/pipelines_v2_workspace"
 _LOG = logging.getLogger("pipelines_v2.modal")
+_PROGRESS_INTERVAL_SECONDS = 0.1
+_PROGRESS_QUEUE_LIMIT = 256
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,12 +34,114 @@ class MountedVolume:
     commit_on_success: bool = False
 
 
+def _execute_with_progress_stream(
+    execute: Callable[[Callable[[Mapping[str, Any]], None]], Any],
+) -> Iterable[dict[str, Any]]:
+    """Run blocking remote work while yielding progress callback payloads."""
+
+    messages: queue.Queue[tuple[str, Any]] = queue.Queue(
+        maxsize=_PROGRESS_QUEUE_LIMIT,
+    )
+    outcome: dict[str, Any] = {}
+    last_emitted_at: dict[tuple[str, str, str], float] = {}
+
+    def _report(payload: Mapping[str, Any]) -> None:
+        event = dict(payload)
+        metrics = event.get("metrics") if isinstance(event.get("metrics"), Mapping) else {}
+        key = (
+            str(event.get("step_name") or ""),
+            str(metrics.get("container_id") or ""),
+            str(event.get("stage") or ""),
+        )
+        status = str(event.get("status") or "running").lower()
+        now = time.monotonic()
+        if status == "running":
+            previous = last_emitted_at.get(key)
+            if previous is not None and now - previous < _PROGRESS_INTERVAL_SECONDS:
+                return
+        last_emitted_at[key] = now
+        messages.put(("progress", event))
+
+    def _run() -> None:
+        try:
+            outcome["result"] = execute(_report)
+        except BaseException as exc:
+            outcome["error"] = exc
+        finally:
+            messages.put(("done", None))
+
+    worker = threading.Thread(target=_run, name="xenon-modal-progress", daemon=True)
+    worker.start()
+    while True:
+        kind, payload = messages.get()
+        if kind == "done":
+            break
+        yield {"kind": kind, "event": payload}
+    worker.join()
+    if "error" in outcome:
+        raise outcome["error"]
+    yield {"kind": "result", "result": outcome.get("result")}
+
+
+def _remote_progress_stream(remote_function: Any, *args: Any) -> Iterable[Mapping[str, Any]]:
+    """Call a Modal generator through the streaming SDK surface."""
+
+    remote_gen = getattr(remote_function, "remote_gen", None)
+    if not callable(remote_gen):
+        raise RuntimeError(
+            "Installed Modal SDK does not expose Function.remote_gen; "
+            "upgrade Modal to use live Xenon progress streaming"
+        )
+    return remote_gen(*args)
+
+
+def _consume_progress_stream(
+    stream: Iterable[Mapping[str, Any]],
+    progress_callback: Callable[[Mapping[str, Any]], None] | None,
+) -> Any:
+    result: Any = None
+    result_seen = False
+    for envelope in stream:
+        kind = str(envelope.get("kind") or "")
+        if kind == "progress":
+            event = envelope.get("event")
+            if progress_callback is not None and isinstance(event, Mapping):
+                try:
+                    progress_callback(event)
+                except Exception:
+                    _LOG.warning("local Modal progress callback failed", exc_info=True)
+            continue
+        if kind == "result":
+            result = envelope.get("result")
+            result_seen = True
+            continue
+        raise RuntimeError(f"Modal progress stream returned unknown envelope kind: {kind!r}")
+    if not result_seen:
+        raise RuntimeError("Modal progress stream ended without a result")
+    return result
+
+
+def _serialized_progress_callback(
+    progress_callback: Callable[[Mapping[str, Any]], None] | None,
+) -> Callable[[Mapping[str, Any]], None] | None:
+    if progress_callback is None:
+        return None
+    lock = threading.Lock()
+
+    def _callback(payload: Mapping[str, Any]) -> None:
+        with lock:
+            progress_callback(payload)
+
+    return _callback
+
+
 def run_on_modal(
     *,
     runner_config: dict[str, Any],
     store_config: dict[str, Any],
     spec_payload: dict[str, Any],
     workflow_context: dict[str, Any] | None = None,
+    workspace_root: str | Path | None = None,
     progress_callback: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Submit serialized work to Modal and return the remote result."""
@@ -51,17 +158,19 @@ def run_on_modal(
     resources = runner_config.get("resources", {})
     _validate_secret_bindings(runtime_spec=runtime_spec, resources=resources)
     mounted_volumes = _mounted_volumes(store_config=store_config, resources=resources)
-    app = modal.App(
-        _modal_app_name(
-            spec_payload=spec_payload,
-            workflow_context=workflow_context,
-        )
+    modal_app_name = _modal_app_name(
+        spec_payload=spec_payload,
+        workflow_context=workflow_context,
     )
+    app = modal.App(modal_app_name)
     image = modal.Image.debian_slim(python_version=runtime_spec.python_version)
     if runtime_spec.pip_packages:
         image = image.pip_install(*runtime_spec.pip_packages)
     runtime_env = merged_runtime_env(runtime_spec.env, resources.get("env"))
-    source_mounts, pythonpath_entries = _resolved_local_python_sources(runtime_spec.local_python_sources)
+    source_mounts, pythonpath_entries = _resolved_local_python_sources(
+        runtime_spec.local_python_sources,
+        workspace_root=workspace_root,
+    )
     if pythonpath_entries:
         existing_pythonpath = runtime_env.get("PYTHONPATH", "")
         combined = [entry for entry in pythonpath_entries if entry]
@@ -97,26 +206,34 @@ def run_on_modal(
     if resources.get("max_containers") is not None:
         function_kwargs["max_containers"] = int(resources["max_containers"])
 
-    @app.function(**function_kwargs)
-    def _remote_execute(
+    stream_function_kwargs = {**function_kwargs, "is_generator": True}
+
+    @app.function(**stream_function_kwargs)
+    def _remote_execute_stream(
         remote_runner_config: dict[str, Any],
         remote_store_config: dict[str, Any],
         remote_spec_payload: dict[str, Any],
         remote_workflow_context: dict[str, Any] | None,
-    ) -> dict[str, Any]:
+    ) -> Iterable[dict[str, Any]]:
         _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import execute_remote
 
-        result = execute_remote(
-            runner_config=remote_runner_config,
-            store_config=remote_store_config,
-            spec_payload=remote_spec_payload,
-            workflow_context=remote_workflow_context,
-        )
-        warnings = _commit_mounted_volumes(mounted_volumes)
-        if warnings:
-            result.setdefault("metadata", {})["volume_commit_warnings"] = warnings
-        return result
+        def _execute(
+            report_progress: Callable[[Mapping[str, Any]], None],
+        ) -> dict[str, Any]:
+            result = execute_remote(
+                runner_config=remote_runner_config,
+                store_config=remote_store_config,
+                spec_payload=remote_spec_payload,
+                workflow_context=remote_workflow_context,
+                progress_callback=report_progress,
+            )
+            warnings = _commit_mounted_volumes(mounted_volumes)
+            if warnings:
+                result.setdefault("metadata", {})["volume_commit_warnings"] = warnings
+            return result
+
+        yield from _execute_with_progress_stream(_execute)
 
     @app.function(**function_kwargs)
     def _remote_merge_shards(
@@ -158,12 +275,14 @@ def run_on_modal(
                 "runtime_kind": "modal",
                 "message": "Starting Modal app launch",
                 "metrics": {
+                    "app_name": modal_app_name,
                     "source_mount_count": len(source_mounts),
                 },
             }
         )
     with app.run() as running_app:
         runtime_app_id = getattr(running_app, "app_id", None)
+        streamed_progress_callback = _serialized_progress_callback(progress_callback)
         if progress_callback is not None:
             progress_callback(
                 {
@@ -172,6 +291,7 @@ def run_on_modal(
                     "runtime_kind": "modal",
                     "runtime_app_id": runtime_app_id,
                     "message": "Modal app started",
+                    "metrics": {"app_name": modal_app_name},
                 }
             )
         _LOG.info(
@@ -194,17 +314,27 @@ def run_on_modal(
                         }
                     )
                 shard_contexts = [
-                    _workflow_context_with_shard(workflow_context, index=index, count=shard_count)
+                    _workflow_context_with_runtime(
+                        workflow_context,
+                        runtime_app_id=runtime_app_id,
+                        runtime_app_name=modal_app_name,
+                        index=index,
+                        count=shard_count,
+                    )
                     for index in range(shard_count)
                 ]
                 with ThreadPoolExecutor(max_workers=shard_count) as executor:
                     futures = [
                         executor.submit(
-                            _remote_execute.remote,
-                            runner_config,
-                            store_config,
-                            spec_payload,
-                            shard_context,
+                            _consume_progress_stream,
+                            _remote_progress_stream(
+                                _remote_execute_stream,
+                                runner_config,
+                                store_config,
+                                spec_payload,
+                                shard_context,
+                            ),
+                            streamed_progress_callback,
                         )
                         for shard_context in shard_contexts
                     ]
@@ -225,11 +355,39 @@ def run_on_modal(
                     store_config,
                     spec_payload,
                     shard_results,
-                    workflow_context,
+                    _workflow_context_with_runtime(
+                        workflow_context,
+                        runtime_app_id=runtime_app_id,
+                        runtime_app_name=modal_app_name,
+                    ),
                 )
             else:
-                result = _remote_execute.remote(runner_config, store_config, spec_payload, workflow_context)
+                result = _consume_progress_stream(
+                    _remote_progress_stream(
+                        _remote_execute_stream,
+                        runner_config,
+                        store_config,
+                        spec_payload,
+                        _workflow_context_with_runtime(
+                            workflow_context,
+                            runtime_app_id=runtime_app_id,
+                            runtime_app_name=modal_app_name,
+                        ),
+                    ),
+                    streamed_progress_callback,
+                )
         except Exception as exc:
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "status": "error",
+                        "stage": "remote_execution_failed",
+                        "runtime_kind": "modal",
+                        "runtime_app_id": runtime_app_id,
+                        "message": f"Modal remote execution failed: {exc}",
+                        "metrics": {"app_name": modal_app_name},
+                    }
+                )
             if runtime_app_id is not None:
                 try:
                     setattr(exc, "runtime_app_id", runtime_app_id)
@@ -259,6 +417,7 @@ def run_many_on_modal(
     store_config: dict[str, Any],
     spec_payloads: list[dict[str, Any]],
     workflow_contexts: list[dict[str, Any] | None] | None = None,
+    workspace_root: str | Path | None = None,
     progress_callback: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
     """Submit multiple serialized work items to one Modal app invocation."""
@@ -290,12 +449,16 @@ def run_many_on_modal(
         )
     _validate_secret_bindings(runtime_spec=runtime_spec, resources=resources)
     mounted_volumes = _mounted_volumes(store_config=store_config, resources=resources)
-    app = modal.App(_modal_batch_app_name(workflow_contexts=contexts))
+    modal_app_name = _modal_batch_app_name(workflow_contexts=contexts)
+    app = modal.App(modal_app_name)
     image = modal.Image.debian_slim(python_version=runtime_spec.python_version)
     if runtime_spec.pip_packages:
         image = image.pip_install(*runtime_spec.pip_packages)
     runtime_env = merged_runtime_env(runtime_spec.env, resources.get("env"))
-    source_mounts, pythonpath_entries = _resolved_local_python_sources(runtime_spec.local_python_sources)
+    source_mounts, pythonpath_entries = _resolved_local_python_sources(
+        runtime_spec.local_python_sources,
+        workspace_root=workspace_root,
+    )
     if pythonpath_entries:
         existing_pythonpath = runtime_env.get("PYTHONPATH", "")
         combined = [entry for entry in pythonpath_entries if entry]
@@ -331,27 +494,35 @@ def run_many_on_modal(
     if resources.get("max_containers") is not None:
         function_kwargs["max_containers"] = int(resources["max_containers"])
 
-    @app.function(**function_kwargs)
-    def _remote_execute_many(
+    stream_function_kwargs = {**function_kwargs, "is_generator": True}
+
+    @app.function(**stream_function_kwargs)
+    def _remote_execute_many_stream(
         remote_runner_config: dict[str, Any],
         remote_store_config: dict[str, Any],
         remote_spec_payloads: list[dict[str, Any]],
         remote_workflow_contexts: list[dict[str, Any] | None],
-    ) -> list[dict[str, Any]]:
+    ) -> Iterable[dict[str, Any]]:
         _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import execute_remote_many
 
-        results = execute_remote_many(
-            runner_config=remote_runner_config,
-            store_config=remote_store_config,
-            spec_payloads=remote_spec_payloads,
-            workflow_contexts=remote_workflow_contexts,
-        )
-        warnings = _commit_mounted_volumes(mounted_volumes)
-        if warnings:
-            for result in results:
-                result.setdefault("metadata", {})["volume_commit_warnings"] = warnings
-        return results
+        def _execute(
+            report_progress: Callable[[Mapping[str, Any]], None],
+        ) -> list[dict[str, Any]]:
+            results = execute_remote_many(
+                runner_config=remote_runner_config,
+                store_config=remote_store_config,
+                spec_payloads=remote_spec_payloads,
+                workflow_contexts=remote_workflow_contexts,
+                progress_callback=report_progress,
+            )
+            warnings = _commit_mounted_volumes(mounted_volumes)
+            if warnings:
+                for result in results:
+                    result.setdefault("metadata", {})["volume_commit_warnings"] = warnings
+            return results
+
+        yield from _execute_with_progress_stream(_execute)
 
     @app.function(**function_kwargs)
     def _remote_merge_shards(
@@ -394,6 +565,7 @@ def run_many_on_modal(
                 "runtime_kind": "modal",
                 "message": "Starting Modal batch app launch",
                 "metrics": {
+                    "app_name": modal_app_name,
                     "source_mount_count": len(source_mounts),
                     "spec_count": len(spec_payloads),
                 },
@@ -401,6 +573,7 @@ def run_many_on_modal(
         )
     with app.run() as running_app:
         runtime_app_id = getattr(running_app, "app_id", None)
+        streamed_progress_callback = _serialized_progress_callback(progress_callback)
         if progress_callback is not None:
             progress_callback(
                 {
@@ -409,7 +582,10 @@ def run_many_on_modal(
                     "runtime_kind": "modal",
                     "runtime_app_id": runtime_app_id,
                     "message": "Modal batch app started",
-                    "metrics": {"spec_count": len(spec_payloads)},
+                    "metrics": {
+                        "app_name": modal_app_name,
+                        "spec_count": len(spec_payloads),
+                    },
                 }
             )
         _LOG.info(
@@ -436,7 +612,13 @@ def run_many_on_modal(
                     )
                 shard_contexts = [
                     [
-                        _workflow_context_with_shard(context, index=index, count=shard_count)
+                        _workflow_context_with_runtime(
+                            context,
+                            runtime_app_id=runtime_app_id,
+                            runtime_app_name=modal_app_name,
+                            index=index,
+                            count=shard_count,
+                        )
                         for context in contexts
                     ]
                     for index in range(shard_count)
@@ -444,11 +626,15 @@ def run_many_on_modal(
                 with ThreadPoolExecutor(max_workers=shard_count) as executor:
                     futures = [
                         executor.submit(
-                            _remote_execute_many.remote,
-                            runner_config,
-                            store_config,
-                            spec_payloads,
-                            contexts_for_shard,
+                            _consume_progress_stream,
+                            _remote_progress_stream(
+                                _remote_execute_many_stream,
+                                runner_config,
+                                store_config,
+                                spec_payloads,
+                                contexts_for_shard,
+                            ),
+                            streamed_progress_callback,
                         )
                         for contexts_for_shard in shard_contexts
                     ]
@@ -479,13 +665,48 @@ def run_many_on_modal(
                         store_config,
                         spec_payload,
                         [shard_results[spec_index] for shard_results in shard_batches],
-                        contexts[spec_index],
+                        _workflow_context_with_runtime(
+                            contexts[spec_index],
+                            runtime_app_id=runtime_app_id,
+                            runtime_app_name=modal_app_name,
+                        ),
                     )
                     for spec_index, spec_payload in enumerate(spec_payloads)
                 ]
             else:
-                results = _remote_execute_many.remote(runner_config, store_config, spec_payloads, contexts)
+                runtime_contexts = [
+                    _workflow_context_with_runtime(
+                        context,
+                        runtime_app_id=runtime_app_id,
+                        runtime_app_name=modal_app_name,
+                    )
+                    for context in contexts
+                ]
+                results = _consume_progress_stream(
+                    _remote_progress_stream(
+                        _remote_execute_many_stream,
+                        runner_config,
+                        store_config,
+                        spec_payloads,
+                        runtime_contexts,
+                    ),
+                    streamed_progress_callback,
+                )
         except Exception as exc:
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "status": "error",
+                        "stage": "remote_batch_execution_failed",
+                        "runtime_kind": "modal",
+                        "runtime_app_id": runtime_app_id,
+                        "message": f"Modal remote batch execution failed: {exc}",
+                        "metrics": {
+                            "app_name": modal_app_name,
+                            "spec_count": len(spec_payloads),
+                        },
+                    }
+                )
             if runtime_app_id is not None:
                 try:
                     setattr(exc, "runtime_app_id", runtime_app_id)
@@ -532,6 +753,33 @@ def _workflow_context_with_shard(
 ) -> dict[str, Any]:
     context = dict(workflow_context or {})
     context["execution_shard"] = {"index": int(index), "count": int(count)}
+    return context
+
+
+def _workflow_context_with_runtime(
+    workflow_context: dict[str, Any] | None,
+    *,
+    runtime_app_id: str | None,
+    runtime_app_name: str,
+    index: int = 0,
+    count: int = 1,
+) -> dict[str, Any]:
+    context = _workflow_context_with_shard(
+        workflow_context,
+        index=index,
+        count=count,
+    )
+    context.update(
+        {
+            "runtime_kind": "modal",
+            "runtime_app_id": runtime_app_id,
+            "runtime_app_name": runtime_app_name,
+            "container_index": int(index),
+            "container_count": int(count),
+            "container_id": f"container-{int(index) + 1}",
+            "container_label": f"Container {int(index) + 1}",
+        }
+    )
     return context
 
 
@@ -738,8 +986,18 @@ def _configure_remote_logging() -> None:
     logger.debug("remote Modal logging configured level=%s", level_name)
 
 
-def _resolved_local_python_sources(sources: tuple[str, ...]) -> tuple[tuple[tuple[Path, str], ...], tuple[str, ...]]:
-    workspace_root = find_workspace_root()
+def _resolved_local_python_sources(
+    sources: tuple[str, ...],
+    *,
+    workspace_root: str | Path | None = None,
+) -> tuple[tuple[tuple[Path, str], ...], tuple[str, ...]]:
+    primary_root = (
+        Path(workspace_root).expanduser().resolve()
+        if workspace_root is not None
+        else find_workspace_root()
+    )
+    library_root = find_workspace_root(Path(__file__))
+    source_roots = tuple(dict.fromkeys((primary_root, library_root)))
     resolved_mounts: list[tuple[Path, str]] = []
     pythonpath_entries: list[str] = []
     for source in sources:
@@ -747,17 +1005,64 @@ def _resolved_local_python_sources(sources: tuple[str, ...]) -> tuple[tuple[tupl
         if not normalized:
             continue
         if normalized == ".":
-            local_path = workspace_root
+            local_path = primary_root
             remote_path = _REMOTE_WORKSPACE_ROOT
             pythonpath_entry = _REMOTE_WORKSPACE_ROOT
         else:
-            local_path = resolve_workspace_path(normalized, workspace_root=workspace_root)
-            relative = local_path.relative_to(workspace_root)
+            local_path, relative = _resolve_local_python_source(
+                normalized,
+                source_roots=source_roots,
+            )
             remote_path = f"{_REMOTE_WORKSPACE_ROOT}/{relative.as_posix()}"
             pythonpath_entry = _REMOTE_WORKSPACE_ROOT
         mount = (local_path, remote_path)
+        conflicting = next(
+            (
+                existing
+                for existing in resolved_mounts
+                if existing[1] == remote_path and existing[0] != local_path
+            ),
+            None,
+        )
+        if conflicting is not None:
+            raise ValueError(
+                f"local_python_sources map multiple directories to {remote_path}: "
+                f"{conflicting[0]} and {local_path}"
+            )
         if mount not in resolved_mounts:
             resolved_mounts.append(mount)
         if pythonpath_entry not in pythonpath_entries:
             pythonpath_entries.append(pythonpath_entry)
     return tuple(resolved_mounts), tuple(pythonpath_entries)
+
+
+def _resolve_local_python_source(
+    source: str,
+    *,
+    source_roots: tuple[Path, ...],
+) -> tuple[Path, Path]:
+    source_path = Path(source).expanduser()
+    attempted: list[Path] = []
+    for root in source_roots:
+        local_path = (
+            source_path.resolve()
+            if source_path.is_absolute()
+            else (root / source_path).resolve()
+        )
+        try:
+            relative = local_path.relative_to(root)
+        except ValueError:
+            continue
+        attempted.append(local_path)
+        if local_path.is_dir():
+            return local_path, relative
+
+    allowed = ", ".join(str(root) for root in source_roots)
+    if not attempted:
+        raise ValueError(
+            f"local_python_source {source!r} must be inside an allowed workspace: {allowed}"
+        )
+    tried = ", ".join(str(path) for path in attempted)
+    raise FileNotFoundError(
+        f"local_python_source {source!r} does not identify a directory; tried: {tried}"
+    )

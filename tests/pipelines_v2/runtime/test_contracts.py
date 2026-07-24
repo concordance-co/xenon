@@ -348,8 +348,13 @@ def test_remote_executor_many_reuses_one_vllm_session_across_model_bound_specs(
                 metadata={"backend": "fake_vllm_session"},
             )
 
-    def fake_build_vllm_session_runtime(*, engine: VLLMEngine, specs: object) -> FakeRuntime:
-        del engine
+    def fake_build_vllm_session_runtime(
+        *,
+        engine: VLLMEngine,
+        specs: object,
+        progress_callback: object | None = None,
+    ) -> FakeRuntime:
+        del engine, progress_callback
         kinds = [getattr(spec, "kind", "unknown") for spec in specs]
         build_specs.append(kinds)
         return FakeRuntime(kinds)

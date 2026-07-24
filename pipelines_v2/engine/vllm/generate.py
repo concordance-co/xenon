@@ -22,16 +22,23 @@ def run_vllm_generation(
     engine: "VLLMEngine",
     spec: "GenerationRunSpec",
     batch_callback: Callable[[list[dict[str, Any]], dict[str, Any]], None] | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> EngineGenerationResult:
     return _run_vllm_generation(
         engine=engine,
         spec=spec,
         batch_callback=batch_callback,
-        capture_runner=lambda capture_spec, capture_callback: run_vllm_capture(
+        capture_runner=lambda capture_spec, capture_callback, capture_progress: run_vllm_capture(
             engine=engine,
             spec=capture_spec,
             batch_callback=capture_callback,
+            **(
+                {"progress_callback": capture_progress}
+                if capture_progress is not None
+                else {}
+            ),
         ),
+        progress_callback=progress_callback,
     )
 
 
@@ -40,6 +47,7 @@ def run_vllm_generation_with_runtime(
     runtime: Any,
     spec: "GenerationRunSpec",
     batch_callback: Callable[[list[dict[str, Any]], dict[str, Any]], None] | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> EngineGenerationResult:
     """Run generation through an already-loaded reusable vLLM runtime."""
 
@@ -47,11 +55,17 @@ def run_vllm_generation_with_runtime(
         engine=runtime.engine,
         spec=spec,
         batch_callback=batch_callback,
-        capture_runner=lambda capture_spec, capture_callback: run_vllm_capture_with_runtime(
+        capture_runner=lambda capture_spec, capture_callback, capture_progress: run_vllm_capture_with_runtime(
             runtime=runtime,
             spec=capture_spec,
             batch_callback=capture_callback,
+            **(
+                {"progress_callback": capture_progress}
+                if capture_progress is not None
+                else {}
+            ),
         ),
+        progress_callback=progress_callback,
     )
 
 
@@ -60,7 +74,8 @@ def _run_vllm_generation(
     engine: "VLLMEngine",
     spec: "GenerationRunSpec",
     batch_callback: Callable[[list[dict[str, Any]], dict[str, Any]], None] | None,
-    capture_runner: Callable[[CaptureSpec, Any], Any],
+    capture_runner: Callable[[CaptureSpec, Any, Any], Any],
+    progress_callback: Callable[[dict[str, Any]], None] | None,
 ) -> EngineGenerationResult:
     selected_examples = resolve_generation_examples(spec)
     capture_spec = CaptureSpec(
@@ -92,7 +107,11 @@ def _run_vllm_generation(
             },
         )
 
-    capture_result = capture_runner(capture_spec, _on_capture_batch if batch_callback is not None else None)
+    capture_result = capture_runner(
+        capture_spec,
+        _on_capture_batch if batch_callback is not None else None,
+        progress_callback,
+    )
     rows = _generation_rows_from_outputs(selected_examples, capture_result.generations)
     return EngineGenerationResult(
         rows=rows,
