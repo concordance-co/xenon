@@ -15,6 +15,8 @@ _RUN_ENV = "XENON_RUN_MODAL_VLLM_GPU_SMOKE"
 _CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_ENGINE_CONTRACTS"
 _PATCH_OPERATOR_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_PATCH_OPERATOR_CONTRACTS"
 _PAIRED_PATCH_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_PAIRED_PATCH_CONTRACTS"
+_CAPTURE_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_CAPTURE_CONTRACTS"
+_OUTPUT_CONTRACT_RUN_ENV = "XENON_RUN_MODAL_VLLM_OUTPUT_CONTRACTS"
 _TIMEOUT_ENV = "XENON_MODAL_VLLM_GPU_SMOKE_TIMEOUT_SECONDS"
 _CONTRACT_SHARD_COUNT_ENV = "XENON_MODAL_VLLM_ENGINE_CONTRACT_SHARD_COUNT"
 _CONTRACT_MAX_CONTAINERS_ENV = "XENON_MODAL_VLLM_ENGINE_CONTRACT_MAX_CONTAINERS"
@@ -147,6 +149,210 @@ def test_modal_vllm_satisfies_paired_patch_operator_contracts(tmp_path_factory: 
 
     coverage = _run_requested_modal_contracts(tmp_path_factory)
     assert "paired" in coverage
+
+
+@pytest.mark.contract
+@pytest.mark.modal
+@pytest.mark.vllm
+@pytest.mark.network
+@pytest.mark.slow
+def test_modal_vllm_generated_residual_and_moe_routing_contract(tmp_path: Path) -> None:
+    if os.getenv(_CAPTURE_CONTRACT_RUN_ENV) != "1":
+        pytest.skip(
+            f"set {_CAPTURE_CONTRACT_RUN_ENV}=1 to run the generated-residual/MoE capture contract"
+        )
+    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+
+    from pipelines_v2.api import (
+        CaptureSpec,
+        Dataset,
+        Example,
+        GenerationSpec,
+        MoERoutingSite,
+        ModalResources,
+        ModalRunner,
+        ModalVolumeMount,
+        ModalVolumeStore,
+        ResidualSite,
+        RoutingRecord,
+        TokenSelector,
+        VLLMEngine,
+    )
+
+    model_id = os.getenv(
+        "XENON_MODAL_VLLM_ENGINE_CONTRACT_MODEL_ID",
+        "/models/Qwen/Qwen3-30B-A3B",
+    )
+    model_volume = os.getenv("XENON_MODAL_MODEL_VOLUME", "xenon-models")
+    model_mount = os.getenv("XENON_MODAL_MODEL_VOLUME_PATH", "/models")
+    dataset = Dataset.from_examples(
+        [
+            Example(
+                key="capture_contract_buy",
+                prompt="State three short reasons a cautious investor might buy a diversified fund.",
+            ),
+            Example(
+                key="capture_contract_hold",
+                prompt="State three short reasons a cautious investor might hold cash.",
+            ),
+        ],
+        name="vllm_generated_residual_moe_contract",
+    )
+    engine = VLLMEngine(
+        model_id=model_id,
+        max_model_len=512,
+        enforce_eager=False,
+        max_num_seqs=2,
+        max_num_batched_tokens=1024,
+        enable_prefix_caching=False,
+        enable_chunked_prefill=True,
+        add_generation_prompt=False,
+        enable_thinking=False,
+    )
+    runner = ModalRunner(
+        resources=ModalResources(
+            gpu=os.getenv("XENON_MODAL_VLLM_ENGINE_CONTRACT_GPU", "A100-80GB"),
+            timeout_seconds=int(os.getenv(_TIMEOUT_ENV, "7200")),
+            max_containers=1,
+            volumes=(ModalVolumeMount(name=model_volume, mount_path=model_mount),),
+        ),
+        artifacts=ModalVolumeStore(
+            name="xenon-data",
+            root="/data/artifacts/pipelines_v2_vllm_capture_contract",
+            local_cache_root=tmp_path / "modal_cache",
+        ),
+    )
+    artifact = runner.run(
+        CaptureSpec(
+            engine=engine,
+            dataset=dataset,
+            sites=(
+                ResidualSite(
+                    name="generated_residual",
+                    site="resid_post",
+                    layers=(0, 24),
+                    tokens=TokenSelector.full_sequence(),
+                ),
+                MoERoutingSite(
+                    name="moe_routing",
+                    layers=(0, 24),
+                    tokens=TokenSelector.full_sequence(),
+                    record=(
+                        RoutingRecord.gate_logits(dtype="float16"),
+                        RoutingRecord.routing_decisions(required=True),
+                    ),
+                ),
+            ),
+            generation=GenerationSpec(
+                enabled=True,
+                max_tokens=16,
+                temperature=0.0,
+                capture_generated_tokens=True,
+            ),
+        )
+    )
+
+    metadata = artifact.manifest().metadata
+    assert metadata["router_enabled"] is True
+    assert {0, 24}.issubset(set(metadata["discovered_router_layers"]))
+    example_metadata = list(metadata["example_metadata"])
+    assert len(example_metadata) == 2
+    assert all(int(row["generated_token_count"]) > 0 for row in example_metadata)
+    assert all(int(row["captured_generated_token_count"]) > 0 for row in example_metadata)
+    performance = dict(metadata.get("performance") or {})
+    if performance:
+        assert int(performance["request_count"]) == 2
+        assert int(performance["generated_tokens"]) > 0
+        assert float(performance["generation_seconds"]) > 0.0
+
+
+@pytest.mark.contract
+@pytest.mark.modal
+@pytest.mark.vllm
+@pytest.mark.network
+@pytest.mark.slow
+def test_modal_vllm_structured_output_contract(tmp_path: Path) -> None:
+    if os.getenv(_OUTPUT_CONTRACT_RUN_ENV) != "1":
+        pytest.skip(f"set {_OUTPUT_CONTRACT_RUN_ENV}=1 to run the structured-output contract")
+    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+
+    from pipelines_v2.api import (
+        Dataset,
+        Example,
+        GenerationRunSpec,
+        GenerationSpec,
+        ModalResources,
+        ModalRunner,
+        ModalVolumeMount,
+        ModalVolumeStore,
+        VLLMEngine,
+    )
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["hold"]},
+            "confidence": {"type": "integer", "enum": [73]},
+        },
+        "required": ["action", "confidence"],
+        "additionalProperties": False,
+    }
+    runner = ModalRunner(
+        resources=ModalResources(
+            gpu=os.getenv("XENON_MODAL_VLLM_ENGINE_CONTRACT_GPU", "A100-80GB"),
+            timeout_seconds=int(os.getenv(_TIMEOUT_ENV, "7200")),
+            max_containers=1,
+            volumes=(
+                ModalVolumeMount(
+                    name=os.getenv("XENON_MODAL_MODEL_VOLUME", "xenon-models"),
+                    mount_path=os.getenv("XENON_MODAL_MODEL_VOLUME_PATH", "/models"),
+                ),
+            ),
+        ),
+        artifacts=ModalVolumeStore(
+            name="xenon-data",
+            root="/data/artifacts/pipelines_v2_vllm_structured_output_contract",
+            local_cache_root=tmp_path / "modal_cache",
+        ),
+    )
+    artifact = runner.run(
+        GenerationRunSpec(
+            engine=VLLMEngine(
+                model_id=os.getenv(
+                    "XENON_MODAL_VLLM_ENGINE_CONTRACT_MODEL_ID",
+                    "/models/Qwen/Qwen3-30B-A3B",
+                ),
+                max_model_len=512,
+                enforce_eager=False,
+                max_num_seqs=2,
+                max_num_batched_tokens=1024,
+                enable_prefix_caching=False,
+                enable_chunked_prefill=True,
+                add_generation_prompt=False,
+                enable_thinking=False,
+            ),
+            dataset=Dataset.from_examples(
+                [
+                    Example(
+                        key="structured_output",
+                        prompt="Return the requested investment decision as a JSON object.",
+                    ),
+                ],
+                name="vllm_structured_output_contract",
+            ),
+            generation=GenerationSpec(
+                enabled=True,
+                max_tokens=32,
+                temperature=0.0,
+                structured_output=schema,
+            ),
+        )
+    )
+
+    rows = list(artifact.result()["rows"])
+    assert len(rows) == 1
+    parsed = json.loads(str(rows[0]["generated_text"]))
+    assert parsed == {"action": "hold", "confidence": 73}
 
 
 def _run_requested_modal_contracts(tmp_path_factory: pytest.TempPathFactory) -> set[str]:

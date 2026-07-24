@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+from types import SimpleNamespace
+
 from pipelines_v2.api import (
     Dataset,
     Example,
@@ -14,7 +17,13 @@ from pipelines_v2.api import (
     VLLMEngine,
 )
 from pipelines_v2.engine.vllm.session import build_vllm_session_llm_kwargs, vllm_session_key
-from pipelines_v2.engine.vllm.activation_patch_request_worker import compiled_operator_hint_from_config
+from pipelines_v2.engine.vllm.activation_patch_request_worker import (
+    ActivationPatchGPUModelRunner,
+    ActivationPatchRequestHelper,
+    compiled_operator_hint_from_config,
+    force_v1_model_runner_for_activation_patching,
+)
+from pipelines_v2.engine.vllm import activation_patch_request_worker
 from pipelines_v2.operations.capture import CaptureSpec
 
 
@@ -89,10 +98,8 @@ def test_vllm_session_builds_superset_runtime_for_capture_generation_and_patchin
         assert kwargs["speculative_config"]["draft_model_config"]["hf_config"][
             "eagle_aux_hidden_state_layer_ids"
         ] == [0, 2]
-        assert kwargs["kv_transfer_config"]["kv_connector"] == "PipelinesV2HiddenStatesConnector"
-        assert kwargs["kv_transfer_config"]["kv_connector_module_path"] == (
-            "pipelines_v2.engine.vllm.hidden_states_connector"
-        )
+        assert kwargs["kv_transfer_config"]["kv_connector"] == "ExampleHiddenStatesConnector"
+        assert "kv_connector_module_path" not in kwargs["kv_transfer_config"]
         assert reasoning_parser == "qwen3"
         assert vllm_session_key(engine=engine, specs=(capture, generation, patch, paired_patch)) == vllm_session_key(
             engine=engine,
@@ -123,3 +130,35 @@ def test_activation_patch_worker_reads_compiled_operator_hint_from_additional_co
         additional_config = {"xenon_activation_patch_compiled_operator": "subspace"}
 
     assert compiled_operator_hint_from_config(_Config()) == "subspace"
+
+
+def test_activation_patch_worker_forces_v1_model_runner_before_engine_construction(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("VLLM_USE_V2_MODEL_RUNNER", "1")
+
+    force_v1_model_runner_for_activation_patching()
+
+    assert os.environ["VLLM_USE_V2_MODEL_RUNNER"] == "0"
+
+
+def test_activation_patch_runner_preserves_vllm_deferred_state_correction(
+    monkeypatch,
+) -> None:
+    def correction() -> None:
+        return None
+
+    monkeypatch.setattr(
+        activation_patch_request_worker.GPUModelRunner,
+        "_update_states",
+        lambda _runner, _scheduler_output: correction,
+        raising=False,
+    )
+    runner = object.__new__(ActivationPatchGPUModelRunner)
+    runner.activation_patch_request_helper = ActivationPatchRequestHelper()
+    scheduler_output = SimpleNamespace(
+        scheduled_new_reqs=[],
+        finished_req_ids=set(),
+    )
+
+    assert runner._update_states(scheduler_output) is correction

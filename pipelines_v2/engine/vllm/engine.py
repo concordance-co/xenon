@@ -146,24 +146,28 @@ class VLLMEngine:
         env = {
             "VLLM_ALLOW_INSECURE_SERIALIZATION": "1",
             "VLLM_COMPILE_CACHE_SAVE_FORMAT": "binary",
+            # vLLM 0.25.1's FlashInfer sampler attempts to JIT CUDA sources on
+            # first use. Xenon's intentionally slim Modal runtime has the CUDA
+            # runtime but not nvcc, so select vLLM's built-in sampler instead.
+            # Attention and MoE kernels can still use their normal CUDA
+            # backends; this switch is scoped to top-k/top-p sampling.
+            "VLLM_USE_FLASHINFER_SAMPLER": "0",
         }
         debug_value = str(os.getenv("XENON_ACTIVATION_PATCH_DEBUG", "") or "").strip()
         if debug_value:
             env["XENON_ACTIVATION_PATCH_DEBUG"] = debug_value
-        # vllm is pinned because residual capture relies on the
-        # `extract_hidden_states` speculative-decoding path, which has changed
-        # shape across minor releases (0.19.1 shipped a regression in the v1
-        # engine's input validator). Unpinned installs mean any Modal image
-        # rebuild can silently change engine behavior; bump deliberately and
-        # re-verify capture before raising the pin. Keep in sync with
-        # yora/modal_base.py.
+        # Keep the vLLM runtime stack coordinated. Residual capture relies on
+        # the `extract_hidden_states` speculative-decoding path and activation
+        # patching integrates with vLLM's worker lifecycle, so an unpinned
+        # Modal rebuild can silently change behavior. These constraints match
+        # vLLM 0.25.1's CUDA requirements.
         return PythonRuntimeSpec(
             pip_packages=(
                 "matplotlib",
-                "vllm==0.19.0",
-                "torch",
-                "transformers",
-                "safetensors",
+                "vllm==0.25.1",
+                "torch==2.11.0",
+                "transformers>=5.5.3",
+                "safetensors>=0.6.2",
                 "numpy",
                 "huggingface_hub",
             ),

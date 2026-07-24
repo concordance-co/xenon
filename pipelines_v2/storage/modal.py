@@ -7,6 +7,7 @@ import os
 import posixpath
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -15,6 +16,18 @@ from safetensors.numpy import load_file, save_file
 
 from pipelines_v2.core.types import TransferPolicy, TransferPolicyError
 from pipelines_v2.storage.json import json_default
+
+
+_MODAL_VOLUME_GET_MAX_ATTEMPTS = 3
+_MODAL_VOLUME_GET_TRANSIENT_MARKERS = (
+    "deadline_exceeded",
+    "deadline exceeded",
+    "statuscode.unavailable",
+    "statuscode.resource_exhausted",
+    "temporarily unavailable",
+    "connection reset",
+    "connection aborted",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,16 +235,28 @@ class ModalVolumeStore:
 
     def _run_modal_volume_get(self, remote_path: str, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
-        result = subprocess.run(
-            ["modal", "volume", "get", self.name, remote_path, str(destination)],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
+        command = ["modal", "volume", "get", self.name, remote_path, str(destination)]
+        for attempt in range(1, _MODAL_VOLUME_GET_MAX_ATTEMPTS + 1):
+            result = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return
             stderr = result.stderr.strip()
+            detail = stderr or result.stdout.strip()
+            normalized = detail.lower()
+            transient = any(
+                marker in normalized for marker in _MODAL_VOLUME_GET_TRANSIENT_MARKERS
+            )
+            if transient and attempt < _MODAL_VOLUME_GET_MAX_ATTEMPTS:
+                time.sleep(float(2 ** (attempt - 1)))
+                continue
             raise RuntimeError(
-                f"modal volume get failed for {self.name!r}:{remote_path!r}: {stderr or result.stdout.strip()}"
+                f"modal volume get failed for {self.name!r}:{remote_path!r} "
+                f"after {attempt} attempt(s): {detail}"
             )
 
     @staticmethod

@@ -457,6 +457,7 @@ def test_modal_vllm_workflow_batch_key_and_runtime_env_support_capture_generatio
         spec_payloads=[capture.to_dict(), generation.to_dict(), patch.to_dict()]
     )
     assert runtime_spec.env["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+    assert runtime_spec.env["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
     assert runtime_spec.env["XENON_ACTIVATION_PATCH_COMPILED_OPERATOR"] == "subspace"
 
     sharded_runner = ModalRunner(

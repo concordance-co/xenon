@@ -1,8 +1,9 @@
-"""Request-scoped eager activation patch worker for pipelines_v2."""
+"""Request-scoped activation patch worker for pipelines_v2."""
 
 from __future__ import annotations
 
 import copy
+import os
 from typing import TYPE_CHECKING, Any
 
 try:
@@ -36,6 +37,21 @@ else:
 from pipelines_v2.engine.vllm.patching.base import debug_log
 
 
+_VLLM_USE_V2_MODEL_RUNNER = "VLLM_USE_V2_MODEL_RUNNER"
+
+
+def force_v1_model_runner_for_activation_patching() -> None:
+    """Keep activation patching on the model-runner API it instruments.
+
+    vLLM 0.25 enables Model Runner V2 for dense generation models by
+    default. Xenon's request-scoped patch state is integrated with the
+    V1 ``GPUModelRunner`` lifecycle, so intervention runtimes must opt out
+    before vLLM constructs its engine, scheduler, and workers.
+    """
+
+    os.environ[_VLLM_USE_V2_MODEL_RUNNER] = "0"
+
+
 def compiled_operator_hint_from_config(vllm_config: Any) -> str:
     additional_config = getattr(vllm_config, "additional_config", None)
     config_hint = (
@@ -43,8 +59,6 @@ def compiled_operator_hint_from_config(vllm_config: Any) -> str:
         if isinstance(additional_config, dict)
         else None
     )
-    import os
-
     return str(
         config_hint or os.getenv("XENON_ACTIVATION_PATCH_COMPILED_OPERATOR", "") or ""
     ).strip()
@@ -268,10 +282,7 @@ class ActivationPatchGPUModelRunner(GPUModelRunner):
         self.activation_patch_request_helper = ActivationPatchRequestHelper()
 
     def load_model(self, load_dummy_weights: bool = False) -> None:
-        import os
-        import torch
         from vllm.model_executor.model_loader import get_model_architecture
-        import vllm.v1.worker.gpu_model_runner as gm
 
         from pipelines_v2.engine.vllm.activation_patch_core import (
             init_activation_patching,
@@ -279,191 +290,45 @@ class ActivationPatchGPUModelRunner(GPUModelRunner):
             restore_activation_patch_model_init_hook,
         )
 
-        gm.logger.info_once(
-            "Starting to load model %s...",
-            self.model_config.model,
-            scope="global",
-        )
         debug_env = str(os.getenv("XENON_ACTIVATION_PATCH_DEBUG", "") or "").strip()
         compiled_operator_hint = compiled_operator_hint_from_config(self.vllm_config)
         if debug_env:
             print(f"[activation-patch] debug_env={debug_env}")
-        if self.parallel_config.enable_eplb:
-            self.eplb_state = gm.EplbState(self.parallel_config, self.device)
-
+        model_cls, model_arch = get_model_architecture(self.model_config)
+        install_activation_patch_model_init_hook(model_cls)
+        print(
+            "[activation-patch] installed model init hook "
+            f"architecture={model_arch} class={model_cls.__module__}.{model_cls.__name__}"
+        )
         try:
-            with gm.DeviceMemoryProfiler() as profiler:
-                time_before_load = gm.time.perf_counter()
-                if load_dummy_weights:
-                    self.load_config.load_format = "dummy"
-                model_cls, model_arch = get_model_architecture(self.model_config)
-                install_activation_patch_model_init_hook(model_cls)
-                print(
-                    "[activation-patch] installed model init hook "
-                    f"architecture={model_arch} class={model_cls.__module__}.{model_cls.__name__}"
-                )
-                model_loader = gm.get_model_loader(self.load_config)
-                try:
-                    self.model = model_loader.load_model(
-                        vllm_config=self.vllm_config,
-                        model_config=self.model_config,
-                    )
-                finally:
-                    restore_activation_patch_model_init_hook(model_cls)
-                if self.lora_config:
-                    self.model = self.load_lora_model(
-                        self.model,
-                        self.vllm_config,
-                        self.device,
-                    )
-                if hasattr(self, "drafter"):
-                    gm.logger.info_once("Loading drafter model...")
-                    self.drafter.load_model(self.model)
-                    if (
-                        hasattr(self.drafter, "model")
-                        and gm.is_mixture_of_experts(self.drafter.model)
-                        and self.parallel_config.enable_eplb
-                    ):
-                        assert not self.parallel_config.enable_elastic_ep, (
-                            "Elastic EP is not supported with drafter model."
-                        )
-                        spec_config = self.vllm_config.speculative_config
-                        assert spec_config is not None
-                        assert spec_config.draft_model_config is not None
-                        gm.logger.info_once(
-                            "EPLB is enabled for drafter model %s.",
-                            spec_config.draft_model_config.model,
-                        )
-                        if self.eplb_state is None:
-                            self.eplb_state = gm.EplbState(
-                                self.parallel_config,
-                                self.device,
-                            )
-                        self.eplb_state.add_model(
-                            self.drafter.model,
-                            spec_config.draft_model_config,
-                        )
-                if self.use_aux_hidden_state_outputs:
-                    if not gm.supports_eagle3(self.get_model()):
-                        raise RuntimeError(
-                            "Model does not support EAGLE3 interface but "
-                            "aux_hidden_state_outputs was requested"
-                        )
-                    aux_layers = self._get_eagle3_aux_layers_from_config()
-                    if not aux_layers:
-                        aux_layers = self.model.get_eagle3_default_aux_hidden_state_layers()
-                    self.model.set_aux_hidden_state_layers(aux_layers)
+            # Delegate the complete loading lifecycle to the installed vLLM
+            # version. The init hook makes the patch op visible to compilation
+            # without copying vLLM's fast-changing ``load_model`` implementation.
+            super().load_model(load_dummy_weights=load_dummy_weights)
+        finally:
+            restore_activation_patch_model_init_hook(model_cls)
 
-                init_activation_patching(self.model)
-                self.model._v2_activation_patch_force_custom_op_presence = not bool(
-                    self.vllm_config.model_config.enforce_eager
-                )
-                self.model._v2_activation_patch_compiled_operator_hint = compiled_operator_hint
-                print(
-                    "[activation-patch] worker initialized "
-                    f"model={self.model_config.model} "
-                    f"enforce_eager={self.vllm_config.model_config.enforce_eager} "
-                    f"compiled_operator_hint={compiled_operator_hint or '<none>'}"
-                )
-                time_after_load = gm.time.perf_counter()
-
-            self.model_memory_usage = profiler.consumed_memory
-        except torch.cuda.OutOfMemoryError as exc:
-            msg = (
-                "Failed to load model - not enough GPU memory. "
-                "Try lowering --gpu-memory-utilization to free memory for weights, "
-                "increasing --tensor-parallel-size, or using --quantization. "
-                "See https://docs.vllm.ai/en/latest/configuration/conserving_memory/ "
-                "for more tips."
-            )
-            gm.logger.error(f"{msg} (original error: {exc})")
-            raise exc
-
-        gm.logger.info_once(
-            "Model loading took %s GiB memory and %.6f seconds",
-            gm.format_gib(self.model_memory_usage),
-            time_after_load - time_before_load,
-            scope="local",
+        model = self.get_model()
+        init_activation_patching(model)
+        model._v2_activation_patch_force_custom_op_presence = not bool(
+            self.vllm_config.model_config.enforce_eager
         )
-        if not load_dummy_weights:
-            gm.prepare_communication_buffer_for_model(self.model)
-            if (drafter := getattr(self, "drafter", None)) and (
-                drafter_model := getattr(drafter, "model", None)
-            ):
-                gm.prepare_communication_buffer_for_model(drafter_model)
-        mm_config = self.model_config.multimodal_config
-        self.is_multimodal_pruning_enabled = (
-            gm.supports_multimodal_pruning(self.get_model())
-            and mm_config is not None
-            and mm_config.is_multimodal_pruning_enabled()
+        model._v2_activation_patch_compiled_operator_hint = compiled_operator_hint
+        print(
+            "[activation-patch] worker initialized "
+            f"model={self.model_config.model} "
+            f"enforce_eager={self.vllm_config.model_config.enforce_eager} "
+            f"compiled_operator_hint={compiled_operator_hint or '<none>'}"
         )
-        self.requires_sequential_video_encoding = hasattr(
-            self.get_model(),
-            "requires_sequential_video_encoding",
-        )
-        if (
-            gm.is_mixture_of_experts(self.model)
-            and self.parallel_config.enable_eplb
-            and not load_dummy_weights
-        ):
-            gm.logger.info_once(
-                "EPLB is enabled for model %s.",
-                self.model_config.model,
-            )
-            assert self.eplb_state is not None
-            self.eplb_state.add_model(
-                self.model,
-                self.model_config,
-            )
-            if self.eplb_state.is_async:
-                self.eplb_state.start_async_loop()
-        if (
-            self.vllm_config.compilation_config.mode
-            == gm.CompilationMode.STOCK_TORCH_COMPILE
-        ):
-            backend = self.vllm_config.compilation_config.init_backend(
-                self.vllm_config
-            )
-            from vllm.compilation.counter import compilation_counter
 
-            compilation_counter.stock_torch_compile_count += 1
-            self.model.compile(fullgraph=True, backend=backend)
-            return
-        cudagraph_mode = self.compilation_config.cudagraph_mode
-        assert cudagraph_mode is not None
-        if (
-            cudagraph_mode.has_full_cudagraphs()
-            and not self.parallel_config.use_ubatching
-        ):
-            self.model = gm.CUDAGraphWrapper(
-                self.model,
-                self.vllm_config,
-                runtime_mode=gm.CUDAGraphMode.FULL,
-            )
-        elif self.parallel_config.use_ubatching:
-            if cudagraph_mode.has_full_cudagraphs():
-                self.model = gm.UBatchWrapper(
-                    self.model,
-                    self.vllm_config,
-                    gm.CUDAGraphMode.FULL,
-                    self.device,
-                )
-            else:
-                self.model = gm.UBatchWrapper(
-                    self.model,
-                    self.vllm_config,
-                    gm.CUDAGraphMode.NONE,
-                    self.device,
-                )
-        gm.get_offloader().post_init()
-
-    def _update_states(self, scheduler_output: SchedulerOutput) -> None:
-        super()._update_states(scheduler_output)
+    def _update_states(self, scheduler_output: SchedulerOutput) -> Any:
+        deferred_state_corrections = super()._update_states(scheduler_output)
         self.activation_patch_request_helper.process_new_reqs(
             scheduler_output.scheduled_new_reqs
         )
         finished_req_ids = getattr(scheduler_output, "finished_req_ids", None)
         self.activation_patch_request_helper.cleanup_finished(finished_req_ids)
+        return deferred_state_corrections
 
     def _prepare_inputs(
         self,
@@ -505,12 +370,19 @@ class ActivationPatchGPUModelRunner(GPUModelRunner):
 
 class ActivationPatchGPUWorker(gpu_worker.Worker):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        force_v1_model_runner_for_activation_patching()
         gpu_model_runner.GPUModelRunner = ActivationPatchGPUModelRunner
         super().__init__(*args, **kwargs)
+        if bool(getattr(self, "use_v2_model_runner", False)):
+            raise RuntimeError(
+                "Activation patching requires vLLM Model Runner V1; "
+                "set VLLM_USE_V2_MODEL_RUNNER=0 before constructing LLM."
+            )
 
 
 __all__ = [
     "ActivationPatchGPUModelRunner",
     "ActivationPatchGPUWorker",
     "ActivationPatchRequestHelper",
+    "force_v1_model_runner_for_activation_patching",
 ]

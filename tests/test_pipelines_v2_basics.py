@@ -9,6 +9,7 @@ import types
 from dataclasses import replace
 import json
 import os
+import subprocess
 import sys
 import time
 import types
@@ -1750,6 +1751,7 @@ def test_capture_prompt_batch_uses_one_generate_call_when_generation_enabled() -
         def __init__(self, **kwargs: Any) -> None:
             self.max_tokens = kwargs.get("max_tokens")
             self.temperature = kwargs.get("temperature")
+            self.extra_args = kwargs.get("extra_args")
 
     vllm_module.SamplingParams = _SamplingParams
     sys.modules["vllm"] = vllm_module
@@ -1826,6 +1828,11 @@ def test_capture_prompt_batch_uses_one_generate_call_when_generation_enabled() -
     assert sampling_params.temperature == 0.3
     assert [record["generation_result"]["text"] for record in records] == ["answer-a", "answer-b"]
     assert [record["generation_result"]["request_id"] for record in records] == ["req-0", "req-1"]
+    performance = records[0]["_batch_performance"]
+    assert performance["request_count"] == 2
+    assert performance["prompt_tokens"] == 5
+    assert performance["generated_tokens"] == 3
+    assert performance["generation_seconds"] >= 0.0
 
 
 def test_generation_spec_preserves_uncapped_max_tokens() -> None:
@@ -1907,6 +1914,7 @@ def test_capture_prompt_batch_generated_section_uses_saved_hidden_rows(tmp_path:
         def __init__(self, **kwargs: Any) -> None:
             self.max_tokens = kwargs.get("max_tokens")
             self.temperature = kwargs.get("temperature")
+            self.extra_args = kwargs.get("extra_args")
 
     vllm_module.SamplingParams = _SamplingParams
     sys.modules["vllm"] = vllm_module
@@ -1936,11 +1944,16 @@ def test_capture_prompt_batch_generated_section_uses_saved_hidden_rows(tmp_path:
         kv_transfer_params = {"hidden_states_path": str(hidden_path)}
 
     class _FakeLLM:
+        def __init__(self) -> None:
+            self.sampling_params: Any | None = None
+
         def generate(self, *, prompts: list[dict[str, Any]], sampling_params: Any) -> list[Any]:
+            self.sampling_params = sampling_params
             return [_FakeRequestOutput()]
 
+    llm = _FakeLLM()
     records = _capture_prompt_batch(
-        llm=_FakeLLM(),
+        llm=llm,
         tokenizer=_FakeTokenizer(),
         examples=[Example(key="ex_a", prompt="ab")],
         add_generation_prompt=False,
@@ -1961,6 +1974,10 @@ def test_capture_prompt_batch_generated_section_uses_saved_hidden_rows(tmp_path:
     assert records[0]["residual_token_sections"]["prompt"] == [0, 1]
     assert records[0]["residual_token_sections"]["generated"] == [2]
     assert records[0]["residual"].shape == (1, 3, 2)
+    assert not hidden_path.exists()
+    assert llm.sampling_params.extra_args == {
+        "kv_transfer_params": {"include_output_tokens": True}
+    }
 
 
 def test_generation_result_from_output_keeps_full_generated_token_stream() -> None:
@@ -2032,6 +2049,37 @@ def test_generation_result_from_output_includes_reasoning_fields_when_requested(
 
     assert result["text"] == "SELL"
     assert result["generated_token_ids"] == [101, 201, 202, 102, 301]
+    assert result["reasoning_text"] == "compare both options"
+
+
+def test_generation_result_supports_vllm_parser_engine_reasoning_markers() -> None:
+    from pipelines_v2.engine.vllm.capture import _generation_result_from_output
+
+    class _FakeReasoningParser:
+        reasoning_start_str = "<think>"
+        reasoning_end_str = "</think>"
+
+        def extract_reasoning(self, model_output: str, request: Any) -> tuple[str | None, str | None]:
+            body = model_output.replace(self.reasoning_start_str, "", 1)
+            reasoning, _, content = body.partition(self.reasoning_end_str)
+            return reasoning.strip(), content.strip()
+
+    class _FakeCompletion:
+        text = "<think>compare both options</think>SELL"
+        token_ids = [101, 201, 102, 301]
+        finish_reason = "stop"
+
+    class _FakeRequestOutput:
+        request_id = "req-0"
+        outputs = [_FakeCompletion()]
+
+    result = _generation_result_from_output(
+        _FakeRequestOutput(),
+        capture_reasoning=True,
+        reasoning_parser=_FakeReasoningParser(),
+    )
+
+    assert result["text"] == "SELL"
     assert result["reasoning_text"] == "compare both options"
 
 
@@ -2792,6 +2840,72 @@ def test_modal_volume_store_preserves_mount_path_in_refs() -> None:
     assert str(path) == "/data/artifacts/capture_123/features/resid.json"
 
 
+def test_modal_volume_store_retries_transient_volume_get_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import pipelines_v2.storage.modal as modal_store_module
+
+    store = ModalVolumeStore(
+        name="xenon-data",
+        root="/data/artifacts",
+        local_cache_root=tmp_path / "modal_cache",
+    )
+    results = iter(
+        [
+            subprocess.CompletedProcess(
+                args=(),
+                returncode=1,
+                stdout="",
+                stderr="StatusCode.DEADLINE_EXCEEDED: Deadline Exceeded",
+            ),
+            subprocess.CompletedProcess(args=(), returncode=0, stdout="", stderr=""),
+        ]
+    )
+    sleeps: list[float] = []
+    monkeypatch.setattr(modal_store_module.subprocess, "run", lambda *args, **kwargs: next(results))
+    monkeypatch.setattr(modal_store_module.time, "sleep", sleeps.append)
+
+    destination = tmp_path / "result.json"
+    store._run_modal_volume_get("artifacts/capture_123/result.json", destination)
+
+    assert sleeps == [1.0]
+
+
+def test_modal_volume_store_does_not_retry_permanent_volume_get_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import pipelines_v2.storage.modal as modal_store_module
+
+    store = ModalVolumeStore(
+        name="xenon-data",
+        root="/data/artifacts",
+        local_cache_root=tmp_path / "modal_cache",
+    )
+    calls = 0
+
+    def fail(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        nonlocal calls
+        calls += 1
+        return subprocess.CompletedProcess(
+            args=(),
+            returncode=1,
+            stdout="",
+            stderr="StatusCode.PERMISSION_DENIED",
+        )
+
+    monkeypatch.setattr(modal_store_module.subprocess, "run", fail)
+
+    with pytest.raises(RuntimeError, match=r"after 1 attempt"):
+        store._run_modal_volume_get(
+            "artifacts/capture_123/result.json",
+            tmp_path / "result.json",
+        )
+
+    assert calls == 1
+
+
 def test_modal_volume_store_localize_downloads_into_parent_directory(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -3338,8 +3452,10 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
     assert function_kwargs["max_containers"] == 1
     assert function_kwargs["env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert function_kwargs["env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+    assert function_kwargs["env"]["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
     assert captured["image_env"]["XENON_ACTIVATION_PATCH_DEBUG"] == "project_out_gate"
     assert captured["image_env"]["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+    assert captured["image_env"]["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
     assert result["runner"]["runtime_app_id"] == "ap-test-env"
     assert [event["stage"] for event in progress_events] == [
         "modal_launching",
@@ -9223,12 +9339,13 @@ def test_vllm_engine_allows_noneager_add_direction_subspace_patch() -> None:
     assert spec.runtime_spec().env["XENON_ACTIVATION_PATCH_COMPILED_OPERATOR"] == "subspace"  # type: ignore[union-attr]
 
 
-def test_vllm_engine_runtime_spec_sets_binary_compile_cache_save_format() -> None:
+def test_vllm_engine_runtime_spec_sets_vllm_runtime_compatibility_env() -> None:
     engine = VLLMEngine(model_id="Qwen/Qwen3-0.6B")
 
     runtime_spec = engine.runtime_spec()
 
     assert runtime_spec.env["VLLM_COMPILE_CACHE_SAVE_FORMAT"] == "binary"
+    assert runtime_spec.env["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
 
 
 def test_vllm_engine_resolves_canonical_model_id_under_model_path_root() -> None:

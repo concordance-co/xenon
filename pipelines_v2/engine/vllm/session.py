@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
@@ -42,6 +43,7 @@ class VLLMSessionRuntime:
     reasoning_parser_instance: Any | None
     batch_size: int
     session_key: str
+    load_performance: dict[str, float]
     _tempdir: tempfile.TemporaryDirectory[str] | None = None
 
     def capture(
@@ -95,10 +97,19 @@ def build_vllm_session_runtime(
 ) -> VLLMSessionRuntime:
     """Construct one loaded vLLM runtime for a compatible operation group."""
 
+    specs_tuple = tuple(specs)
+    if any(isinstance(spec, PatchedGenerationSpec) for spec in specs_tuple):
+        from .activation_patch_request_worker import (
+            force_v1_model_runner_for_activation_patching,
+        )
+
+        # Model Runner V2 is vLLM 0.25's dense-model default, but request-
+        # scoped activation patching currently integrates with the V1 runner.
+        force_v1_model_runner_for_activation_patching()
+
     from transformers import AutoTokenizer
     from vllm import LLM
 
-    specs_tuple = tuple(specs)
     llm_kwargs, reasoning_parser, tempdir = build_vllm_session_llm_kwargs(
         engine=engine,
         specs=specs_tuple,
@@ -109,7 +120,11 @@ def build_vllm_session_runtime(
     )
 
     enable_model_load_progress(llm_kwargs, progress_callback)
+    load_started = time.perf_counter()
+    tokenizer_started = time.perf_counter()
     tokenizer = AutoTokenizer.from_pretrained(engine.resolved_model_path(), trust_remote_code=True)
+    tokenizer_seconds = time.perf_counter() - tokenizer_started
+    engine_started = time.perf_counter()
     try:
         with model_load_progress_monitor(progress_callback):
             llm = LLM(**llm_kwargs)
@@ -117,6 +132,12 @@ def build_vllm_session_runtime(
         if tempdir is not None:
             tempdir.cleanup()
         raise
+    engine_init_seconds = time.perf_counter() - engine_started
+    load_performance = {
+        "tokenizer_load_seconds": float(tokenizer_seconds),
+        "engine_init_seconds": float(engine_init_seconds),
+        "model_ready_seconds": float(time.perf_counter() - load_started),
+    }
 
     from .capture import _build_reasoning_parser
 
@@ -132,6 +153,7 @@ def build_vllm_session_runtime(
         reasoning_parser_instance=reasoning_parser_instance,
         batch_size=max(1, int(engine.max_num_seqs or 1)),
         session_key=vllm_session_key(engine=engine, specs=specs_tuple),
+        load_performance=load_performance,
         _tempdir=tempdir,
     )
 
@@ -164,10 +186,6 @@ def build_vllm_session_llm_kwargs(
         tempdir = tempfile.TemporaryDirectory(prefix="pipelines_v2_vllm_")
         connector_dir = Path(tempdir.name) / "hidden_states"
         connector_dir.mkdir(parents=True, exist_ok=True)
-        capture_generated_tokens = any(
-            isinstance(spec, CaptureSpec) and bool(spec.generation.capture_generated_tokens)
-            for spec in specs_tuple
-        )
         llm_kwargs["speculative_config"] = {
             "method": "extract_hidden_states",
             "num_speculative_tokens": 1,
@@ -178,18 +196,12 @@ def build_vllm_session_llm_kwargs(
             },
         }
         connector_config: dict[str, Any] = {
-            "kv_connector": (
-                "PipelinesV2HiddenStatesConnector"
-                if capture_generated_tokens
-                else "ExampleHiddenStatesConnector"
-            ),
+            "kv_connector": "ExampleHiddenStatesConnector",
             "kv_role": "kv_producer",
             "kv_connector_extra_config": {
                 "shared_storage_path": str(connector_dir),
             },
         }
-        if capture_generated_tokens:
-            connector_config["kv_connector_module_path"] = "pipelines_v2.engine.vllm.hidden_states_connector"
         llm_kwargs["kv_transfer_config"] = connector_config
     return llm_kwargs, reasoning_parser, tempdir
 

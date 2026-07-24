@@ -86,6 +86,15 @@ def build_vllm_intervention_runtime(
 ) -> VLLMInterventionRuntime:
     """Construct one vLLM intervention runtime for a compatible patch family."""
 
+    from .activation_patch_request_worker import (
+        force_v1_model_runner_for_activation_patching,
+    )
+
+    # vLLM 0.25 defaults dense generation models to Model Runner V2.
+    # Xenon's intervention worker instruments the V1 request lifecycle, so
+    # select it before importing/constructing the vLLM engine and scheduler.
+    force_v1_model_runner_for_activation_patching()
+
     from transformers import AutoTokenizer
     from vllm import LLM
 

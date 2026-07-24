@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -120,20 +121,12 @@ def run_vllm_capture(
                 },
             }
             llm_kwargs["kv_transfer_config"] = {
-                "kv_connector": (
-                    "PipelinesV2HiddenStatesConnector"
-                    if capture_generated_tokens
-                    else "ExampleHiddenStatesConnector"
-                ),
+                "kv_connector": "ExampleHiddenStatesConnector",
                 "kv_role": "kv_producer",
                 "kv_connector_extra_config": {
                     "shared_storage_path": str(connector_dir),
                 },
             }
-            if capture_generated_tokens:
-                llm_kwargs["kv_transfer_config"]["kv_connector_module_path"] = (
-                    "pipelines_v2.engine.vllm.hidden_states_connector"
-                )
 
         _report_progress(
             progress_callback,
@@ -147,8 +140,12 @@ def run_vllm_capture(
         )
 
         enable_model_load_progress(llm_kwargs, progress_callback)
+        load_started = time.perf_counter()
         try:
+            tokenizer_started = time.perf_counter()
             tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+            tokenizer_seconds = time.perf_counter() - tokenizer_started
+            preflight_started = time.perf_counter()
             _preflight_prompt_lengths(
                 tokenizer=tokenizer,
                 examples=examples,
@@ -160,9 +157,12 @@ def run_vllm_capture(
                 enable_thinking=engine.enable_thinking,
                 chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
             )
+            preflight_seconds = time.perf_counter() - preflight_started
             try:
+                engine_started = time.perf_counter()
                 with model_load_progress_monitor(progress_callback):
                     llm = LLM(**llm_kwargs)
+                engine_init_seconds = time.perf_counter() - engine_started
             except RuntimeError as exc:
                 raise RuntimeError(_engine_init_error_message(exc, llm_kwargs=llm_kwargs)) from exc
         except Exception:
@@ -194,6 +194,12 @@ def run_vllm_capture(
             reasoning_parser=reasoning_parser,
             batch_callback=batch_callback,
             progress_callback=progress_callback,
+            load_performance={
+                "tokenizer_load_seconds": float(tokenizer_seconds),
+                "prompt_preflight_seconds": float(preflight_seconds),
+                "engine_init_seconds": float(engine_init_seconds),
+                "model_ready_seconds": float(time.perf_counter() - load_started),
+            },
         )
 
 
@@ -291,6 +297,7 @@ def run_vllm_capture_with_runtime(
         reasoning_parser=runtime.reasoning_parser_instance,
         batch_callback=batch_callback,
         progress_callback=progress_callback,
+        load_performance=dict(getattr(runtime, "load_performance", {}) or {}),
     )
 
 
@@ -303,9 +310,11 @@ def _run_vllm_capture_loaded(
     reasoning_parser: Any | None,
     batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    load_performance: dict[str, float] | None = None,
 ) -> EngineCaptureResult:
     from functools import partial
 
+    operation_started = time.perf_counter()
     examples = list(spec.dataset.examples)
     residual_sites = [site for site in spec.sites if isinstance(site, ResidualSite)]
     routing_sites = [site for site in spec.sites if isinstance(site, MoERoutingSite)]
@@ -344,6 +353,7 @@ def _run_vllm_capture_loaded(
     feature_payloads: dict[str, dict[str, Any]] = {site.name: _empty_feature(site) for site in spec.sites}
     generations: list[dict[str, Any]] = []
     example_metadata: list[dict[str, Any]] = []
+    performance_batches: list[dict[str, float | int]] = []
     processed_examples = 0
     total_examples = len(examples)
     _report_progress(
@@ -404,6 +414,10 @@ def _run_vllm_capture_loaded(
             chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
             preprocess_callback=_prompt_preprocessed,
         )
+        if batch_records:
+            batch_performance = batch_records[0].get("_batch_performance")
+            if isinstance(batch_performance, dict):
+                performance_batches.append(dict(batch_performance))
         processed_examples += len(batch)
         _report_progress(
             progress_callback,
@@ -477,6 +491,26 @@ def _run_vllm_capture_loaded(
                 list(batch_example_metadata),
             )
 
+    generation_seconds = sum(float(batch.get("generation_seconds") or 0.0) for batch in performance_batches)
+    prompt_tokens = sum(int(batch.get("prompt_tokens") or 0) for batch in performance_batches)
+    generated_tokens = sum(int(batch.get("generated_tokens") or 0) for batch in performance_batches)
+    performance = {
+        **dict(load_performance or {}),
+        "operation_seconds": float(time.perf_counter() - operation_started),
+        "generation_seconds": float(generation_seconds),
+        "prompt_tokens": int(prompt_tokens),
+        "generated_tokens": int(generated_tokens),
+        "request_count": int(sum(int(batch.get("request_count") or 0) for batch in performance_batches)),
+        "batch_count": len(performance_batches),
+        "generated_tokens_per_second": (
+            float(generated_tokens) / generation_seconds if generation_seconds > 0.0 else 0.0
+        ),
+        "total_tokens_per_second": (
+            float(prompt_tokens + generated_tokens) / generation_seconds
+            if generation_seconds > 0.0
+            else 0.0
+        ),
+    }
     return EngineCaptureResult(
         features=feature_payloads,
         generations=generations,
@@ -489,6 +523,7 @@ def _run_vllm_capture_loaded(
             "residual_layers": residual_layers,
             "batch_size": batch_size,
             "spec_hash": spec.spec_hash(),
+            "performance": performance,
         },
     )
 
@@ -903,7 +938,6 @@ def _capture_prompt_batch(
     preprocess_callback: Callable[[int], None] | None = None,
 ) -> list[dict[str, Any]]:
     import torch
-    from safetensors.torch import load_file
     from vllm import SamplingParams
 
     prompts: list[dict[str, Any]] = []
@@ -929,22 +963,44 @@ def _capture_prompt_batch(
     if wants_routing:
         _apply_to_model(llm, _reset_router_buffers_on_model)
 
+    sampling_kwargs: dict[str, Any] = {
+        "max_tokens": generation_max_tokens if wants_generation else 1,
+        "temperature": float(generation_temperature if wants_generation else 0.0),
+        "top_p": float(generation_top_p if wants_generation else 1.0),
+        "top_k": int(generation_top_k if wants_generation else -1),
+    }
+    if wants_residual and capture_generated_tokens:
+        sampling_kwargs["extra_args"] = {
+            "kv_transfer_params": {
+                "include_output_tokens": True,
+            }
+        }
     sampling_params = SamplingParams(
-        max_tokens=generation_max_tokens if wants_generation else 1,
-        temperature=float(generation_temperature if wants_generation else 0.0),
-        top_p=float(generation_top_p if wants_generation else 1.0),
-        top_k=int(generation_top_k if wants_generation else -1),
+        **sampling_kwargs,
     )
     _apply_structured_output_constraint(sampling_params, generation_structured_output if wants_generation else None)
+    generation_started = time.perf_counter()
     outputs = llm.generate(
         prompts=prompts,
         sampling_params=sampling_params,
     )
+    generation_seconds = time.perf_counter() - generation_started
     if len(outputs) != len(examples):
         raise RuntimeError(
             "vLLM returned a different number of request outputs than prompts: "
             f"got {len(outputs)}, expected {len(examples)}"
         )
+    generated_tokens = sum(
+        len(getattr(completion, "token_ids", ()) or ())
+        for request_output in outputs
+        for completion in list(getattr(request_output, "outputs", ()) or ())[:1]
+    )
+    batch_performance: dict[str, float | int] = {
+        "generation_seconds": float(generation_seconds),
+        "prompt_tokens": sum(len(prompt["prompt_token_ids"]) for prompt in prompts),
+        "generated_tokens": int(generated_tokens),
+        "request_count": len(prompts),
+    }
 
     router_by_example: dict[str, dict[int, dict[str, Any]]] = {}
     actual_router_layers: list[int] = []
@@ -989,12 +1045,14 @@ def _capture_prompt_batch(
             hidden_states_path = _hidden_states_path(request_output)
             if not hidden_states_path:
                 raise RuntimeError(f"vLLM did not return hidden_states_path for example {example.key!r}")
-            connector_file = Path(hidden_states_path)
-            if not connector_file.exists():
+            from .hidden_states_connector import load_and_cleanup_hidden_states
+
+            try:
+                tensors = load_and_cleanup_hidden_states(hidden_states_path)
+            except FileNotFoundError as exc:
                 raise RuntimeError(
                     f"Hidden-state connector file missing for example {example.key!r}: {hidden_states_path}"
-                )
-            tensors = load_file(str(connector_file))
+                ) from exc
             hs = tensors["hidden_states"] if "hidden_states" in tensors else next(iter(tensors.values()))
             if hs.dim() == 3:
                 hs = hs.permute(1, 0, 2)
@@ -1022,7 +1080,6 @@ def _capture_prompt_batch(
                     captured_generated_token_count=captured_generated_token_count,
                 )
             residual = hs[:, :residual_token_count, :].detach().cpu().to(torch.float32).numpy()
-            connector_file.unlink(missing_ok=True)
         results.append(
             {
                 "example": example,
@@ -1038,6 +1095,7 @@ def _capture_prompt_batch(
                 "router_data": router_by_example.get(example.key, {}),
                 "actual_router_layers": actual_router_layers,
                 "generation_result": generation_result,
+                "_batch_performance": batch_performance,
             }
         )
     return results
@@ -1318,9 +1376,13 @@ def _build_reasoning_parser(
 
 
 def _text_contains_reasoning_markers(reasoning_parser: Any, text: str) -> bool:
-    start_token = getattr(reasoning_parser, "start_token", "")
-    end_token = getattr(reasoning_parser, "end_token", "")
-    return bool((start_token and start_token in text) or (end_token and end_token in text))
+    markers = (
+        getattr(reasoning_parser, "reasoning_start_str", None),
+        getattr(reasoning_parser, "reasoning_end_str", None),
+        getattr(reasoning_parser, "start_token", None),
+        getattr(reasoning_parser, "end_token", None),
+    )
+    return any(isinstance(marker, str) and marker and marker in text for marker in markers)
 
 
 def _extract_reasoning_from_text(reasoning_parser: Any, raw_text: str) -> tuple[str, str]:
