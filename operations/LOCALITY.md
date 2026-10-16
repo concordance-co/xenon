@@ -9,11 +9,28 @@ Hard rules first, then reference by data class.
 1. Shared or durable datasets live in Postgres (Neon), not local files.
 2. Capture activations and generations live in Modal volumes, not local.
 3. Workflow runs and artifacts are indexed through the catalog, not discovered by listing files.
-4. Capture and analysis run on Modal. Reports and plots build locally. No exceptions.
+4. Shared capture and analysis run on Modal. Reports and plots build locally. The explicit bounded offline scratch exception below permits small local fixtures.
 5. Large remote reads are blocked by `ModalVolumeStore.transfer_policy` unless explicitly overridden — don't override casually.
 6. No data artifacts (jsonl, parquet, safetensors, activation dumps) get committed to the repo.
 7. Local files are for smoke fixtures, audit exports, report inputs, and scratch. Nothing else.
 8. Synth generation runs that write to Neon must surface to the user first — show the spec, a sample of rows, and the planned row count. Smoke first (typically <100 rows); scale only after user approval and behavioral sanity against the criteria specified.
+
+## Bounded offline scratch exception
+
+`workflow run --profile local-scratch --file workflow.py` explicitly selects a
+CPU-only, offline local experiment. It uses LocalArtifactStore under
+`$XENON_HOME/pipelines_v2/artifacts` and the existing FileCatalog root, ignoring
+shared Postgres catalog defaults. It never localizes remote activations or
+uploads local artifacts. Production locality and transfer policy stay in force.
+
+The default ceilings are 64 examples, 256 input tokens/example, 32 generated
+tokens/example, 256 MiB newly written artifacts, 600 seconds for the supervised
+worker, and 8 GiB aggregate process-tree RSS. Any increases are explicit in the
+saved profile. Model cache preparation is separate; scratch never downloads.
+OS network isolation also covers native subprocesses, and unsupported sandbox
+hosts fail before compute. Strict CUDA/MPS memory limits are unsupported and
+rejected. See [local scratch](../platform/LOCAL_SCRATCH.md) for execution,
+enforcement boundaries, recovery, and authoring.
 
 ## Data class reference
 
@@ -30,6 +47,12 @@ For each class: canonical home, how to read it, what's allowed locally.
 - **Home.** Neon table. Uploaded via repeatable workspace-level uploader scripts.
 - **Read.** Same as synth datasets.
 - **Local.** Same rules. Uploader scripts should live next to the workflow or data manifest they support; they are the only sanctioned path for getting real data into Neon.
+
+### Images and latent tensors
+
+- **Home.** Shared image bytes and latent tensors live in Modal volumes. Image metadata, content digests and labels live in Neon.
+- **Read.** Prepared `ImageInput` refs are verified at the execution mount. Spatial/latent tensors use registered safetensors codecs; no URI-only identity or implicit download.
+- **Local.** Bounded fixture images may use temporary prepared caches. Reports consume separately bounded summaries or thumbnails, never a full activation bank. See [image data contracts](../platform/IMAGE_DATA.md); classifier and generator normalization remain explicit and distinct.
 
 ### Captured activations
 

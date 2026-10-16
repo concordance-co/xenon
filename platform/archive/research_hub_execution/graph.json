@@ -1,0 +1,819 @@
+{
+  "schema_version": 1,
+  "planning_baseline": "6df58cdfda43c4b17dcb35abc9eb2bfdbc571ce6 plus working-tree changes; recheck T00",
+  "status": "planned_not_executed",
+  "dependency_semantics": {
+    "start_after": "All accepted before implementation starts",
+    "integration_requires": "May develop against fixtures; all accepted before task acceptance",
+    "integration_locks": "Serialize edits/integration on shared surfaces, not independent module work"
+  },
+  "tasks": [
+    {
+      "id": "T00",
+      "title": "Capture the baseline and freeze integration contracts",
+      "plan": "tasks/T00.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [],
+      "integration_requires": [],
+      "integration_locks": [],
+      "owned_surfaces": [
+        "platform/research_hub_execution/BASELINE.md"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05",
+        "C06",
+        "C07",
+        "C08",
+        "C09"
+      ],
+      "outcome": "Give every implementer a reproducible starting state, known regression baseline, and agreed schema ownership without absorbing unrelated work."
+    },
+    {
+      "id": "T24",
+      "title": "Stabilize extension registration and legacy serialization",
+      "plan": "tasks/T24.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [
+        "T00"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "core-registration"
+      ],
+      "owned_surfaces": [
+        "internal extension registries and legacy fixtures"
+      ],
+      "contracts": [
+        "C04",
+        "C08"
+      ],
+      "outcome": "New engines/sites/features/operations can integrate without changing unrelated runtime dispatch tables or breaking old serialized workflows."
+    },
+    {
+      "id": "T01",
+      "title": "Version provenance and scientific reuse",
+      "plan": "tasks/T01.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [
+        "T24"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "artifact-lifecycle"
+      ],
+      "owned_surfaces": [
+        "provenance helpers and schema"
+      ],
+      "contracts": [
+        "C01"
+      ],
+      "outcome": "Every new result has immutable scientific provenance; hardware/session compatibility cannot masquerade as scientific equivalence."
+    },
+    {
+      "id": "T02",
+      "title": "Lock runtimes and implement staged admission",
+      "plan": "tasks/T02.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [
+        "T01"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "runtime-config",
+        "remote-execution"
+      ],
+      "owned_surfaces": [
+        "runtime/admission module and runtime locks"
+      ],
+      "contracts": [
+        "C01",
+        "C02"
+      ],
+      "outcome": "Bad or unresolved configuration produces a specific diagnostic before expensive work; each runtime installs its own tested dependency lock."
+    },
+    {
+      "id": "T05",
+      "title": "Make completion atomic and long operations resumable",
+      "plan": "tasks/T05.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [
+        "T01"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "artifact-lifecycle",
+        "remote-execution"
+      ],
+      "owned_surfaces": [
+        "artifact finalization and checkpoint helpers"
+      ],
+      "contracts": [
+        "C01",
+        "C03"
+      ],
+      "outcome": "Interrupted captures/interventions preserve verified progress and cannot appear completed until all expected payload coverage is durable."
+    },
+    {
+      "id": "T07",
+      "title": "Create reusable experiment packs and evidence records",
+      "plan": "tasks/T07.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "research-records",
+      "start_after": [
+        "T01"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "reporting-cli"
+      ],
+      "owned_surfaces": [
+        "workflow pack helpers and evidence schemas"
+      ],
+      "contracts": [
+        "C01",
+        "C05"
+      ],
+      "outcome": "A checked-in workflow plus a compact versioned pack record is enough to discover, rerun and interpret a study without a second scheduler."
+    },
+    {
+      "id": "T25",
+      "title": "Define image, latent and spatial artifact contracts",
+      "plan": "tasks/T25.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "vision",
+      "start_after": [
+        "T01",
+        "T24"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "image-contract",
+        "core-registration",
+        "remote-execution"
+      ],
+      "owned_surfaces": [
+        "data/images and spatial/latent codecs"
+      ],
+      "contracts": [
+        "C01",
+        "C04",
+        "C08"
+      ],
+      "outcome": "Image and latent inputs have stable content identity, safe tensor storage and unambiguous spatial/timestep coordinates before recognition and diffusion adapters diverge."
+    },
+    {
+      "id": "T03",
+      "title": "Enforce bounded offline local scratch",
+      "plan": "tasks/T03.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [
+        "T01"
+      ],
+      "integration_requires": [
+        "T02"
+      ],
+      "integration_locks": [
+        "runtime-config"
+      ],
+      "owned_surfaces": [
+        "local scratch profile and supervision"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03"
+      ],
+      "outcome": "A local research workflow uses only local inputs, artifacts and catalog, with enforceable resource limits and no cloud clients."
+    },
+    {
+      "id": "T04",
+      "title": "Implement a narrow differentiable PyTorch engine",
+      "plan": "tasks/T04.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "research-runtime",
+      "start_after": [
+        "T01",
+        "T02"
+      ],
+      "integration_requires": [
+        "T03"
+      ],
+      "integration_locks": [
+        "core-registration"
+      ],
+      "owned_surfaces": [
+        "engine/torch core"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C04"
+      ],
+      "outcome": "GPT-2 executes real generation, residual capture, controlled patching and differentiable forwards on CPU; the adapter can later qualify on CUDA/MPS."
+    },
+    {
+      "id": "T09",
+      "title": "Publish eligible local artifacts with lineage",
+      "plan": "tasks/T09.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [
+        "T03",
+        "T05",
+        "T07"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "artifact-lifecycle"
+      ],
+      "owned_surfaces": [
+        "artifact publication operation"
+      ],
+      "contracts": [
+        "C01",
+        "C03",
+        "C05"
+      ],
+      "outcome": "A completed local experiment can be explicitly published into shared artifact storage/catalog without silent recomputation or broken local references."
+    },
+    {
+      "id": "T10",
+      "title": "Integrate the official MAttr harness in isolation",
+      "plan": "tasks/T10.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "attribution",
+      "start_after": [
+        "T02",
+        "T03",
+        "T05",
+        "T07"
+      ],
+      "integration_requires": [],
+      "integration_locks": [
+        "core-registration",
+        "remote-execution"
+      ],
+      "owned_surfaces": [
+        "operations/attribution external harness"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C05",
+        "C06"
+      ],
+      "outcome": "Xenon can invoke the exact released MAttr toolchain and import validated rankings/curves without requiring a native rewrite or contaminating the main runtime."
+    },
+    {
+      "id": "T06",
+      "title": "Gate fanout with canaries and reuse qualified sessions",
+      "plan": "tasks/T06.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "foundation",
+      "start_after": [
+        "T02",
+        "T05"
+      ],
+      "integration_requires": [
+        "T04"
+      ],
+      "integration_locks": [
+        "remote-execution"
+      ],
+      "owned_surfaces": [
+        "qualification and engine session reuse"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C04"
+      ],
+      "outcome": "One representative measured operation gates the rest of a workload, continues useful work, and shares a loaded model with compatible operations."
+    },
+    {
+      "id": "T08",
+      "title": "Deliver the first real offline experiment",
+      "plan": "tasks/T08.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "first-delivery",
+      "start_after": [
+        "T03",
+        "T04",
+        "T07"
+      ],
+      "integration_requires": [
+        "T05"
+      ],
+      "integration_locks": [],
+      "owned_surfaces": [
+        "workspaces/local_research"
+      ],
+      "contracts": [
+        "C01",
+        "C03",
+        "C04",
+        "C05"
+      ],
+      "outcome": "One command runs a small pretrained GPT-2 capture/patch experiment locally, produces an honest report and can be repeated with cloud access disabled."
+    },
+    {
+      "id": "T12",
+      "title": "Add verified native neuron, head and expert coordinates",
+      "plan": "tasks/T12.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "native-analysis",
+      "start_after": [
+        "T04"
+      ],
+      "integration_requires": [
+        "T05"
+      ],
+      "integration_locks": [
+        "core-registration"
+      ],
+      "owned_surfaces": [
+        "native site codecs and adapters"
+      ],
+      "contracts": [
+        "C01",
+        "C03",
+        "C04"
+      ],
+      "outcome": "Capture and edit exact internal quantities with stable coordinates and direct-forward oracles, starting with dense Qwen MLPs and GPT-2 heads."
+    },
+    {
+      "id": "T11",
+      "title": "Run MAttr reference and cross-model comparisons",
+      "plan": "tasks/T11.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "attribution",
+      "start_after": [
+        "T10",
+        "T06",
+        "T07"
+      ],
+      "integration_requires": [],
+      "integration_locks": [],
+      "owned_surfaces": [
+        "workspaces/mattr"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C05",
+        "C06"
+      ],
+      "outcome": "A reproducible paper experiment pack evaluates MAttr against baselines on held-out data, with a second supported model and explicit reproduction boundaries."
+    },
+    {
+      "id": "T13",
+      "title": "Build the neuron microscope and Goodfire test pack",
+      "plan": "tasks/T13.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "native-analysis",
+      "start_after": [
+        "T12",
+        "T07"
+      ],
+      "integration_requires": [
+        "T06"
+      ],
+      "integration_locks": [
+        "reporting-cli"
+      ],
+      "owned_surfaces": [
+        "operations/neurons and workspaces/native_neurons"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05"
+      ],
+      "outcome": "Investigate a preregistered neuron sample using signed/context-aware evidence, held-out explanation tests and controlled causal effects."
+    },
+    {
+      "id": "T15",
+      "title": "Add the recognition-model microscope",
+      "plan": "tasks/T15.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "vision",
+      "start_after": [
+        "T12",
+        "T07",
+        "T25"
+      ],
+      "integration_requires": [
+        "T06"
+      ],
+      "integration_locks": [
+        "image-contract"
+      ],
+      "owned_surfaces": [
+        "recognition adapter and workspace"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C04",
+        "C05",
+        "C08"
+      ],
+      "outcome": "Inspect one image-recognition model with spatial native sites and verify feature visualizations against natural-image responses."
+    },
+    {
+      "id": "T16",
+      "title": "Qualify SDXL generation and internal steering hooks",
+      "plan": "tasks/T16.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "vision",
+      "start_after": [
+        "T02",
+        "T05",
+        "T25"
+      ],
+      "integration_requires": [
+        "T06"
+      ],
+      "integration_locks": [
+        "remote-execution",
+        "image-contract"
+      ],
+      "owned_surfaces": [
+        "engine/diffusers"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C08"
+      ],
+      "outcome": "Generate images with pinned SDXL and modify verified internal UNet activations at selected denoising steps, spatial locations and CFG branches."
+    },
+    {
+      "id": "T18",
+      "title": "Import pretrained SAEs and measure intervention fidelity",
+      "plan": "tasks/T18.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "learned-features",
+      "start_after": [
+        "T04",
+        "T07"
+      ],
+      "integration_requires": [
+        "T12",
+        "T06"
+      ],
+      "integration_locks": [
+        "core-registration"
+      ],
+      "owned_surfaces": [
+        "representation/sae and feature splice"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05",
+        "C09"
+      ],
+      "outcome": "Use one verified pretrained dictionary with reconstruction and causal tests that distinguish feature effects from replacement error."
+    },
+    {
+      "id": "T14",
+      "title": "Implement typed graphs and causal route validation",
+      "plan": "tasks/T14.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "attribution",
+      "start_after": [
+        "T07",
+        "T12"
+      ],
+      "integration_requires": [
+        "T10",
+        "T11"
+      ],
+      "integration_locks": [
+        "core-registration",
+        "reporting-cli"
+      ],
+      "owned_surfaces": [
+        "attribution graphs and route evaluators"
+      ],
+      "contracts": [
+        "C01",
+        "C04",
+        "C05",
+        "C06",
+        "C07"
+      ],
+      "outcome": "Inspect attribution evidence as graphs without conflating ranking, direct intervention effects and replacement-model edge flows."
+    },
+    {
+      "id": "T17",
+      "title": "Deliver a controlled image-steering experiment",
+      "plan": "tasks/T17.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "vision",
+      "start_after": [
+        "T16",
+        "T07"
+      ],
+      "integration_requires": [],
+      "integration_locks": [],
+      "owned_surfaces": [
+        "workspaces/sdxl_steering"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C05",
+        "C08"
+      ],
+      "outcome": "A repeatable SDXL steering study measures an intended visual attribute across held-out prompts/seeds with quality and off-target controls."
+    },
+    {
+      "id": "T19",
+      "title": "Fit and test one aligned crosscoder",
+      "plan": "tasks/T19.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "learned-features",
+      "start_after": [
+        "T18",
+        "T05"
+      ],
+      "integration_requires": [
+        "T06"
+      ],
+      "integration_locks": [
+        "core-registration"
+      ],
+      "owned_surfaces": [
+        "representation/crosscoder and pair study"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05",
+        "C09"
+      ],
+      "outcome": "One small crosscoder compares aligned base/instruct activations and tests a model-difference hypothesis in the original models."
+    },
+    {
+      "id": "T20",
+      "title": "Integrate pretrained transcoder circuit tracing",
+      "plan": "tasks/T20.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "learned-features",
+      "start_after": [
+        "T10",
+        "T14"
+      ],
+      "integration_requires": [
+        "T06",
+        "T18"
+      ],
+      "integration_locks": [
+        "core-registration"
+      ],
+      "owned_surfaces": [
+        "external circuit-tracer adapter"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C05",
+        "C07",
+        "C09"
+      ],
+      "outcome": "Run circuit-tracer for one verified model/transcoder pair and retain replacement errors and causal limitations in Xenon graph artifacts."
+    },
+    {
+      "id": "T23",
+      "title": "Attribute a benign compatible checkpoint weight delta",
+      "plan": "tasks/T23.md",
+      "scope": "conditional_follow_on",
+      "status": "planned",
+      "stream": "follow-on",
+      "start_after": [
+        "T11",
+        "T14",
+        "T05"
+      ],
+      "integration_requires": [
+        "T06"
+      ],
+      "integration_locks": [
+        "core-registration"
+      ],
+      "owned_surfaces": [
+        "weight-delta adapter and study"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C05",
+        "C06"
+      ],
+      "outcome": "Explore MAttr parameter attribution on a clearly scoped benign base/finetune difference, without building a general training framework."
+    },
+    {
+      "id": "T21",
+      "title": "Build evidence retrieval and the compact workbench",
+      "plan": "tasks/T21.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "workbench",
+      "start_after": [
+        "T07"
+      ],
+      "integration_requires": [
+        "T13",
+        "T14",
+        "T17",
+        "T18",
+        "T20"
+      ],
+      "integration_locks": [
+        "reporting-cli"
+      ],
+      "owned_surfaces": [
+        "evidence public API and report panels"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C05",
+        "C07",
+        "C08",
+        "C09"
+      ],
+      "outcome": "A fresh session can find an experiment, inspect its supporting evidence and compare compatible results through CLI/Python and bounded local reports."
+    },
+    {
+      "id": "T22",
+      "title": "Qualify the integrated release and write operator recipes",
+      "plan": "tasks/T22.md",
+      "scope": "release",
+      "status": "planned",
+      "stream": "release",
+      "start_after": [
+        "T08",
+        "T09",
+        "T11",
+        "T13",
+        "T14",
+        "T15",
+        "T17",
+        "T18",
+        "T19",
+        "T20",
+        "T21"
+      ],
+      "integration_requires": [],
+      "integration_locks": [],
+      "owned_surfaces": [
+        "support matrix and qualification CI"
+      ],
+      "contracts": [
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05",
+        "C06",
+        "C07",
+        "C08",
+        "C09"
+      ],
+      "outcome": "Close the release with demonstrated local, Modal, attribution, neuron, vision and feature workflows; publish the exact support matrix and remaining limitations."
+    }
+  ],
+  "topological_order": [
+    "T00",
+    "T24",
+    "T01",
+    "T02",
+    "T05",
+    "T07",
+    "T25",
+    "T03",
+    "T04",
+    "T09",
+    "T10",
+    "T06",
+    "T08",
+    "T12",
+    "T11",
+    "T13",
+    "T15",
+    "T16",
+    "T18",
+    "T14",
+    "T17",
+    "T19",
+    "T20",
+    "T23",
+    "T21",
+    "T22"
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "Real local experiment",
+      "requires": [
+        "T08"
+      ]
+    },
+    {
+      "id": "M2",
+      "name": "Dependable paper loop",
+      "requires": [
+        "T06",
+        "T09",
+        "T11"
+      ]
+    },
+    {
+      "id": "M3",
+      "name": "Neuron, graph and vision research",
+      "requires": [
+        "T13",
+        "T14",
+        "T15",
+        "T17"
+      ]
+    },
+    {
+      "id": "M4",
+      "name": "Feature and evidence hub",
+      "requires": [
+        "T18",
+        "T19",
+        "T20",
+        "T21"
+      ]
+    },
+    {
+      "id": "M5",
+      "name": "Integrated qualified release",
+      "requires": [
+        "T22"
+      ]
+    }
+  ],
+  "deferred": [
+    "Native MAttr fitting rewrite and native TransformerLens engine",
+    "RL attribution",
+    "Full model fine-tuning runtime",
+    "Large SAE/crosscoder/CLT training campaigns",
+    "Layer-crush and developmental checkpoint studies",
+    "FLUX and broad architecture/device expansion",
+    "Frontier-scale neuron enumeration",
+    "Hosted dashboard redesign"
+  ]
+}

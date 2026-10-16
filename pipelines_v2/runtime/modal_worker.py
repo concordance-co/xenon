@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+import contextvars
 import queue
 import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, replace
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable, Mapping
 
 from pipelines_v2.core.paths import find_workspace_root
@@ -17,6 +18,8 @@ from pipelines_v2.core.types import RuntimeSecret
 from pipelines_v2.engine import PythonRuntimeSpec
 from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.runtime.env import merged_runtime_env
+from pipelines_v2.runtime.locks import build_locked_image, runtime_for_target, merge_runtime_specs
+from pipelines_v2.runtime.deadlines import bounded_remote_call, bounded_stream, cancel_owned_call
 from pipelines_v2.storage.modal import modal_volume_mount_path
 
 
@@ -70,7 +73,8 @@ def _execute_with_progress_stream(
         finally:
             messages.put(("done", None))
 
-    worker = threading.Thread(target=_run, name="xenon-modal-progress", daemon=True)
+    context = contextvars.copy_context()
+    worker = threading.Thread(target=lambda: context.run(_run), name="xenon-modal-progress", daemon=True)
     worker.start()
     while True:
         kind, payload = messages.get()
@@ -98,27 +102,43 @@ def _remote_progress_stream(remote_function: Any, *args: Any) -> Iterable[Mappin
 def _consume_progress_stream(
     stream: Iterable[Mapping[str, Any]],
     progress_callback: Callable[[Mapping[str, Any]], None] | None,
+    timeout_seconds: float = 7500,
 ) -> Any:
     result: Any = None
     result_seen = False
-    for envelope in stream:
-        kind = str(envelope.get("kind") or "")
-        if kind == "progress":
-            event = envelope.get("event")
-            if progress_callback is not None and isinstance(event, Mapping):
-                try:
-                    progress_callback(event)
-                except Exception:
-                    _LOG.warning("local Modal progress callback failed", exc_info=True)
-            continue
-        if kind == "result":
-            result = envelope.get("result")
-            result_seen = True
-            continue
-        raise RuntimeError(f"Modal progress stream returned unknown envelope kind: {kind!r}")
-    if not result_seen:
-        raise RuntimeError("Modal progress stream ended without a result")
-    return result
+    owned_call = None
+    try:
+        for envelope in bounded_stream(stream, timeout_seconds=timeout_seconds):
+            kind = str(envelope.get("kind") or "")
+            if kind == "call_identity":
+                call_id = envelope.get("call_id")
+                if not isinstance(call_id, str) or not call_id.startswith("fc-"):
+                    raise ValueError("Malformed owned Modal call identity")
+                owned_call = (call_id, envelope.get("input_id"))
+                continue
+            if kind == "progress":
+                event = envelope.get("event")
+                if progress_callback is not None and isinstance(event, Mapping):
+                    try:
+                        progress_callback(event)
+                    except Exception:
+                        _LOG.warning("local Modal progress callback failed", exc_info=True)
+                continue
+            if kind == "result":
+                result = envelope.get("result")
+                result_seen = True
+                continue
+            raise RuntimeError(f"Modal progress stream returned unknown envelope kind: {kind!r}")
+        if not result_seen:
+            raise RuntimeError("Modal progress stream ended without a result")
+        return result
+    except BaseException:
+        if owned_call is not None:
+            try:
+                cancel_owned_call(owned_call[0], expected_input_id=owned_call[1])
+            except Exception:
+                _LOG.warning("Owned Modal call cancellation could not be certified; recovery remains blocked")
+        raise
 
 
 def _serialized_progress_callback(
@@ -143,6 +163,7 @@ def run_on_modal(
     workflow_context: dict[str, Any] | None = None,
     workspace_root: str | Path | None = None,
     progress_callback: Callable[[Mapping[str, Any]], None] | None = None,
+    readiness_only: bool = False,
 ) -> dict[str, Any]:
     """Submit serialized work to Modal and return the remote result."""
 
@@ -163,9 +184,7 @@ def run_on_modal(
         workflow_context=workflow_context,
     )
     app = modal.App(modal_app_name)
-    image = modal.Image.debian_slim(python_version=runtime_spec.python_version)
-    if runtime_spec.pip_packages:
-        image = image.pip_install(*runtime_spec.pip_packages)
+    image = build_locked_image(modal, runtime_spec)
     runtime_env = merged_runtime_env(runtime_spec.env, resources.get("env"))
     source_mounts, pythonpath_entries = _resolved_local_python_sources(
         runtime_spec.local_python_sources,
@@ -181,7 +200,10 @@ def run_on_modal(
         image = image.env(runtime_env)
     for local_path, remote_path in source_mounts:
         image = image.add_local_dir(str(local_path), remote_path=remote_path)
-    secrets = [modal.Secret.from_name(str(secret["name"])) for secret in resources.get("secrets", [])]
+    secrets = [
+        modal.Secret.from_name(str(secret["name"]), required_keys=list(secret.get("env_vars", ())))
+        for secret in resources.get("secrets", [])
+    ]
     function_kwargs: dict[str, Any] = {
         "image": image,
         "volumes": {
@@ -206,6 +228,24 @@ def run_on_modal(
     if resources.get("max_containers") is not None:
         function_kwargs["max_containers"] = int(resources["max_containers"])
 
+    readiness_kwargs = {**function_kwargs, "cpu": 2, "memory": int(resources.get("merge_memory_mb") or 4096),
+                        "timeout": int(resources.get("readiness_timeout_seconds") or 600), "max_containers": 1}
+    readiness_kwargs.pop("gpu", None)
+    if getattr(runtime_spec, 'kind', None) == 'external_tool':
+        from pipelines_v2.runtime.external_tool import tool_readiness_profile
+        readiness_kwargs['memory'] = max(readiness_kwargs['memory'], tool_readiness_profile(runtime_spec)['container_memory_mb'])
+
+    @app.function(**readiness_kwargs)
+    def _remote_readiness(remote_runner_config, remote_store_config, remote_spec_payload):
+        import os
+        from pipelines_v2.operations import operation_spec_from_dict
+        from pipelines_v2.storage.registry import artifact_store_from_dict
+        from pipelines_v2.runtime.readiness import admit_execution
+        record = admit_execution(operation_spec_from_dict(remote_spec_payload), remote_runner_config,
+            artifact_store=artifact_store_from_dict(remote_store_config), image_identity=os.environ.get("MODAL_IMAGE_ID"),
+            check_writer_registry=True, scope="cpu_preflight")
+        return record.to_dict()
+
     stream_function_kwargs = {**function_kwargs, "is_generator": True}
 
     @app.function(**stream_function_kwargs)
@@ -215,6 +255,9 @@ def run_on_modal(
         remote_spec_payload: dict[str, Any],
         remote_workflow_context: dict[str, Any] | None,
     ) -> Iterable[dict[str, Any]]:
+        identity = _remote_call_identity()
+        if identity is not None:
+            yield identity
         _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import execute_remote
 
@@ -222,7 +265,7 @@ def run_on_modal(
             report_progress: Callable[[Mapping[str, Any]], None],
         ) -> dict[str, Any]:
             result = execute_remote(
-                runner_config=remote_runner_config,
+                runner_config={**remote_runner_config, "admission_required": True},
                 store_config=remote_store_config,
                 spec_payload=remote_spec_payload,
                 workflow_context=remote_workflow_context,
@@ -235,7 +278,11 @@ def run_on_modal(
 
         yield from _execute_with_progress_stream(_execute)
 
-    @app.function(**function_kwargs)
+    merge_kwargs = {**function_kwargs, "cpu": 2, "memory": int(resources.get("merge_memory_mb") or 4096),
+                    "timeout": int(resources.get("merge_timeout_seconds") or 300)}
+    merge_kwargs.pop("gpu", None)
+
+    @app.function(**merge_kwargs)
     def _remote_merge_shards(
         remote_runner_config: dict[str, Any],
         remote_store_config: dict[str, Any],
@@ -247,7 +294,7 @@ def run_on_modal(
         from pipelines_v2.runtime.remote_executor import merge_remote_shards
 
         result = merge_remote_shards(
-            runner_config=remote_runner_config,
+            runner_config={**remote_runner_config, "admission_required": True},
             store_config=remote_store_config,
             spec_payload=remote_spec_payload,
             shard_manifests=remote_shard_manifests,
@@ -280,8 +327,18 @@ def run_on_modal(
                 },
             }
         )
+    def _bounded_merge(*args):
+        return bounded_remote_call(_remote_merge_shards, *args, timeout_seconds=float(resources.get("merge_timeout_seconds") or 300) + 60)
+
     with app.run() as running_app:
         runtime_app_id = getattr(running_app, "app_id", None)
+        client_timeout = float(resources.get("client_timeout_seconds") or (resources.get("timeout_seconds") or 7200) * max(1, int(resources.get("shard_count") or 1)) + 300)
+        readiness_payload = bounded_remote_call(_remote_readiness, runner_config, store_config, spec_payload,
+            timeout_seconds=float(resources.get("readiness_timeout_seconds") or 600) + 60)
+        _require_readiness_checks(readiness_payload)
+        if readiness_only:
+            return readiness_payload
+        workflow_context = {**dict(workflow_context or {}), "readiness_v1": readiness_payload}
         streamed_progress_callback = _serialized_progress_callback(progress_callback)
         if progress_callback is not None:
             progress_callback(
@@ -335,6 +392,7 @@ def run_on_modal(
                                 shard_context,
                             ),
                             streamed_progress_callback,
+                            client_timeout,
                         )
                         for shard_context in shard_contexts
                     ]
@@ -350,7 +408,7 @@ def run_on_modal(
                             "metrics": {"shard_count": shard_count},
                         }
                     )
-                result = _remote_merge_shards.remote(
+                result = _bounded_merge(
                     runner_config,
                     store_config,
                     spec_payload,
@@ -375,6 +433,7 @@ def run_on_modal(
                         ),
                     ),
                     streamed_progress_callback,
+                    client_timeout,
                 )
         except Exception as exc:
             if progress_callback is not None:
@@ -451,9 +510,7 @@ def run_many_on_modal(
     mounted_volumes = _mounted_volumes(store_config=store_config, resources=resources)
     modal_app_name = _modal_batch_app_name(workflow_contexts=contexts)
     app = modal.App(modal_app_name)
-    image = modal.Image.debian_slim(python_version=runtime_spec.python_version)
-    if runtime_spec.pip_packages:
-        image = image.pip_install(*runtime_spec.pip_packages)
+    image = build_locked_image(modal, runtime_spec)
     runtime_env = merged_runtime_env(runtime_spec.env, resources.get("env"))
     source_mounts, pythonpath_entries = _resolved_local_python_sources(
         runtime_spec.local_python_sources,
@@ -469,7 +526,10 @@ def run_many_on_modal(
         image = image.env(runtime_env)
     for local_path, remote_path in source_mounts:
         image = image.add_local_dir(str(local_path), remote_path=remote_path)
-    secrets = [modal.Secret.from_name(str(secret["name"])) for secret in resources.get("secrets", [])]
+    secrets = [
+        modal.Secret.from_name(str(secret["name"]), required_keys=list(secret.get("env_vars", ())))
+        for secret in resources.get("secrets", [])
+    ]
     function_kwargs: dict[str, Any] = {
         "image": image,
         "volumes": {
@@ -494,6 +554,24 @@ def run_many_on_modal(
     if resources.get("max_containers") is not None:
         function_kwargs["max_containers"] = int(resources["max_containers"])
 
+    readiness_kwargs = {**function_kwargs, "cpu": 2, "memory": int(resources.get("merge_memory_mb") or 4096),
+                        "timeout": int(resources.get("readiness_timeout_seconds") or 600), "max_containers": 1}
+    readiness_kwargs.pop("gpu", None)
+    if getattr(runtime_spec, 'kind', None) == 'external_tool':
+        from pipelines_v2.runtime.external_tool import tool_readiness_profile
+        readiness_kwargs['memory'] = max(readiness_kwargs['memory'], tool_readiness_profile(runtime_spec)['container_memory_mb'])
+
+    @app.function(**readiness_kwargs)
+    def _remote_readiness(remote_runner_config, remote_store_config, remote_spec_payload):
+        import os
+        from pipelines_v2.operations import operation_spec_from_dict
+        from pipelines_v2.storage.registry import artifact_store_from_dict
+        from pipelines_v2.runtime.readiness import admit_execution
+        record = admit_execution(operation_spec_from_dict(remote_spec_payload), remote_runner_config,
+            artifact_store=artifact_store_from_dict(remote_store_config), image_identity=os.environ.get("MODAL_IMAGE_ID"),
+            check_writer_registry=True, scope="cpu_preflight")
+        return record.to_dict()
+
     stream_function_kwargs = {**function_kwargs, "is_generator": True}
 
     @app.function(**stream_function_kwargs)
@@ -503,6 +581,9 @@ def run_many_on_modal(
         remote_spec_payloads: list[dict[str, Any]],
         remote_workflow_contexts: list[dict[str, Any] | None],
     ) -> Iterable[dict[str, Any]]:
+        identity = _remote_call_identity()
+        if identity is not None:
+            yield identity
         _configure_remote_logging()
         from pipelines_v2.runtime.remote_executor import execute_remote_many
 
@@ -510,7 +591,7 @@ def run_many_on_modal(
             report_progress: Callable[[Mapping[str, Any]], None],
         ) -> list[dict[str, Any]]:
             results = execute_remote_many(
-                runner_config=remote_runner_config,
+                runner_config={**remote_runner_config, "admission_required": True},
                 store_config=remote_store_config,
                 spec_payloads=remote_spec_payloads,
                 workflow_contexts=remote_workflow_contexts,
@@ -524,7 +605,11 @@ def run_many_on_modal(
 
         yield from _execute_with_progress_stream(_execute)
 
-    @app.function(**function_kwargs)
+    merge_kwargs = {**function_kwargs, "cpu": 2, "memory": int(resources.get("merge_memory_mb") or 4096),
+                    "timeout": int(resources.get("merge_timeout_seconds") or 300)}
+    merge_kwargs.pop("gpu", None)
+
+    @app.function(**merge_kwargs)
     def _remote_merge_shards(
         remote_runner_config: dict[str, Any],
         remote_store_config: dict[str, Any],
@@ -536,7 +621,7 @@ def run_many_on_modal(
         from pipelines_v2.runtime.remote_executor import merge_remote_shards
 
         result = merge_remote_shards(
-            runner_config=remote_runner_config,
+            runner_config={**remote_runner_config, "admission_required": True},
             store_config=remote_store_config,
             spec_payload=remote_spec_payload,
             shard_manifests=remote_shard_manifests,
@@ -571,8 +656,17 @@ def run_many_on_modal(
                 },
             }
         )
+    def _bounded_merge(*args):
+        return bounded_remote_call(_remote_merge_shards, *args, timeout_seconds=float(resources.get("merge_timeout_seconds") or 300) + 60)
+
     with app.run() as running_app:
         runtime_app_id = getattr(running_app, "app_id", None)
+        client_timeout = float(resources.get("client_timeout_seconds") or (resources.get("timeout_seconds") or 7200) * max(1, int(resources.get("shard_count") or 1)) + 300)
+        for index, payload in enumerate(spec_payloads):
+            readiness_payload = bounded_remote_call(_remote_readiness, runner_config, store_config, payload,
+                timeout_seconds=float(resources.get("readiness_timeout_seconds") or 600) + 60)
+            _require_readiness_checks(readiness_payload)
+            contexts[index] = {**dict(contexts[index] or {}), "readiness_v1": readiness_payload}
         streamed_progress_callback = _serialized_progress_callback(progress_callback)
         if progress_callback is not None:
             progress_callback(
@@ -635,6 +729,7 @@ def run_many_on_modal(
                                 contexts_for_shard,
                             ),
                             streamed_progress_callback,
+                            client_timeout,
                         )
                         for contexts_for_shard in shard_contexts
                     ]
@@ -660,7 +755,7 @@ def run_many_on_modal(
                             f"shard {shard_index} got {len(shard_results)}, expected {len(spec_payloads)}"
                         )
                 results = [
-                    _remote_merge_shards.remote(
+                    _bounded_merge(
                         runner_config,
                         store_config,
                         spec_payload,
@@ -691,6 +786,7 @@ def run_many_on_modal(
                         runtime_contexts,
                     ),
                     streamed_progress_callback,
+                    client_timeout,
                 )
         except Exception as exc:
             if progress_callback is not None:
@@ -784,6 +880,9 @@ def _workflow_context_with_runtime(
 
 
 def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any]) -> tuple[MountedVolume, ...]:
+    root = PurePosixPath(str(store_config["root"]))
+    if not root.is_absolute() or ".." in root.parts or root == PurePosixPath("/"):
+        raise ValueError("Modal artifact root must be an absolute, non-root path without '..'")
     requested_volumes = [
         MountedVolume(
             name=str(store_config["name"]),
@@ -803,6 +902,14 @@ def _mounted_volumes(*, store_config: dict[str, Any], resources: dict[str, Any])
         )
     by_mount_path: dict[str, MountedVolume] = {}
     for volume in requested_volumes:
+        path = PurePosixPath(volume.mount_path)
+        if not path.is_absolute() or path == PurePosixPath("/") or ".." in path.parts:
+            raise ValueError(f"Invalid Modal volume mount path: {volume.mount_path!r}")
+        volume = MountedVolume(volume.name, str(path), volume.create_if_missing, volume.commit_on_success)
+        for existing_path in by_mount_path:
+            other = PurePosixPath(existing_path)
+            if path != other and (path.is_relative_to(other) or other.is_relative_to(path)):
+                raise ValueError(f"Overlapping Modal volume mounts: {str(path)!r} and {str(other)!r}")
         existing = by_mount_path.get(volume.mount_path)
         if existing is None:
             by_mount_path[volume.mount_path] = volume
@@ -881,44 +988,12 @@ def _resolved_runtime_spec(
         raise NotImplementedError(
             f"ModalRunner requires a PythonRuntimeSpec, got {type(runtime_spec).__name__}"
         )
-    return PythonRuntimeSpec(
-        python_version=runtime_spec.python_version,
-        pip_packages=runtime_spec.pip_packages,
-        env=dict(runtime_spec.env),
-        secrets=_merge_runtime_secrets(runtime_spec.secrets, spec.runtime_secrets()),
-        local_python_sources=runtime_spec.local_python_sources,
-    )
+    return runtime_for_target(replace(runtime_spec,
+        secrets=_merge_runtime_secrets(runtime_spec.secrets, spec.runtime_secrets())), target="modal")
 
 
-def _resolved_runtime_spec_many(
-    *,
-    spec_payloads: list[dict[str, Any]],
-) -> PythonRuntimeSpec:
-    runtime_specs = [_resolved_runtime_spec(spec_payload=payload) for payload in spec_payloads]
-    if not runtime_specs:
-        raise ValueError("Cannot resolve runtime spec for an empty Modal batch")
-    python_versions = {spec.python_version for spec in runtime_specs}
-    if len(python_versions) != 1:
-        raise ValueError(f"Modal batch requires one Python version, got {sorted(python_versions)}")
-    env: dict[str, str] = {}
-    for runtime_spec in runtime_specs:
-        for key, value in dict(runtime_spec.env).items():
-            key = str(key)
-            value = str(value)
-            existing = env.get(key)
-            if existing is not None and existing != value:
-                raise ValueError(
-                    "Modal batch requires compatible runtime env across specs; "
-                    f"{key!r} has both {existing!r} and {value!r}"
-                )
-            env[key] = value
-    return PythonRuntimeSpec(
-        python_version=runtime_specs[0].python_version,
-        pip_packages=_merge_string_sequences(*(spec.pip_packages for spec in runtime_specs)),
-        env=env,
-        secrets=_merge_runtime_secrets_many(*(spec.secrets for spec in runtime_specs)),
-        local_python_sources=_merge_string_sequences(*(spec.local_python_sources for spec in runtime_specs)),
-    )
+def _resolved_runtime_spec_many(*, spec_payloads: list[dict[str, Any]]) -> PythonRuntimeSpec:
+    return merge_runtime_specs(_resolved_runtime_spec(spec_payload=payload) for payload in spec_payloads)
 
 
 def _merge_string_sequences(*items: tuple[str, ...]) -> tuple[str, ...]:
@@ -1066,3 +1141,21 @@ def _resolve_local_python_source(
     raise FileNotFoundError(
         f"local_python_source {source!r} does not identify a directory; tried: {tried}"
     )
+
+
+def _require_readiness_checks(payload):
+    from pipelines_v2.runtime.readiness import AdmissionRecord
+    record = AdmissionRecord.from_dict(payload)
+    failed = [check for check in record.checks if check.status == "failed"]
+    if failed:
+        raise ValueError("CPU readiness failed before GPU submission: " + "; ".join(
+            f"{check.field_path}: {check.message}. {check.remediation or ''}" for check in failed))
+
+
+def _remote_call_identity():
+    import modal
+    current_call = getattr(modal, "current_function_call_id", None)
+    current_input = getattr(modal, "current_input_id", None)
+    if callable(current_call) and callable(current_input):
+        return {"kind": "call_identity", "call_id": current_call(), "input_id": current_input()}
+    return None

@@ -12,9 +12,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from pipelines_v2.storage.finalization import finalize_manifest, writer_lock
+from pipelines_v2.core.provenance import bind_materialized_dataset, context_provenance, resolve_for_runner, with_provenance
 from pipelines_v2.core.types import OperationSpec, utc_now_iso
 from pipelines_v2.operations.specs import CaptureSpec, GenerationRunSpec, PatchedGenerationSpec, ReportSpec
-from pipelines_v2.runtime.artifacts import ARTIFACT_BOUND_SPECS as _ARTIFACT_BOUND_SPECS
+from pipelines_v2.operations.registry import is_artifact_operation, operation_artifact_kind
 from pipelines_v2.runtime.base import ExecutionPlan
 from pipelines_v2.runtime.env import applied_runtime_env, merged_runtime_env
 from pipelines_v2.storage.artifacts import (
@@ -63,6 +65,8 @@ class LocalRunner:
     artifacts: LocalArtifactStore = field(default_factory=lambda: LocalArtifactStore(Path("artifacts")))
     catalog: Catalog = field(default_factory=NullCatalog)
 
+    provenance_resolver: Any | None = field(default=None, repr=False)
+
     kind: str = "local"
 
     def identity(self) -> dict[str, Any]:
@@ -81,7 +85,8 @@ class LocalRunner:
         elif isinstance(spec, (GenerationRunSpec, PatchedGenerationSpec)):
             artifact_kinds = (spec.kind,)
         else:
-            artifact_kinds = ((spec.kind,) if isinstance(spec, _ARTIFACT_BOUND_SPECS) else ())
+            artifact_kinds = ((operation_artifact_kind(spec),) if is_artifact_operation(spec) else ())
+        from pipelines_v2.runtime.admission import static_admission, effective_configuration, workload_envelope
         errors = list(spec_plan_errors(spec))
         errors.extend(_local_plan_errors(spec))
         return ExecutionPlan(
@@ -91,7 +96,17 @@ class LocalRunner:
             artifact_kinds=artifact_kinds,
             checks=("capabilities", "runtime_env", "artifact_store", "catalog"),
             errors=tuple(errors),
+            admission_checks=static_admission(spec, self.identity(), artifact_store=self.artifacts, catalog=self.catalog),
+            effective_config=effective_configuration(spec, self.identity()),
+            workload_envelope=workload_envelope(spec, self.identity()),
         )
+
+    def readiness(self, spec: OperationSpec):
+        """Explicit checks against this process and local store before weights."""
+        from pipelines_v2.runtime.readiness import admit_execution
+        self.plan(spec).validate()
+        with applied_runtime_env(_runtime_env_for_local(spec=spec, resources=self.resources)):
+            return admit_execution(spec, self.identity(), artifact_store=self.artifacts)
 
     def run(
         self,
@@ -110,48 +125,22 @@ class LocalRunner:
                 return self._run_generation(spec, workflow_context=workflow_context)
             if isinstance(spec, PatchedGenerationSpec):
                 return self._run_intervention(spec, workflow_context=workflow_context)
-            if isinstance(spec, _ARTIFACT_BOUND_SPECS):
+            if is_artifact_operation(spec):
                 return self._run_artifact_operation(spec, workflow_context=workflow_context)
             raise NotImplementedError(f"LocalRunner cannot run {spec.kind!r} specs yet")
 
     def _run_capture(self, spec: CaptureSpec, *, workflow_context: WorkflowStepContext | None = None) -> CaptureArtifact:
-        engine = spec.bound_engine()
-        if engine is None:
-            raise RuntimeError("CaptureSpec is missing a bound engine")
-        resolved_spec = spec.resolve_dataset()
-        result = engine.capture(resolved_spec)
-        artifact_id = f"capture_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
-        self.artifacts.make_artifact_dir(artifact_id)
-
-        storage_refs: dict[str, Any] = {"features": write_capture_features(self.artifacts, artifact_id, result.features)}
-
-        if result.generations:
-            storage_refs["generations"] = self.artifacts.write_json(
-                artifact_id,
-                "generations.json",
-                result.generations,
-            )
-
-        manifest = ArtifactManifest(
-            artifact_id=artifact_id,
-            artifact_kind="capture",
-            schema_version=1,
-            operation_spec_hash=spec.spec_hash(),
-            operation_semantic_hash=spec.semantic_hash(),
-            created_at=utc_now_iso(),
-            engine=engine.identity(),
-            runner=self.identity(),
-            input_artifact_refs=(),
-            example_coverage=resolved_spec.dataset.coverage(),
-            storage_refs=storage_refs,
-            metadata=result.metadata,
-            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
-        )
-        storage_refs["manifest"] = self.artifacts.write_json(
-            artifact_id,
-            "manifest.json",
-            manifest.to_dict(),
-        )
+        from pipelines_v2.runtime.remote_executor import _execute_capture
+        from pipelines_v2.core.provenance import KEY
+        provenance = context_provenance(workflow_context) or resolve_for_runner(spec, self)
+        context = workflow_context.to_manifest_dict() if workflow_context is not None else {}
+        context[KEY] = provenance.to_dict()
+        if not provenance.identity_complete:
+            context["provenance_attempt"] = uuid.uuid4().hex
+        lock_key = str([context.get("run_id"), context.get("workflow_step_key"), spec.semantic_hash(), provenance.scientific_identity])
+        with writer_lock(self.artifacts, lock_key):
+            payload = _execute_capture(runner_config=self.identity(), store=self.artifacts, spec=spec, workflow_context=context)
+        manifest = ArtifactManifest.from_dict(payload)
         self.catalog.record_artifact(manifest)
         return CaptureArtifact(_manifest=manifest, store=self.artifacts)
 
@@ -163,80 +152,92 @@ class LocalRunner:
     ) -> OperationArtifact:
         from pipelines_v2.operations.execute import execute_artifact_operation
 
-        artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
-        self.artifacts.make_artifact_dir(artifact_id)
-        if isinstance(spec, ReportSpec):
-            logger.info(
-                "Starting local report operation artifact_id=%s template=%s inputs=%d output_dir=%s",
-                artifact_id,
-                spec.template,
-                len(spec.inputs),
-                spec.output_dir,
-            )
-            operation_started = time.perf_counter()
-        else:
-            operation_started = None
-        result = execute_artifact_operation(spec)
-        if isinstance(spec, ReportSpec):
-            logger.info(
-                "Finished local report operation artifact_id=%s elapsed=%.2fs payload_keys=%s",
-                artifact_id,
-                time.perf_counter() - operation_started if operation_started is not None else 0.0,
-                sorted(result.payload),
-            )
-
-        storage_refs: dict[str, Any] = {}
-        if result.payload:
-            storage_refs["result"] = self.artifacts.write_json(artifact_id, "result.json", result.payload)
+        provenance = context_provenance(workflow_context) or resolve_for_runner(spec, self)
+        context_identity = workflow_context.to_manifest_dict() if workflow_context is not None else {}
+        ownership = str([context_identity.get("run_id"), context_identity.get("workflow_step_key"), spec.semantic_hash(), provenance.scientific_identity])
+        with writer_lock(self.artifacts, ownership):
+            from pipelines_v2.runtime.remote_executor import _artifact_id_for, _load_existing_manifest, _fresh_id_if_final_exists
+            context = workflow_context.to_manifest_dict() if workflow_context is not None else {}
+            context["provenance_v1"] = provenance.to_dict()
+            artifact_id = _artifact_id_for(spec=spec, workflow_context=context)
+            existing = _load_existing_manifest(store=self.artifacts, artifact_id=artifact_id, spec=spec, provenance=provenance)
+            if existing is not None:
+                self.catalog.record_artifact(existing)
+                return OperationArtifact(_manifest=existing, store=self.artifacts)
+            artifact_id = _fresh_id_if_final_exists(self.artifacts, artifact_id)
+            self.artifacts.ensure_artifact_dir(artifact_id)
             if isinstance(spec, ReportSpec):
-                logger.info("Wrote report operation payload artifact_id=%s", artifact_id)
-        if result.features:
-            storage_refs["features"] = write_capture_features(self.artifacts, artifact_id, result.features)
-        if result.labels:
-            storage_refs["labels"] = {
-                name: self.artifacts.write_json(artifact_id, f"labels/{name}.json", payload)
-                for name, payload in result.labels.items()
-            }
-        metadata = dict(result.metadata)
-        if isinstance(spec, ReportSpec):
-            report_refs, published = _materialize_local_report_outputs(
-                artifact_id=artifact_id,
-                spec=spec,
-                payload=result.payload,
-            )
-            storage_refs.update(report_refs)
-            if published:
-                metadata["published_report"] = published
                 logger.info(
-                    "Published local report artifact_id=%s report_path=%s downloaded_results=%d",
+                    "Starting local report operation artifact_id=%s template=%s inputs=%d output_dir=%s",
                     artifact_id,
-                    published.get("report_path"),
-                    len(published.get("downloaded_results", [])),
+                    spec.template,
+                    len(spec.inputs),
+                    spec.output_dir,
                 )
-        manifest = ArtifactManifest(
-            artifact_id=artifact_id,
-            artifact_kind=spec.kind,
-            schema_version=1,
-            operation_spec_hash=spec.spec_hash(),
-            operation_semantic_hash=spec.semantic_hash(),
-            created_at=utc_now_iso(),
-            engine={},
-            runner=self.identity(),
-            input_artifact_refs=tuple(_input_artifact_ids(spec)),
-            example_coverage=result.example_coverage,
-            storage_refs=storage_refs,
-            metadata=metadata,
-            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
-        )
-        storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
-        self.catalog.record_artifact(manifest)
-        if isinstance(spec, ReportSpec):
-            logger.info(
-                "Recorded local report artifact artifact_id=%s storage_refs=%s",
-                artifact_id,
-                sorted(storage_refs),
+                operation_started = time.perf_counter()
+            else:
+                operation_started = None
+            result = execute_artifact_operation(spec)
+            if isinstance(spec, ReportSpec):
+                logger.info(
+                    "Finished local report operation artifact_id=%s elapsed=%.2fs payload_keys=%s",
+                    artifact_id,
+                    time.perf_counter() - operation_started if operation_started is not None else 0.0,
+                    sorted(result.payload),
+                )
+
+            storage_refs: dict[str, Any] = {}
+            if result.payload:
+                storage_refs["result"] = self.artifacts.write_json(artifact_id, "result.json", result.payload)
+                if isinstance(spec, ReportSpec):
+                    logger.info("Wrote report operation payload artifact_id=%s", artifact_id)
+            if result.features:
+                storage_refs["features"] = write_capture_features(self.artifacts, artifact_id, result.features)
+            if result.labels:
+                storage_refs["labels"] = {
+                    name: self.artifacts.write_json(artifact_id, f"labels/{name}.json", payload)
+                    for name, payload in result.labels.items()
+                }
+            metadata = dict(result.metadata)
+            if isinstance(spec, ReportSpec):
+                report_refs, published = _materialize_local_report_outputs(
+                    artifact_id=artifact_id,
+                    spec=spec,
+                    payload=result.payload,
+                )
+                storage_refs.update(report_refs)
+                if published:
+                    metadata["published_report"] = published
+                    logger.info(
+                        "Published local report artifact_id=%s report_path=%s downloaded_results=%d",
+                        artifact_id,
+                        published.get("report_path"),
+                        len(published.get("downloaded_results", [])),
+                    )
+            manifest = ArtifactManifest(
+                artifact_id=artifact_id,
+                artifact_kind=operation_artifact_kind(spec),
+                schema_version=1,
+                operation_spec_hash=spec.spec_hash(),
+                operation_semantic_hash=spec.semantic_hash(),
+                created_at=utc_now_iso(),
+                engine={},
+                runner=self.identity(),
+                input_artifact_refs=tuple(_input_artifact_ids(spec)),
+                example_coverage=result.example_coverage,
+                storage_refs=storage_refs,
+                metadata=with_provenance(metadata, provenance),
+                workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
             )
-        return OperationArtifact(_manifest=manifest, store=self.artifacts)
+            manifest = finalize_manifest(self.artifacts, manifest)
+            self.catalog.record_artifact(manifest)
+            if isinstance(spec, ReportSpec):
+                logger.info(
+                    "Recorded local report artifact artifact_id=%s storage_refs=%s",
+                    artifact_id,
+                    sorted(storage_refs),
+                )
+            return OperationArtifact(_manifest=manifest, store=self.artifacts)
 
     def _run_generation(
         self,
@@ -244,38 +245,17 @@ class LocalRunner:
         *,
         workflow_context: WorkflowStepContext | None = None,
     ) -> OperationArtifact:
-        engine = spec.bound_engine()
-        if engine is None:
-            raise RuntimeError("GenerationRunSpec is missing a bound engine")
-        resolved_spec = spec.resolve_dataset()
-        result = engine.generate(resolved_spec)
-        artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
-        self.artifacts.make_artifact_dir(artifact_id)
-
-        payload = {
-            "kind": "generation_run_result",
-            "summary": {"example_count": len(result.rows)},
-            "rows": list(result.rows),
-        }
-        storage_refs: dict[str, Any] = {
-            "result": self.artifacts.write_json(artifact_id, "result.json", payload),
-        }
-        manifest = ArtifactManifest(
-            artifact_id=artifact_id,
-            artifact_kind=spec.kind,
-            schema_version=1,
-            operation_spec_hash=spec.spec_hash(),
-            operation_semantic_hash=spec.semantic_hash(),
-            created_at=utc_now_iso(),
-            engine=engine.identity(),
-            runner=self.identity(),
-            input_artifact_refs=tuple(_input_artifact_ids(spec)),
-            example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
-            storage_refs=storage_refs,
-            metadata=dict(result.metadata),
-            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
-        )
-        storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
+        from pipelines_v2.runtime.remote_executor import _execute_generation
+        from pipelines_v2.core.provenance import KEY
+        provenance = context_provenance(workflow_context) or resolve_for_runner(spec, self)
+        context = workflow_context.to_manifest_dict() if workflow_context is not None else {}
+        context[KEY] = provenance.to_dict()
+        if not provenance.identity_complete:
+            context["provenance_attempt"] = uuid.uuid4().hex
+        lock_key = str([context.get("run_id"), context.get("workflow_step_key"), spec.semantic_hash(), provenance.scientific_identity])
+        with writer_lock(self.artifacts, lock_key):
+            payload = _execute_generation(runner_config=self.identity(), store=self.artifacts, spec=spec, workflow_context=context)
+        manifest = ArtifactManifest.from_dict(payload)
         self.catalog.record_artifact(manifest)
         return OperationArtifact(_manifest=manifest, store=self.artifacts)
 
@@ -285,40 +265,20 @@ class LocalRunner:
         *,
         workflow_context: WorkflowStepContext | None = None,
     ) -> OperationArtifact:
-        engine = spec.bound_engine()
-        if engine is None:
-            raise RuntimeError("PatchedGenerationSpec is missing a bound engine")
-        resolved_spec = spec.resolve_dataset()
-        result = engine.intervene(resolved_spec)
-        artifact_id = f"{spec.kind}_{spec.spec_hash()[:12]}_{uuid.uuid4().hex[:8]}"
-        self.artifacts.make_artifact_dir(artifact_id)
-
-        payload = {
-            "kind": "patched_generation_result",
-            "summary": dict(result.summary),
-            "rows": list(result.rows),
-        }
-        storage_refs: dict[str, Any] = {
-            "result": self.artifacts.write_json(artifact_id, "result.json", payload),
-        }
-        manifest = ArtifactManifest(
-            artifact_id=artifact_id,
-            artifact_kind=spec.kind,
-            schema_version=1,
-            operation_spec_hash=spec.spec_hash(),
-            operation_semantic_hash=spec.semantic_hash(),
-            created_at=utc_now_iso(),
-            engine=engine.identity(),
-            runner=self.identity(),
-            input_artifact_refs=tuple(_input_artifact_ids(spec)),
-            example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=result.rows),
-            storage_refs=storage_refs,
-            metadata=dict(result.metadata),
-            workflow_context=workflow_context.to_manifest_dict() if workflow_context is not None else {},
-        )
-        storage_refs["manifest"] = self.artifacts.write_json(artifact_id, "manifest.json", manifest.to_dict())
+        from pipelines_v2.runtime.remote_executor import _execute_intervention
+        from pipelines_v2.core.provenance import KEY
+        provenance = context_provenance(workflow_context) or resolve_for_runner(spec, self)
+        context = workflow_context.to_manifest_dict() if workflow_context is not None else {}
+        context[KEY] = provenance.to_dict()
+        if not provenance.identity_complete:
+            context["provenance_attempt"] = uuid.uuid4().hex
+        lock_key = str([context.get("run_id"), context.get("workflow_step_key"), spec.semantic_hash(), provenance.scientific_identity])
+        with writer_lock(self.artifacts, lock_key):
+            payload = _execute_intervention(runner_config=self.identity(), store=self.artifacts, spec=spec, workflow_context=context)
+        manifest = ArtifactManifest.from_dict(payload)
         self.catalog.record_artifact(manifest)
         return OperationArtifact(_manifest=manifest, store=self.artifacts)
+
 
 
 def _local_plan_errors(spec: OperationSpec) -> list[str]:
@@ -520,6 +480,10 @@ def _materialize_report_input_results(
     payload: dict[str, Any],
     output_dir: Path,
 ) -> list[dict[str, Any]]:
+    if spec.evidence is not None:
+        # Evidence reports already validated only bounded result selections.
+        # Do not copy entire result payloads or localize captures a second time.
+        return []
     payload_inputs = payload.get("inputs")
     if not isinstance(payload_inputs, list):
         logger.info("Skipping report input result materialization: payload inputs missing or not a list")
@@ -693,6 +657,9 @@ def _render_report_markdown(*, spec: ReportSpec, payload: dict[str, Any], report
             lines.append("")
         else:
             lines.append(f"- `{item}`")
+    if "evidence" in payload:
+        from pipelines_v2.reporting.evidence import render_evidence_markdown
+        lines.append(render_evidence_markdown(payload["evidence"]))
     lines.append("## Summary")
     lines.append("")
     lines.append("```json")

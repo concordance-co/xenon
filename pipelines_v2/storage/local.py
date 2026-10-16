@@ -12,6 +12,7 @@ from safetensors.numpy import load_file, save_file
 
 from pipelines_v2.storage.artifacts import ArtifactManifest
 from pipelines_v2.storage.json import json_default
+from pipelines_v2.storage.finalization import atomic_replace
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
 
 
@@ -63,18 +64,16 @@ class LocalArtifactStore:
     def write_safetensors(self, artifact_id: str, relative_path: str, tensors: dict[str, Any]) -> dict[str, Any]:
         path = self._resolve_inside_artifact(artifact_id, relative_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        save_file(tensors, str(tmp))
-        os.replace(tmp, path)
+        atomic_replace(path, lambda temporary: save_file(tensors, str(temporary)))
         return {"store": self.kind, "path": str(path), "format": "safetensors", "bytes": path.stat().st_size}
 
     def write_json(self, artifact_id: str, relative_path: str, payload: Any) -> dict[str, Any]:
         path = self._resolve_inside_artifact(artifact_id, relative_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        with tmp.open("w", encoding="utf-8") as f:
-            json.dump(payload, f, sort_keys=True, indent=2, default=json_default)
-        os.replace(tmp, path)
+        def write(temporary):
+            with temporary.open("w", encoding="utf-8") as stream:
+                json.dump(payload, stream, sort_keys=True, indent=2, default=json_default)
+        atomic_replace(path, write)
         return {
             "store": self.kind,
             "path": str(path),

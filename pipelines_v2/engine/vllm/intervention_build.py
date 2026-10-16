@@ -71,6 +71,12 @@ def build_llm_kwargs(
         llm_kwargs["max_num_batched_tokens"] = int(engine.max_num_batched_tokens)
     if bool(engine.async_scheduling):
         llm_kwargs["async_scheduling"] = True
+    if engine.dtype is not None:
+        llm_kwargs["dtype"] = engine.dtype
+    if engine.revision is not None:
+        llm_kwargs["revision"] = engine.revision
+    if engine.model_seed is not None:
+        llm_kwargs["seed"] = engine.model_seed
     llm_kwargs.update(engine.extra_llm_kwargs())
     reasoning_parser = (engine.reasoning_parser or "").strip()
     if not reasoning_parser and "qwen3" in str(engine.model_id).lower():

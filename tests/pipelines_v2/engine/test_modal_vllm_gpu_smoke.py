@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 import os
 import subprocess
 import sys
@@ -57,7 +58,7 @@ def test_compiled_project_out_smoke_validator_returns_transform_payload() -> Non
 def test_modal_vllm_compiled_project_out_smoke(tmp_path: Path) -> None:
     if os.getenv(_RUN_ENV) != "1":
         pytest.skip(f"set {_RUN_ENV}=1 to run the real Modal/vLLM GPU smoke")
-    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU smoke")
+    importlib.import_module("modal")
 
     repo_root = Path(__file__).resolve().parents[3]
     workflow_file = repo_root / "scripts" / "pipelines_v2_activation_patch_smoke.py"
@@ -113,7 +114,7 @@ def test_modal_vllm_compiled_project_out_smoke(tmp_path: Path) -> None:
 def test_modal_vllm_satisfies_model_bound_runner_contract(tmp_path_factory: pytest.TempPathFactory) -> None:
     if os.getenv(_CONTRACT_RUN_ENV) != "1":
         pytest.skip(f"set {_CONTRACT_RUN_ENV}=1 to run the real Modal/vLLM engine contracts")
-    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+    importlib.import_module("modal")
 
     coverage = _run_requested_modal_contracts(tmp_path_factory)
     assert "basic" in coverage
@@ -129,7 +130,7 @@ def test_modal_vllm_satisfies_unpaired_patch_operator_contracts(tmp_path_factory
         pytest.skip(
             f"set {_PATCH_OPERATOR_CONTRACT_RUN_ENV}=1 to run real Modal/vLLM unpaired patch contracts"
         )
-    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+    importlib.import_module("modal")
 
     coverage = _run_requested_modal_contracts(tmp_path_factory)
     assert "unpaired" in coverage
@@ -145,7 +146,7 @@ def test_modal_vllm_satisfies_paired_patch_operator_contracts(tmp_path_factory: 
         pytest.skip(
             f"set {_PAIRED_PATCH_CONTRACT_RUN_ENV}=1 to run real Modal/vLLM paired patch contracts"
         )
-    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+    importlib.import_module("modal")
 
     coverage = _run_requested_modal_contracts(tmp_path_factory)
     assert "paired" in coverage
@@ -161,7 +162,7 @@ def test_modal_vllm_generated_residual_and_moe_routing_contract(tmp_path: Path) 
         pytest.skip(
             f"set {_CAPTURE_CONTRACT_RUN_ENV}=1 to run the generated-residual/MoE capture contract"
         )
-    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+    importlib.import_module("modal")
 
     from pipelines_v2.api import (
         CaptureSpec,
@@ -274,7 +275,7 @@ def test_modal_vllm_generated_residual_and_moe_routing_contract(tmp_path: Path) 
 def test_modal_vllm_structured_output_contract(tmp_path: Path) -> None:
     if os.getenv(_OUTPUT_CONTRACT_RUN_ENV) != "1":
         pytest.skip(f"set {_OUTPUT_CONTRACT_RUN_ENV}=1 to run the structured-output contract")
-    pytest.importorskip("modal", reason="Modal SDK is required for the real GPU contract")
+    importlib.import_module("modal")
 
     from pipelines_v2.api import (
         Dataset,

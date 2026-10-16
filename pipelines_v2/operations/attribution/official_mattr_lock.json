@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/aryamanarora/matryoshka-attribution.git",
+  "revision": "af82b2eef145dd3e66c793a413352d6931a152d7",
+  "mib_repository": "https://github.com/aryamanarora/MIB-circuit-track.git",
+  "mib_revision": "582fdbc8a2b0f7063a265c8f94851fd2a3aa5480",
+  "submodules": {
+    "EAP-IG": {
+      "repository": "https://github.com/aryamanarora/EAP-IG.git",
+      "revision": "3fb341eafdaba63632954aecbbb96b4b08e13d02"
+    }
+  },
+  "python_version": "3.12",
+  "dependency_group": "lm",
+  "uv_lock_sha256": "95ff386810f211133e1f8a9a64a8d78a1d263a3e0d673dd578ab6359a8abe235",
+  "entrypoint": "scripts/mib/eval_mib.py",
+  "entrypoint_sha256": "75fa67aea49706c11d1101b38463b1ddff00076405dedaa73ec8281b1c0294c9",
+  "evaluator_module": "MIB_circuit_track.evaluation.evaluate_area_under_curve",
+  "evaluator_source_sha256": "66bf4e8cb2cde67b6dcc30b84e9eee70505f0f52b7e811c1d77c745e30577ef4",
+  "licenses": {
+    "mattr": "No license file declared in pinned repository; checkout used externally, not vendored",
+    "mib": "Apache-2.0",
+    "ioi": "MIT",
+    "gpt2": "MIT"
+  },
+  "resume_semantics": "restart_unfinished_method_seed",
+  "unsupported": [
+    "edge/neuron/SAE attribution",
+    "non-GPT2 models",
+    "zero/cause/joint modes",
+    "step-exact optimizer resume",
+    "paper_reproduction label"
+  ]
+}

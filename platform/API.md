@@ -38,12 +38,21 @@ Current execution support:
   - `LabelFieldsSpec`
   - `TransformSpec`
   - `ReportSpec`
+  - `MAttrSpec` for the isolated official GPT-2/IOI attribution smoke;
+    see [MAttr](MATTR.md).
   - `ActivationPatchSpec` as a nested patch recipe
 
 Current engine support:
 
 - `ToyEngine`: local deterministic test engine
 - `VLLMEngine`: real capture / generation / patched-generation engine
+- `TorchEngine`: offline GPT-2 CPU capture, target logprobs, residual edits and
+  differentiable forwards; see [local steering](TORCH_ENGINE.md).
+- `NativeTorchEngine`: selected GPT-2 head and Qwen3 SwiGLU coordinates,
+  captures and edits; see [native sites](NATIVE_SITES.md).
+- `SDXLEngine`: pinned SDXL image generation, internal capture and intervention
+  on Modal through `DiffusionGenerationSpec`, `DiffusionCaptureSpec` and
+  `DiffusionInterventionSpec`; see [diffusion](DIFFUSION.md).
 
 Current runner support:
 
@@ -381,7 +390,8 @@ Important methods:
 - `capabilities()`
 - `runtime_spec()`
 - `planning_errors(spec)`
-  - currently rejects MoE routing capture with `enable_prefix_caching=True`
+  - validates numeric ranges, boolean types, and supported `extra` options
+  - rejects MoE routing capture with `enable_prefix_caching=True`
   - allows compiled mode (`enforce_eager=False`) and batched routing capture
     when prefix caching is disabled
 - `capture(spec)`
@@ -1154,6 +1164,56 @@ Use when:
 - a Python workflow file should fully describe its named runners via `build_runner_specs()`
 - you want one checked-in workflow definition to materialize concrete runners without CLI-only glue
 
+## Explicit adapter registration
+
+Trusted adapter bootstrap code can call `register_engine(kind, loader)`,
+`register_capture_site(kind, loader)`, `register_intervention_site(kind, loader)`,
+`register_feature_codec(...)`, and `register_operation(...)` from
+`pipelines_v2.api`. Register before loading the corresponding workflow payload in
+**each process**, including the worker. Registrations are process-local and
+reject duplicate names; serialized payloads cannot name importable loader code.
+There is no automatic plugin discovery.
+
+`register_operation(kind, loader=..., executor=..., artifact_kind=...)` registers
+an artifact-bound operation's loader, placement and output identity together.
+Its executor returns `OperationExecutionResult`, imported from
+`pipelines_v2.operations.execution`. Generic tensor codec helpers
+`encode_tensor_feature_payload` and `decode_feature_payload` are imported from
+`pipelines_v2.storage.features`. Local and remote dispatch look
+up this registration at execution time, including registrations made after the
+runner was imported. New model adapters use the existing capture, generation
+and intervention specs. `runtime.artifacts.ARTIFACT_BOUND_SPECS` remains a legacy
+built-in snapshot; new code must use the live `is_artifact_operation` lookup.
+
+New capture sites carry an explicit `kind` and integer `schema_version=1`.
+Untagged residual/router sites retain their historical serialization. New write
+sites use the intervention-site registry. A loader must return the registered
+kind; unsupported schema versions fail before execution. Adapter code defines
+the scientific quantity and granular capabilities. `TARGET_LOGPROBS` is separate
+from `LOGPROBS`; no existing engine gains target-token readout merely because
+this capability identifier exists.
+
+Dense feature codecs register a kind, versioned storage format, encoder and
+decoder together. Encoders must honor `tensor_key_prefix` and preserve the kind;
+readers validate the format/kind pairing. Unregistered ndarrays or explicitly
+dense formats are rejected rather than written as JSON. Existing residual v1/v2
+and MoE-routing tensor references remain readable. Small legacy JSON annotation
+payloads remain supported.
+
+An additive optional dataclass field can opt into
+`field(default=..., metadata={"omit_if_default": True})` (or a default factory).
+This omits its default from ordinary and semantic serialization, preserving old
+hashes. Non-default values participate in both hashes. Use ordinary value
+comparison for such defaults; tensor-valued defaults are unsupported. This is
+opt-in and does not alter any existing field's meaning.
+
+Capture-site registration also accepts `empty_payload(site)` for empty remote
+partitions. Dense feature registration accepts `merge(left, right)` for shard
+assembly. Both callbacks are explicit: absent semantics fail instead of dropping
+sites or assuming every tensor has the legacy layer layout. Registered codecs
+with no tensors retain a versioned metadata envelope so their decoder still
+runs; the old empty residual/router JSON representation is preserved.
+
 ## Deployment Layer
 
 Deployments are for long-lived services. Workflows remain finite jobs that
@@ -1762,6 +1822,14 @@ result = WorkflowOrchestrator({"gpu": capture_runner, "cpu": analysis_runner}).r
 probe_artifact = result.step("probe")
 ```
 
+## Scientific provenance
+
+New artifacts carry versioned scientific identity in manifest metadata. Legacy
+manifests remain readable, while final/partial reuse requires matching complete
+identity. See [Scientific provenance and reuse](PROVENANCE.md) for resolution,
+sharding, source/privacy boundaries and current unresolved cases. Identity
+completeness is separate from measured GPU qualification.
+
 ## Current Limits To Know About
 
 - `ActivationPatchSpec` is a nested recipe, not a runnable operation.
@@ -1780,3 +1848,20 @@ probe_artifact = result.step("probe")
 - step reruns now exist through the CLI, but there is not yet a richer workflow-edit API for mutating a checked-in workflow spec and automatically planning invalidation from the diff.
 - catalog aliases and spec snapshots described in `ARCH` are not implemented yet.
 - the orchestrator supports dependency-aware parallelism and failure cancellation, but not a configurable retry policy yet.
+
+### Gaps Against The Activation-Proxy Ladder
+
+`activation-proxy-experiment-ladder.md` (Section 11) lists capabilities C01–C19. Checked against the current surface on 2026-09-23:
+
+- covered today: pinned model revisions (C01), site/position capture (C02), activation writes and resumed execution through the vLLM patch op (C03, C04), donor/recipient handling (C12), fixed maps and matched interventions for residual sites (C11), character-span alignment across tokenizers (C18), spec hashing via `stable_hash` (part of C13).
+- no two-choice probability readout. Intervention outputs carry generated text and token ids only. `EngineCapability.LOGPROBS` is declared but only the toy engine implements it. The ladder's `q_M(x)` needs `p(A)` and `p(B)` at the answer position for clean and patched runs. This blocks Level 0 onward.
+- no training path (C06, C10). No optimizer, backward pass, LoRA, or adapter code exists. vLLM cannot provide this; see the training sibling direction in `ARCH.md`.
+- no cross-model map. Readouts fit probes within one model. Nothing pairs teacher and proxy activations, fits shared coordinates, or applies a pseudoinverse write.
+- `pipelines_v2/operations/statistics/` is three stub modules. Grouped bootstrap, paired method differences, and Wilson intervals are unbuilt (C14). Every ladder gate is an L95/U95 comparison.
+- no compute accounting (C15, C16). Workflow records carry start/end timestamps only. No per-run token roll-up, FLOP estimator, peak-memory record, or budget-termination logic.
+- no prediction-freeze protocol (C13). Hashing exists; the ordered-timestamp tie between a prediction hash and a later teacher run, and any enforcement that confirmation cannot start before the hash is recorded, do not.
+- no partition access restriction (C07, C17). Nothing prevents a training or selection step from reading gate or reserved-family partitions.
+- repeat determinism under batching (C05) is unmeasured. Intervention requests are batched by `max_num_seqs`, so clean and patched runs can land in different batch compositions. The ladder's 0.001 hook tolerance is tighter than its 0.005 repeat tolerance and should be checked against measured drift.
+- only residual-stream intervention sites exist. Attention and MLP output sites are needed only if Level 4's path-specific circuit test requires them.
+
+Suggested build order for Levels 0–1: A/B logprob readout, then the statistics module, then paired map fitting. Training and compute accounting are needed from Level 2.

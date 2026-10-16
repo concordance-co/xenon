@@ -1,0 +1,11 @@
+torch==2.11.0
+transformers==5.9.0
+datasets==4.8.5
+einops==0.8.2
+zstandard==0.25.0
+psutil==7.2.2
+safetensors==0.7.0
+numpy==2.5.4
+openai==2.35.0
+psycopg[binary]==3.3.3
+cloudpickle==3.1.2

@@ -37,3 +37,40 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: uv run pytest -q tests --ignore=tests/test_pipelines_v2_dashboard.py
+
+  packaging:
+    name: Core-only wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build and inspect wheel assets
+        run: |
+          uv build --wheel --out-dir "$RUNNER_TEMP/wheel-dist"
+          python scripts/check_research_hub_wheel.py --wheel "$RUNNER_TEMP"/wheel-dist/*.whl
+
+      - name: Install wheel with core dependencies only
+        run: |
+          uv venv --python 3.13 "$RUNNER_TEMP/wheel-core"
+          uv pip install --python "$RUNNER_TEMP/wheel-core/bin/python" "$RUNNER_TEMP"/wheel-dist/*.whl
+
+      - name: Check installed API and bundled lock readers
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          "$RUNNER_TEMP/wheel-core/bin/python" -I "$GITHUB_WORKSPACE/scripts/check_research_hub_wheel.py" --wheel "$RUNNER_TEMP"/wheel-dist/*.whl --source-root "$GITHUB_WORKSPACE" --installed

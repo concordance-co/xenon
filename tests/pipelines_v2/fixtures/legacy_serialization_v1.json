@@ -1,0 +1,2482 @@
+{
+  "engines": [
+    {
+      "payload": {
+        "hidden_size": 4,
+        "kind": "toy",
+        "num_experts": 4,
+        "num_layers": 4,
+        "sequence_length": 8,
+        "top_k": 2
+      },
+      "semantic": {
+        "hidden_size": 4,
+        "kind": "toy",
+        "num_experts": 4,
+        "num_layers": 4,
+        "sequence_length": 8,
+        "top_k": 2
+      }
+    },
+    {
+      "payload": {
+        "add_generation_prompt": false,
+        "async_scheduling": false,
+        "distributed_executor_backend": null,
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": true,
+        "enable_thinking": null,
+        "enforce_eager": true,
+        "extra": {},
+        "gpu_memory_utilization": 0.9,
+        "kind": "vllm",
+        "max_model_len": null,
+        "max_num_batched_tokens": null,
+        "max_num_seqs": 1,
+        "model_id": "fixture/model",
+        "model_path_root": null,
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 1
+      },
+      "semantic": {
+        "add_generation_prompt": false,
+        "enable_thinking": null,
+        "extra": {},
+        "kind": "vllm",
+        "max_model_len": null,
+        "model_id": "fixture/model",
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 1
+      }
+    },
+    {
+      "payload": {
+        "add_generation_prompt": false,
+        "async_scheduling": false,
+        "distributed_executor_backend": null,
+        "enable_chunked_prefill": false,
+        "enable_prefix_caching": true,
+        "enable_thinking": null,
+        "enforce_eager": true,
+        "extra": {
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "gpu_memory_utilization": 0.9,
+        "kind": "vllm",
+        "max_model_len": null,
+        "max_num_batched_tokens": null,
+        "max_num_seqs": 4,
+        "model_id": "fixture/model",
+        "model_path_root": null,
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 1
+      },
+      "semantic": {
+        "add_generation_prompt": false,
+        "enable_thinking": null,
+        "extra": {
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "kind": "vllm",
+        "max_model_len": null,
+        "model_id": "fixture/model",
+        "pipeline_parallel_size": 1,
+        "reasoning_parser": null,
+        "tensor_parallel_size": 1
+      }
+    }
+  ],
+  "operations": [
+    {
+      "input": {
+        "dataset": {
+          "example_count": 2,
+          "examples": [
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "one",
+              "labels": {
+                "group": "a"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            },
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "two",
+              "labels": {
+                "group": "b"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            }
+          ],
+          "id": "legacy_fixture",
+          "name": "Legacy fixture"
+        },
+        "engine": {
+          "hidden_size": 4,
+          "kind": "toy",
+          "num_experts": 4,
+          "num_layers": 4,
+          "sequence_length": 8,
+          "top_k": 2
+        },
+        "kind": "capture",
+        "sites": [
+          {
+            "layers": [
+              0
+            ],
+            "name": "resid",
+            "pooling": null,
+            "site": "resid_post",
+            "storage": {
+              "dtype": "float16",
+              "format": "safetensors"
+            },
+            "tokens": {
+              "kind": "last",
+              "value": null
+            }
+          },
+          {
+            "layers": [
+              0
+            ],
+            "name": "router",
+            "record": [
+              {
+                "kind": "gate_logits",
+                "params": {
+                  "dtype": "float16"
+                }
+              }
+            ],
+            "tokens": {
+              "kind": "last",
+              "value": null
+            }
+          }
+        ]
+      },
+      "kind": "capture",
+      "payload": {
+        "dataset": {
+          "examples": [
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "one",
+              "labels": {
+                "group": "a"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            },
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "two",
+              "labels": {
+                "group": "b"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            }
+          ],
+          "fetch": null,
+          "id": "legacy_fixture",
+          "name": "Legacy fixture",
+          "selection": {},
+          "source": null
+        },
+        "engine": {
+          "hidden_size": 4,
+          "kind": "toy",
+          "num_experts": 4,
+          "num_layers": 4,
+          "sequence_length": 8,
+          "top_k": 2
+        },
+        "generation": {
+          "capture_generated_tokens": false,
+          "capture_reasoning": false,
+          "chat_tools": [],
+          "enabled": false,
+          "max_tokens": 0,
+          "structured_output": null,
+          "temperature": 0.0,
+          "tool_choice": null,
+          "top_k": -1,
+          "top_p": 1.0
+        },
+        "kind": "capture",
+        "prompt_metadata_builder": null,
+        "schema_version": 1,
+        "sites": [
+          {
+            "layers": [
+              0
+            ],
+            "name": "resid",
+            "pooling": null,
+            "site": "resid_post",
+            "storage": {
+              "dtype": "float16",
+              "format": "safetensors"
+            },
+            "tokens": {
+              "kind": "last",
+              "value": null
+            }
+          },
+          {
+            "layers": [
+              0
+            ],
+            "name": "router",
+            "record": [
+              {
+                "kind": "gate_logits",
+                "params": {
+                  "dtype": "float16"
+                }
+              }
+            ],
+            "tokens": {
+              "kind": "last",
+              "value": null
+            }
+          }
+        ]
+      },
+      "semantic_hash": "5cc0a779aba976be2f0d946dc8c47fbfe6c7748cd5b18b351008104af2bf78f2",
+      "spec_hash": "bfd1ea8cef34fa3b227b13f545a657f272a434a1586ac6e4a871a3c760ba2ff3"
+    },
+    {
+      "input": {
+        "kind": "probe"
+      },
+      "kind": "probe",
+      "payload": {
+        "baselines": [],
+        "feature": null,
+        "folds": 5,
+        "group_by": null,
+        "kind": "probe",
+        "labels": null,
+        "metrics": [],
+        "persist_model": false,
+        "persist_predictions": false,
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "split": null,
+        "stage_epochs": [],
+        "test_values": [
+          "test"
+        ],
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "train_stages": [],
+        "train_values": [
+          "train"
+        ]
+      },
+      "semantic_hash": "5d8575263eeaf7ecc59b9050af9df8de0f61066bc2a1b93b00bd5e2649499ff1",
+      "spec_hash": "5d8575263eeaf7ecc59b9050af9df8de0f61066bc2a1b93b00bd5e2649499ff1"
+    },
+    {
+      "input": {
+        "kind": "persisted_probe_import",
+        "path": "fixture/probe.json"
+      },
+      "kind": "persisted_probe_import",
+      "payload": {
+        "feature_name": null,
+        "format": "json",
+        "kind": "persisted_probe_import",
+        "metadata": {},
+        "model": null,
+        "name": null,
+        "path": "fixture/probe.json",
+        "schema_version": 1
+      },
+      "semantic_hash": "96976e49ed0882ef79847c7bb2cc517664417660e96c01966b34a464f69ad96d",
+      "spec_hash": "96976e49ed0882ef79847c7bb2cc517664417660e96c01966b34a464f69ad96d"
+    },
+    {
+      "input": {
+        "kind": "persisted_probe_inference"
+      },
+      "kind": "persisted_probe_inference",
+      "payload": {
+        "emit_labels": true,
+        "feature": null,
+        "kind": "persisted_probe_inference",
+        "layers": [],
+        "pooling": {
+          "kind": "mean"
+        },
+        "probe": null,
+        "rows": null,
+        "schema_version": 1,
+        "score_name": null,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        }
+      },
+      "semantic_hash": "e57d4dc9333e0f3ad5d24638f88d4e727d2f4faf55e9f5bb145e020910df249d",
+      "spec_hash": "e57d4dc9333e0f3ad5d24638f88d4e727d2f4faf55e9f5bb145e020910df249d"
+    },
+    {
+      "input": {
+        "kind": "transfer_probe"
+      },
+      "kind": "transfer_probe",
+      "payload": {
+        "baselines": [],
+        "cohort_by": null,
+        "cohort_values": [],
+        "compare_direction_similarity": true,
+        "compare_within_baseline": true,
+        "feature": null,
+        "group_by": null,
+        "kind": "transfer_probe",
+        "labels": null,
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "persist_predictions": false,
+        "pooling": {
+          "kind": "mean"
+        },
+        "regularization": [],
+        "rows": null,
+        "schema_version": 1,
+        "split_by": {},
+        "test_values": [],
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        },
+        "train_values": []
+      },
+      "semantic_hash": "bac61349b2b2b21fa28b265b2dbafb783e225c03ea7a8bfd5ab92d7afd811e7a",
+      "spec_hash": "bac61349b2b2b21fa28b265b2dbafb783e225c03ea7a8bfd5ab92d7afd811e7a"
+    },
+    {
+      "input": {
+        "kind": "text_baseline"
+      },
+      "kind": "text_baseline",
+      "payload": {
+        "cohort_by": null,
+        "cohort_values": [],
+        "group_by": null,
+        "kind": "text_baseline",
+        "labels": null,
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "model": "countvectorizer_logreg",
+        "persist_predictions": false,
+        "regularization": [],
+        "rows": null,
+        "schema_version": 1,
+        "split_by": {},
+        "test_values": [],
+        "text": null,
+        "train_values": []
+      },
+      "semantic_hash": "567e61ff9c54122eb69d7103884dd55c31cf18ae997e25a1741a78a14bc4cd85",
+      "spec_hash": "567e61ff9c54122eb69d7103884dd55c31cf18ae997e25a1741a78a14bc4cd85"
+    },
+    {
+      "input": {
+        "kind": "residualized_probe"
+      },
+      "kind": "residualized_probe",
+      "payload": {
+        "feature": null,
+        "group_by": null,
+        "kind": "residualized_probe",
+        "labels": null,
+        "metrics": [
+          "balanced_accuracy",
+          "auroc"
+        ],
+        "pooling": {
+          "kind": "mean"
+        },
+        "residualize_against": null,
+        "rows": null,
+        "schema_version": 1,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        }
+      },
+      "semantic_hash": "a3865b504ca4285a453dcaebd280f9907be4f0f4b41d587611c9ee8dc5a531e9",
+      "spec_hash": "a3865b504ca4285a453dcaebd280f9907be4f0f4b41d587611c9ee8dc5a531e9"
+    },
+    {
+      "input": {
+        "kind": "direction"
+      },
+      "kind": "direction",
+      "payload": {
+        "feature": null,
+        "group_by": null,
+        "kind": "direction",
+        "layers": [],
+        "negative": null,
+        "pooling": {
+          "kind": "mean"
+        },
+        "positive": null,
+        "schema_version": 1,
+        "subspace": null,
+        "tokens": {
+          "kind": "last",
+          "value": null
+        }
+      },
+      "semantic_hash": "d56e3656bd8dc428a465aee78028edb5030840c88ddf3f9a75ba52dbe747570a",
+      "spec_hash": "d56e3656bd8dc428a465aee78028edb5030840c88ddf3f9a75ba52dbe747570a"
+    },
+    {
+      "input": {
+        "kind": "basis"
+      },
+      "kind": "basis",
+      "payload": {
+        "by": null,
+        "components": 8,
+        "feature": null,
+        "kind": "basis",
+        "layers": [],
+        "method": "pca",
+        "pooling": {
+          "kind": "mean"
+        },
+        "schema_version": 1,
+        "tokens": {
+          "kind": "last",
+          "value": null
+        }
+      },
+      "semantic_hash": "a1a6ca2a7185c18f65e3d7aa92dc6b02668506260c99c944ec3ed6e079f26d7e",
+      "spec_hash": "a1a6ca2a7185c18f65e3d7aa92dc6b02668506260c99c944ec3ed6e079f26d7e"
+    },
+    {
+      "input": {
+        "by": {
+          "dataset": {
+            "examples": [
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "one",
+                "labels": {
+                  "group": "a"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              },
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "two",
+                "labels": {
+                  "group": "b"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              }
+            ],
+            "fetch": null,
+            "id": "legacy_fixture",
+            "name": "Legacy fixture",
+            "selection": {},
+            "source": null
+          },
+          "kind": "label_set",
+          "name": "group"
+        },
+        "feature": {
+          "feature_name": "resid",
+          "kind": "step_feature_ref",
+          "layer_index": null,
+          "step": "capture"
+        },
+        "kind": "centroid"
+      },
+      "kind": "centroid",
+      "payload": {
+        "by": {
+          "dataset": {
+            "examples": [
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "one",
+                "labels": {
+                  "group": "a"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              },
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "two",
+                "labels": {
+                  "group": "b"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              }
+            ],
+            "fetch": null,
+            "id": "legacy_fixture",
+            "name": "Legacy fixture",
+            "selection": {},
+            "source": null
+          },
+          "kind": "label_set",
+          "name": "group"
+        },
+        "feature": {
+          "feature_name": "resid",
+          "kind": "step_feature_ref",
+          "layer_index": null,
+          "step": "capture"
+        },
+        "kind": "centroid",
+        "layers": [],
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "subspace": null,
+        "tokens": {
+          "kind": "last",
+          "value": null
+        }
+      },
+      "semantic_hash": "06e7ab8300ce7c9a06b503baacf341381415b4c88c0761c0229fa24db0f904af",
+      "spec_hash": "66ba943a9eeb9a184f4e4b7b42f9024a8c4aec49e048b3ffc2f3bc3ee81a2a58"
+    },
+    {
+      "input": {
+        "kind": "subspace"
+      },
+      "kind": "subspace",
+      "payload": {
+        "components": 8,
+        "feature": null,
+        "kind": "subspace",
+        "layers": [],
+        "named_components_by_layer": {},
+        "pooling": {
+          "kind": "mean"
+        },
+        "schema_version": 1,
+        "tokens": {
+          "kind": "last",
+          "value": null
+        }
+      },
+      "semantic_hash": "fd058ea9294234a22b6a54cc71a42d7fd61fcabc0da8cd341316505a5f6290a0",
+      "spec_hash": "fd058ea9294234a22b6a54cc71a42d7fd61fcabc0da8cd341316505a5f6290a0"
+    },
+    {
+      "input": {
+        "kind": "geometry"
+      },
+      "kind": "geometry",
+      "payload": {
+        "color_by": {},
+        "components": 2,
+        "feature": null,
+        "kind": "geometry",
+        "label": null,
+        "layers": [],
+        "method": "pca",
+        "normalize": null,
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "subset": null,
+        "tokens": {
+          "kind": "full_sequence",
+          "value": null
+        }
+      },
+      "semantic_hash": "5ad03cd9ac12d86dcccd872c83ab75d577b301d8b95846bcaf53653cf70144bc",
+      "spec_hash": "5ad03cd9ac12d86dcccd872c83ab75d577b301d8b95846bcaf53653cf70144bc"
+    },
+    {
+      "input": {
+        "feature": {
+          "feature_name": "resid",
+          "kind": "step_feature_ref",
+          "layer_index": null,
+          "step": "capture"
+        },
+        "kind": "activation_bank"
+      },
+      "kind": "activation_bank",
+      "payload": {
+        "feature": {
+          "feature_name": "resid",
+          "kind": "step_feature_ref",
+          "layer_index": null,
+          "step": "capture"
+        },
+        "kind": "activation_bank",
+        "layers": [],
+        "rows": null,
+        "schema_version": 1
+      },
+      "semantic_hash": "54500080beebdf7db6caf2d30b137076f9094745ca6e932d23bbd7f491351fd3",
+      "spec_hash": "54500080beebdf7db6caf2d30b137076f9094745ca6e932d23bbd7f491351fd3"
+    },
+    {
+      "input": {
+        "edges": [
+          {
+            "source_layer": 0,
+            "write_layer": 1
+          }
+        ],
+        "kind": "explicit_path_mask"
+      },
+      "kind": "explicit_path_mask",
+      "payload": {
+        "edges": [
+          {
+            "source_layer": 0,
+            "weight": 1.0,
+            "write_layer": 1
+          }
+        ],
+        "kind": "explicit_path_mask",
+        "schema_version": 1
+      },
+      "semantic_hash": "0b5feb1fc5e0ee2bdad6a5e744f811c7988d08d62e1b6c7a0b6947312fba2cab",
+      "spec_hash": "0b5feb1fc5e0ee2bdad6a5e744f811c7988d08d62e1b6c7a0b6947312fba2cab"
+    },
+    {
+      "input": {
+        "kind": "pair_delta"
+      },
+      "kind": "pair_delta",
+      "payload": {
+        "case": null,
+        "feature": null,
+        "kind": "pair_delta",
+        "labels": {},
+        "layers": [],
+        "negative": null,
+        "output_feature_name": "delta",
+        "pooling": {
+          "kind": "mean"
+        },
+        "positive": null,
+        "propagate_from": "positive",
+        "schema_version": 1,
+        "tokens": {
+          "kind": "last",
+          "value": null
+        }
+      },
+      "semantic_hash": "6409eb4a9cd80dde94989dc0ea96c56c8acd3ab2a25c27dea6fbfa32cbec770f",
+      "spec_hash": "6409eb4a9cd80dde94989dc0ea96c56c8acd3ab2a25c27dea6fbfa32cbec770f"
+    },
+    {
+      "input": {
+        "kind": "label_map"
+      },
+      "kind": "label_map",
+      "payload": {
+        "default_value": null,
+        "kind": "label_map",
+        "mapping": {},
+        "output_name": "mapped_label",
+        "schema_version": 1,
+        "source": null,
+        "strict": true
+      },
+      "semantic_hash": "97bd99b0c7ddfd49c9f3159f1335f368325a85ce7419db89861958dc8a395c27",
+      "spec_hash": "97bd99b0c7ddfd49c9f3159f1335f368325a85ce7419db89861958dc8a395c27"
+    },
+    {
+      "input": {
+        "kind": "label_fields"
+      },
+      "kind": "label_fields",
+      "payload": {
+        "fields": {},
+        "kind": "label_fields",
+        "schema_version": 1,
+        "source": null,
+        "strict": true
+      },
+      "semantic_hash": "e741392077d3e0d6e418a7974d8b7393d28dd789c50fdddd3ecf394264ba0a90",
+      "spec_hash": "e741392077d3e0d6e418a7974d8b7393d28dd789c50fdddd3ecf394264ba0a90"
+    },
+    {
+      "input": {
+        "builder": {
+          "import_path": "tests.pipelines_v2.fixture_transform:build",
+          "local_python_sources": [
+            "pipelines_v2"
+          ]
+        },
+        "inputs": {
+          "data": {
+            "example_count": 2,
+            "examples": [
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "one",
+                "labels": {
+                  "group": "a"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              },
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "two",
+                "labels": {
+                  "group": "b"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              }
+            ],
+            "id": "legacy_fixture",
+            "name": "Legacy fixture"
+          }
+        },
+        "kind": "transform"
+      },
+      "kind": "transform",
+      "payload": {
+        "builder": {
+          "import_path": "tests.pipelines_v2.fixture_transform:build",
+          "local_python_sources": [
+            "pipelines_v2"
+          ]
+        },
+        "inline": false,
+        "inputs": {
+          "data": {
+            "examples": [
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "one",
+                "labels": {
+                  "group": "a"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              },
+              {
+                "case_key": null,
+                "cases": {},
+                "key": "two",
+                "labels": {
+                  "group": "b"
+                },
+                "metadata": {},
+                "prompt": "Hello",
+                "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+              }
+            ],
+            "fetch": null,
+            "id": "legacy_fixture",
+            "name": "Legacy fixture",
+            "selection": {},
+            "source": null
+          }
+        },
+        "kind": "transform",
+        "schema_version": 1
+      },
+      "semantic_hash": "4f2d56d5268725bfd5357151982eb3f6bf582970e6324ced0d8e93ad4fae534a",
+      "spec_hash": "f5c8c309743ab2cdac026d5c66553d23805b804b6ca8dbe4e52559c3543eb2e8"
+    },
+    {
+      "input": {
+        "dataset": {
+          "example_count": 2,
+          "examples": [
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "one",
+              "labels": {
+                "group": "a"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            },
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "two",
+              "labels": {
+                "group": "b"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            }
+          ],
+          "id": "legacy_fixture",
+          "name": "Legacy fixture"
+        },
+        "engine": {
+          "hidden_size": 4,
+          "kind": "toy",
+          "num_experts": 4,
+          "num_layers": 4,
+          "sequence_length": 8,
+          "top_k": 2
+        },
+        "generation": {
+          "enabled": true,
+          "max_tokens": 2
+        },
+        "kind": "generation_run"
+      },
+      "kind": "generation_run",
+      "payload": {
+        "dataset": {
+          "examples": [
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "one",
+              "labels": {
+                "group": "a"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            },
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "two",
+              "labels": {
+                "group": "b"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            }
+          ],
+          "fetch": null,
+          "id": "legacy_fixture",
+          "name": "Legacy fixture",
+          "selection": {},
+          "source": null
+        },
+        "engine": {
+          "hidden_size": 4,
+          "kind": "toy",
+          "num_experts": 4,
+          "num_layers": 4,
+          "sequence_length": 8,
+          "top_k": 2
+        },
+        "generation": {
+          "capture_generated_tokens": false,
+          "capture_reasoning": false,
+          "chat_tools": [],
+          "enabled": true,
+          "max_tokens": 2,
+          "structured_output": null,
+          "temperature": 0.0,
+          "tool_choice": null,
+          "top_k": -1,
+          "top_p": 1.0
+        },
+        "kind": "generation_run",
+        "schema_version": 1,
+        "select_when": null
+      },
+      "semantic_hash": "e620e06c6cbd3042f62c17030679d226ccfecaa9ab61ff5a1016d9fc9030be9f",
+      "spec_hash": "e0aa1c8abf9579d54da49e11e2f0233e512de855273165052fadd27f801d7a78"
+    },
+    {
+      "input": {
+        "dataset": {
+          "example_count": 2,
+          "examples": [
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "one",
+              "labels": {
+                "group": "a"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            },
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "two",
+              "labels": {
+                "group": "b"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            }
+          ],
+          "id": "legacy_fixture",
+          "name": "Legacy fixture"
+        },
+        "engine": {
+          "hidden_size": 4,
+          "kind": "toy",
+          "num_experts": 4,
+          "num_layers": 4,
+          "sequence_length": 8,
+          "top_k": 2
+        },
+        "generation": {
+          "enabled": true,
+          "max_tokens": 2
+        },
+        "kind": "patched_generation",
+        "patch": {
+          "application": {
+            "config": {},
+            "include_decode": false,
+            "include_prompt": true,
+            "kind": "static"
+          },
+          "component_indices_by_layer": {},
+          "direction": {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "direction"
+          },
+          "kind": "add_direction_patch",
+          "source_layer_map": {},
+          "strength": 1.0,
+          "subspace": null,
+          "target_tokens": {
+            "kind": "last",
+            "value": null
+          },
+          "write_site": {
+            "kind": "residual_intervention_site",
+            "layers": [
+              0
+            ],
+            "site": "resid_post"
+          }
+        }
+      },
+      "kind": "patched_generation",
+      "payload": {
+        "dataset": {
+          "examples": [
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "one",
+              "labels": {
+                "group": "a"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            },
+            {
+              "case_key": null,
+              "cases": {},
+              "key": "two",
+              "labels": {
+                "group": "b"
+              },
+              "metadata": {},
+              "prompt": "Hello",
+              "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+            }
+          ],
+          "fetch": null,
+          "id": "legacy_fixture",
+          "name": "Legacy fixture",
+          "selection": {},
+          "source": null
+        },
+        "donor_when": null,
+        "engine": {
+          "hidden_size": 4,
+          "kind": "toy",
+          "num_experts": 4,
+          "num_layers": 4,
+          "sequence_length": 8,
+          "top_k": 2
+        },
+        "generation": {
+          "capture_generated_tokens": false,
+          "capture_reasoning": false,
+          "chat_tools": [],
+          "enabled": true,
+          "max_tokens": 2,
+          "structured_output": null,
+          "temperature": 0.0,
+          "tool_choice": null,
+          "top_k": -1,
+          "top_p": 1.0
+        },
+        "kind": "patched_generation",
+        "pair_by": null,
+        "patch": {
+          "application": {
+            "config": {},
+            "include_decode": false,
+            "include_prompt": true,
+            "kind": "static"
+          },
+          "component_indices_by_layer": {},
+          "direction": {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "direction"
+          },
+          "kind": "add_direction_patch",
+          "source_layer_map": {},
+          "strength": 1.0,
+          "subspace": null,
+          "target_tokens": {
+            "kind": "last",
+            "value": null
+          },
+          "write_site": {
+            "kind": "residual_intervention_site",
+            "layers": [
+              0
+            ],
+            "site": "resid_post"
+          }
+        },
+        "prompt_metadata_builder": null,
+        "schema_version": 1,
+        "select_when": null,
+        "target_when": null
+      },
+      "semantic_hash": "2a63fe17dbd30e8f6ce6d9d754be636d81ba87a375c4d9a45da674be44ea6db1",
+      "spec_hash": "3ceb7976da8333648faf0ab1f962667b5fd5c5edb9002a3bb35a808550280c2a"
+    },
+    {
+      "input": {
+        "baseline": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "patch_comparison",
+        "row_evaluator": {
+          "import_path": "tests.pipelines_v2.fixture_transform:build",
+          "local_python_sources": [
+            "pipelines_v2"
+          ]
+        },
+        "variants": {
+          "test": {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "direction"
+          }
+        }
+      },
+      "kind": "patch_comparison",
+      "payload": {
+        "baseline": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "patch_comparison",
+        "row_evaluator": {
+          "import_path": "tests.pipelines_v2.fixture_transform:build",
+          "local_python_sources": [
+            "pipelines_v2"
+          ]
+        },
+        "schema_version": 1,
+        "variants": {
+          "test": {
+            "kind": "step_ref",
+            "output": "artifact",
+            "step": "direction"
+          }
+        }
+      },
+      "semantic_hash": "3e549c091c8efaf70cb53e2676f3ff02c8d65820a8da274c81eab391ad109629",
+      "spec_hash": "5ee0f6e3eb9691703c236fe072f9b812331723c18f9b3f3142c572b1e673074d"
+    },
+    {
+      "input": {
+        "kind": "coordinate_import",
+        "path": "fixture/vector.json"
+      },
+      "kind": "coordinate_import",
+      "payload": {
+        "format": "torch_tensor_or_axis_dict",
+        "kind": "coordinate_import",
+        "metadata": {},
+        "name": null,
+        "normalize": "l2",
+        "path": "fixture/vector.json",
+        "schema_version": 1,
+        "select_layer": null
+      },
+      "semantic_hash": "3a8998efbae19201cbaca8ca7c5b8216ca5d9ba5359495aa1e59bf13bb5c8a90",
+      "spec_hash": "3a8998efbae19201cbaca8ca7c5b8216ca5d9ba5359495aa1e59bf13bb5c8a90"
+    },
+    {
+      "input": {
+        "kind": "projection"
+      },
+      "kind": "projection",
+      "payload": {
+        "coordinates": [],
+        "emit_labels": false,
+        "feature": null,
+        "kind": "projection",
+        "layers": [],
+        "metric": "signed_dot",
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "slices": {
+          "names": [],
+          "where_fields": {}
+        },
+        "summaries": []
+      },
+      "semantic_hash": "f96a5768cceb2d4f30ef6b0a1fabeb12e3f078e19edb45264cfc58d020f533cd",
+      "spec_hash": "f96a5768cceb2d4f30ef6b0a1fabeb12e3f078e19edb45264cfc58d020f533cd"
+    },
+    {
+      "input": {
+        "kind": "projection_calibration"
+      },
+      "kind": "projection_calibration",
+      "payload": {
+        "bands": [],
+        "fit_on": null,
+        "kind": "projection_calibration",
+        "orientation": {},
+        "projections": null,
+        "schema_version": 1,
+        "strategy": "quantile_bands",
+        "summary_name": null
+      },
+      "semantic_hash": "911f5e70fc08b0fe83685b3e7680d94e713eb717a7a9ea782498773560517f60",
+      "spec_hash": "911f5e70fc08b0fe83685b3e7680d94e713eb717a7a9ea782498773560517f60"
+    },
+    {
+      "input": {
+        "kind": "assistant_axis_precomputed_coordinate",
+        "model_id": "Qwen/Qwen3-32B",
+        "revision": "fixture_commit"
+      },
+      "kind": "assistant_axis_precomputed_coordinate",
+      "payload": {
+        "filename": null,
+        "kind": "assistant_axis_precomputed_coordinate",
+        "metadata": {},
+        "model_id": "Qwen/Qwen3-32B",
+        "name": "assistant_axis",
+        "normalize": "l2",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": "fixture_commit",
+        "schema_version": 1,
+        "select_layer": null,
+        "token_env_var": null
+      },
+      "semantic_hash": "190b03c8f15a955a7c1b0b36031141f2067b26e86b586bc347c5993395858284",
+      "spec_hash": "190b03c8f15a955a7c1b0b36031141f2067b26e86b586bc347c5993395858284"
+    },
+    {
+      "input": {
+        "kind": "assistant_axis_vector"
+      },
+      "kind": "assistant_axis_vector",
+      "payload": {
+        "default_when": null,
+        "feature": null,
+        "kind": "assistant_axis_vector",
+        "layers": [],
+        "metadata": {},
+        "min_default_examples": 1,
+        "min_role_examples_per_role": 50,
+        "model_id": null,
+        "name": "assistant_axis",
+        "normalize": "l2",
+        "pooling": {
+          "kind": "mean"
+        },
+        "role_by": null,
+        "role_when": null,
+        "schema_version": 1,
+        "score_by": null,
+        "score_values": [
+          3
+        ],
+        "tokens": {
+          "kind": "section",
+          "value": "generated"
+        },
+        "warn_unknown_model": true
+      },
+      "semantic_hash": "a13f8204bee31a36d809e549c18004e6fe9f2fa6a7128ec7e05c3e5e717c9942",
+      "spec_hash": "a13f8204bee31a36d809e549c18004e6fe9f2fa6a7128ec7e05c3e5e717c9942"
+    },
+    {
+      "input": {
+        "kind": "assistant_axis_score"
+      },
+      "kind": "assistant_axis_score",
+      "payload": {
+        "axis": null,
+        "emit_labels": true,
+        "feature": null,
+        "kind": "assistant_axis_score",
+        "layer": null,
+        "metric": "signed_dot",
+        "model_id": null,
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "slices": {
+          "names": [
+            "generated"
+          ],
+          "where_fields": {}
+        },
+        "summaries": [
+          "mean",
+          "min",
+          "max",
+          "std",
+          "trend"
+        ],
+        "warn_unknown_model": true
+      },
+      "semantic_hash": "09e8c77e1ee5eb03fd26b43c23a993213ae25873f74cdd96729e1ef446818605",
+      "spec_hash": "09e8c77e1ee5eb03fd26b43c23a993213ae25873f74cdd96729e1ef446818605"
+    },
+    {
+      "input": {
+        "kind": "assistant_axis_trait_coordinate",
+        "model_id": "llama-3.3-70b",
+        "trait": "calm"
+      },
+      "kind": "assistant_axis_trait_coordinate",
+      "payload": {
+        "filename": null,
+        "kind": "assistant_axis_trait_coordinate",
+        "metadata": {},
+        "model_id": "llama-3.3-70b",
+        "name": null,
+        "normalize": "l2",
+        "repo_id": "lu-christina/assistant-axis-vectors",
+        "revision": null,
+        "schema_version": 1,
+        "select_layer": null,
+        "token_env_var": null,
+        "trait": "calm"
+      },
+      "semantic_hash": "0a5a18a79fdcd9944fecbbceaf95c7db10eda153c1428fb8efa526bc2b675c31",
+      "spec_hash": "0a5a18a79fdcd9944fecbbceaf95c7db10eda153c1428fb8efa526bc2b675c31"
+    },
+    {
+      "input": {
+        "kind": "emotion_precomputed_vector_space",
+        "path": "fixture/emotions.json"
+      },
+      "kind": "emotion_precomputed_vector_space",
+      "payload": {
+        "filename": null,
+        "format": "json",
+        "kind": "emotion_precomputed_vector_space",
+        "metadata": {},
+        "normalize": "l2",
+        "path": "fixture/emotions.json",
+        "repo_id": null,
+        "revision": null,
+        "schema_version": 1,
+        "select_layer": null,
+        "token_env_var": null,
+        "vector_space_kind": "story"
+      },
+      "semantic_hash": "958a89b42a99f0ce73a0eac890b7c53ac15f84d51a034fc7c17ae23e0c93b205",
+      "spec_hash": "958a89b42a99f0ce73a0eac890b7c53ac15f84d51a034fc7c17ae23e0c93b205"
+    },
+    {
+      "input": {
+        "kind": "emotion_vector_space"
+      },
+      "kind": "emotion_vector_space",
+      "payload": {
+        "concept_by": null,
+        "feature": null,
+        "kind": "emotion_vector_space",
+        "layers": [],
+        "metadata": {},
+        "min_examples_per_concept": 1,
+        "neutral_feature": null,
+        "neutral_variance_threshold": null,
+        "normalize": "l2",
+        "pooling": {
+          "kind": "mean"
+        },
+        "schema_version": 1,
+        "tokens": {
+          "kind": "slice",
+          "value": {
+            "start": 50,
+            "stop": null
+          }
+        },
+        "vector_space_kind": "story"
+      },
+      "semantic_hash": "303aaafdeee8f281ffdadc1c18d321e5e98341b832387b43052cbd8dbb134ebf",
+      "spec_hash": "303aaafdeee8f281ffdadc1c18d321e5e98341b832387b43052cbd8dbb134ebf"
+    },
+    {
+      "input": {
+        "kind": "emotion_score"
+      },
+      "kind": "emotion_score",
+      "payload": {
+        "concepts": [],
+        "emit_labels": true,
+        "feature": null,
+        "kind": "emotion_score",
+        "layers": [],
+        "metric": "signed_dot",
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "slices": {
+          "names": [],
+          "where_fields": {}
+        },
+        "summaries": [
+          "mean",
+          "min",
+          "max",
+          "std",
+          "trend"
+        ],
+        "vector_space": null
+      },
+      "semantic_hash": "b720451f988dbc01fded7d3dac5daac9dffeafd5980468e292d81e2ea5e874c9",
+      "spec_hash": "b720451f988dbc01fded7d3dac5daac9dffeafd5980468e292d81e2ea5e874c9"
+    },
+    {
+      "input": {
+        "concept": "joy",
+        "kind": "emotion_direction"
+      },
+      "kind": "emotion_direction",
+      "payload": {
+        "concept": "joy",
+        "kind": "emotion_direction",
+        "layers": [],
+        "metadata": {},
+        "residual_norm_by_layer": {},
+        "scale": 1.0,
+        "schema_version": 1,
+        "source": "vector",
+        "vector_space": null
+      },
+      "semantic_hash": "f1dd3fbaa5e7da9c6fbc737e906a19f9700fab4d103358e0e7054abff60dd429",
+      "spec_hash": "f1dd3fbaa5e7da9c6fbc737e906a19f9700fab4d103358e0e7054abff60dd429"
+    },
+    {
+      "input": {
+        "kind": "emotion_geometry"
+      },
+      "kind": "emotion_geometry",
+      "payload": {
+        "cluster_count": null,
+        "concepts": [],
+        "kind": "emotion_geometry",
+        "layers": [],
+        "pca_components": 3,
+        "schema_version": 1,
+        "vector_space": null
+      },
+      "semantic_hash": "8d495f0642aadf6af629c8ee4a98a15ead6cf49fd66c7de7abc4fdeac3861cf8",
+      "spec_hash": "8d495f0642aadf6af629c8ee4a98a15ead6cf49fd66c7de7abc4fdeac3861cf8"
+    },
+    {
+      "input": {
+        "kind": "refusal_direction"
+      },
+      "kind": "refusal_direction",
+      "payload": {
+        "feature": null,
+        "group_by": null,
+        "harmful_when": null,
+        "harmless_when": null,
+        "kind": "refusal_direction",
+        "layers": [],
+        "metadata": {},
+        "name": "refusal_direction",
+        "pooling": {
+          "kind": "mean"
+        },
+        "schema_version": 1,
+        "tokens": {
+          "kind": "last",
+          "value": null
+        }
+      },
+      "semantic_hash": "e470505b0b57958e9f4df398e4f14a9c1c5b5e7dcddc1cc96f52aa3ad5d6deba",
+      "spec_hash": "e470505b0b57958e9f4df398e4f14a9c1c5b5e7dcddc1cc96f52aa3ad5d6deba"
+    },
+    {
+      "input": {
+        "kind": "refusal_score"
+      },
+      "kind": "refusal_score",
+      "payload": {
+        "direction": null,
+        "emit_labels": true,
+        "feature": null,
+        "kind": "refusal_score",
+        "layers": [],
+        "metric": "signed_dot",
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "slices": {
+          "names": [],
+          "where_fields": {}
+        },
+        "summaries": [
+          "mean"
+        ]
+      },
+      "semantic_hash": "a583d4319dda5c1ae89f245f019a15fff310e9787328ef84b4a2aae7f4c122b5",
+      "spec_hash": "a583d4319dda5c1ae89f245f019a15fff310e9787328ef84b4a2aae7f4c122b5"
+    },
+    {
+      "input": {
+        "kind": "refusal_direction_selection"
+      },
+      "kind": "refusal_direction_selection",
+      "payload": {
+        "direction": null,
+        "harmful_when": null,
+        "harmless_when": null,
+        "kind": "refusal_direction_selection",
+        "layers": [],
+        "metadata": {},
+        "name": "selected_refusal_direction",
+        "schema_version": 1,
+        "scores": null,
+        "summary_metric": "mean"
+      },
+      "semantic_hash": "88facb892ad258df4f6cb4a33b3eea2b6778e1a1fefb02e850cbce92adbb42a4",
+      "spec_hash": "88facb892ad258df4f6cb4a33b3eea2b6778e1a1fefb02e850cbce92adbb42a4"
+    },
+    {
+      "input": {
+        "kind": "refusal_ablation_subspace"
+      },
+      "kind": "refusal_ablation_subspace",
+      "payload": {
+        "direction": null,
+        "kind": "refusal_ablation_subspace",
+        "layers": [],
+        "metadata": {},
+        "name": "refusal_direction_component",
+        "schema_version": 1
+      },
+      "semantic_hash": "c6e99a4ac6f5ea530a0f854023c09b0a28dcfe61d715806122d48fcce28ad26a",
+      "spec_hash": "c6e99a4ac6f5ea530a0f854023c09b0a28dcfe61d715806122d48fcce28ad26a"
+    },
+    {
+      "input": {
+        "kind": "truthfulness_direction"
+      },
+      "kind": "truthfulness_direction",
+      "payload": {
+        "feature": null,
+        "group_by": null,
+        "kind": "truthfulness_direction",
+        "layers": [],
+        "metadata": {},
+        "name": "truthfulness_direction",
+        "pooling": {
+          "kind": "mean"
+        },
+        "schema_version": 1,
+        "tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "truthful_when": null,
+        "untruthful_when": null
+      },
+      "semantic_hash": "7b203973a24ff5f62d1f01005317cb52d16c334b40bc017cea9559bbe8ad569e",
+      "spec_hash": "7b203973a24ff5f62d1f01005317cb52d16c334b40bc017cea9559bbe8ad569e"
+    },
+    {
+      "input": {
+        "kind": "truthfulness_score"
+      },
+      "kind": "truthfulness_score",
+      "payload": {
+        "direction": null,
+        "emit_labels": true,
+        "feature": null,
+        "kind": "truthfulness_score",
+        "layers": [],
+        "metric": "signed_dot",
+        "pooling": {
+          "kind": "mean"
+        },
+        "rows": null,
+        "schema_version": 1,
+        "slices": {
+          "names": [],
+          "where_fields": {}
+        },
+        "summaries": [
+          "mean"
+        ]
+      },
+      "semantic_hash": "7743639cef39cdd5f75dcf45df16b05b1a7b747981584593cffd9545690882d6",
+      "spec_hash": "7743639cef39cdd5f75dcf45df16b05b1a7b747981584593cffd9545690882d6"
+    },
+    {
+      "input": {
+        "kind": "truthfulness_direction_selection"
+      },
+      "kind": "truthfulness_direction_selection",
+      "payload": {
+        "direction": null,
+        "kind": "truthfulness_direction_selection",
+        "layers": [],
+        "metadata": {},
+        "name": "selected_truthfulness_direction",
+        "schema_version": 1,
+        "scores": null,
+        "summary_metric": "mean",
+        "truthful_when": null,
+        "untruthful_when": null
+      },
+      "semantic_hash": "63be86151385ad961c1e938f019359a9d635c5381bddc71f1c4fb307ebb0ab15",
+      "spec_hash": "63be86151385ad961c1e938f019359a9d635c5381bddc71f1c4fb307ebb0ab15"
+    },
+    {
+      "input": {
+        "kind": "truthfulness_ablation_subspace"
+      },
+      "kind": "truthfulness_ablation_subspace",
+      "payload": {
+        "direction": null,
+        "kind": "truthfulness_ablation_subspace",
+        "layers": [],
+        "metadata": {},
+        "name": "truthfulness_direction_component",
+        "schema_version": 1
+      },
+      "semantic_hash": "d4e9a958ee8699cafa1346c15031131ddab948ed180a7a187583cec1e5abc038",
+      "spec_hash": "d4e9a958ee8699cafa1346c15031131ddab948ed180a7a187583cec1e5abc038"
+    },
+    {
+      "input": {
+        "kind": "report"
+      },
+      "kind": "report",
+      "payload": {
+        "inputs": [],
+        "kind": "report",
+        "output_dir": null,
+        "schema_version": 1,
+        "template": "summary"
+      },
+      "semantic_hash": "cfe63ba700f79a8cfc576a90d9b8cddb772fb2d5475c557871713e4dd327cf54",
+      "spec_hash": "357b36b7fb23d24abf8a968cdf77c183f42ba9c8eb4679ef968110ad04925d18"
+    }
+  ],
+  "origin": "T00 dirty baseline, captured before T24 codec edits",
+  "patches": [
+    {
+      "input": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "interchange_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "write_site": {
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "kind": "interchange_patch",
+      "payload": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "donor_tokens": null,
+        "kind": "interchange_patch",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "semantic": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "donor_tokens": null,
+        "kind": "interchange_patch",
+        "operator_name": "interchange",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      }
+    },
+    {
+      "input": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "project_out_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "write_site": {
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "kind": "project_out_patch",
+      "payload": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "component_indices_by_layer": {},
+        "kind": "project_out_patch",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "semantic": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "component_indices_by_layer": {},
+        "kind": "project_out_patch",
+        "operator_name": "project_out",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      }
+    },
+    {
+      "input": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "add_direction_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "write_site": {
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "kind": "add_direction_patch",
+      "payload": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "component_indices_by_layer": {},
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "add_direction_patch",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "semantic": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "component_indices_by_layer": {},
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "add_direction_patch",
+        "operator_name": "add_direction",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      }
+    },
+    {
+      "input": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "swap_mean_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "write_site": {
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "kind": "swap_mean_patch",
+      "payload": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "swap_mean_patch",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "semantic": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "swap_mean_patch",
+        "operator_name": "swap_mean",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      }
+    },
+    {
+      "input": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "swap_components_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "write_site": {
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "kind": "swap_components_patch",
+      "payload": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "component_indices_by_layer": {},
+        "kind": "swap_components_patch",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "semantic": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "component_indices_by_layer": {},
+        "kind": "swap_components_patch",
+        "operator_name": "swap_components",
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      }
+    },
+    {
+      "input": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "random_control_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "write_site": {
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "kind": "random_control_patch",
+      "payload": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "component_indices_by_layer": {},
+        "kind": "random_control_patch",
+        "match_projected_norm": true,
+        "random_seed": 0,
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "semantic": {
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "component_indices_by_layer": {},
+        "kind": "random_control_patch",
+        "match_projected_norm": true,
+        "operator_name": "random_control",
+        "random_seed": 0,
+        "source_layer_map": {},
+        "strength": 1.0,
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      }
+    },
+    {
+      "input": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "centroid_name": "a",
+        "centroids": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "direction": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "kind": "residual_path_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "subspace": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "write_site": {
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "kind": "residual_path_patch",
+      "payload": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "kind": "residual_path_patch",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "read_tokens": null,
+        "source_layer_map": {},
+        "strength": 1.0,
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "transport": "replace",
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      },
+      "semantic": {
+        "activation_bank": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "application": {
+          "config": {},
+          "include_decode": false,
+          "include_prompt": true,
+          "kind": "static"
+        },
+        "kind": "residual_path_patch",
+        "operator_name": "residual_path",
+        "path_mask": {
+          "kind": "step_ref",
+          "output": "artifact",
+          "step": "direction"
+        },
+        "read_tokens": null,
+        "source_layer_map": {},
+        "strength": 1.0,
+        "target_tokens": {
+          "kind": "last",
+          "value": null
+        },
+        "transport": "replace",
+        "write_site": {
+          "kind": "residual_intervention_site",
+          "layers": [
+            0
+          ],
+          "site": "resid_post"
+        }
+      }
+    }
+  ],
+  "workflow": {
+    "payload": {
+      "kind": "workflow",
+      "name": "legacy",
+      "schema_version": 1,
+      "steps": [
+        {
+          "depends_on": [],
+          "name": "capture",
+          "runner": "local",
+          "spec": {
+            "dataset": {
+              "examples": [
+                {
+                  "case_key": null,
+                  "cases": {},
+                  "key": "one",
+                  "labels": {
+                    "group": "a"
+                  },
+                  "metadata": {},
+                  "prompt": "Hello",
+                  "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+                },
+                {
+                  "case_key": null,
+                  "cases": {},
+                  "key": "two",
+                  "labels": {
+                    "group": "b"
+                  },
+                  "metadata": {},
+                  "prompt": "Hello",
+                  "prompt_hash": "c25bf945aaff8fe16826d3c1ef117044d6cc1af8e0e9f0b4162308460a8207a7"
+                }
+              ],
+              "fetch": null,
+              "id": "legacy_fixture",
+              "name": "Legacy fixture",
+              "selection": {},
+              "source": null
+            },
+            "engine": {
+              "hidden_size": 4,
+              "kind": "toy",
+              "num_experts": 4,
+              "num_layers": 4,
+              "sequence_length": 8,
+              "top_k": 2
+            },
+            "generation": {
+              "capture_generated_tokens": false,
+              "capture_reasoning": false,
+              "chat_tools": [],
+              "enabled": false,
+              "max_tokens": 0,
+              "structured_output": null,
+              "temperature": 0.0,
+              "tool_choice": null,
+              "top_k": -1,
+              "top_p": 1.0
+            },
+            "kind": "capture",
+            "prompt_metadata_builder": null,
+            "schema_version": 1,
+            "sites": [
+              {
+                "layers": [
+                  0
+                ],
+                "name": "resid",
+                "pooling": null,
+                "site": "resid_post",
+                "storage": {
+                  "dtype": "float16",
+                  "format": "safetensors"
+                },
+                "tokens": {
+                  "kind": "last",
+                  "value": null
+                }
+              },
+              {
+                "layers": [
+                  0
+                ],
+                "name": "router",
+                "record": [
+                  {
+                    "kind": "gate_logits",
+                    "params": {
+                      "dtype": "float16"
+                    }
+                  }
+                ],
+                "tokens": {
+                  "kind": "last",
+                  "value": null
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "semantic_hash": "246c09dd2b22f4ad45ce62db1943a7af7f8f2364e3b76246ff0fd9ce052ed8b8",
+    "spec_hash": "795b485ac0110014f37f3742e2f6af3462ff8673e7aac619369b821339b316c3"
+  }
+}

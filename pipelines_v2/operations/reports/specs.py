@@ -17,6 +17,8 @@ class ReportSpec(OperationSpec):
     template: str = "summary"
     output_dir: str | None = None
 
+    evidence: dict[str, Any] | None = field(default=None, metadata={"omit_if_default": True})
+
     kind: ClassVar[str] = "report"
 
     def runtime_spec(self) -> Any | None:
@@ -34,6 +36,7 @@ class ReportSpec(OperationSpec):
             inputs=tuple(spec_value_from_dict(value) for value in payload.get("inputs", ())),
             template=str(payload.get("template", "summary")),
             output_dir=payload.get("output_dir"),
+            evidence=payload.get("evidence"),
         )
 
 

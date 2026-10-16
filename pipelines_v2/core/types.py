@@ -16,9 +16,14 @@ from typing import Any, ClassVar
 class EngineCapability(str, Enum):
     """Backend features exposed to operation planning."""
 
+    IMAGE_CLASSIFICATION = "image_classification"
+    SPATIAL_TOKEN_CAPTURE = "spatial_token_capture"
     GENERATION = "generation"
     LOGPROBS = "logprobs"
+    TARGET_LOGPROBS = "target_logprobs"
     RESIDUAL_CAPTURE = "residual_capture"
+    NATIVE_HEAD_CAPTURE = "native_head_capture"
+    NATIVE_MLP_CAPTURE = "native_mlp_capture"
     ATTENTION_CAPTURE = "attention_capture"
     KV_CACHE_CAPTURE = "kv_cache_capture"
     MOE_ROUTING_CAPTURE = "moe_routing_capture"
@@ -93,6 +98,26 @@ def stable_hash(data: Any) -> str:
     return hashlib.sha256(stable_json(data).encode("utf-8")).hexdigest()
 
 
+def omit_default_field(field: dataclasses.Field[Any], value: Any) -> bool:
+    """Opt-in omission for additive fields; existing serializers stay unchanged.
+
+    New optional fields use metadata={"omit_if_default": True}. Defaults must
+    have ordinary value equality (the helper does not compare tensor arrays).
+    """
+    if not field.metadata.get("omit_if_default", False):
+        return False
+    if field.default is not dataclasses.MISSING:
+        default = field.default
+    elif field.default_factory is not dataclasses.MISSING:
+        default = field.default_factory()
+    else:
+        raise TypeError(f"Field {field.name!r} requests default omission without a default")
+    equal = value == default
+    if not isinstance(equal, bool):
+        raise TypeError(f"Field {field.name!r} default must support scalar equality")
+    return equal
+
+
 def to_primitive(value: Any) -> Any:
     """Convert public API objects to stable JSON-like values."""
 
@@ -107,7 +132,9 @@ def to_primitive(value: Any) -> Any:
     if dataclasses.is_dataclass(value):
         data: dict[str, Any] = {}
         for field in dataclasses.fields(value):
-            data[field.name] = to_primitive(getattr(value, field.name))
+            item = getattr(value, field.name)
+            if not omit_default_field(field, item):
+                data[field.name] = to_primitive(item)
         kind = getattr(value, "kind", None)
         if isinstance(kind, str):
             data.setdefault("kind", kind)
@@ -135,7 +162,9 @@ def to_semantic_primitive(value: Any) -> Any:
     if dataclasses.is_dataclass(value):
         data: dict[str, Any] = {}
         for field in dataclasses.fields(value):
-            data[field.name] = to_semantic_primitive(getattr(value, field.name))
+            item = getattr(value, field.name)
+            if not omit_default_field(field, item):
+                data[field.name] = to_semantic_primitive(item)
         kind = getattr(value, "kind", None)
         if isinstance(kind, str):
             data.setdefault("kind", kind)
@@ -163,7 +192,9 @@ class OperationSpec:
     def semantic_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {}
         for field in dataclasses.fields(self):
-            data[field.name] = to_semantic_primitive(getattr(self, field.name))
+            item = getattr(self, field.name)
+            if not omit_default_field(field, item):
+                data[field.name] = to_semantic_primitive(item)
         data["kind"] = self.kind
         return data
 

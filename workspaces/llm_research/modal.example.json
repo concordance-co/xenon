@@ -1,0 +1,46 @@
+{
+  "method": "residual",
+  "name": "llm-modal-gpt2",
+  "backend": "modal",
+  "engine": {
+    "model_id": "/models/llm-research/gpt2/607a30d783dfa663caf39e06633721c8d4cfcd7e",
+    "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+    "device": "cuda"
+  },
+  "examples": [
+    {
+      "key": "france",
+      "prompt": "The capital of France is"
+    },
+    {
+      "key": "bird",
+      "prompt": "A blue bird flew over the"
+    }
+  ],
+  "layers": [
+    5
+  ],
+  "max_new_tokens": 2,
+  "local_artifact_root": "/absolute/local/reports",
+  "artifact_store": {
+    "name": "xenon-data",
+    "root": "/data/my-experiment"
+  },
+  "resources": {
+    "gpu": "L4",
+    "cpu": 4,
+    "memory_mb": 16384,
+    "timeout_seconds": 300,
+    "client_timeout_seconds": 600,
+    "readiness_timeout_seconds": 180,
+    "max_containers": 1,
+    "shard_count": 1,
+    "volumes": [
+      {
+        "name": "xenon-models",
+        "mount_path": "/models"
+      }
+    ]
+  },
+  "max_examples": 10000
+}

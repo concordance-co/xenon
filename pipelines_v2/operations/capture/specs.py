@@ -36,8 +36,13 @@ class GenerationSpec:
     chat_tools: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     tool_choice: str | dict[str, Any] | None = None
     structured_output: dict[str, Any] | None = None
+    target_token_ids: tuple[int, ...] = field(default_factory=tuple, metadata={"omit_if_default": True})
 
     def __post_init__(self) -> None:
+        targets = tuple(self.target_token_ids)
+        if any(type(token) is not int or token < 0 for token in targets) or len(set(targets)) != len(targets):
+            raise SpecValidationError("Target token IDs must be unique nonnegative integers")
+        object.__setattr__(self, "target_token_ids", targets)
         object.__setattr__(self, "enabled", bool(self.enabled))
         object.__setattr__(
             self,
@@ -62,6 +67,7 @@ class GenerationSpec:
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "GenerationSpec":
         return cls(
+            target_token_ids=tuple(payload.get("target_token_ids", ())),
             enabled=bool(payload.get("enabled", False)),
             max_tokens=(
                 None
@@ -122,6 +128,8 @@ class CaptureSpec(OperationSpec):
             caps.update(site.required_capabilities())
         if self.generation.enabled:
             caps.add(EngineCapability.GENERATION)
+        if self.generation.target_token_ids:
+            caps.add(EngineCapability.TARGET_LOGPROBS)
         if self.generation.structured_output is not None:
             caps.add(EngineCapability.STRUCTURED_OUTPUT)
         return caps
@@ -141,7 +149,8 @@ class CaptureSpec(OperationSpec):
 
             if not isinstance(runtime_spec, PythonRuntimeSpec):
                 return runtime_spec
-            return PythonRuntimeSpec(
+            return replace(
+                runtime_spec,
                 python_version=runtime_spec.python_version,
                 pip_packages=merge_string_tuples(
                     runtime_spec.pip_packages,
@@ -155,7 +164,8 @@ class CaptureSpec(OperationSpec):
 
         if not isinstance(runtime_spec, PythonRuntimeSpec):
             return runtime_spec
-        return PythonRuntimeSpec(
+        return replace(
+                runtime_spec,
             python_version=runtime_spec.python_version,
             pip_packages=merge_string_tuples(
                 runtime_spec.pip_packages,
@@ -220,7 +230,44 @@ class CaptureSpec(OperationSpec):
         )
 
 
+_CAPTURE_SITE_LOADERS: dict[str, Any] = {}
+_CAPTURE_SITE_EMPTY: dict[str, Any] = {}
+
+
+def register_capture_site(kind: str, loader: Any, *, empty_payload: Any = None) -> None:
+    """Register an explicitly tagged site codec from trusted adapter code."""
+    from pipelines_v2.core.registry import register_kind
+
+    if not callable(loader) or (empty_payload is not None and not callable(empty_payload)):
+        raise TypeError("Capture site loader and optional empty_payload must be callable")
+    register_kind(_CAPTURE_SITE_LOADERS, kind, loader, label="Capture site")
+    if empty_payload is not None:
+        _CAPTURE_SITE_EMPTY[kind] = empty_payload
+
+
+def empty_capture_site_payload(site: Any) -> dict[str, Any]:
+    factory = _CAPTURE_SITE_EMPTY.get(getattr(site, "kind", None))
+    if factory is None:
+        raise SpecValidationError(f"Capture site {getattr(site, 'kind', None)!r} has no empty-shard payload codec")
+    payload = factory(site)
+    if not isinstance(payload, dict) or not isinstance(payload.get("kind"), str):
+        raise SpecValidationError("Empty capture site payload must be a tagged feature mapping")
+    return payload
+
+
 def capture_site_from_dict(payload: Mapping[str, Any]) -> CaptureSite:
+    if "kind" in payload:
+        kind = str(payload["kind"])
+        if type(payload.get("schema_version", 1)) is not int or payload.get("schema_version", 1) != 1:
+            raise SpecValidationError(f"Unsupported capture site schema_version: {payload.get('schema_version')!r}")
+        loader = _CAPTURE_SITE_LOADERS.get(kind)
+        if loader is None:
+            raise SpecValidationError(f"Unknown capture site kind: {kind!r}")
+        site = loader(payload)
+        if getattr(site, "kind", None) != kind:
+            raise SpecValidationError("Capture site loader returned an incompatible kind")
+        return site
+    # Legacy sites intentionally keep their untagged wire representation/hashes.
     if "site" in payload:
         return ResidualSite.from_dict(payload)
     if "record" in payload:
@@ -232,6 +279,7 @@ __all__ = [
     "CaptureSpec",
     "GenerationSpec",
     "capture_site_from_dict",
+    "register_capture_site",
 ]
 
 
@@ -240,3 +288,6 @@ def _is_builtin_generation_section_selector(value: Any) -> bool:
         getattr(value, "kind", None) == "section"
         and str(getattr(value, "value", "")) in {"prompt", "generated", "full"}
     )
+
+from pipelines_v2.operations.common.native import NativeSite
+register_capture_site(NativeSite.kind, NativeSite.from_dict, empty_payload=lambda site: site.empty_payload())

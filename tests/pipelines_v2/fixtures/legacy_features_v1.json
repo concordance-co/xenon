@@ -1,0 +1,187 @@
+[
+  {
+    "format": "residual_safetensors_v2",
+    "metadata": {
+      "kind": "residual",
+      "layers": {
+        "0": {
+          "a": {
+            "tokens": [
+              0,
+              1
+            ],
+            "values": {
+              "__tensor_key__": "fixture_layer_0_values_0",
+              "__tensor_row__": 0,
+              "shape": [
+                2,
+                2
+              ]
+            }
+          },
+          "b": {
+            "tokens": [
+              0,
+              1
+            ],
+            "values": {
+              "__tensor_key__": "fixture_layer_0_values_0",
+              "__tensor_row__": 1,
+              "shape": [
+                2,
+                2
+              ]
+            }
+          }
+        }
+      },
+      "site": "resid_post",
+      "storage": {
+        "dtype": "float32",
+        "format": "safetensors"
+      }
+    },
+    "payload": {
+      "kind": "residual",
+      "layers": {
+        "0": {
+          "a": {
+            "tokens": [
+              0,
+              1
+            ],
+            "values": {
+              "array": [
+                [
+                  1.0,
+                  2.0
+                ],
+                [
+                  3.0,
+                  4.0
+                ]
+              ],
+              "dtype": "float32"
+            }
+          },
+          "b": {
+            "tokens": [
+              0,
+              1
+            ],
+            "values": {
+              "array": [
+                [
+                  5.0,
+                  6.0
+                ],
+                [
+                  7.0,
+                  8.0
+                ]
+              ],
+              "dtype": "float32"
+            }
+          }
+        }
+      },
+      "site": "resid_post",
+      "storage": {
+        "dtype": "float32",
+        "format": "inline"
+      }
+    },
+    "tensors": {
+      "fixture_layer_0_values_0": {
+        "array": [
+          [
+            [
+              1.0,
+              2.0
+            ],
+            [
+              3.0,
+              4.0
+            ]
+          ],
+          [
+            [
+              5.0,
+              6.0
+            ],
+            [
+              7.0,
+              8.0
+            ]
+          ]
+        ],
+        "dtype": "float32"
+      }
+    }
+  },
+  {
+    "format": "moe_routing_safetensors_v1",
+    "metadata": {
+      "kind": "moe_routing",
+      "layers": {
+        "0": {
+          "a": {
+            "gate_logits": {
+              "__tensor_key__": "fixture_tensor_0"
+            },
+            "routing": {
+              "__tensor_key__": "fixture_tensor_1"
+            }
+          }
+        }
+      }
+    },
+    "payload": {
+      "kind": "moe_routing",
+      "layers": {
+        "0": {
+          "a": {
+            "gate_logits": {
+              "array": [
+                [
+                  1.0,
+                  2.0
+                ]
+              ],
+              "dtype": "float32"
+            },
+            "routing": {
+              "array": [
+                [
+                  0,
+                  1
+                ]
+              ],
+              "dtype": "int32"
+            }
+          }
+        }
+      }
+    },
+    "tensors": {
+      "fixture_tensor_0": {
+        "array": [
+          [
+            1.0,
+            2.0
+          ]
+        ],
+        "dtype": "float32"
+      },
+      "fixture_tensor_1": {
+        "array": [
+          [
+            0,
+            1
+          ]
+        ],
+        "dtype": "int32"
+      }
+    }
+  }
+]

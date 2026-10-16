@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "study_id": "official-mattr-ioi",
+  "phase_id": "integration-smoke",
+  "papers": [
+    "https://arxiv.org/abs/2609.25518"
+  ],
+  "workflow": "workflow.py",
+  "source_locks": {
+    "workflow.py": "49e27742fd9ace6577b84b7b74ef150941fae4cda3295b2e69bbf8ff20efeef9",
+    "request.json": "a3cc090b89e3c7b839704cd372de7cbaa0a8f637b626e20cd8510cf61c874950"
+  },
+  "model_locks": {
+    "gpt2": "f34cdbcba4a56ff0ff6825d20e4a70aceb9313eb88fa5510d9bd17eecb10a1b5"
+  },
+  "data_locks": {
+    "ioi": "7b55745b4d6f6af444ca6a66867ce20c517877d6d04141423e0c78927ad1e3dd"
+  },
+  "question_ids": [
+    "Q-official-harness-plumbing"
+  ],
+  "hypothesis_ids": [],
+  "presets": {
+    "setup": {
+      "enabled": false,
+      "workflow_hash": "a9b2a37b16f927c170618d29bb70f34a721e8bbffc78f1226efe20ba5512f9b6",
+      "model_bindings": {},
+      "data_bindings": {},
+      "limits": {
+        "max_examples": 2,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Engineering smoke only; official harness, 2 fit steps, 2 validation examples; original train split and full evaluator grid"
+      },
+      "qualification_refs": []
+    },
+    "smoke": {
+      "enabled": true,
+      "workflow_hash": "a9b2a37b16f927c170618d29bb70f34a721e8bbffc78f1226efe20ba5512f9b6",
+      "model_bindings": {},
+      "data_bindings": {},
+      "limits": {
+        "max_examples": 2,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Engineering smoke only; official harness, 2 fit steps, 2 validation examples; original train split and full evaluator grid"
+      },
+      "qualification_refs": []
+    },
+    "reference": {
+      "enabled": false,
+      "workflow_hash": "a9b2a37b16f927c170618d29bb70f34a721e8bbffc78f1226efe20ba5512f9b6",
+      "model_bindings": {},
+      "data_bindings": {},
+      "limits": {
+        "max_examples": 2,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Engineering smoke only; official harness, 2 fit steps, 2 validation examples; original train split and full evaluator grid"
+      },
+      "qualification_refs": []
+    },
+    "scale": {
+      "enabled": false,
+      "workflow_hash": "a9b2a37b16f927c170618d29bb70f34a721e8bbffc78f1226efe20ba5512f9b6",
+      "model_bindings": {},
+      "data_bindings": {},
+      "limits": {
+        "max_examples": 2,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Engineering smoke only; official harness, 2 fit steps, 2 validation examples; original train split and full evaluator grid"
+      },
+      "qualification_refs": []
+    }
+  },
+  "split_policy": {
+    "unit": "official IOI row",
+    "partitions": [
+      "train",
+      "validation"
+    ],
+    "held_out": [
+      "validation"
+    ],
+    "digest": "9c60c1bedf5c35ad32243dd7c7c7fd8d13a4c10e806713c097c9363e9a272394"
+  },
+  "metrics": {
+    "cpr_auc": {
+      "evaluator_digest": "ed6fc3efba6a62f09b19148fb49b293a156b263c9e47b0bebbf450b409ed9850",
+      "direction": "higher",
+      "unit": "official linear sparsity integral"
+    }
+  },
+  "controls": {},
+  "qualification_requirements": [],
+  "expected_outputs": {
+    "attribution": "external_attribution"
+  }
+}

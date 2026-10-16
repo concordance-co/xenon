@@ -1,0 +1,51 @@
+{
+  "proposal_templates": [
+    "As {name_A} and {name_B} left the {place}, {name_C} gave a {object} to"
+  ],
+  "pairs": [
+    {
+      "key": "ioi-validation-0",
+      "template": "After the lunch, {name_A} and {name_B} went to the {place}. {name_C} gave a {object} to",
+      "prompt": "After the lunch, Greg and Jeff went to the clinic. Greg gave a necklace to",
+      "correct": " Jeff",
+      "foil": " Greg",
+      "opposite": "After the lunch, Greg and Jeff went to the clinic. Jeff gave a necklace to",
+      "same_label": "After the lunch, Jeff and Greg went to the clinic. Greg gave a necklace to",
+      "unmatched": "As Carl and Maria left the consulate, Carl gave a fridge to",
+      "source": {
+        "repository": "mib-bench/ioi",
+        "revision": "e5f3468f3af4c0883be35cd3bced8c711c95d286",
+        "file": "dev.json",
+        "sha256": "721d6e7a26962c9cc3008029c7327522cb72b9b03e1fa7a9c2da51ab86372c72",
+        "row_index": 0,
+        "unmatched_source": {
+          "file": "train.json",
+          "row_index": 0,
+          "sha256": "2ee41861d725eee2b71da3846872d5e5ea29d9d8c9aa3a8954f8430584b2f243"
+        }
+      }
+    },
+    {
+      "key": "ioi-validation-1",
+      "template": "Then, {name_A} and {name_B} were thinking about going to the {place}. {name_C} wanted to give a {object} to",
+      "prompt": "Then, Bill and Hope were thinking about going to the library. Bill wanted to give a bucket to",
+      "correct": " Hope",
+      "foil": " Bill",
+      "opposite": "Then, Bill and Hope were thinking about going to the library. Hope wanted to give a bucket to",
+      "same_label": "Then, Hope and Bill were thinking about going to the library. Bill wanted to give a bucket to",
+      "unmatched": "After Kevin and Bob spent some time at the racecourse, Kevin offered a duster to",
+      "source": {
+        "repository": "mib-bench/ioi",
+        "revision": "e5f3468f3af4c0883be35cd3bced8c711c95d286",
+        "file": "dev.json",
+        "sha256": "721d6e7a26962c9cc3008029c7327522cb72b9b03e1fa7a9c2da51ab86372c72",
+        "row_index": 1,
+        "unmatched_source": {
+          "file": "train.json",
+          "row_index": 1,
+          "sha256": "2ee41861d725eee2b71da3846872d5e5ea29d9d8c9aa3a8954f8430584b2f243"
+        }
+      }
+    }
+  ]
+}

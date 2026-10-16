@@ -1,0 +1,8 @@
+{
+  "max_examples": 8,
+  "max_input_tokens": 128,
+  "max_generated_tokens": 16,
+  "max_artifact_bytes": 268435456,
+  "timeout_seconds": 600,
+  "max_process_tree_rss_bytes": 8589934592
+}

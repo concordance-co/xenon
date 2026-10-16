@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -14,12 +15,68 @@ _TENSOR_REF_KEY = "__tensor_key__"
 _TENSOR_ROW_KEY = "__tensor_row__"
 
 
+@dataclass(frozen=True, slots=True)
+class FeatureCodec:
+    kind: str
+    storage_format: str
+    encode: Callable[..., tuple[dict[str, Any], dict[str, NDArray[Any]]]]
+    decode: Callable[[dict[str, Any], dict[str, NDArray[Any]]], dict[str, Any]]
+    merge: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]] | None = None
+
+
+_FEATURE_CODECS: dict[str, FeatureCodec] = {}
+_FEATURE_FORMATS: dict[str, FeatureCodec] = {}
+
+
+def register_feature_codec(
+    kind: str,
+    *,
+    storage_format: str,
+    encode: Callable[..., tuple[dict[str, Any], dict[str, NDArray[Any]]]],
+    decode: Callable[[dict[str, Any], dict[str, NDArray[Any]]], dict[str, Any]],
+    read_aliases: tuple[str, ...] = (),
+    merge: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]] | None = None,
+) -> None:
+    """Register a tensor codec and all accepted wire formats together.
+
+    Encoders receive tensor_key_prefix and must use it for bundle-wide uniqueness.
+    This supports new dense quantities without allowing unknown arrays into JSON.
+    """
+    from pipelines_v2.core.registry import register_kind
+
+    formats = (storage_format, *read_aliases)
+    if not callable(encode) or not callable(decode) or (merge is not None and not callable(merge)):
+        raise TypeError("Feature encoder, decoder and optional merge must be callable")
+    if len(set(formats)) != len(formats) or any(
+        not isinstance(fmt, str) or not fmt.strip() or fmt != fmt.strip() or fmt == "json" or fmt in _FEATURE_FORMATS
+        for fmt in formats
+    ):
+        raise ValueError("Feature storage format is invalid, reserved, or already registered")
+    codec = FeatureCodec(kind, storage_format, encode, decode, merge)
+    register_kind(_FEATURE_CODECS, kind, codec, label="Feature")
+    for fmt in formats:
+        _FEATURE_FORMATS[fmt] = codec
+
+
+def _contains_tensor(value: Any) -> bool:
+    if isinstance(value, np.ndarray):
+        return True
+    if isinstance(value, dict):
+        return any(_contains_tensor(item) for item in value.values())
+    if isinstance(value, (tuple, list)):
+        return any(_contains_tensor(item) for item in value)
+    return False
+
+
 def feature_storage_format(payload: dict[str, Any]) -> str:
     feature_kind = str(payload.get("kind") or "")
-    if feature_kind == "residual":
-        return "residual_safetensors_v2"
-    if feature_kind == "moe_routing":
-        return "moe_routing_safetensors_v1"
+    codec = _FEATURE_CODECS.get(feature_kind)
+    if codec is not None:
+        return codec.storage_format
+    storage = payload.get("storage", {})
+    requested = storage.get("format") if isinstance(storage, dict) else None
+    if _contains_tensor(payload) or requested not in (None, "json", "inline"):
+        raise ValueError(f"Unregistered dense feature kind: {feature_kind!r}; register a tensor codec")
     return "json"
 
 
@@ -27,6 +84,7 @@ def write_capture_features(store: Any, artifact_id: str, features: dict[str, dic
     storage_refs: dict[str, Any] = {}
     metadata_by_name: dict[str, dict[str, Any]] = {}
     format_by_name: dict[str, str] = {}
+    has_tensors_by_name: dict[str, bool] = {}
     shared_tensors: dict[str, NDArray[Any]] = {}
 
     for feature_index, (name, payload) in enumerate(features.items()):
@@ -36,11 +94,16 @@ def write_capture_features(store: Any, artifact_id: str, features: dict[str, dic
             continue
 
         metadata, tensors = encode_feature_payload(payload, tensor_key_prefix=f"feature_{feature_index}_")
-        if not tensors:
+        if not tensors and payload.get("kind") in {"residual", "moe_routing"}:
+            # Preserve historical empty built-in refs. Their generic decoder is identity here.
             storage_refs[name] = store.write_json(artifact_id, f"features/{name}.json", metadata)
             continue
         metadata_by_name[name] = metadata
         format_by_name[name] = format
+        has_tensors_by_name[name] = bool(tensors)
+        collisions = set(shared_tensors) & set(tensors)
+        if collisions:
+            raise ValueError(f"Feature tensor keys collide: {sorted(collisions)}")
         shared_tensors.update(tensors)
 
     shared_tensor_ref: dict[str, Any] | None = None
@@ -49,18 +112,18 @@ def write_capture_features(store: Any, artifact_id: str, features: dict[str, dic
 
     for name, metadata in metadata_by_name.items():
         metadata_ref = store.write_json(artifact_id, f"features/{name}.metadata.json", metadata)
-        if shared_tensor_ref is None:
-            raise RuntimeError("Tensor-backed feature metadata was prepared without a shared safetensors bundle")
+        tensor_ref = shared_tensor_ref if has_tensors_by_name[name] else None
+        tensor_bytes = tensor_ref["bytes"] if tensor_ref is not None else 0
         storage_refs[name] = {
             "store": metadata_ref["store"],
             "name": metadata_ref.get("name"),
             "format": format_by_name[name],
             "path": metadata_ref["path"],
             "metadata_path": metadata_ref["path"],
-            "tensor_path": shared_tensor_ref["path"],
+            "tensor_path": tensor_ref["path"] if tensor_ref is not None else None,
             "metadata_bytes": metadata_ref["bytes"],
-            "tensor_bytes": shared_tensor_ref["bytes"],
-            "bytes": metadata_ref["bytes"] + shared_tensor_ref["bytes"],
+            "tensor_bytes": tensor_bytes,
+            "bytes": metadata_ref["bytes"] + tensor_bytes,
         }
 
     return storage_refs
@@ -76,8 +139,19 @@ def encode_feature_payload(
         return payload, {}
 
     feature_kind = str(payload.get("kind") or "")
-    if feature_kind == "residual":
-        return _encode_residual_payload(payload, tensor_key_prefix=tensor_key_prefix)
+    metadata, tensors = _FEATURE_CODECS[feature_kind].encode(payload, tensor_key_prefix=tensor_key_prefix)
+    if not isinstance(metadata, dict) or metadata.get("kind") != feature_kind:
+        raise ValueError("Feature encoder returned an incompatible kind")
+    if any(not isinstance(key, str) or not key.startswith(tensor_key_prefix) for key in tensors):
+        raise ValueError("Feature tensor keys must honor tensor_key_prefix")
+    return metadata, tensors
+
+
+def encode_tensor_feature_payload(
+    payload: dict[str, Any], *, tensor_key_prefix: str = "",
+) -> tuple[dict[str, Any], dict[str, NDArray[Any]]]:
+    """Generic ndarray codec for registered dense feature families."""
+    feature_kind = str(payload.get("kind") or "")
     normalized = _normalized_feature_metadata(payload)
     tensors: dict[str, NDArray[Any]] = {}
     tensor_index = 0
@@ -131,7 +205,7 @@ def load_feature_payload(store: Any, ref: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):
             raise TypeError("Feature payload must be a mapping")
         return payload
-    if format in {"residual_safetensors_v1", "residual_safetensors_v2", "moe_routing_safetensors_v1"}:
+    if format in _FEATURE_FORMATS:
         logger.info(
             "Loading tensor-backed feature metadata format=%s metadata_path=%s tensor_path=%s tensor_bytes=%s",
             format,
@@ -163,14 +237,19 @@ def load_feature_payload(store: Any, ref: dict[str, Any]) -> dict[str, Any]:
                 "format": "safetensors",
                 "bytes": ref.get("tensor_bytes"),
             }
-        )
+        ) if ref.get("tensor_path") is not None else {}
         logger.info(
             "Loaded feature tensor bundle format=%s tensor_count=%s tensor_keys_preview=%s",
             format,
             len(tensors),
             sorted(str(key) for key in tensors)[:8],
         )
-        payload = decode_feature_payload(metadata, tensors)
+        codec = _FEATURE_FORMATS[format]
+        if metadata.get("kind") != codec.kind:
+            raise ValueError("Feature metadata kind does not match its registered format")
+        payload = codec.decode(metadata, tensors)
+        if not isinstance(payload, dict) or payload.get("kind") != codec.kind:
+            raise ValueError("Feature decoder returned an incompatible kind")
         layers = payload.get("layers") if isinstance(payload, dict) else None
         logger.info(
             "Decoded feature payload format=%s layer_count=%s",
@@ -292,3 +371,53 @@ def _numpy_dtype(name: str) -> Any:
     if normalized == "bfloat16":
         return np.float32
     raise ValueError(f"Unsupported tensor storage dtype: {name}")
+
+
+def merge_feature_payloads(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    """Merge shards only when their registered codec defines the layout semantics."""
+    kind = left.get("kind")
+    if kind != right.get("kind"):
+        raise ValueError("Cannot merge feature payloads of different kinds")
+    codec = _FEATURE_CODECS.get(str(kind))
+    if codec is None or codec.merge is None:
+        raise ValueError(f"Feature kind {kind!r} has no registered shard merge; use one shard")
+    result = codec.merge(left, right)
+    if not isinstance(result, dict) or result.get("kind") != kind:
+        raise ValueError("Feature merger returned an incompatible kind")
+    return result
+
+
+def _merge_legacy_layers(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    for layer, records in dict(right.get("layers", {})).items():
+        left.setdefault("layers", {}).setdefault(str(layer), {}).update(dict(records))
+    return left
+
+
+# Explicit built-ins. Historical residual v1 refs remain readable.
+register_feature_codec(
+    "residual", storage_format="residual_safetensors_v2",
+    encode=_encode_residual_payload, decode=decode_feature_payload,
+    read_aliases=("residual_safetensors_v1",), merge=_merge_legacy_layers,
+)
+register_feature_codec(
+    "moe_routing", storage_format="moe_routing_safetensors_v1",
+    encode=encode_tensor_feature_payload, decode=decode_feature_payload, merge=_merge_legacy_layers,
+)
+
+# Image/latent codecs are core contracts; no image engine or Pillow import here.
+from pipelines_v2.storage.image_features import (  # noqa: E402
+    decode_spatial_payload, encode_spatial_payload, merge_spatial_payloads,
+)
+for _spatial_kind in ("image", "latent"):
+    register_feature_codec(
+        _spatial_kind, storage_format=f"{_spatial_kind}_safetensors_v1",
+        encode=encode_spatial_payload, decode=decode_spatial_payload, merge=merge_spatial_payloads,
+    )
+
+from pipelines_v2.storage.native_features import merge_native_payloads, encode_native_payload, decode_native_payload
+register_feature_codec('native_tensor', storage_format='native_tensor_safetensors_v1', encode=encode_native_payload, decode=decode_native_payload, merge=merge_native_payloads)
+
+from pipelines_v2.representation.sae.codec import register_codec as _register_sae_codec
+_register_sae_codec()
+
+register_feature_codec('crosscoder_tensors',storage_format='crosscoder_safetensors_v1',encode=encode_tensor_feature_payload,decode=decode_feature_payload)

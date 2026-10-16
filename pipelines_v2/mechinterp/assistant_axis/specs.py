@@ -10,7 +10,7 @@ play/default activations, or score captured text spans against that direction.
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, ClassVar, Mapping, Sequence
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret, SpecValidationError
@@ -195,7 +195,7 @@ class AssistantAxisPrecomputedCoordinateSpec(OperationSpec):
         base = analysis_runtime_spec(extra_pip_packages=("torch", "huggingface_hub"))
         if not isinstance(base, PythonRuntimeSpec):
             return base
-        return PythonRuntimeSpec(
+        return replace(base,
             python_version=base.python_version,
             pip_packages=base.pip_packages,
             env=dict(base.env),
@@ -292,7 +292,7 @@ class AssistantAxisTraitCoordinateSpec(OperationSpec):
         base = analysis_runtime_spec(extra_pip_packages=("torch", "huggingface_hub"))
         if not isinstance(base, PythonRuntimeSpec):
             return base
-        return PythonRuntimeSpec(
+        return replace(base,
             python_version=base.python_version,
             pip_packages=base.pip_packages,
             env=dict(base.env),

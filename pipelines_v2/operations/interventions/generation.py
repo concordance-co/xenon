@@ -56,6 +56,8 @@ class GenerationRunSpec(OperationSpec):
 
     def required_capabilities(self) -> set[EngineCapability]:
         caps = {EngineCapability.GENERATION}
+        if self.generation.target_token_ids:
+            caps.add(EngineCapability.TARGET_LOGPROBS)
         if self.generation.structured_output is not None:
             caps.add(EngineCapability.STRUCTURED_OUTPUT)
         return caps
@@ -74,7 +76,8 @@ class GenerationRunSpec(OperationSpec):
 
         if not isinstance(runtime_spec, PythonRuntimeSpec):
             return runtime_spec
-        return PythonRuntimeSpec(
+        return replace(
+            runtime_spec,
             python_version=runtime_spec.python_version,
             pip_packages=merge_string_tuples(
                 runtime_spec.pip_packages,
@@ -177,6 +180,8 @@ class PatchedGenerationSpec(OperationSpec):
             EngineCapability.ACTIVATION_PATCHING,
             EngineCapability.REQUEST_SCOPED_INTERVENTIONS,
         }
+        if self.generation.target_token_ids:
+            caps.add(EngineCapability.TARGET_LOGPROBS)
         if self.generation.structured_output is not None:
             caps.add(EngineCapability.STRUCTURED_OUTPUT)
         return caps
@@ -204,7 +209,8 @@ class PatchedGenerationSpec(OperationSpec):
         runtime_env = dict(runtime_spec.env)
         if self.patch.operator in {"project_out", "add_direction", "swap_mean", "swap_components", "random_control"}:
             runtime_env["XENON_ACTIVATION_PATCH_COMPILED_OPERATOR"] = "subspace"
-        return PythonRuntimeSpec(
+        return replace(
+            runtime_spec,
             python_version=runtime_spec.python_version,
             pip_packages=merge_string_tuples(
                 runtime_spec.pip_packages,

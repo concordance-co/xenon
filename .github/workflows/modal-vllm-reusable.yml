@@ -90,6 +90,8 @@ jobs:
               XENON_RUN_MODAL_VLLM_ENGINE_CONTRACTS=1 \
               XENON_RUN_MODAL_VLLM_PATCH_OPERATOR_CONTRACTS=1 \
               XENON_RUN_MODAL_VLLM_PAIRED_PATCH_CONTRACTS=1 \
+              XENON_RUN_MODAL_VLLM_CAPTURE_CONTRACTS=1 \
+              XENON_RUN_MODAL_VLLM_OUTPUT_CONTRACTS=1 \
                 uv run pytest -q tests/pipelines_v2/engine/test_modal_vllm_gpu_smoke.py -s
               ;;
           esac

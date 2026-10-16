@@ -102,6 +102,12 @@ class ToyEngine:
     def capabilities(self) -> set[EngineCapability]:
         return set(self.enabled_capabilities)
 
+    def supported_input_modalities(self) -> frozenset[str]:
+        return frozenset({"text"})
+
+    def supported_patch_operators(self) -> frozenset[str]:
+        return frozenset({"interchange", "residual_path", "project_out", "add_direction", "swap_mean", "swap_components", "random_control"})
+
     def runtime_spec(self) -> PythonRuntimeSpec:
         return PythonRuntimeSpec(local_python_sources=("pipelines_v2",))
 
@@ -599,6 +605,7 @@ class ToyEngine:
                     record_tokens = positions
                 layer_payload[example.key] = {
                     "tokens": record_tokens,
+                    "selected_token_positions": list(record_tokens),
                     "values": values,
                     "prompt_hash": example.prompt_hash,
                     "token_sections": feature_token_sections,
@@ -641,6 +648,7 @@ class ToyEngine:
                 )
                 layer_payload[example.key] = {
                     "tokens": positions,
+                    "selected_token_positions": list(positions),
                     "records": records_by_token,
                     "prompt_hash": example.prompt_hash,
                     "token_sections": feature_token_sections,

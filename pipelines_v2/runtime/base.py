@@ -37,6 +37,20 @@ class ExecutionPlan:
     errors: tuple[str, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
+    admission_checks: tuple[Any, ...] = field(default_factory=tuple)
+    effective_config: dict[str, Any] = field(default_factory=dict)
+    workload_envelope: Any | None = None
+
+    @property
+    def ready(self) -> bool:
+        checks = [item for item in self.admission_checks if item.phase in {"static", "readiness"}]
+        return self.valid and any(item.phase == "readiness" for item in checks) and all(item.status in {"passed", "not_applicable"} for item in checks)
+
+    @property
+    def qualified(self) -> bool:
+        checks = [item for item in self.admission_checks if item.phase == "qualification"]
+        return self.ready and bool(checks) and all(item.status in {"passed", "not_applicable"} for item in checks)
+
     @property
     def missing_capabilities(self) -> set[EngineCapability]:
         """Return engine capabilities that the spec requires but the engine lacks."""
@@ -45,7 +59,7 @@ class ExecutionPlan:
     @property
     def valid(self) -> bool:
         """Whether the plan has no capability gaps and no validation errors."""
-        return not self.missing_capabilities and not self.errors
+        return not self.missing_capabilities and not self.errors and not any(item.phase == "static" and item.status == "failed" for item in self.admission_checks)
 
     def require_capabilities(self) -> None:
         """Raise if the bound engine cannot satisfy the spec's requirements."""
@@ -59,8 +73,9 @@ class ExecutionPlan:
 
     def require_checks(self) -> None:
         """Raise if any non-capability validation checks failed."""
-        if self.errors:
-            raise SpecValidationError("; ".join(self.errors))
+        errors = [*self.errors, *(item.message for item in self.admission_checks if item.phase == "static" and item.status == "failed")]
+        if errors:
+            raise SpecValidationError("; ".join(errors))
 
     def validate(self) -> "ExecutionPlan":
         """Raise on any plan failure and return the validated plan on success."""

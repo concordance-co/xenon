@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+from .engine.torch import TorchEngine, TorchSession
+from .engine.native import NativeTorchEngine, NativeSession
+from .operations.common.native import NativeSite, NativeSelection, ExpertLocalCoordinates
+from .operations.interventions.native import NativeInterventionSite, NativeCoordinatePatch
+from .operations.interventions import ScalePatch
+
+from .storage.finalization import CheckpointJournal, IntegrityError, finalize_manifest, validate_completion
+from .runtime.recovery import register_capture_coverage_validator
+from .core.provenance import ProvenanceV1, ReuseDecision, compare_provenance
 from .core.types import (
     CapabilityError,
     EngineCapability,
@@ -13,6 +22,8 @@ from .core.types import (
     TransferPolicyError,
 )
 from .data.datasets import CaseSet, Dataset, Example, LabelPredicate, LabelSet
+from .data.images import ImageInput, SpatialSelector, SpatialMapping, DiffusionCoordinates, prepare_image
+from .storage.image_features import SpatialTensor, tensor_content_digest, spatial_summary
 from .data.sources import ArtifactDatasetSource, HuggingFaceListContrastSource, HuggingFaceSource, InMemorySource, PostgresSource, Source, UrlJsonSource
 from .engine import (
     Engine,
@@ -153,7 +164,27 @@ from .workflow import (
     WorkflowStepRecord,
 )
 
+# Explicit adapter registration; these imports do not load optional runtimes.
+from .engine.registry import register_engine
+from .operations.registry import register_operation
+from .operations.capture.specs import register_capture_site
+from .operations.interventions.sites import register_intervention_site
+from .storage.features import register_feature_codec
+
 __all__ = [
+    "TorchEngine", "TorchSession", "ScalePatch",
+    "CheckpointJournal", "IntegrityError", "finalize_manifest", "validate_completion",
+    "register_capture_coverage_validator",
+    "ImageInput", "SpatialSelector", "SpatialMapping", "DiffusionCoordinates", "prepare_image",
+    "SpatialTensor", "tensor_content_digest", "spatial_summary",
+    "ProvenanceV1",
+    "ReuseDecision",
+    "compare_provenance",
+    "register_engine",
+    "register_operation",
+    "register_capture_site",
+    "register_intervention_site",
+    "register_feature_codec",
     "ActivationPatchSpec",
     "ActivationBankSpec",
     "AddDirectionPatch",
@@ -314,3 +345,42 @@ __all__ = [
     "truthfulqa_answer_contrast_dataset",
     "truthfulqa_generation_dataset",
 ]
+
+# Runtime admission is metadata-only; optional model libraries remain lazy.
+from pipelines_v2.runtime.admission import AdmissionCheck, WorkloadEnvelope, read_capability_matrix
+from pipelines_v2.runtime.locks import RuntimeLock, load_runtime_lock
+from pipelines_v2.runtime.readiness import AdmissionRecord
+
+__all__ += ["AdmissionCheck", "AdmissionRecord", "WorkloadEnvelope", "RuntimeLock", "load_runtime_lock", "read_capability_matrix"]
+
+# Optional SDXL adapter: model libraries are imported only inside execution.
+from pipelines_v2.engine.diffusers.hooks import DenoisingHook
+from pipelines_v2.engine.diffusers.session import ImageRequest
+from pipelines_v2.engine.diffusers.specs import SDXLEngine, DiffusionGenerationSpec, DiffusionCaptureSpec, DiffusionInterventionSpec
+from pipelines_v2.engine.diffusers.execution import diffusion_image
+__all__ += ["DenoisingHook", "ImageRequest", "SDXLEngine", "DiffusionGenerationSpec", "DiffusionCaptureSpec", "DiffusionInterventionSpec", "diffusion_image"]
+
+from pipelines_v2.operations.attribution import MAttrSpec, official_tool_lock
+from pipelines_v2.runtime.external_tool import ExternalToolRuntimeSpec
+__all__ += ["MAttrSpec", "official_tool_lock", "ExternalToolRuntimeSpec"]
+__all__ += ['NativeTorchEngine','NativeSession','NativeSite','NativeSelection','ExpertLocalCoordinates','NativeInterventionSite','NativeCoordinatePatch']
+
+from .operations.representation.sae import SAEDictionaryImportSpec, SAEEncodeSpec, SAEDecodeSpec, SAEFeatureSpliceSpec
+from .representation.sae import SAEDictionary, splice as sae_feature_splice
+__all__ += ['SAEDictionaryImportSpec', 'SAEEncodeSpec', 'SAEDecodeSpec', 'SAEFeatureSpliceSpec', 'SAEDictionary', 'sae_feature_splice']
+
+from .operations.graphs import AttributionGraph, GraphNode, GraphEdge, RouteEvidence, NativeRouteSpec, RoutePair
+__all__ += ['AttributionGraph', 'GraphNode', 'GraphEdge', 'RouteEvidence', 'NativeRouteSpec', 'RoutePair']
+
+from pipelines_v2.engine.recognition import ViTRecognitionEngine, ViTSite, RecognitionSpec
+__all__ += ['ViTRecognitionEngine', 'ViTSite', 'RecognitionSpec']
+
+from pipelines_v2.operations.circuit_tracer import CircuitTraceSpec
+from pipelines_v2.runtime.circuit_tracer import CircuitTracerRuntimeSpec
+__all__ += ["CircuitTraceSpec", "CircuitTracerRuntimeSpec"]
+
+from pipelines_v2.storage.publication import PublicationTarget, PublicationPlan, plan_publication, publish_artifact
+__all__ += ['PublicationTarget', 'PublicationPlan', 'plan_publication', 'publish_artifact']
+
+from .operations.representation.crosscoder import CrosscoderPairCaptureSpec, CrosscoderFitSpec, CrosscoderImportSpec, CrosscoderEncodeSpec, CrosscoderDecodeSpec, CrosscoderFeatureSpliceSpec
+__all__ += ['CrosscoderPairCaptureSpec','CrosscoderFitSpec','CrosscoderImportSpec','CrosscoderEncodeSpec','CrosscoderDecodeSpec','CrosscoderFeatureSpliceSpec']

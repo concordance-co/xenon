@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/science-of-finetuning/crosscoder_learning",
+  "revision": "d1fd6f3fea41fc1123699cc09f4cdad47ca35160",
+  "files": {
+    "dictionary_learning/dictionary.py": "999d20edcf7fda7c867160498c8af9905d8ba870da88ee3f27ea825648273ce1",
+    "dictionary_learning/utils.py": "c55757c68877f0fe65874d40e05cd5f4d1ba4042ee7977c3e23518fce4a2b245",
+    "dictionary_learning/trainers/trainer.py": "e4cdd34884cb463ec35f642e2ee19c91d2f2ec930d1e2377fb7b302a2e7ccb37",
+    "dictionary_learning/trainers/crosscoder.py": "6ab02967557d12e5f8a0944e09c09098172963c098123b8139cc865016964896"
+  },
+  "license": "MIT"
+}

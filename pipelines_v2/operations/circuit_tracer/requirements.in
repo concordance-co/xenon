@@ -1,0 +1,12 @@
+circuit-tracer @ git+https://github.com/decoderesearch/circuit-tracer.git@255d989e93be1299d53d67b59e9fd76a0e274b14
+torch==2.8.0
+transformer-lens==2.16.1
+transformers==4.57.3
+nnsight==0.8.0
+numpy==1.26.4
+psutil==7.2.2
+datasets==4.2.0
+pyarrow==21.0.0
+pandas==2.3.3
+matplotlib==3.10.7
+scipy==1.16.3

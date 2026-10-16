@@ -1,0 +1,61 @@
+{
+  "model_paths": [
+    "/models/hub/models--Qwen--Qwen2.5-0.5B/snapshots/060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "/models/hub/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775"
+  ],
+  "reference_path": "/models/xenon-crosscoder/reference",
+  "prompts": [
+    "The capital of France is",
+    "A blue bird flew over the",
+    "Two plus three equals",
+    "The opposite of hot is",
+    "A small dog walked into the",
+    "The largest planet is"
+  ],
+  "fit": {
+    "width": 64,
+    "steps": 6,
+    "batch_size": 16
+  },
+  "train_keys": [
+    "prompt_0",
+    "prompt_1",
+    "prompt_2",
+    "prompt_3"
+  ],
+  "checkpoint_step": 3,
+  "feature_index": 40,
+  "amount": 10.0,
+  "output": "/private/tmp/xenon-crosscoder-general-cuda",
+  "mode": "modal",
+  "limits": {
+    "max_examples": 6,
+    "max_tokens_per_example": 64,
+    "max_total_tokens": 1024,
+    "max_activation_bytes": 67108864,
+    "max_parameter_bytes": 134217728,
+    "max_output_bytes": 134217728,
+    "max_process_rss_bytes": 8589934592,
+    "timeout_seconds": 600,
+    "max_device_bytes": 17179869184
+  },
+  "execution": {
+    "device": "cuda",
+    "dtype": "float32",
+    "runtime_profile": "linux-x86_64-cuda",
+    "threads": 2
+  },
+  "modal": {
+    "artifact_volume": "xenon-data",
+    "artifact_root": "/data/llm-generalization/crosscoder-g01",
+    "model_volume": "xenon-models",
+    "model_mount": "/models",
+    "gpu": "L4",
+    "cpu": 4,
+    "memory_mb": 16384,
+    "timeout_seconds": 600,
+    "client_timeout_seconds": 900,
+    "max_containers": 1,
+    "shard_count": 1
+  }
+}

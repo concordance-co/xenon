@@ -262,3 +262,33 @@ use_vllm_torch_compile_cache = true
     resources = runners["capture_gpu"].resources
     assert resources.env["VLLM_CACHE_ROOT"] == "/explicit-cache"
     assert resources.volumes == (ModalVolumeMount(name="custom-models", mount_path="/models"),)
+
+
+def test_workspace_defaults_preserve_batching_and_other_resources():
+    from dataclasses import replace
+    from pipelines_v2.cli import _modal_resources_with_workspace_defaults
+    from pipelines_v2.core.config import ModalDefaults
+
+    resources = ModalResources(gpu="A100-80GB", cpu=4, memory_mb=8192,
+                               timeout_seconds=90, shard_count=2, max_containers=2,
+                               enable_workflow_batching=True)
+    resolved = _modal_resources_with_workspace_defaults(
+        resources=resources,
+        modal_defaults=ModalDefaults(model_volume="models", use_vllm_torch_compile_cache=True),
+    )
+    assert resolved.enable_workflow_batching is True
+    assert replace(resolved, env=resources.env, volumes=resources.volumes) == resources
+
+
+def test_workspace_config_rejects_unknown_or_mistyped_settings(tmp_path):
+    import pytest
+
+    for config, match in (
+        ('[pipelines_v2.modal]\nuse_vllm_torch_compile_cache = "false"', 'must be bool'),
+        ('[pipelines_v2.modal]\nmodel_volum = "models"', 'model_volum'),
+        ('[pipelines_v2.modal]\nmodel_volume = 3', 'must be str'),
+        ('[pipelines_v2.workflo]\nlocal_catalog_root = "tmp"', 'workflo'),
+    ):
+        _write_workspace(tmp_path, config_text=config)
+        with pytest.raises(ValueError, match=match):
+            load_workspace_config(tmp_path)

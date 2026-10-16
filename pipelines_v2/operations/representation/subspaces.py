@@ -21,6 +21,9 @@ class SubspaceSpec(OperationSpec):
     pooling: TokenPooling = field(default_factory=TokenPooling.mean)
     named_components_by_layer: Mapping[int, Mapping[str, int]] = field(default_factory=dict)
 
+    random_state: int | None = field(default=None, metadata={"omit_if_default": True})
+    svd_solver: str = field(default="auto", metadata={"omit_if_default": True})
+
     kind: ClassVar[str] = "subspace"
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
@@ -33,6 +36,8 @@ class SubspaceSpec(OperationSpec):
     def from_dict(cls, payload: dict[str, Any]) -> "SubspaceSpec":
         return cls(
             schema_version=int(payload.get("schema_version", 1)),
+            random_state=payload.get("random_state"),
+            svd_solver=str(payload.get("svd_solver", "auto")),
             feature=spec_value_from_dict(payload.get("feature")),
             layers=tuple(int(layer) for layer in payload.get("layers", ())),
             components=int(payload.get("components", 8)),

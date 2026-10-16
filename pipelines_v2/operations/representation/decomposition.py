@@ -22,6 +22,9 @@ class BasisSpec(OperationSpec):
     tokens: TokenSelector = field(default_factory=TokenSelector.last)
     pooling: TokenPooling = field(default_factory=TokenPooling.mean)
 
+    random_state: int | None = field(default=None, metadata={"omit_if_default": True})
+    svd_solver: str = field(default="auto", metadata={"omit_if_default": True})
+
     kind: ClassVar[str] = "basis"
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
@@ -34,6 +37,8 @@ class BasisSpec(OperationSpec):
     def from_dict(cls, payload: dict[str, Any]) -> "BasisSpec":
         return cls(
             schema_version=int(payload.get("schema_version", 1)),
+            random_state=payload.get("random_state"),
+            svd_solver=str(payload.get("svd_solver", "auto")),
             feature=spec_value_from_dict(payload.get("feature")),
             method=str(payload.get("method", "pca")),
             by=spec_value_from_dict(payload.get("by")),

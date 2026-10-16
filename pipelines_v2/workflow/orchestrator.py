@@ -10,6 +10,8 @@ from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
+from pipelines_v2.storage.finalization import validate_completion
+from pipelines_v2.core.provenance import compare_provenance, resolve_for_runner
 from pipelines_v2.core.types import SpecValidationError, stable_hash, utc_now_iso
 from pipelines_v2.data.datasets import CaseSet, Dataset, LabelPredicate, LabelSet
 from pipelines_v2.operations.derive import TransformSpec
@@ -18,6 +20,7 @@ from pipelines_v2.operations.readouts import ProbeSpec, ResidualizedProbeSpec, T
 from pipelines_v2.operations.representation import GeometrySpec
 from pipelines_v2.operations.specs import CaptureSpec, TokenSelector
 from pipelines_v2.runtime import Runner
+from pipelines_v2.runtime.sdxl_scope import scoped_workflow
 from pipelines_v2.storage.artifacts import InlineOperationArtifact, artifact_from_manifest
 from pipelines_v2.workflow.progress import WorkflowProgressEvent, WorkflowProgressSink
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepContext, WorkflowStepRecord
@@ -95,6 +98,7 @@ class WorkflowOrchestrator:
             )
         return WorkflowPlan(name=workflow.name, steps=tuple(step_plans))
 
+    @scoped_workflow
     def run(
         self,
         workflow: WorkflowSpec,
@@ -213,42 +217,6 @@ class WorkflowOrchestrator:
         running: dict[Future[Any], tuple[str, ...]] = {}
         max_workers = self.max_parallelism or max(1, len(ordered_steps))
 
-        if catalog is not None and existing_step_records:
-            for step_name, record in existing_step_records.items():
-                if step_name in forced_steps:
-                    continue
-                if record.status not in {"completed", "reused", "running"}:
-                    continue
-                manifest = _load_manifest_for_workflow_step(catalog, record)
-                if manifest is None:
-                    continue
-                runner = self.runners[step_by_name[step_name].runner]
-                store = getattr(runner, "artifacts", None)
-                if store is None:
-                    continue
-                if record.status == "running":
-                    catalog.record_workflow_step(
-                        WorkflowStepRecord(
-                            run_id=run_id,
-                            workflow_hash=workflow_hash,
-                            workflow_step_key=record.workflow_step_key,
-                            step_name=step_name,
-                            step_index=step_index_by_name[step_name],
-                            runner=step_by_name[step_name].runner,
-                            status="completed",
-                            step_semantic_hash=step_by_name[step_name].semantic_hash(),
-                            step_spec_hash=step_by_name[step_name].spec_hash(),
-                            input_artifact_refs=tuple(manifest.input_artifact_refs),
-                            artifact_id=manifest.artifact_id,
-                            artifact_kind=manifest.artifact_kind,
-                            started_at=record.started_at or workflow_started_at,
-                            finished_at=utc_now_iso(),
-                            runtime_app_id=_manifest_runtime_app_id(manifest),
-                        )
-                    )
-                results[step_name] = artifact_from_manifest(manifest, store=store)
-                pending.discard(step_name)
-
         first_failure: Exception | None = None
         failed_steps: set[str] = set()
 
@@ -266,6 +234,10 @@ class WorkflowOrchestrator:
                     for step in ready:
                         runner = self.runners[step.runner]
                         resolved_spec = _resolve_step_refs(step.spec, results)
+                        prepare = getattr(runner, 'prepare_execution_identity', None)
+                        if callable(prepare):
+                            prepare(resolved_spec)
+                        provenance = resolve_for_runner(resolved_spec, runner) if getattr(runner, "artifacts", None) is not None else None
                         step_context = WorkflowStepContext(
                             run_id=run_id,
                             workflow_name=workflow.name,
@@ -276,6 +248,7 @@ class WorkflowOrchestrator:
                             runner=step.runner,
                             step_semantic_hash=step.semantic_hash(),
                             step_spec_hash=step.spec_hash(),
+                            provenance_v1=provenance.to_dict() if provenance is not None else None,
                         )
                         input_artifact_refs = tuple(_input_artifact_ids_from_results(step, results))
                         if _should_inline_transform_step(step):
@@ -370,135 +343,71 @@ class WorkflowOrchestrator:
                                 )
                             continue
                         if catalog is not None:
-                            resumed = existing_step_records.get(step.name)
-                            if (
-                                resumed is not None
-                                and resumed.status in {"completed", "reused"}
-                                and resumed.artifact_id
-                                and step.name not in forced_steps
-                            ):
+                            candidates = []
+                            if step.name not in forced_steps:
+                                resumed = existing_step_records.get(step.name)
+                                if resumed is not None:
+                                    candidates.append((resumed, True))
+                                explicit = reusable_step_records.get(step.name)
+                                if explicit is not None:
+                                    candidates.append((explicit, False))
+                                if reuse_completed:
+                                    latest = catalog.find_latest_reusable_step(
+                                        step_name=step.name,
+                                        step_semantic_hash=step_context.step_semantic_hash,
+                                        input_artifact_refs=input_artifact_refs,
+                                    )
+                                    if latest is not None:
+                                        candidates.append((latest, False))
+                            reused = False
+                            for candidate, same_run in candidates:
+                                if candidate.status not in ({"completed", "reused", "running"} if same_run else {"completed", "reused"}):
+                                    continue
+                                if candidate.step_semantic_hash != step_context.step_semantic_hash:
+                                    continue
+                                if tuple(candidate.input_artifact_refs) != input_artifact_refs:
+                                    continue
+                                manifest = _load_manifest_for_workflow_step(catalog, candidate)
+                                store = getattr(runner, "artifacts", None)
+                                if manifest is None or store is None:
+                                    continue
+                                decision = compare_provenance(provenance, manifest.provenance())
+                                if not decision.reusable:
+                                    _LOG.info("step reuse rejected name=%s reasons=%s expected=%s actual=%s",
+                                              step.name, decision.reasons, decision.expected_identity, decision.actual_identity)
+                                    continue
+                                if not validate_completion(manifest, store=store, legacy_policy="read_only"):
+                                    continue
+                                results[step.name] = artifact_from_manifest(manifest, store=store)
+                                now = utc_now_iso()
+                                status = "completed" if same_run else "reused"
+                                catalog.record_workflow_step(WorkflowStepRecord(
+                                    run_id=run_id, workflow_hash=workflow_hash,
+                                    workflow_step_key=step_context.workflow_step_key,
+                                    step_name=step.name, step_index=step_index_by_name[step.name],
+                                    runner=step.runner, status=status,
+                                    step_semantic_hash=step_context.step_semantic_hash,
+                                    step_spec_hash=step_context.step_spec_hash,
+                                    input_artifact_refs=input_artifact_refs,
+                                    artifact_id=manifest.artifact_id, artifact_kind=manifest.artifact_kind,
+                                    started_at=candidate.started_at if same_run else now, finished_at=now,
+                                    runtime_app_id=_manifest_runtime_app_id(manifest),
+                                    reused_from_run_id=None if same_run else candidate.run_id,
+                                    reused_from_artifact_id=None if same_run else manifest.artifact_id,
+                                ))
                                 pending.remove(step.name)
                                 progress_made = True
+                                reused = True
+                                self._emit_progress(WorkflowProgressEvent(
+                                    run_id=run_id, workflow_name=workflow.name, step_name=step.name,
+                                    step_index=step_index_by_name[step.name], runner=step.runner,
+                                    spec_kind=step.spec.kind, status=status, stage="reused",
+                                    artifact_id=manifest.artifact_id, artifact_kind=manifest.artifact_kind,
+                                    message="reused matching resolved scientific identity",
+                                ))
+                                break
+                            if reused:
                                 continue
-                            if step.name not in forced_steps:
-                                reusable = reusable_step_records.get(step.name)
-                                if (
-                                    reusable is not None
-                                    and reusable.status in {"completed", "reused"}
-                                    and reusable.artifact_id
-                                    and reusable.step_semantic_hash == step_context.step_semantic_hash
-                                    and tuple(reusable.input_artifact_refs) == input_artifact_refs
-                                ):
-                                    manifest = _load_manifest_for_workflow_step(catalog, reusable)
-                                    store = getattr(runner, "artifacts", None)
-                                    if manifest is not None and store is not None:
-                                        results[step.name] = artifact_from_manifest(manifest, store=store)
-                                        now = utc_now_iso()
-                                        _LOG.info(
-                                            "step reused name=%s runner=%s source_run_id=%s artifact_id=%s",
-                                            step.name,
-                                            step.runner,
-                                            reusable.run_id,
-                                            reusable.artifact_id,
-                                        )
-                                        catalog.record_workflow_step(
-                                            WorkflowStepRecord(
-                                                run_id=run_id,
-                                                workflow_hash=workflow_hash,
-                                                workflow_step_key=step_context.workflow_step_key,
-                                                step_name=step.name,
-                                                step_index=step_index_by_name[step.name],
-                                                runner=step.runner,
-                                                status="reused",
-                                                step_semantic_hash=step_context.step_semantic_hash,
-                                                step_spec_hash=step_context.step_spec_hash,
-                                                input_artifact_refs=input_artifact_refs,
-                                                artifact_id=reusable.artifact_id,
-                                                artifact_kind=reusable.artifact_kind,
-                                                started_at=now,
-                                                finished_at=now,
-                                                runtime_app_id=reusable.runtime_app_id,
-                                                reused_from_run_id=reusable.run_id,
-                                                reused_from_artifact_id=reusable.artifact_id,
-                                            )
-                                        )
-                                        pending.remove(step.name)
-                                        progress_made = True
-                                        self._emit_progress(
-                                            WorkflowProgressEvent(
-                                                run_id=run_id,
-                                                workflow_name=workflow.name,
-                                                step_name=step.name,
-                                                step_index=step_index_by_name[step.name],
-                                                runner=step.runner,
-                                                spec_kind=step.spec.kind,
-                                                status="reused",
-                                                stage="reused",
-                                                runtime_app_id=reusable.runtime_app_id,
-                                                artifact_id=reusable.artifact_id,
-                                                artifact_kind=reusable.artifact_kind,
-                                                message=f"reused from run {reusable.run_id}",
-                                            )
-                                        )
-                                        continue
-                            if reuse_completed:
-                                reusable = catalog.find_latest_reusable_step(
-                                    step_name=step.name,
-                                    step_semantic_hash=step_context.step_semantic_hash,
-                                    input_artifact_refs=input_artifact_refs,
-                                )
-                                if reusable is not None and reusable.artifact_id:
-                                    manifest = catalog.load_artifact(reusable.artifact_id)
-                                    store = getattr(runner, "artifacts", None)
-                                    if manifest is not None and store is not None:
-                                        results[step.name] = artifact_from_manifest(manifest, store=store)
-                                        _LOG.info(
-                                            "step reused name=%s runner=%s source_run_id=%s artifact_id=%s",
-                                            step.name,
-                                            step.runner,
-                                            reusable.run_id,
-                                            reusable.artifact_id,
-                                        )
-                                        catalog.record_workflow_step(
-                                            WorkflowStepRecord(
-                                                run_id=run_id,
-                                                workflow_hash=workflow_hash,
-                                                workflow_step_key=step_context.workflow_step_key,
-                                                step_name=step.name,
-                                                step_index=step_index_by_name[step.name],
-                                                runner=step.runner,
-                                                status="reused",
-                                                step_semantic_hash=step_context.step_semantic_hash,
-                                                step_spec_hash=step_context.step_spec_hash,
-                                                input_artifact_refs=input_artifact_refs,
-                                                artifact_id=reusable.artifact_id,
-                                                artifact_kind=reusable.artifact_kind,
-                                                started_at=utc_now_iso(),
-                                                finished_at=utc_now_iso(),
-                                                runtime_app_id=reusable.runtime_app_id,
-                                                reused_from_run_id=reusable.run_id,
-                                                reused_from_artifact_id=reusable.artifact_id,
-                                            )
-                                        )
-                                        pending.remove(step.name)
-                                        progress_made = True
-                                        self._emit_progress(
-                                            WorkflowProgressEvent(
-                                                run_id=run_id,
-                                                workflow_name=workflow.name,
-                                                step_name=step.name,
-                                                step_index=step_index_by_name[step.name],
-                                                runner=step.runner,
-                                                spec_kind=step.spec.kind,
-                                                status="reused",
-                                                stage="reused",
-                                                runtime_app_id=reusable.runtime_app_id,
-                                                artifact_id=reusable.artifact_id,
-                                                artifact_kind=reusable.artifact_kind,
-                                                message=f"reused from run {reusable.run_id}",
-                                            )
-                                        )
-                                        continue
                             started_at = utc_now_iso()
                             catalog.record_workflow_step(
                                 WorkflowStepRecord(
@@ -619,9 +528,12 @@ class WorkflowOrchestrator:
                                     f"got {len(result_items)}, expected {len(step_names)}"
                                 )
                         for step_name, result in zip(step_names, result_items, strict=True):
-                            results[step_name] = result
                             if hasattr(result, "manifest"):
                                 manifest = result.manifest()
+                                store = getattr(result, "store", None) or getattr(
+                                    self.runners[step_by_name[step_name].runner], "artifacts", None
+                                )
+                                validate_completion(manifest, store=store)
                                 _LOG.info(
                                     "step completed name=%s runner=%s artifact_kind=%s artifact_id=%s runtime_app_id=%s",
                                     step_name,
@@ -632,6 +544,7 @@ class WorkflowOrchestrator:
                                 )
                             else:
                                 _LOG.info("step completed name=%s runner=%s", step_name, step_by_name[step_name].runner)
+                            results[step_name] = result
                             step = step_by_name[step_name]
                             self._emit_progress(
                                 WorkflowProgressEvent(
@@ -936,7 +849,7 @@ def _resolve_step_refs(value: Any, results: Mapping[str, Any]) -> Any:
             raise SpecValidationError(f"Workflow step reference {value.step!r} is not available yet") from exc
         return artifact.label(value.label_name)
     if dataclasses.is_dataclass(value):
-        fields = {field.name: _resolve_step_refs(getattr(value, field.name), results) for field in dataclasses.fields(value)}
+        fields = {field.name: _resolve_step_refs(getattr(value, field.name), results) for field in dataclasses.fields(value) if field.init}
         return type(value)(**fields)
     if isinstance(value, tuple):
         return tuple(_resolve_step_refs(item, results) for item in value)

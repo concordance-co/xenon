@@ -162,3 +162,51 @@ def test_activation_patch_runner_preserves_vllm_deferred_state_correction(
     )
 
     assert runner._update_states(scheduler_output) is correction
+
+
+def test_session_rejects_overlong_prompt_before_loading_weights(monkeypatch):
+    import sys
+    import pytest
+    from contextlib import nullcontext
+    from pipelines_v2.core.types import SpecValidationError
+    from pipelines_v2.engine.vllm.session import build_vllm_session_runtime
+
+    tokenizer = lambda text, **kwargs: SimpleNamespace(input_ids=list(range(len(text))))
+    calls = []
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(
+        AutoTokenizer=SimpleNamespace(from_pretrained=lambda *args, **kwargs: tokenizer),
+    ))
+    monkeypatch.setitem(sys.modules, "vllm", SimpleNamespace(LLM=lambda **kwargs: calls.append(kwargs)))
+    monkeypatch.setattr("pipelines_v2.engine.vllm.model_load_progress.enable_model_load_progress", lambda *args: None)
+    monkeypatch.setattr("pipelines_v2.engine.vllm.model_load_progress.model_load_progress_monitor", lambda *args: nullcontext())
+    engine = VLLMEngine(model_id="test", max_model_len=4)
+    spec = GenerationRunSpec(
+        engine=engine, dataset=Dataset.from_examples([Example(key="too_long", prompt="abcdef")]),
+        generation=GenerationSpec(enabled=True, max_tokens=1),
+    )
+    with pytest.raises(SpecValidationError, match="too_long"):
+        build_vllm_session_runtime(engine=engine, specs=(spec,))
+    # A resolved batch must also be checked when the session's original specs were deferred.
+    with pytest.raises(SpecValidationError, match="too_long"):
+        build_vllm_session_runtime(engine=engine, specs=(), preflight_spec=spec)
+    assert calls == []
+
+
+def test_reused_session_checks_new_batches_before_generation(monkeypatch):
+    import pytest
+    from pipelines_v2.core.types import SpecValidationError
+    from pipelines_v2.engine.vllm.capture import run_vllm_capture_with_runtime
+
+    engine = VLLMEngine(model_id="test", max_model_len=4)
+    spec = CaptureSpec(
+        engine=engine, dataset=Dataset.from_examples([Example(key="late_long", prompt="abcdef")]),
+        generation=GenerationSpec(enabled=True, max_tokens=1),
+    )
+    runtime = SimpleNamespace(
+        engine=engine,
+        tokenizer=lambda text, **kwargs: SimpleNamespace(input_ids=list(range(len(text)))),
+    )
+    monkeypatch.setattr("pipelines_v2.engine.vllm.capture._run_vllm_capture_loaded",
+                        lambda **kwargs: pytest.fail("Overlong prompt reached generation"))
+    with pytest.raises(SpecValidationError, match="late_long"):
+        run_vllm_capture_with_runtime(runtime=runtime, spec=spec)

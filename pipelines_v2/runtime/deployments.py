@@ -479,27 +479,14 @@ def controller_for_target(target: DeploymentTargetSpec) -> DeploymentController:
 
 
 def python_runtime_spec_to_dict(runtime: PythonRuntimeSpec) -> dict[str, Any]:
-    return {
-        "kind": runtime.kind,
-        "python_version": runtime.python_version,
-        "pip_packages": list(runtime.pip_packages),
-        "env": dict(runtime.env),
-        "secrets": [secret.to_dict() for secret in runtime.secrets],
-        "local_python_sources": list(runtime.local_python_sources),
-    }
+    return runtime.to_dict()
 
 
 def python_runtime_spec_from_dict(payload: Mapping[str, Any]) -> PythonRuntimeSpec:
     kind = str(payload.get("kind") or "python")
     if kind != "python":
         raise SpecValidationError(f"Unsupported deployment runtime kind: {kind!r}")
-    return PythonRuntimeSpec(
-        python_version=str(payload.get("python_version") or "3.13"),
-        pip_packages=tuple(str(item) for item in payload.get("pip_packages", ())),
-        env={str(key): str(value) for key, value in dict(payload.get("env", {})).items()},
-        secrets=tuple(RuntimeSecret.from_dict(dict(item)) for item in payload.get("secrets", ())),
-        local_python_sources=tuple(str(item) for item in payload.get("local_python_sources", ())),
-    )
+    return PythonRuntimeSpec.from_dict(dict(payload))
 
 
 def _optional_int(value: Any) -> int | None:

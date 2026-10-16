@@ -14,6 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 def run_report(spec: ReportSpec) -> OperationExecutionResult:
+    if spec.evidence is not None:
+        from pipelines_v2.reporting.evidence import evidence_report_payload
+        evidence = evidence_report_payload(spec.evidence, spec.inputs)
+        return OperationExecutionResult(
+            payload={"kind": "report_result", "template": spec.template, "inputs": evidence["inputs"],
+                     "evidence": evidence, "summary": {"input_count": len(spec.inputs), "evidence_count": len(evidence["records"])}},
+            example_coverage={"materialized": False, "example_count": None},
+        )
     started = time.perf_counter()
     logger.info(
         "Running report template=%s inputs=%d output_dir=%s",

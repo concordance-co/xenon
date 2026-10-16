@@ -1,0 +1,5 @@
+{
+  "python_version": "3.13.3",
+  "base_image": "python@sha256:5cc3361b5df0f3af709d5bb6c387361d9b2262ea4155dae6c701a2f66eb73b67",
+  "cuda": "13.0"
+}

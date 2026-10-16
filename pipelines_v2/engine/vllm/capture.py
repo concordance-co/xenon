@@ -146,17 +146,7 @@ def run_vllm_capture(
             tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
             tokenizer_seconds = time.perf_counter() - tokenizer_started
             preflight_started = time.perf_counter()
-            _preflight_prompt_lengths(
-                tokenizer=tokenizer,
-                examples=examples,
-                max_model_len=engine.max_model_len,
-                add_generation_prompt=bool(engine.add_generation_prompt),
-                generation_max_tokens=spec.generation.max_tokens if wants_generation else None,
-                tools=spec.generation.chat_tools,
-                tool_choice=spec.generation.tool_choice,
-                enable_thinking=engine.enable_thinking,
-                chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
-            )
+            _preflight_spec_prompt_lengths(engine=engine, spec=spec, tokenizer=tokenizer)
             preflight_seconds = time.perf_counter() - preflight_started
             try:
                 engine_started = time.perf_counter()
@@ -250,6 +240,28 @@ def _preflight_prompt_lengths(
         )
 
 
+def _preflight_spec_prompt_lengths(*, engine: VLLMEngine, spec: Any, tokenizer: Any) -> None:
+    from pipelines_v2.operations.interventions import GenerationRunSpec
+
+    if not isinstance(spec, (CaptureSpec, GenerationRunSpec)) or spec.dataset.is_deferred:
+        return
+    examples = list(spec.dataset.examples)
+    if isinstance(spec, GenerationRunSpec) and spec.select_when is not None:
+        allowed = {str(key) for key in spec.select_when.resolve_example_keys()}
+        examples = [example for example in examples if str(example.key) in allowed]
+    _preflight_prompt_lengths(
+        tokenizer=tokenizer,
+        examples=examples,
+        max_model_len=engine.max_model_len,
+        add_generation_prompt=bool(engine.add_generation_prompt),
+        generation_max_tokens=spec.generation.max_tokens if spec.generation.enabled else None,
+        tools=spec.generation.chat_tools,
+        tool_choice=spec.generation.tool_choice,
+        enable_thinking=engine.enable_thinking,
+        chat_template_kwargs=dict(engine.extra.get("chat_template_kwargs", {})),
+    )
+
+
 def _engine_init_error_message(exc: BaseException, *, llm_kwargs: dict[str, Any]) -> str:
     """Attach actionable engine config context to vLLM's opaque init failures.
 
@@ -289,6 +301,7 @@ def run_vllm_capture_with_runtime(
 ) -> EngineCaptureResult:
     """Run capture against an already-loaded reusable vLLM runtime."""
 
+    _preflight_spec_prompt_lengths(engine=runtime.engine, spec=spec, tokenizer=runtime.tokenizer)
     return _run_vllm_capture_loaded(
         engine=runtime.engine,
         spec=spec,
@@ -854,6 +867,7 @@ def _fill_residual_features(
                 record_tokens = positions
             feature_payloads[site.name]["layers"][str(layer)][example.key] = {
                 "tokens": record_tokens,
+                    "selected_token_positions": list(record_tokens),
                 "values": values,
                 "prompt_hash": example.prompt_hash,
                 "token_sections": record_token_sections,
@@ -1306,6 +1320,7 @@ def _fill_router_features(
                 )
             feature_payloads[site.name]["layers"][str(layer)][example.key] = {
                 "tokens": positions,
+                    "selected_token_positions": list(positions),
                 "records": records_by_token,
                 "prompt_hash": example.prompt_hash,
                 "token_sections": feature_token_sections,

@@ -11,6 +11,12 @@ The canonical flow is:
 Capture and analysis jobs can run on Modal. Reports are built locally from
 workflow artifacts.
 
+For a new experiment or agent thread, start with the [LLM experiment guide](platform/LLM_RESEARCH.md).
+The [research hub map](platform/RESEARCH_HUB.md) covers:
+local patching, neuron inspection, official attribution, SAE edits, paired-model
+crosscoders, and pretrained transcoder traces. Its [support matrix](platform/research_hub_support.json)
+distinguishes demonstrated plumbing from unverified models and research claims.
+
 ## Setup
 
 ```bash
@@ -65,7 +71,8 @@ operations/
 tests/
 ```
 
-The package build only publishes `pipelines_v2`. Methodology, operations, and
+The package build publishes `pipelines_v2` and the compatibility `papers.voice`
+helpers used by downstream repos. Methodology, operations, and
 platform docs are reference material for using and extending the workflow
 system.
 
@@ -130,6 +137,11 @@ Store `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` in the protected `modal-gpu`
 GitHub environment.
 
 ## Docs
+
+- [Start an experiment or new thread](platform/LLM_RESEARCH.md)
+- [Capabilities and recipes](platform/RESEARCH_HUB.md)
+- [Documentation index](platform/README.md)
+- [Deferred work](platform/BACKBURNER.md)
 
 - [platform/API.md](platform/API.md)
 - [platform/WORKFLOW.md](platform/WORKFLOW.md)

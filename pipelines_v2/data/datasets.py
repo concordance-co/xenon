@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from pipelines_v2.core.types import RuntimeSecret, stable_hash
+from pipelines_v2.data.images import ImageInput, execution_input_identity
 
 Prompt = str | Sequence[Mapping[str, Any]]
 logger = logging.getLogger(__name__)
@@ -36,8 +37,12 @@ class Example:
     metadata: Mapping[str, Any] = field(default_factory=dict)
     cases: Mapping[str, Any] = field(default_factory=dict)
     case_key: str | None = None
+    images: tuple[ImageInput, ...] = field(default=(), metadata={"omit_if_default": True})
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "images", tuple(self.images))
+        if any(not isinstance(image, ImageInput) for image in self.images):
+            raise TypeError("Example images must be prepared ImageInput records")
         if not str(self.key).strip():
             raise ValueError("Example key cannot be empty")
         if self.prompt_hash is None:
@@ -64,6 +69,7 @@ class Example:
             "metadata": dict(self.metadata),
             "cases": dict(self.cases),
             "case_key": self.case_key,
+            **({"images": [image.to_dict() for image in self.images]} if self.images else {}),
         }
 
     def semantic_dict(self) -> dict[str, Any]:
@@ -74,6 +80,8 @@ class Example:
             "metadata": dict(self.metadata),
             "cases": dict(self.cases),
             "case_key": self.case_key,
+            **({"images": [image.semantic_dict() for image in self.images],
+                "execution_input_identity": execution_input_identity(self)} if self.images else {}),
         }
 
     @classmethod
@@ -86,6 +94,7 @@ class Example:
             metadata=dict(payload.get("metadata", {})),
             cases=dict(payload.get("cases", {})),
             case_key=str(payload["case_key"]) if payload.get("case_key") is not None else None,
+            images=_image_inputs(payload.get("images"), str(payload["key"])),
         )
 
 
@@ -314,6 +323,7 @@ class Dataset:
         prompt_template: Any | None = None,
         example_key_column: str = "example_id",
         prompt_hash_column: str | None = None,
+        images_column: str | None = None,
         label_columns: Sequence[str] = (),
         case_columns: Sequence[str] = (),
         case_key_column: str | None = None,
@@ -324,6 +334,8 @@ class Dataset:
         """Build a dataset by mapping record columns into examples, labels, and cases."""
         examples: list[Example] = []
         for record in records:
+            if images_column is not None and images_column not in record:
+                raise ValueError(f"Missing image column {images_column!r} for row {record.get(example_key_column)!r}")
             prompt = _coerce_prompt(_format_record_prompt(record, prompt_column, prompt_template))
             labels = {column: record.get(column) for column in label_columns}
             metadata = {column: record.get(column) for column in metadata_columns}
@@ -338,6 +350,7 @@ class Dataset:
                         if prompt_hash_column and record.get(prompt_hash_column) is not None
                         else None
                     ),
+                    images=_image_inputs(record[images_column], str(record[example_key_column])) if images_column else (),
                     labels=labels,
                     metadata=metadata,
                     cases=cases,
@@ -661,6 +674,8 @@ class Dataset:
             "example_count": len(self.examples),
             "example_keys": self.example_keys(),
             "prompt_hashes": {example.key: example.prompt_hash for example in self.examples},
+            **({"execution_input_identities": {e.key: execution_input_identity(e) for e in self.examples}}
+               if any(e.images for e in self.examples) else {}),
         }
 
     def semantic_dict(self) -> dict[str, Any]:
@@ -807,7 +822,20 @@ class Dataset:
             "labels": dict(example.labels),
             "cases": dict(example.cases),
             "case_key": example.case_key,
+            **({"execution_input_identity": execution_input_identity(example)} if example.images else {}),
         }
+
+
+
+def _image_inputs(value: Any, row_key: str) -> tuple[ImageInput, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise ValueError(f"Image column for row {row_key!r} must be a list of prepared records or null")
+    try:
+        return tuple(ImageInput.from_dict(item) for item in value)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid prepared image record for row {row_key!r}: {exc}") from exc
 
 
 def _coerce_prompt(value: Any) -> Prompt:

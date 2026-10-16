@@ -308,6 +308,7 @@ class PostgresSource:
         prompt_column: str,
         example_key_column: str,
         prompt_hash_column: str | None = None,
+        images_column: str | None = None,
         label_columns: Sequence[str] = (),
         case_columns: Sequence[str] = (),
         case_key_column: str | None = None,
@@ -326,6 +327,8 @@ class PostgresSource:
         import psycopg
         from psycopg.rows import dict_row
 
+        if images_column and execution_shard is not None:
+            raise ValueError("Image rows must shard by resolved execution identity, not SQL prompt hash")
         dataset_query = _postgres_dataset_query(
             table=table,
             sql=sql,
@@ -335,7 +338,7 @@ class PostgresSource:
             label_columns=label_columns,
             case_columns=case_columns,
             case_key_column=case_key_column,
-            metadata_columns=metadata_columns,
+            metadata_columns=(*metadata_columns, *([images_column] if images_column else [])),
             limit=limit,
             execution_shard=execution_shard,
         )
@@ -360,6 +363,7 @@ class PostgresSource:
 
         return Dataset.from_records(
             records,
+            images_column=images_column,
             prompt_column=prompt_column,
             example_key_column=example_key_column,
             prompt_hash_column=prompt_hash_column,
@@ -380,6 +384,7 @@ class PostgresSource:
         prompt_column: str,
         example_key_column: str,
         prompt_hash_column: str | None = None,
+        images_column: str | None = None,
         label_columns: Sequence[str] = (),
         case_columns: Sequence[str] = (),
         case_key_column: str | None = None,
@@ -432,6 +437,7 @@ class PostgresSource:
         prompt_column: str,
         example_key_column: str,
         prompt_hash_column: str | None = None,
+        images_column: str | None = None,
         label_columns: Sequence[str] = (),
         case_columns: Sequence[str] = (),
         case_key_column: str | None = None,
@@ -448,6 +454,8 @@ class PostgresSource:
         batch_size = int(batch_size)
         if batch_size <= 0:
             raise ValueError("PostgresSource.iter_dataset_batches requires batch_size > 0")
+        if images_column and execution_shard is not None:
+            raise ValueError("Image rows must shard by resolved execution identity, not SQL prompt hash")
         dataset_query = _postgres_dataset_query(
             table=table,
             sql=sql,
@@ -457,7 +465,7 @@ class PostgresSource:
             label_columns=label_columns,
             case_columns=case_columns,
             case_key_column=case_key_column,
-            metadata_columns=metadata_columns,
+            metadata_columns=(*metadata_columns, *([images_column] if images_column else [])),
             limit=limit,
             execution_shard=execution_shard,
         )
@@ -489,6 +497,7 @@ class PostgresSource:
             )
             yield Dataset.from_records(
                 records,
+                images_column=images_column,
                 prompt_column=prompt_column,
                 example_key_column=example_key_column,
                 prompt_hash_column=prompt_hash_column,

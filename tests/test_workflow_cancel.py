@@ -3,10 +3,23 @@ from __future__ import annotations
 import json
 import subprocess
 
+import pytest
+
 from pipelines_v2.cli import main
 from pipelines_v2.core.types import utc_now_iso
 from pipelines_v2.storage.local import FileCatalog
 from pipelines_v2.workflow.records import WorkflowRunRecord, WorkflowStepRecord
+
+
+@pytest.fixture(autouse=True)
+def isolated_catalog_config(monkeypatch, tmp_path):
+    from pipelines_v2.core.config import WorkspaceConfig
+
+    monkeypatch.setattr("pipelines_v2.cli.load_dotenv_if_present", lambda: None)
+    monkeypatch.setattr(
+        "pipelines_v2.cli.load_workspace_config",
+        lambda *_args: WorkspaceConfig(workspace_root=tmp_path),
+    )
 
 
 def test_workflow_cancel_stops_active_modal_apps_and_marks_run_cancelled(

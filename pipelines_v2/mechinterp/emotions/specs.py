@@ -7,7 +7,7 @@ intervention mechanics to the existing projection and patching stacks.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, ClassVar, Mapping, Sequence
 
 from pipelines_v2.core.types import OperationSpec, RuntimeSecret, SpecValidationError
@@ -85,7 +85,7 @@ class EmotionPrecomputedVectorSpaceSpec(OperationSpec):
         base = analysis_runtime_spec(extra_pip_packages=tuple(packages))
         if not isinstance(base, PythonRuntimeSpec):
             return base
-        return PythonRuntimeSpec(
+        return replace(base,
             python_version=base.python_version,
             pip_packages=base.pip_packages,
             env=dict(base.env),

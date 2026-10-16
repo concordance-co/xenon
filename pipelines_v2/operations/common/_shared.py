@@ -21,8 +21,10 @@ def analysis_runtime_spec(
     extra_pip_packages: Sequence[str] = (),
 ) -> Any:
     from pipelines_v2.engine.base import PythonRuntimeSpec
+    from pipelines_v2.runtime.locks import core_runtime_lock
 
     return PythonRuntimeSpec(
+        lock=core_runtime_lock(),
         pip_packages=merge_string_tuples(
             (
                 "matplotlib",

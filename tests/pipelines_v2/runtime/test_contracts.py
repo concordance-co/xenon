@@ -339,9 +339,16 @@ def test_remote_executor_many_reuses_one_vllm_session_across_model_bound_specs(
                     "finish_reason": "stop",
                     "request_id": f"patch-{example.key}",
                     "patch_stats": {},
+                    "target_tokens": [0],
                 }
                 for example in spec.dataset.examples
             ]
+            if spec.patch.requires_pairing():
+                from pipelines_v2.operations.interventions.runtime import resolve_patched_generation_cases
+                cases, skipped = resolve_patched_generation_cases(spec)
+                by_key = {row["example_key"]: row for row in rows}
+                rows = [{**by_key[case["target"].key], "case_key": case["case_key"]} for case in cases]
+                rows.extend(skipped)
             return EngineInterventionResult(
                 summary={"example_count": len(rows), "patched_count": len(rows), "skipped_count": 0},
                 rows=rows,
@@ -353,6 +360,7 @@ def test_remote_executor_many_reuses_one_vllm_session_across_model_bound_specs(
         engine: VLLMEngine,
         specs: object,
         progress_callback: object | None = None,
+        preflight_spec: object | None = None,
     ) -> FakeRuntime:
         del engine, progress_callback
         kinds = [getattr(spec, "kind", "unknown") for spec in specs]
@@ -418,7 +426,7 @@ def test_remote_executor_many_reuses_one_vllm_session_across_model_bound_specs(
         "patched_generation",
     ]
     assert build_specs == [["capture", "generation_run", "patched_generation", "patched_generation"]]
-    assert runtime_calls == ["capture:4", "generate:4", "patch:4", "patch:4"]
+    assert runtime_calls == ["capture:4", "capture:4", "generate:4", "patch:4", "patch:4", "patch:4"]
 
 
 @pytest.mark.unit

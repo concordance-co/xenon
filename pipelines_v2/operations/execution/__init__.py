@@ -8,6 +8,18 @@ from .common import OperationExecutionResult, feature_matrices
 
 
 def execute_artifact_operation(spec: Any) -> OperationExecutionResult:
+    from pipelines_v2.operations.registry import operation_registration
+
+    registration = operation_registration(spec)
+    if registration is None or registration.placement != "artifact" or registration.executor is None:
+        raise NotImplementedError(f"Artifact-bound execution is not implemented for {type(spec).__name__}")
+    result = registration.executor(spec)
+    if not isinstance(result, OperationExecutionResult):
+        raise TypeError("Artifact operation executor must return OperationExecutionResult")
+    return result
+
+
+def _execute_builtin_artifact_operation(spec: Any) -> OperationExecutionResult:
     from pipelines_v2.mechinterp.assistant_axis import (
         AssistantAxisPrecomputedCoordinateSpec,
         AssistantAxisScoreSpec,

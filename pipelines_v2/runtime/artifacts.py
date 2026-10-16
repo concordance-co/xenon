@@ -1,4 +1,8 @@
-"""Runtime registry of operation specs that produce operation artifacts."""
+"""Legacy built-in type snapshot; runtime dispatch uses the live operation registry.
+
+ARTIFACT_BOUND_SPECS remains for old importers. New code must use
+is_artifact_operation so registrations added after runner import are visible.
+"""
 
 from __future__ import annotations
 
@@ -96,4 +100,6 @@ ARTIFACT_BOUND_SPECS = (
 )
 
 
-__all__ = ["ARTIFACT_BOUND_SPECS"]
+from pipelines_v2.operations.registry import is_artifact_operation, operation_artifact_kind
+
+__all__ = ["ARTIFACT_BOUND_SPECS", "is_artifact_operation", "operation_artifact_kind"]

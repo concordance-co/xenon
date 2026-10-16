@@ -123,7 +123,7 @@ def run_basis(spec: BasisSpec) -> OperationExecutionResult:
     layers: dict[str, Any] = {}
     for layer, X in matrices.items():
         n_components = max(1, min(spec.components, X.shape[0], X.shape[1]))
-        pca = PCA(n_components=n_components)
+        pca = PCA(n_components=n_components, svd_solver=spec.svd_solver, random_state=spec.random_state)
         transformed = pca.fit_transform(X)
         layer_payload: dict[str, Any] = {
             "components": pca.components_.tolist(),
@@ -176,7 +176,7 @@ def run_subspace(spec: SubspaceSpec) -> OperationExecutionResult:
         safe_scale = np.where(scale == 0, 1.0, scale).astype(np.float32)
         standardized = ((X - mean) / safe_scale).astype(np.float32)
         n_components = max(1, min(spec.components, standardized.shape[0], standardized.shape[1]))
-        pca = PCA(n_components=n_components)
+        pca = PCA(n_components=n_components, svd_solver=spec.svd_solver, random_state=spec.random_state)
         pca.fit(standardized)
         named_components = {
             str(name): int(index)
@@ -314,7 +314,7 @@ def run_geometry(spec: GeometrySpec) -> OperationExecutionResult:
         }
         if method == "pca":
             n_components = max(1, min(int(spec.components), X.shape[0], X.shape[1]))
-            pca = PCA(n_components=n_components)
+            pca = PCA(n_components=n_components, svd_solver=spec.svd_solver, random_state=spec.random_state)
             projected = pca.fit_transform(X)
             layer_payload.update(
                 {

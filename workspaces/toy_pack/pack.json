@@ -1,0 +1,129 @@
+{
+  "controls": {},
+  "data_locks": {
+    "capture/dataset": "1311e3df4f205a421ae9fdbdffeae3d4994ed936f6f3367b6ea884dad588ee2d",
+    "labels/source/dataset": "1311e3df4f205a421ae9fdbdffeae3d4994ed936f6f3367b6ea884dad588ee2d"
+  },
+  "expected_outputs": {
+    "capture": "capture",
+    "labels": "label_map",
+    "report": "report"
+  },
+  "hypothesis_ids": [],
+  "metrics": {
+    "mapped_count": {
+      "direction": "two_sided",
+      "evaluator_digest": "d14d21a727faaeeea74ee829e5ca5a23ec23d2fec336f66407785cb9316a512a",
+      "unit": "rows"
+    }
+  },
+  "model_locks": {
+    "capture": "db373688444d3ef5f0900337c22db042b63699c4ae7acbf62e800a07022cbdc5"
+  },
+  "papers": [],
+  "phase_id": "engineering-template",
+  "presets": {
+    "reference": {
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "labels/source/dataset": "labels/source/dataset"
+      },
+      "enabled": false,
+      "limits": {
+        "max_examples": 2,
+        "max_gpu_hours": 0,
+        "max_workers": 1,
+        "timeout_seconds": 60
+      },
+      "model_bindings": {
+        "capture": "capture"
+      },
+      "paper_settings": {
+        "scope": "Two-row engineering fixture; no paper settings reproduced."
+      },
+      "qualification_refs": [],
+      "workflow_hash": "017a8cc7bff764742cc65c520b9fabe20a66b3793fc696e8e74537f8c030cf19"
+    },
+    "scale": {
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "labels/source/dataset": "labels/source/dataset"
+      },
+      "enabled": false,
+      "limits": {
+        "max_examples": 2,
+        "max_gpu_hours": 0,
+        "max_workers": 1,
+        "timeout_seconds": 60
+      },
+      "model_bindings": {
+        "capture": "capture"
+      },
+      "paper_settings": {
+        "scope": "Two-row engineering fixture; no paper settings reproduced."
+      },
+      "qualification_refs": [],
+      "workflow_hash": "017a8cc7bff764742cc65c520b9fabe20a66b3793fc696e8e74537f8c030cf19"
+    },
+    "setup": {
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "labels/source/dataset": "labels/source/dataset"
+      },
+      "enabled": true,
+      "limits": {
+        "max_examples": 2,
+        "max_gpu_hours": 0,
+        "max_workers": 1,
+        "timeout_seconds": 60
+      },
+      "model_bindings": {
+        "capture": "capture"
+      },
+      "paper_settings": {
+        "scope": "Two-row engineering fixture; no paper settings reproduced."
+      },
+      "qualification_refs": [],
+      "workflow_hash": "017a8cc7bff764742cc65c520b9fabe20a66b3793fc696e8e74537f8c030cf19"
+    },
+    "smoke": {
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "labels/source/dataset": "labels/source/dataset"
+      },
+      "enabled": true,
+      "limits": {
+        "max_examples": 2,
+        "max_gpu_hours": 0,
+        "max_workers": 1,
+        "timeout_seconds": 60
+      },
+      "model_bindings": {
+        "capture": "capture"
+      },
+      "paper_settings": {
+        "scope": "Two-row engineering fixture; no paper settings reproduced."
+      },
+      "qualification_refs": [],
+      "workflow_hash": "017a8cc7bff764742cc65c520b9fabe20a66b3793fc696e8e74537f8c030cf19"
+    }
+  },
+  "qualification_requirements": [],
+  "question_ids": [
+    "Q-count"
+  ],
+  "schema_version": 1,
+  "source_locks": {
+    "workflow.py": "86ed5987d33df41091c15628b39b21423235382e1ee37325b87498a5540ad0b4"
+  },
+  "split_policy": {
+    "digest": "69c3dde0d9e2287cacac559685680afebf22ee4c8c79f99b2fbafff5ba1741d0",
+    "held_out": [],
+    "partitions": [
+      "fixture"
+    ],
+    "unit": "example"
+  },
+  "study_id": "toy-pack",
+  "workflow": "workflow.py"
+}

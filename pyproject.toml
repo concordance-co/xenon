@@ -10,11 +10,15 @@ dependencies = [
     "numpy>=1.26.0",
     "openai>=2.35.0",
     "psycopg[binary]>=3.2.0",
+    "psutil==7.2.2",
     "pyarrow>=23.0.1",
     "safetensors>=0.4.0",
 ]
 
 [project.optional-dependencies]
+vision = [
+    "pillow==12.1.1",
+]
 interp = [
     "torch>=2.4.0",
     "transformers>=4.51.0",
@@ -68,6 +72,11 @@ markers = [
 ]
 
 [tool.setuptools.package-data]
+"pipelines_v2.runtime" = ["locks/*.json"]
+"pipelines_v2.operations.attribution" = ["*.json"]
+"pipelines_v2.operations.circuit_tracer" = ["*.json", "requirements.lock", "requirements.in"]
+"pipelines_v2.engine.diffusers" = ["*.json", "requirements.lock", "requirements.in"]
+"pipelines_v2.representation.crosscoder" = ["*.json", "*.lock", "*.in"]
 "papers.voice" = [
     "model_assets/**/*.toml",
     "emotions/replication/data/*.txt",

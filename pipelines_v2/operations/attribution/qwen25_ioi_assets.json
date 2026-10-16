@@ -1,0 +1,21 @@
+{
+  "model": {
+    "revision": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "files": {
+      "config.json": "479dcf0c5286339e41ad3992cd08ae88a467c4187587936248e2b7c96283484b",
+      "model.safetensors": "88c142557820ccad55bb59756bfcfcf891de9cc6202816bd346445188a0ed342",
+      "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "tokenizer_config.json": "c91efca15ceff6e9ee9424db58a6f59cd41294e550a86cbd07e3c1fb500b34f9",
+      "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "merges.txt": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+      "generation_config.json": "8c970692323e3ea0e9b8b0a4dca79388d31226e41f83c9fd6014804280ebf6e8"
+    }
+  },
+  "data": {
+    "revision": "e5f3468f3af4c0883be35cd3bced8c711c95d286",
+    "files": {
+      "train.json": "2ee41861d725eee2b71da3846872d5e5ea29d9d8c9aa3a8954f8430584b2f243",
+      "dev.json": "721d6e7a26962c9cc3008029c7327522cb72b9b03e1fa7a9c2da51ab86372c72"
+    }
+  }
+}

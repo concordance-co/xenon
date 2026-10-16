@@ -1,0 +1,13 @@
+# Pinned SDXL generation and internal steering
+
+The adapter generates images with SDXL base 1.0 and can capture or edit named UNet module outputs at explicit denoising steps, CFG branches and feature-space rectangles. The first real Modal demonstration produced a 1024×1024 baseline, an identical capture run and a changed image after conditional-branch spatial ablation. This establishes working hooks, not an image-quality or research claim.
+
+Use `DiffusionGenerationSpec(engine=SDXLEngine(), images=(ImageRequest("scene", "A red ceramic teapot"),))` with a Modal runner mounting `xenon-models` at `/models`. Prepare the model cache separately; execution is offline. The demonstrated engineering profile is one A100 80GB, 8 CPUs, 64 GiB host memory, 20 Euler steps, FP16, seed 0, guidance 5, and 1024×1024 resolution. A separate pinned runtime keeps Diffusers dependencies away from vLLM. Full workflow validation and formal resource qualification remain separate gates.
+
+For a read-only capture, use `DiffusionCaptureSpec` and `DenoisingHook("mid_block.resnets.1", (10,), (1280,32,32), branch="conditional")`, with `noise_from=baseline_artifact`. For steering, use `DiffusionInterventionSpec` with that same explicit noise source and a hook with `operator="add"`, a 1280-element `direction`, and explicit `strength`; `operator="ablate"` zeros selected cells. `spatial_yx=(8,24,8,24)` denotes half-open feature coordinates. `operator="replace"` requires `replacement_from` to name a compatible capture run.
+
+`diffusion_image(run_artifact,"scene")` returns the single image's artifact. Its `feature("latents")` contains captured pre-edit internal activations and final latents; its image/initial-noise/generator-state refs stay on the Modal volume. Full trajectory metadata distinguishes denoising step index from scheduler timestep. SDXL request batches are one image; a spec may contain up to four unique image keys.
+
+Shared noise is loaded from the baseline's persisted tensor; separately generating another random tensor is unnecessary. Each complete image is independently verified and journaled. Interrupted image sets resume only missing images, and no complete set manifest appears until all requested images pass verification. Mid-trajectory continuation is unsupported.
+
+New operations use the existing workflow runner and catalog. CPU-only LocalRunner rejects SDXL. Model, library, shape, CFG or scheduler changes invalidate identity. Exact pixel replay is limited to measured runtime/device profiles; the first baseline/capture pair matched exactly on the selected A100 80GB, but this is not a cross-device guarantee.

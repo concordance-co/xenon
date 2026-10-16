@@ -10,6 +10,12 @@ integration, reporting, and deployment runtime helpers.
 
 ## Orientation
 
+Start a new LLM experiment with [platform/LLM_RESEARCH.md](platform/LLM_RESEARCH.md):
+current capabilities, setup, config examples, verification, and a thread handoff template.
+Use [platform/RESEARCH_HUB.md](platform/RESEARCH_HUB.md) to choose a recipe.
+[platform/BACKBURNER.md](platform/BACKBURNER.md) holds deferred work; do not
+restart the archived infrastructure build plans during an experiment.
+
 Three reference trees. Load the relevant one for the work.
 
 - **`methodology/`** — research flywheel, principles, checks, hypothesis catalog spec, method roster, templates.
@@ -89,6 +95,7 @@ operations/              data locality, indexing, reporting
 platform/                pipelines_v2 reference and examples
 pipelines_v2/            active platform code
 tests/                   platform tests
+workspaces/              checked-in experiment sources and small recipes
 ```
 
 Dashboard and paper workspaces are outside the public package surface for this

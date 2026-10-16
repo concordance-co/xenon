@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Protocol, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from pipelines_v2.runtime.locks import RuntimeLock
 from pipelines_v2.core.types import EngineCapability, RuntimeSecret
 from pipelines_v2.operations.capture import CaptureSpec
 from pipelines_v2.operations.interventions import GenerationRunSpec, PatchedGenerationSpec
@@ -31,6 +33,31 @@ class PythonRuntimeSpec:
     env: dict[str, str] = field(default_factory=dict)
     secrets: tuple[RuntimeSecret, ...] = field(default_factory=tuple)
     local_python_sources: tuple[str, ...] = field(default_factory=tuple)
+    lock: RuntimeLock | None = field(default=None, metadata={"omit_if_default": True})
+    runtime_identity: dict[str, Any] | None = field(default=None, metadata={"omit_if_default": True})
+
+    def to_dict(self):
+        from pipelines_v2.core.types import to_primitive
+        return to_primitive(self)
+
+    @classmethod
+    def from_dict(cls, payload):
+        if payload.get("kind") == "circuit_tracer_tool":
+            from pipelines_v2.runtime.circuit_tracer import CircuitTracerRuntimeSpec
+            return CircuitTracerRuntimeSpec.from_dict(payload)
+        if payload.get("kind") == "external_tool":
+            from pipelines_v2.runtime.external_tool import ExternalToolRuntimeSpec
+            return ExternalToolRuntimeSpec.from_dict(payload)
+        from pipelines_v2.runtime.locks import RuntimeLock
+        values = dict(payload)
+        for name in ("pip_packages", "local_python_sources"):
+            if name in values:
+                values[name] = tuple(values[name])
+        if values.get("lock") is not None:
+            values["lock"] = RuntimeLock.from_dict(values["lock"])
+        if "secrets" in values:
+            values["secrets"] = tuple(RuntimeSecret(**item) if isinstance(item, dict) else item for item in values["secrets"])
+        return cls(**values)
 
 
 class Engine(Protocol):
@@ -46,6 +73,14 @@ class Engine(Protocol):
 
     def capabilities(self) -> set[EngineCapability]:
         """Return the feature set this engine can satisfy."""
+        ...
+
+    def supported_patch_operators(self) -> frozenset[str]:
+        """Declare implemented patch operators independently of broad capabilities."""
+        ...
+
+    def supported_input_modalities(self) -> frozenset[str]:
+        """Declare supported input modalities, initially text."""
         ...
 
     def runtime_spec(self) -> RuntimeSpec:

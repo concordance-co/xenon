@@ -138,6 +138,7 @@ class WorkflowStepContext:
     runner: str
     step_semantic_hash: str
     step_spec_hash: str
+    provenance_v1: Mapping[str, Any] | None = field(default=None, metadata={"omit_if_default": True})
 
     @property
     def workflow_step_key(self) -> str:
@@ -145,6 +146,7 @@ class WorkflowStepContext:
 
     def to_manifest_dict(self) -> dict[str, Any]:
         return {
+            **({"provenance_v1": dict(self.provenance_v1)} if self.provenance_v1 is not None else {}),
             "run_id": self.run_id,
             "workflow_name": self.workflow_name,
             "workflow_hash": self.workflow_hash,

@@ -117,9 +117,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     ns = parser.parse_args(list(argv) if argv is not None else None)
     setattr(ns, "_workspace_config", load_workspace_config(_config_start_path(ns)))
+    if ns.command == "evidence":
+        from pipelines_v2.evidence.cli import execute
+        return execute(ns)
     if ns.command == "workflow":
         if ns.workflow_command == "plan":
             return _workflow_plan(ns)
+        if ns.workflow_command == "readiness":
+            return _workflow_readiness(ns)
         if ns.workflow_command == "run":
             return _workflow_run(ns)
         if ns.workflow_command == "report":
@@ -171,16 +176,55 @@ def _workflow_plan(ns: argparse.Namespace) -> int:
                 "artifact_kinds": list(step.execution.artifact_kinds),
                 "errors": list(step.execution.errors),
                 "warnings": list(step.execution.warnings),
+                "admission_checks": [check.to_dict() for check in step.execution.admission_checks],
+                "effective_config": step.execution.effective_config,
+                "workload_envelope": step.execution.workload_envelope.to_dict() if step.execution.workload_envelope else None,
                 "missing_capabilities": sorted(cap.value for cap in step.execution.missing_capabilities),
             }
             for step in plan.steps
         ],
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
-    return 0
+    return 0 if all(step.execution.valid for step in plan.steps) else 1
+
+
+def _workflow_readiness(ns: argparse.Namespace) -> int:
+    """Explicit online checks only for dependency-ready steps; never runs models."""
+    from pipelines_v2.runtime.admission import AdmissionCheck
+    _, workflow, runner_specs = load_python_workflow_file(path=ns.file,
+        dataset_fn_name=ns.dataset_fn, workflow_fn_name=ns.workflow_fn)
+    runners = _build_runners(ns, runner_specs)
+    entries = []
+    for step in workflow.steps:
+        if step.resolved_depends_on():
+            entries.append({"name": step.name, "ready": False, "checks": [AdmissionCheck(
+                "inputs.dependencies", "readiness", "unresolved", "inputs",
+                "Upstream artifacts must exist before this step can be checked").to_dict()]})
+            continue
+        runner = runners[step.runner]
+        if not hasattr(runner, "readiness"):
+            entries.append({"name":step.name, "ready":False, "checks":[AdmissionCheck(
+                "runner.readiness", "readiness", "unresolved", "runner", "Runner does not implement readiness").to_dict()]})
+            continue
+        record = runner.readiness(step.spec)
+        entries.append({"name":step.name, "ready":record.ready, "admission":record.to_dict()})
+    payload = {"workflow":workflow.name, "phase":"readiness", "steps":entries}
+    if getattr(ns, "output", None):
+        Path(ns.output).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if all(item["ready"] for item in entries) else 1
 
 
 def _workflow_run(ns: argparse.Namespace) -> int:
+    if getattr(ns, "profile", "shared") == "local-scratch":
+        if ns.resume_run_id or ns.reuse_completed:
+            raise ValueError("Scratch compute always starts fresh; use LocalScratchProfile.recover for publication recovery")
+        if ns.dataset_fn != "build_dataset" or ns.workflow_fn != "build_workflow":
+            raise ValueError("Scratch source uses build_dataset/build_workflow entrypoints")
+        from pipelines_v2.runtime.scratch_cli import run_scratch_cli
+        return run_scratch_cli(file=ns.file, limits_file=ns.scratch_limits_file,
+                               artifact_root=ns.scratch_artifact_root, catalog_root=ns.scratch_catalog_root,
+                               model_cache=ns.scratch_model_cache, run_id=ns.run_id)
     _configure_workflow_logging(getattr(ns, "logging", None))
     _, workflow, runner_specs = load_python_workflow_file(
         path=ns.file,
@@ -236,7 +280,7 @@ def _workflow_report(ns: argparse.Namespace) -> int:
     if run is None:
         raise RuntimeError(f"Unknown workflow run id: {ns.run_id}")
     workflow = WorkflowSpec.from_dict(run.workflow_payload)
-    report_step = resolve_report_step(workflow, step_name=ns.step, selector_label="--step")
+    report_step = _resolve_report_step(workflow, step_name=ns.step, selector_label="--step")
     report_spec = _build_report_spec_from_run(
         run=run,
         report_step=report_step,
@@ -816,17 +860,7 @@ def _modal_resources_with_workspace_defaults(
 
     if not changed:
         return resources
-    return ModalResources(
-        gpu=resources.gpu,
-        cpu=resources.cpu,
-        memory_mb=resources.memory_mb,
-        timeout_seconds=resources.timeout_seconds,
-        max_containers=resources.max_containers,
-        shard_count=resources.shard_count,
-        env=env,
-        secrets=resources.secrets,
-        volumes=tuple(volumes),
-    )
+    return dataclasses.replace(resources, env=env, volumes=tuple(volumes))
 
 
 def _default_cache_mount_path(
@@ -1289,6 +1323,8 @@ def _workflow_logging_level(level: str | None) -> int | None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m pipelines_v2.cli")
     subparsers = parser.add_subparsers(dest="command")
+    from pipelines_v2.evidence.cli import configure as configure_evidence
+    configure_evidence(subparsers.add_parser("evidence", help="Browse stored evidence and build bounded local reports."))
 
     workflow_parser = subparsers.add_parser("workflow", help="Plan or run a workflow from a Python file.")
     workflow_subparsers = workflow_parser.add_subparsers(dest="workflow_command")
@@ -1297,10 +1333,20 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_workflow_file_args(plan, required=True)
     _add_workflow_runner_args(plan)
 
+    readiness = workflow_subparsers.add_parser("readiness", help="Run explicit CPU target readiness checks before loading model weights.")
+    _add_workflow_file_args(readiness, required=True)
+    _add_workflow_runner_args(readiness)
+    readiness.add_argument("--output", help="Save structured admission records to this JSON path.")
+
     run = workflow_subparsers.add_parser("run", help="Run a workflow from a Python file.")
     _add_workflow_file_args(run, required=True)
     _add_workflow_runner_args(run)
     _add_workflow_logging_arg(run)
+    run.add_argument("--profile", choices=("shared", "local-scratch"), default="shared")
+    run.add_argument("--scratch-limits-file", help="JSON with explicit scratch resource limits")
+    run.add_argument("--scratch-artifact-root")
+    run.add_argument("--scratch-catalog-root")
+    run.add_argument("--scratch-model-cache", help="Previously prepared offline model cache")
     run.add_argument(
         "--run-id",
         default=None,

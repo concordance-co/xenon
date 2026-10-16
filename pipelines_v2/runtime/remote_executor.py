@@ -10,8 +10,12 @@ from itertools import count
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
+from pipelines_v2.core.provenance import (KEY, bind_dataset_provenance, bind_materialized_dataset, example_content_hash, resolve_provenance, compare_provenance, context_provenance, execution_context, provenance_from_metadata, with_provenance)
+from pipelines_v2.storage.finalization import finalize_manifest, validate_completion, IntegrityError, writer_lock, describe_payloads, verify_payloads, commit_visibility
+from pipelines_v2.runtime.recovery import capture_checkpointed, intervention_checkpointed, capture_coverage, _UnitStore
 from pipelines_v2.core.types import OperationSpec, stable_hash, utc_now_iso
 from pipelines_v2.data.datasets import Dataset
+from pipelines_v2.data.images import execution_shard_index
 from pipelines_v2.operations import operation_spec_from_dict
 from pipelines_v2.operations.specs import (
     CaptureSpec,
@@ -21,10 +25,10 @@ from pipelines_v2.operations.specs import (
     MoERoutingSite,
     ResidualSite,
 )
-from pipelines_v2.runtime.artifacts import ARTIFACT_BOUND_SPECS as _ARTIFACT_BOUND_SPECS
+from pipelines_v2.operations.registry import is_artifact_operation, operation_artifact_kind
 from pipelines_v2.storage import ArtifactManifest, artifact_store_from_dict
 from pipelines_v2.storage.artifacts import ArtifactLabelRef, CaptureArtifact, FeatureLayerRef, FeatureRef, OperationArtifact
-from pipelines_v2.storage.features import load_feature_payload, write_capture_features
+from pipelines_v2.storage.features import load_feature_payload, write_capture_features, merge_feature_payloads
 from pipelines_v2.operations.interventions.runtime import rows_example_coverage
 
 _PROGRESS_LOG = logging.getLogger("pipelines_v2.remote_progress")
@@ -93,6 +97,41 @@ def _execute_remote_spec(
     execution_session: "_RemoteExecutionSession | None",
     progress_callback: RemoteProgressCallback | None,
 ) -> dict[str, Any]:
+    store = artifact_store_from_dict(store_config)
+    import os
+    actual_admission = None
+    if runner_config.get("admission_required") or os.environ.get("MODAL_IMAGE_ID"):
+        from pipelines_v2.runtime.readiness import AdmissionRecord, admit_execution, verify_admitted_execution
+        actual_admission = admit_execution(spec, runner_config, artifact_store=store,
+            image_identity=os.environ.get("MODAL_IMAGE_ID"), check_writer_registry=getattr(store, "kind", None) == "modal_volume")
+        failed = [check for check in actual_admission.checks if check.status == "failed"]
+        if failed:
+            raise ValueError("Pre-weight readiness failed: " + "; ".join(f"{check.field_path}: {check.message}. {check.remediation or ''}" for check in failed))
+        cpu_readiness = dict(workflow_context or {}).get("readiness_v1")
+        if cpu_readiness is not None:
+            cpu_record = AdmissionRecord.from_dict(cpu_readiness)
+            expected, observed = cpu_record.provenance.to_dict(), actual_admission.provenance.to_dict()
+            drift = [name for name in ("model_components", "data", "methods", "seeds") if expected[name] != observed[name]]
+            runtime_fields = ("lock_digest", "python", "installed_package_digest", "image_identity", "requirements_digest")
+            if any(expected["runtime"].get(key) != observed["runtime"].get(key) for key in runtime_fields):
+                drift.append("runtime")
+            if expected["source"]["mounted_source_digest"] != observed["source"]["mounted_source_digest"]:
+                drift.append("source")
+            if drift:
+                raise ValueError("CPU-to-worker readiness facts drifted: " + ", ".join(drift))
+        prior = dict(workflow_context or {}).get("admission_v1")
+        if prior is not None:
+            # Re-observation here is independent of every caller-supplied fact.
+            prior = AdmissionRecord.from_dict(prior)
+            from pipelines_v2.runtime.readiness import admitted_provenance_for_request
+            admitted_provenance_for_request(spec, runner_config, prior)
+            if prior.provenance.scientific_identity != actual_admission.provenance.scientific_identity:
+                raise ValueError("Worker source/runtime/model/numerical admission facts drifted")
+    workflow_context = execution_context(spec, runner_config, workflow_context,
+        observed=actual_admission.provenance if actual_admission else None)
+    if actual_admission is not None:
+        workflow_context["admission_v1"] = actual_admission.to_dict()
+    workflow_context["parent_provenance_v1"] = workflow_context[KEY]
     _emit_remote_progress(
         workflow_context=workflow_context,
         status="running",
@@ -101,43 +140,52 @@ def _execute_remote_spec(
         message=f"remote execution started for {spec.kind}",
         progress_callback=progress_callback,
     )
-    store = artifact_store_from_dict(store_config)
-
-    if isinstance(spec, CaptureSpec):
-        return _execute_capture(
-            runner_config=runner_config,
-            store=store,
-            spec=spec,
-            workflow_context=workflow_context,
-            execution_session=execution_session,
-            remote_progress_callback=progress_callback,
-        )
-    if isinstance(spec, GenerationRunSpec):
-        return _execute_generation(
-            runner_config=runner_config,
-            store=store,
-            spec=spec,
-            workflow_context=workflow_context,
-            execution_session=execution_session,
-            remote_progress_callback=progress_callback,
-        )
-    if isinstance(spec, PatchedGenerationSpec):
-        return _execute_intervention(
-            runner_config=runner_config,
-            store=store,
-            spec=spec,
-            workflow_context=workflow_context,
-            execution_session=execution_session,
-            remote_progress_callback=progress_callback,
-        )
-    if isinstance(spec, _ARTIFACT_BOUND_SPECS):
-        return _execute_artifact_operation(
-            runner_config=runner_config,
-            store=store,
-            spec=spec,
-            workflow_context=workflow_context,
-        )
-    raise NotImplementedError(f"Remote executor cannot run {spec.kind!r} specs yet")
+    lock_key = [workflow_context.get("run_id"), workflow_context.get("workflow_step_key"),
+                spec.semantic_hash(), context_provenance(workflow_context).scientific_identity,
+                workflow_context.get("provenance_attempt")]
+    if not workflow_context.get("run_id"):
+        lock_key.append(uuid.uuid4().hex)
+    with writer_lock(store, stable_hash(lock_key)):
+        if spec.kind in {"diffusion_generate", "diffusion_capture", "diffusion_intervene"}:
+            from pipelines_v2.engine.diffusers.execution import execute_diffusion
+            return execute_diffusion(spec=spec, store=store, runner_config=runner_config,
+                workflow_context=workflow_context, execution_session=execution_session,
+                progress_callback=progress_callback)
+        if isinstance(spec, CaptureSpec):
+            return _execute_capture(
+                runner_config=runner_config,
+                store=store,
+                spec=spec,
+                workflow_context=workflow_context,
+                execution_session=execution_session,
+                remote_progress_callback=progress_callback,
+            )
+        if isinstance(spec, GenerationRunSpec):
+            return _execute_generation(
+                runner_config=runner_config,
+                store=store,
+                spec=spec,
+                workflow_context=workflow_context,
+                execution_session=execution_session,
+                remote_progress_callback=progress_callback,
+            )
+        if isinstance(spec, PatchedGenerationSpec):
+            return _execute_intervention(
+                runner_config=runner_config,
+                store=store,
+                spec=spec,
+                workflow_context=workflow_context,
+                execution_session=execution_session,
+                remote_progress_callback=progress_callback,
+            )
+        if is_artifact_operation(spec):
+            return _execute_artifact_operation(
+                runner_config=runner_config,
+                store=store,
+                spec=spec,
+                workflow_context=workflow_context,
+            )
+        raise NotImplementedError(f"Remote executor cannot run {spec.kind!r} specs yet")
 
 
 class _RemoteExecutionSession:
@@ -262,6 +310,7 @@ class _RemoteExecutionSession:
                     engine=engine,
                     specs=session_specs,
                     progress_callback=progress_callback,
+                    preflight_spec=spec,
                 )
             except Exception:
                 if progress_callback is not None:
@@ -348,31 +397,99 @@ def merge_remote_shards(
     spec = operation_spec_from_dict(spec_payload)
     store = artifact_store_from_dict(store_config)
     manifests = [ArtifactManifest.from_dict(payload) for payload in shard_manifests]
-    if isinstance(spec, GenerationRunSpec):
-        return _merge_generation_shards(
-            runner_config=runner_config,
-            store=store,
-            spec=spec,
-            shard_manifests=manifests,
-            workflow_context=workflow_context,
-        )
-    if isinstance(spec, CaptureSpec):
-        return _merge_capture_shards(
-            runner_config=runner_config,
-            store=store,
-            spec=spec,
-            shard_manifests=manifests,
-            workflow_context=workflow_context,
-        )
-    if isinstance(spec, PatchedGenerationSpec):
-        return _merge_intervention_shards(
-            runner_config=runner_config,
-            store=store,
-            spec=spec,
-            shard_manifests=manifests,
-            workflow_context=workflow_context,
-        )
-    raise NotImplementedError(f"Remote executor cannot merge sharded {spec.kind!r} specs yet")
+    if not manifests:
+        raise ValueError("Cannot merge an empty shard set")
+    # A merger may run in another process/image. Its runtime is not the runtime
+    # that produced the tensors. Validate unanimous producer facts instead.
+    first_parent = manifests[0].metadata.get("parent_provenance_v1")
+    parent = provenance_from_metadata({KEY: first_parent}) if first_parent else None
+    if parent is None:
+        raise ValueError("Cannot merge shards with missing parent scientific provenance")
+    parent_body = parent.to_dict()
+    request = resolve_provenance(spec, runner_config, runtime=parent_body["runtime"],
+        model_components=parent_body["model_components"], numerics=parent_body["numerics"])
+    if request.scientific_identity != parent.scientific_identity:
+        raise ValueError("Shard parent scientific provenance does not match submitted source/spec/input contract")
+    partitions = set()
+    counts = set()
+    for manifest in manifests:
+        validate_completion(manifest, store=store)
+        actual = manifest.provenance()
+        parent_payload = manifest.metadata.get("parent_provenance_v1")
+        recorded_parent = provenance_from_metadata({KEY: parent_payload}) if parent_payload else None
+        partition = manifest.metadata.get("execution_shard")
+        if actual is None or recorded_parent is None or recorded_parent.scientific_identity != parent.scientific_identity:
+            raise ValueError("Cannot merge shards with missing or mismatched parent scientific provenance")
+        if manifest.operation_semantic_hash != spec.semantic_hash():
+            raise ValueError("Shard operation does not match submitted spec")
+        child_body = actual.to_dict()
+        if any(child_body[key] != parent_body[key] for key in ("source", "runtime", "model_components", "numerics", "methods", "seeds")):
+            raise ValueError("Shard execution facts do not match its parent scientific provenance")
+        if not isinstance(partition, dict) or child_body["data"].get("partition") != partition or child_body["data"].get("parent_workload_identity") != parent.scientific_identity:
+            raise ValueError("Shard data identity does not match its declared parent/partition")
+        dataset = getattr(spec, "dataset", None)
+        if dataset is not None and not dataset.is_deferred:
+            selected = _apply_execution_shard(spec=spec, workflow_context={"execution_shard": partition})
+            if isinstance(selected, GenerationRunSpec) and selected.select_when is not None:
+                allowed = _resolved_example_key_set(selected.select_when)
+                selected = replace(selected, dataset=Dataset.from_examples([row for row in selected.dataset.examples if str(row.key) in allowed]))
+            expected_child = bind_materialized_dataset(parent, selected.dataset,
+                parent_identity=parent.scientific_identity, partition=partition)
+            if expected_child.to_dict()["data"] != child_body["data"]:
+                raise ValueError("Shard data identity does not match the requested input partition")
+        index, count = partition.get("index"), partition.get("count")
+        if type(index) is not int or type(count) is not int or not 0 <= index < count or index in partitions:
+            raise ValueError("Shard partitions must be unique valid indices")
+        partitions.add(index)
+        counts.add(count)
+    if len(counts) != 1 or partitions != set(range(next(iter(counts)))):
+        raise ValueError("Shard partitions do not cover the declared workload")
+    workflow_context = dict(workflow_context or {})
+    workflow_context[KEY] = parent.to_dict()
+    if not parent.identity_complete:
+        workflow_context["provenance_attempt"] = uuid.uuid4().hex
+    # For deferred source streams, preserve actual partition content identities
+    # without fetching the full dataset again merely to build provenance.
+    if "data.deferred_content" in parent_body["unresolved"]:
+        from pipelines_v2.core.provenance import ProvenanceV1, content_hash
+        body = parent.to_dict()
+        body.pop("schema_version")
+        body.pop("scientific_identity")
+        parts = [item.provenance().to_dict()["data"] for item in _ordered_shard_manifests(manifests)]
+        body["data"] = {**body["data"], "content_digest": content_hash([part["content_digest"] for part in parts]),
+            "ordered_example_key_digest": content_hash([part["ordered_example_key_digest"] for part in parts]),
+            "split_digest": content_hash([part["split_digest"] for part in parts]),
+            "assembly": "ordered-partition-content-digests-v1"}
+        body["unresolved"] = [reason for reason in body["unresolved"] if reason not in {"data.deferred_content", "data.content_digest"}]
+        workflow_context[KEY] = ProvenanceV1(**body).to_dict()
+    merge_key = stable_hash([workflow_context.get("run_id"), workflow_context.get("workflow_step_key"),
+                             spec.semantic_hash(), parent.scientific_identity, "merge"])
+    with writer_lock(store, merge_key):
+        if isinstance(spec, GenerationRunSpec):
+            return _merge_generation_shards(
+                runner_config=runner_config,
+                store=store,
+                spec=spec,
+                shard_manifests=manifests,
+                workflow_context=workflow_context,
+            )
+        if isinstance(spec, CaptureSpec):
+            return _merge_capture_shards(
+                runner_config=runner_config,
+                store=store,
+                spec=spec,
+                shard_manifests=manifests,
+                workflow_context=workflow_context,
+            )
+        if isinstance(spec, PatchedGenerationSpec):
+            return _merge_intervention_shards(
+                runner_config=runner_config,
+                store=store,
+                spec=spec,
+                shard_manifests=manifests,
+                workflow_context=workflow_context,
+            )
+        raise NotImplementedError(f"Remote executor cannot merge sharded {spec.kind!r} specs yet")
 
 
 def _emit_remote_progress(
@@ -473,10 +590,16 @@ def _execute_capture(
     engine = spec.bound_engine()
     if engine is None:
         raise RuntimeError("CaptureSpec is missing a bound engine")
+    streaming = execution_session is not None and _is_streamable_deferred_postgres_dataset(spec.dataset)
+    resolved_spec = None
+    if not streaming:
+        resolved_spec = _apply_execution_shard(spec=_resolve_dataset_for_execution(spec=spec, workflow_context=workflow_context), workflow_context=workflow_context)
+        _bind_execution_dataset(workflow_context, resolved_spec.dataset)
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
-    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec, provenance=context_provenance(workflow_context))
     if existing is not None:
         return existing.to_dict()
+    artifact_id = _fresh_id_if_final_exists(store, artifact_id)
     _ensure_artifact_dir(store, artifact_id)
     engine_progress_callback = (
         _engine_progress_callback(
@@ -489,6 +612,7 @@ def _execute_capture(
     )
 
     streamed_result = _execute_streaming_capture_if_available(
+        store=store, artifact_id=artifact_id,
         engine=engine,
         spec=spec,
         workflow_context=workflow_context,
@@ -498,28 +622,20 @@ def _execute_capture(
     if streamed_result is not None:
         result_features, result_generations, result_metadata, example_coverage = streamed_result
     else:
-        resolved_spec = _resolve_dataset_for_execution(spec=spec, workflow_context=workflow_context)
-        resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
         if not resolved_spec.dataset.examples:
             result_features = _empty_capture_features(resolved_spec)
             result_generations = []
             result_metadata = {"empty_shard": True}
         else:
-            if execution_session is None:
-                incremental_capture = getattr(engine, "capture_incremental", None)
-                if engine_progress_callback is not None and callable(incremental_capture):
-                    result = incremental_capture(
-                        resolved_spec,
-                        progress_callback=engine_progress_callback,
-                    )
-                else:
-                    result = engine.capture(resolved_spec)
-            else:
-                result = execution_session.capture(
-                    engine=engine,
-                    spec=resolved_spec,
-                    progress_callback=engine_progress_callback,
-                )
+            def invoke(unit_spec):
+                if execution_session is not None:
+                    return execution_session.capture(engine=engine, spec=unit_spec, progress_callback=engine_progress_callback)
+                incremental = getattr(engine, "capture_incremental", None)
+                if engine_progress_callback is not None and callable(incremental):
+                    return incremental(unit_spec, progress_callback=engine_progress_callback)
+                return engine.capture(unit_spec)
+            result = capture_checkpointed(spec=resolved_spec, store=store, artifact_id=artifact_id,
+                provenance=context_provenance(workflow_context), invoke=invoke, shard=_execution_shard(workflow_context))
             result_features = result.features
             result_generations = result.generations
             result_metadata = dict(result.metadata)
@@ -536,7 +652,7 @@ def _execute_capture(
 
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
-        artifact_kind=spec.kind,
+        artifact_kind=operation_artifact_kind(spec),
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
         operation_semantic_hash=spec.semantic_hash(),
@@ -549,16 +665,14 @@ def _execute_capture(
         metadata=_with_execution_shard_metadata(result_metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
     )
-    storage_refs["manifest"] = store.write_json(
-        artifact_id,
-        "manifest.json",
-        manifest.to_dict(),
-    )
+    manifest = finalize_manifest(store, manifest)
     return manifest.to_dict()
 
 
 def _execute_streaming_capture_if_available(
     *,
+    store: Any,
+    artifact_id: str,
     engine: Any,
     spec: CaptureSpec,
     workflow_context: dict[str, Any] | None,
@@ -579,7 +693,15 @@ def _execute_streaming_capture_if_available(
     prompt_hashes: dict[str, str | None] = {}
     example_keys: list[str] = []
     result_metadata: dict[str, Any] = {}
+    row_hashes: list[str] = []
+    split_rows: list[Any] = []
     batch_count = 0
+    stream_attempt = uuid.uuid4().hex
+    stream_journal = {"schema_version": 1, "artifact_id": artifact_id, "attempt_id": stream_attempt,
+        "operation_semantic_hash": spec.semantic_hash(),
+        "provenance_hash": context_provenance(workflow_context).scientific_identity,
+        "expected_coverage": {"deferred": True}, "completed_units": [], "checkpoint_refs": {},
+        "state": "incomplete", "resume_semantics": "restart_at_unit_requires_resolved_data_identity"}
 
     for batch_dataset in _iter_streamed_dataset_batches(
         dataset=spec.dataset,
@@ -596,12 +718,24 @@ def _execute_streaming_capture_if_available(
             spec=batch_spec,
             progress_callback=progress_callback,
         )
+        coverage = capture_coverage(batch_spec, result)
+        scoped = _UnitStore(store, f"checkpoints/{stream_attempt}/batch-{batch_count:08d}")
+        refs = {"features": write_capture_features(scoped, artifact_id, result.features),
+                "rows": scoped.write_json(artifact_id, "rows.json", {"generations": result.generations, "metadata": result.metadata})}
+        stream_journal["completed_units"].append({"key": str(batch_count), "coverage": coverage,
+            "refs": refs, "payloads": describe_payloads(refs), "shard": _execution_shard(workflow_context)})
+        commit_visibility(store)
+        stream_journal["journal_hash"] = stable_hash({key: value for key, value in stream_journal.items() if key != "journal_hash"})
+        store.write_json(artifact_id, "stream-journal.json", stream_journal)
+        commit_visibility(store)
         if not result_metadata:
             result_metadata = dict(result.metadata)
         for name, payload in result.features.items():
             _merge_feature_payload(features, str(name), payload)
         generations.extend(dict(row) for row in result.generations)
         for example in batch_spec.dataset.examples:
+            row_hashes.append(example_content_hash(example))
+            split_rows.append({"key": example.key, "cases": dict(example.cases)})
             example_keys.append(str(example.key))
             prompt_hashes[str(example.key)] = str(example.prompt_hash) if example.prompt_hash is not None else None
         batch_example_metadata = dict(result.metadata).get("example_metadata")
@@ -635,6 +769,11 @@ def _execute_streaming_capture_if_available(
         "example_keys": example_keys,
         "prompt_hashes": prompt_hashes,
     }
+    parent = context_provenance(workflow_context)
+    shard = _execution_shard(workflow_context)
+    observed = bind_dataset_provenance(parent, row_hashes=row_hashes, keys=example_keys, splits=split_rows,
+        parent_identity=parent.scientific_identity if shard else None, partition=shard)
+    workflow_context[KEY] = observed.to_dict()
     return features, generations, result_metadata, coverage
 
 
@@ -659,7 +798,7 @@ def _iter_streamed_dataset_batches(
         raise RuntimeError("Deferred Postgres dataset source does not support streaming batches")
     fetch = dict(dataset.fetch or {})
     shard = _execution_shard(workflow_context)
-    if shard is not None and fetch.get("prompt_hash_column"):
+    if shard is not None and fetch.get("prompt_hash_column") and not fetch.get("images_column"):
         fetch["execution_shard"] = shard
 
     selection_keys = dataset.selection.get("keys")
@@ -697,8 +836,12 @@ def _execute_artifact_operation(
 ) -> dict[str, Any]:
     from pipelines_v2.operations.execute import execute_artifact_operation
 
-    artifact_id = f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
-    store.make_artifact_dir(artifact_id)
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec, provenance=context_provenance(workflow_context))
+    if existing is not None:
+        return existing.to_dict()
+    artifact_id = _fresh_id_if_final_exists(store, artifact_id)
+    _ensure_artifact_dir(store, artifact_id)
     result = execute_artifact_operation(spec)
 
     storage_refs: dict[str, Any] = {}
@@ -717,7 +860,7 @@ def _execute_artifact_operation(
         }
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
-        artifact_kind=spec.kind,
+        artifact_kind=operation_artifact_kind(spec),
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
         operation_semantic_hash=spec.semantic_hash(),
@@ -727,14 +870,10 @@ def _execute_artifact_operation(
         input_artifact_refs=tuple(_input_artifact_ids(spec)),
         example_coverage=result.example_coverage,
         storage_refs=storage_refs,
-        metadata=result.metadata,
+        metadata=_with_execution_shard_metadata(result.metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
     )
-    storage_refs["manifest"] = store.write_json(
-        artifact_id,
-        "manifest.json",
-        manifest.to_dict(),
-    )
+    manifest = finalize_manifest(store, manifest)
     return manifest.to_dict()
 
 
@@ -752,12 +891,13 @@ def _execute_intervention(
         raise RuntimeError("PatchedGenerationSpec is missing a bound engine")
     resolved_spec = _resolve_dataset_for_execution(spec=spec, workflow_context=workflow_context)
     resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
+    _bind_execution_dataset(workflow_context, resolved_spec.dataset)
     shard = _execution_shard(workflow_context)
-    artifact_id = (
-        _artifact_id_for(spec=spec, workflow_context=workflow_context)
-        if shard is not None
-        else f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
-    )
+    artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec, provenance=context_provenance(workflow_context))
+    if existing is not None:
+        return existing.to_dict()
+    artifact_id = _fresh_id_if_final_exists(store, artifact_id)
     _ensure_artifact_dir(store, artifact_id)
     if not resolved_spec.dataset.examples:
         result_summary = {"example_count": 0, "patched_count": 0, "skipped_count": 0}
@@ -783,14 +923,12 @@ def _execute_intervention(
             if remote_progress_callback is not None
             else None
         )
-        if execution_session is None:
-            result = engine.intervene(resolved_spec)
-        else:
-            result = execution_session.intervene(
-                engine=engine,
-                spec=resolved_spec,
-                progress_callback=engine_progress_callback,
-            )
+        def invoke(unit_spec):
+            if execution_session is None:
+                return engine.intervene(unit_spec)
+            return execution_session.intervene(engine=engine, spec=unit_spec, progress_callback=engine_progress_callback)
+        result = intervention_checkpointed(spec=resolved_spec, store=store, artifact_id=artifact_id,
+            provenance=context_provenance(workflow_context), invoke=invoke, shard=shard)
         _emit_remote_progress(
             workflow_context=workflow_context,
             status="complete",
@@ -818,7 +956,7 @@ def _execute_intervention(
     }
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
-        artifact_kind=spec.kind,
+        artifact_kind=operation_artifact_kind(spec),
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
         operation_semantic_hash=spec.semantic_hash(),
@@ -831,11 +969,7 @@ def _execute_intervention(
         metadata=_with_execution_shard_metadata(result_metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
     )
-    storage_refs["manifest"] = store.write_json(
-        artifact_id,
-        "manifest.json",
-        manifest.to_dict(),
-    )
+    manifest = finalize_manifest(store, manifest)
     return manifest.to_dict()
 
 
@@ -853,10 +987,22 @@ def _execute_generation(
         raise RuntimeError("GenerationRunSpec is missing a bound engine")
     resolved_spec = _resolve_dataset_for_execution(spec=spec, workflow_context=workflow_context)
     resolved_spec = _apply_execution_shard(spec=resolved_spec, workflow_context=workflow_context)
+    if resolved_spec.select_when is not None:
+        allowed = _resolved_example_key_set(resolved_spec.select_when)
+        resolved_spec = replace(
+            resolved_spec,
+            dataset=Dataset.from_examples(
+                [example for example in resolved_spec.dataset.examples if str(example.key) in allowed],
+                id=resolved_spec.dataset.id,
+                name=resolved_spec.dataset.name,
+            ),
+        )
+    _bind_execution_dataset(workflow_context, resolved_spec.dataset)
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
-    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec, provenance=context_provenance(workflow_context))
     if existing is not None:
         return existing.to_dict()
+    artifact_id = _fresh_id_if_final_exists(store, artifact_id)
     _ensure_artifact_dir(store, artifact_id)
     engine_progress_callback = (
         _engine_progress_callback(
@@ -867,13 +1013,16 @@ def _execute_generation(
         if remote_progress_callback is not None
         else None
     )
-    partial_rows = _load_partial_generation_rows(store=store, artifact_id=artifact_id)
+    partial_rows = _load_partial_generation_rows(store=store, artifact_id=artifact_id, provenance=context_provenance(workflow_context),
+        semantic_hash=spec.semantic_hash(), expected_keys=[str(row.key) for row in resolved_spec.dataset.examples],
+        shard=(workflow_context or {}).get("execution_shard"))
+    _assert_unique_generation_rows(partial_rows)
     result_rows = _merge_generation_rows(dataset=resolved_spec.dataset, rows=partial_rows)
     completed_keys = _generation_resume_keys(result_rows)
     remaining_examples = [
         example
         for example in resolved_spec.dataset.examples
-        if str(example.prompt_hash or "") not in completed_keys and str(example.key) not in completed_keys
+        if str(example.key) not in completed_keys
     ]
     if not resolved_spec.dataset.examples:
         result_rows: list[dict[str, Any]] = []
@@ -899,6 +1048,7 @@ def _execute_generation(
             nonlocal result_rows
             if not batch_rows:
                 return
+            _assert_unique_generation_rows(batch_rows)
             result_rows = _merge_generation_rows(
                 dataset=resolved_spec.dataset,
                 rows=[*result_rows, *batch_rows],
@@ -909,7 +1059,11 @@ def _execute_generation(
                 rows=result_rows,
                 total_example_count=len(resolved_spec.dataset.examples),
                 partial=True,
+                semantic_hash=spec.semantic_hash(),
+                expected_keys=[str(row.key) for row in resolved_spec.dataset.examples],
+                shard=(workflow_context or {}).get("execution_shard"),
                 metadata={
+                    KEY: context_provenance(workflow_context).to_dict(),
                     "checkpoint_metadata": dict(batch_metadata),
                     "resumed_from_partial": bool(partial_rows),
                     "partial_row_count": len(partial_rows),
@@ -948,6 +1102,7 @@ def _execute_generation(
         else:
             result = engine.generate(generation_spec)
             _record_generation_checkpoint(list(result.rows), dict(result.metadata))
+        _assert_unique_generation_rows(list(result.rows))
         result_rows = _merge_generation_rows(
             dataset=resolved_spec.dataset,
             rows=[*result_rows, *list(result.rows)],
@@ -957,6 +1112,7 @@ def _execute_generation(
             result_metadata["resumed_from_partial"] = True
             result_metadata["partial_row_count"] = len(partial_rows)
 
+    _validate_generation_coverage(spec=resolved_spec, rows=result_rows)
     storage_refs: dict[str, Any] = {
         "result": _write_generation_result_payload(
             store=store,
@@ -964,12 +1120,12 @@ def _execute_generation(
             rows=result_rows,
             total_example_count=len(resolved_spec.dataset.examples),
             partial=False,
-            metadata=result_metadata,
+            metadata=with_provenance(result_metadata, context_provenance(workflow_context)),
         ),
     }
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
-        artifact_kind=spec.kind,
+        artifact_kind=operation_artifact_kind(spec),
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
         operation_semantic_hash=spec.semantic_hash(),
@@ -982,11 +1138,7 @@ def _execute_generation(
         metadata=_with_execution_shard_metadata(result_metadata, workflow_context=workflow_context),
         workflow_context=dict(workflow_context or {}),
     )
-    storage_refs["manifest"] = store.write_json(
-        artifact_id,
-        "manifest.json",
-        manifest.to_dict(),
-    )
+    manifest = finalize_manifest(store, manifest)
     return manifest.to_dict()
 
 
@@ -1000,13 +1152,14 @@ def _merge_generation_shards(
 ) -> dict[str, Any]:
     resolved_spec = spec.resolve_dataset()
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
-    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec, provenance=context_provenance(workflow_context))
     if existing is not None:
         return existing.to_dict()
+    artifact_id = _fresh_id_if_final_exists(store, artifact_id)
     _ensure_artifact_dir(store, artifact_id)
 
     rows: list[dict[str, Any]] = []
-    seen_prompt_hashes: set[str] = set()
+    seen_example_keys: set[str] = set()
     for shard in _ordered_shard_manifests(shard_manifests):
         ref = shard.storage_refs.get("result")
         if not isinstance(ref, dict):
@@ -1015,14 +1168,15 @@ def _merge_generation_shards(
         for row in payload.get("rows", []) if isinstance(payload, dict) else []:
             if not isinstance(row, dict):
                 continue
-            row_key = _row_prompt_hash(row) or str(row.get("example_key") or "")
-            if row_key in seen_prompt_hashes:
+            row_key = _generation_row_key(row)
+            if row_key in seen_example_keys:
                 continue
-            seen_prompt_hashes.add(row_key)
+            seen_example_keys.add(row_key)
             rows.append(dict(row))
 
     order = {example.key: index for index, example in enumerate(resolved_spec.dataset.examples)}
     rows.sort(key=lambda row: order.get(str(row.get("example_key") or ""), len(order)))
+    _validate_generation_coverage(spec=resolved_spec, rows=rows)
     payload = {
         "kind": "generation_run_result",
         "summary": {
@@ -1037,7 +1191,7 @@ def _merge_generation_shards(
     }
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
-        artifact_kind=spec.kind,
+        artifact_kind=operation_artifact_kind(spec),
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
         operation_semantic_hash=spec.semantic_hash(),
@@ -1048,12 +1202,13 @@ def _merge_generation_shards(
         example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=rows),
         storage_refs=storage_refs,
         metadata={
+            KEY: context_provenance(workflow_context).to_dict(),
             "sharded": True,
             "shards": [_shard_manifest_summary(shard) for shard in _ordered_shard_manifests(shard_manifests)],
         },
         workflow_context=dict(workflow_context or {}),
     )
-    storage_refs["manifest"] = store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+    manifest = finalize_manifest(store, manifest)
     return manifest.to_dict()
 
 
@@ -1066,9 +1221,10 @@ def _merge_capture_shards(
     workflow_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
-    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec, provenance=context_provenance(workflow_context))
     if existing is not None:
         return existing.to_dict()
+    artifact_id = _fresh_id_if_final_exists(store, artifact_id)
     _ensure_artifact_dir(store, artifact_id)
 
     features = _empty_capture_features(spec)
@@ -1097,7 +1253,7 @@ def _merge_capture_shards(
         storage_refs["generations"] = store.write_json(artifact_id, "generations.json", generations)
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
-        artifact_kind=spec.kind,
+        artifact_kind=operation_artifact_kind(spec),
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
         operation_semantic_hash=spec.semantic_hash(),
@@ -1108,13 +1264,14 @@ def _merge_capture_shards(
         example_coverage=spec.dataset.coverage(),
         storage_refs=storage_refs,
         metadata={
+            KEY: context_provenance(workflow_context).to_dict(),
             "sharded": True,
             "example_metadata": sorted(example_metadata, key=lambda item: str(item.get("example_key") or "")),
             "shards": [_shard_manifest_summary(shard) for shard in _ordered_shard_manifests(shard_manifests)],
         },
         workflow_context=dict(workflow_context or {}),
     )
-    storage_refs["manifest"] = store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+    manifest = finalize_manifest(store, manifest)
     return manifest.to_dict()
 
 
@@ -1128,9 +1285,10 @@ def _merge_intervention_shards(
 ) -> dict[str, Any]:
     resolved_spec = spec.resolve_dataset()
     artifact_id = _artifact_id_for(spec=spec, workflow_context=workflow_context)
-    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec)
+    existing = _load_existing_manifest(store=store, artifact_id=artifact_id, spec=spec, provenance=context_provenance(workflow_context))
     if existing is not None:
         return existing.to_dict()
+    artifact_id = _fresh_id_if_final_exists(store, artifact_id)
     _ensure_artifact_dir(store, artifact_id)
 
     rows: list[dict[str, Any]] = []
@@ -1175,7 +1333,7 @@ def _merge_intervention_shards(
     }
     manifest = ArtifactManifest(
         artifact_id=artifact_id,
-        artifact_kind=spec.kind,
+        artifact_kind=operation_artifact_kind(spec),
         schema_version=1,
         operation_spec_hash=spec.spec_hash(),
         operation_semantic_hash=spec.semantic_hash(),
@@ -1186,12 +1344,13 @@ def _merge_intervention_shards(
         example_coverage=rows_example_coverage(dataset=resolved_spec.dataset, rows=rows),
         storage_refs=storage_refs,
         metadata={
+            KEY: context_provenance(workflow_context).to_dict(),
             "sharded": True,
             "shards": [_shard_manifest_summary(shard) for shard in _ordered_shard_manifests(shard_manifests)],
         },
         workflow_context=dict(workflow_context or {}),
     )
-    storage_refs["manifest"] = store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+    manifest = finalize_manifest(store, manifest)
     return manifest.to_dict()
 
 
@@ -1203,6 +1362,11 @@ def _artifact_id_for(*, spec: OperationSpec, workflow_context: dict[str, Any] | 
         return f"{spec.kind}_{spec.schema_version}_{uuid.uuid4().hex[:8]}"
     shard = _execution_shard(context)
     suffix_payload: list[Any] = [run_id, step_key, spec.semantic_hash()]
+    provenance = context_provenance(context)
+    if provenance is not None:
+        suffix_payload.append(provenance.scientific_identity)
+        if not provenance.identity_complete:
+            suffix_payload.append(context.get("provenance_attempt") or uuid.uuid4().hex)
     suffix = stable_hash(suffix_payload)[:12]
     artifact_id = f"{spec.kind}_{spec.schema_version}_{suffix}"
     if shard is None:
@@ -1216,7 +1380,7 @@ def _resolve_dataset_for_execution(*, spec: Any, workflow_context: dict[str, Any
     if shard is not None and getattr(dataset, "is_deferred", False):
         source = dict(getattr(dataset, "source", {}) or {})
         fetch = dict(getattr(dataset, "fetch", {}) or {})
-        if source.get("kind") == "postgres" and fetch.get("prompt_hash_column"):
+        if source.get("kind") == "postgres" and fetch.get("prompt_hash_column") and not fetch.get("images_column"):
             fetch["execution_shard"] = shard
             dataset = replace(dataset, fetch=fetch)
             spec = replace(spec, dataset=dataset)
@@ -1272,7 +1436,7 @@ def _shard_examples_for_spec(*, spec: Any, shard: dict[str, int]) -> list[Any]:
     return [
         example
         for example in examples
-        if _prompt_hash_shard(example.prompt_hash, count) == index
+        if execution_shard_index(example, count) == index
     ]
 
 
@@ -1332,13 +1496,20 @@ def _with_execution_shard_metadata(
     *,
     workflow_context: dict[str, Any] | None,
 ) -> dict[str, Any]:
+    provenance = context_provenance(workflow_context)
+    if provenance is not None:
+        metadata = with_provenance(metadata, provenance)
+    if workflow_context and "parent_provenance_v1" in workflow_context:
+        metadata = {**metadata, "parent_provenance_v1": workflow_context["parent_provenance_v1"]}
+    if workflow_context and "admission_v1" in workflow_context:
+        metadata = {**metadata, "admission_v1": workflow_context["admission_v1"]}
     shard = _execution_shard(workflow_context)
     if shard is None:
         return metadata
     return {**metadata, "execution_shard": shard}
 
 
-def _load_existing_manifest(*, store: Any, artifact_id: str, spec: OperationSpec) -> ArtifactManifest | None:
+def _load_existing_manifest(*, store: Any, artifact_id: str, spec: OperationSpec, provenance: Any) -> ArtifactManifest | None:
     root = getattr(store, "root", None)
     if root is None:
         return None
@@ -1355,14 +1526,17 @@ def _load_existing_manifest(*, store: Any, artifact_id: str, spec: OperationSpec
     if not isinstance(payload, dict):
         return None
     manifest = ArtifactManifest.from_dict(payload)
-    if manifest.artifact_kind != spec.kind:
+    if manifest.artifact_kind != operation_artifact_kind(spec):
         return None
     if manifest.operation_semantic_hash != spec.semantic_hash():
         return None
+    if not compare_provenance(provenance, manifest.provenance()).reusable:
+        return None
+    validate_completion(manifest, store=store)
     return manifest
 
 
-def _load_partial_generation_rows(*, store: Any, artifact_id: str) -> list[dict[str, Any]]:
+def _load_partial_generation_rows(*, store: Any, artifact_id: str, provenance: Any, semantic_hash: str, expected_keys: list[str], shard: Any = None) -> list[dict[str, Any]]:
     root = getattr(store, "root", None)
     if root is None:
         return []
@@ -1372,11 +1546,24 @@ def _load_partial_generation_rows(*, store: Any, artifact_id: str) -> list[dict[
         "path": str(Path(str(root)) / artifact_id / "result.json"),
         "format": "json",
     }
-    try:
-        payload = store.read_json_ref(ref)
-    except Exception:
+    checkpoint_path = Path(str(root)) / artifact_id / "generation-checkpoint.json"
+    if not checkpoint_path.exists():
+        return []  # Legacy unchecksummed progress is readable, never resumed.
+    checkpoint = json.loads(checkpoint_path.read_text())
+    if not compare_provenance(provenance, provenance_from_metadata(checkpoint.get("metadata", {}))).reusable:
         return []
+    if checkpoint.get("integrity_hash") != stable_hash({key: value for key, value in checkpoint.items() if key != "integrity_hash"}):
+        raise IntegrityError("Generation checkpoint descriptor integrity mismatch")
+    if (type(checkpoint.get("schema_version")) is not int or checkpoint["schema_version"] != 1
+        or checkpoint.get("state") != "incomplete" or checkpoint.get("artifact_id") != artifact_id
+        or checkpoint.get("operation_semantic_hash") != semantic_hash or checkpoint.get("shard") != shard
+        or checkpoint.get("expected_coverage", {}).get("example_keys") != expected_keys):
+        raise IntegrityError("Generation checkpoint contract mismatch")
+    verify_payloads(checkpoint["payloads"])
+    payload = store.read_json_ref(checkpoint["ref"])
     if not isinstance(payload, dict):
+        return []
+    if not compare_provenance(provenance, provenance_from_metadata(payload.get("metadata", {}))).reusable:
         return []
     rows = payload.get("rows")
     if not isinstance(rows, list):
@@ -1392,6 +1579,9 @@ def _write_generation_result_payload(
     total_example_count: int,
     partial: bool,
     metadata: dict[str, Any] | None = None,
+    semantic_hash: str | None = None,
+    expected_keys: list[str] | None = None,
+    shard: Any = None,
 ) -> dict[str, Any]:
     payload = {
         "kind": "generation_run_result",
@@ -1405,7 +1595,34 @@ def _write_generation_result_payload(
     }
     if metadata:
         payload["metadata"] = dict(metadata)
+    if partial:
+        if not semantic_hash or expected_keys is None or len(set(expected_keys)) != len(expected_keys) or len(expected_keys) != total_example_count:
+            raise IntegrityError("Generation checkpoint requires exact semantic identity and expected keys")
+        _assert_unique_generation_rows(rows)
+        if not {_generation_row_key(row) for row in rows} <= set(expected_keys):
+            raise IntegrityError("Generation checkpoint returned unexpected example keys")
+        attempt_id = uuid.uuid4().hex
+        ref = store.write_json(artifact_id, f"checkpoints/generation-{attempt_id}.json", payload)
+        checkpoint = {"schema_version": 1, "state": "incomplete", "ref": ref,
+                      "metadata": dict(metadata or {}), "payloads": describe_payloads(ref),
+                      "artifact_id": artifact_id, "attempt_id": attempt_id,
+                      "operation_semantic_hash": semantic_hash,
+                      "provenance_hash": provenance_from_metadata(metadata or {}).scientific_identity if provenance_from_metadata(metadata or {}) else None,
+                      "expected_coverage": {"example_keys": expected_keys, "total_example_count": total_example_count, "explicit_empty": not expected_keys},
+                      "completed_units": [{"key": _generation_row_key(row), "shard": shard, "refs": {"result": ref}} for row in rows],
+                      "checkpoint_refs": {}, "shard": shard, "resume_semantics": "restart_at_unit"}
+        checkpoint["integrity_hash"] = stable_hash(checkpoint)
+        commit_visibility(store)
+        store.write_json(artifact_id, "generation-checkpoint.json", checkpoint)
+        commit_visibility(store)
+        return ref
     return store.write_json(artifact_id, "result.json", payload)
+
+
+def _assert_unique_generation_rows(rows: list[dict[str, Any]]) -> None:
+    keys = [_generation_row_key(row) for row in rows]
+    if any(not key for key in keys) or len(set(keys)) != len(keys):
+        raise IntegrityError("Generation producer returned missing or duplicate example keys")
 
 
 def _merge_generation_rows(*, dataset: Dataset, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1414,15 +1631,15 @@ def _merge_generation_rows(*, dataset: Dataset, rows: list[dict[str, Any]]) -> l
     for row in rows:
         key = _generation_row_key(row)
         if not key:
-            key = f"row_{len(fallback_order):08d}"
+            raise IntegrityError("Generation checkpoint row omitted stable example key")
+        if key in row_by_key and row_by_key[key] != dict(row):
+            raise IntegrityError("Conflicting duplicate generation row")
         if key not in fallback_order:
             fallback_order[key] = len(fallback_order)
         row_by_key[key] = dict(row)
 
     dataset_order: dict[str, int] = {}
     for index, example in enumerate(dataset.examples):
-        if example.prompt_hash:
-            dataset_order[str(example.prompt_hash)] = index
         dataset_order[str(example.key)] = index
 
     def _sort_key(row: dict[str, Any]) -> tuple[int, int, str]:
@@ -1437,19 +1654,34 @@ def _merge_generation_rows(*, dataset: Dataset, rows: list[dict[str, Any]]) -> l
 
 
 def _generation_row_key(row: dict[str, Any]) -> str:
-    return _row_prompt_hash(row) or str(row.get("example_key") or "")
+    # Prompt equality does not imply example identity (e.g. repeated trials).
+    example = row.get("example")
+    nested_key = example.get("key") if isinstance(example, Mapping) else None
+    return str(row.get("example_key") or nested_key or "")
 
 
 def _generation_resume_keys(rows: list[dict[str, Any]]) -> set[str]:
-    keys: set[str] = set()
-    for row in rows:
-        prompt_hash = _row_prompt_hash(row)
-        if prompt_hash:
-            keys.add(prompt_hash)
-        example_key = str(row.get("example_key") or "")
-        if example_key:
-            keys.add(example_key)
-    return keys
+    return {key for row in rows if (key := _generation_row_key(row))}
+
+
+def _validate_generation_coverage(*, spec: GenerationRunSpec, rows: list[dict[str, Any]]) -> None:
+    expected = {str(example.key) for example in spec.dataset.examples}
+    if spec.select_when is not None:
+        expected &= _resolved_example_key_set(spec.select_when)
+    actual = {_generation_row_key(row) for row in rows}
+    if actual != expected or len(rows) != len(expected):
+        raise ValueError(
+            "Generation result coverage mismatch: "
+            f"missing={sorted(expected - actual)[:10]}, unexpected={sorted(actual - expected)[:10]}, "
+            f"rows={len(rows)}, expected={len(expected)}"
+        )
+
+
+def _fresh_id_if_final_exists(store: Any, artifact_id: str) -> str:
+    # A readable legacy/stale final is immutable. A fresh attempt must not overwrite it.
+    if (Path(store.root) / artifact_id / "manifest.json").exists():
+        return f"{artifact_id}_attempt_{uuid.uuid4().hex[:8]}"
+    return artifact_id
 
 
 def _ensure_artifact_dir(store: Any, artifact_id: str) -> None:
@@ -1462,6 +1694,8 @@ def _ensure_artifact_dir(store: Any, artifact_id: str) -> None:
 
 def _empty_capture_features(spec: CaptureSpec) -> dict[str, dict[str, Any]]:
     features: dict[str, dict[str, Any]] = {}
+    from pipelines_v2.operations.capture.specs import empty_capture_site_payload
+
     for site in spec.sites:
         if isinstance(site, ResidualSite):
             payload = {
@@ -1482,6 +1716,8 @@ def _empty_capture_features(spec: CaptureSpec) -> dict[str, dict[str, Any]]:
                 },
                 "layers": {str(layer): {} for layer in site.layers},
             }
+        else:
+            features[site.name] = empty_capture_site_payload(site)
     return features
 
 
@@ -1489,9 +1725,7 @@ def _merge_feature_payload(features: dict[str, dict[str, Any]], name: str, paylo
     if name not in features:
         features[name] = dict(payload)
         return
-    target = features[name]
-    for layer, records in dict(payload.get("layers", {})).items():
-        target.setdefault("layers", {}).setdefault(str(layer), {}).update(dict(records))
+    features[name] = merge_feature_payloads(features[name], payload)
 
 
 def _ordered_shard_manifests(shard_manifests: list[ArtifactManifest]) -> list[ArtifactManifest]:
@@ -1540,3 +1774,11 @@ def _input_artifact_ids(spec: OperationSpec) -> list[str]:
 
     visit(spec)
     return sorted(set(artifact_ids))
+
+
+def _bind_execution_dataset(context: dict[str, Any], dataset: Dataset) -> None:
+    parent = context_provenance(context)
+    shard = _execution_shard(context)
+    observed = bind_materialized_dataset(parent, dataset,
+        parent_identity=parent.scientific_identity if shard else None, partition=shard)
+    context[KEY] = observed.to_dict()

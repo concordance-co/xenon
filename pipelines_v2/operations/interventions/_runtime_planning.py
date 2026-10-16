@@ -24,6 +24,10 @@ from .recipes import ProjectOutPatch, RandomControlPatch, ResidualPathPatch, Swa
 
 
 def patched_generation_plan_errors(spec: PatchedGenerationSpec) -> list[str]:
+    if spec.dataset.is_deferred:
+        # Data-dependent checks run at authorized readiness/execution, where data
+        # lives. Offline plan must never query a production dataset.
+        return []
     try:
         resolved_spec = spec.resolve_dataset()
     except Exception as exc:

@@ -26,8 +26,26 @@ class ArtifactManifest:
     metadata: Mapping[str, Any] = field(default_factory=dict)
     workflow_context: Mapping[str, Any] = field(default_factory=dict)
 
+    @property
+    def completion_status(self) -> str:
+        """Declared C03 state; validate_completion verifies the actual payloads."""
+        record = self.metadata.get("completion_v1")
+        return "legacy" if record is None else str(record.get("state", "invalid"))
+
+    def provenance(self):
+        """Return validated C01 identity, or None for readable legacy artifacts."""
+        from pipelines_v2.core.provenance import provenance_from_metadata
+        return provenance_from_metadata(self.metadata)
+
+    @property
+    def provenance_status(self) -> str:
+        record = self.provenance()
+        return "legacy" if record is None else "resolved" if record.identity_complete else "unresolved"
+
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "ArtifactManifest":
+        from pipelines_v2.core.provenance import provenance_from_metadata
+        provenance_from_metadata(payload.get("metadata", {}))
         return cls(
             artifact_id=str(payload["artifact_id"]),
             artifact_kind=str(payload["artifact_kind"]),

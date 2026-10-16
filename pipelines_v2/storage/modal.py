@@ -16,6 +16,7 @@ from safetensors.numpy import load_file, save_file
 
 from pipelines_v2.core.types import TransferPolicy, TransferPolicyError
 from pipelines_v2.storage.json import json_default
+from pipelines_v2.storage.finalization import atomic_replace
 
 
 _MODAL_VOLUME_GET_MAX_ATTEMPTS = 3
@@ -74,6 +75,42 @@ class ModalVolumeStore:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    def verify_payload_integrity(self, payloads: list[dict[str, Any]]) -> None:
+        """Verify in a bounded CPU worker; never download activation tensors."""
+        import modal
+        from pipelines_v2.storage.finalization import IntegrityError
+        volume = modal.Volume.from_name(self.name)
+        app = modal.App("xenon-artifact-integrity")
+        mount = modal_volume_mount_path(self.root)
+        @app.function(image=modal.Image.debian_slim(), volumes={mount: volume},
+                      cpu=1, memory=256, timeout=60, max_containers=1, serialized=True)
+        def verify(items):
+            import hashlib
+            from pathlib import Path
+            for item in items:
+                path = Path(item["path"])
+                if not path.is_file() or path.stat().st_size != item["bytes"]:
+                    return False
+                digest = hashlib.sha256()
+                with path.open("rb") as stream:
+                    for block in iter(lambda: stream.read(1024 * 1024), b""):
+                        digest.update(block)
+                if digest.hexdigest() != item["sha256"]:
+                    return False
+            return True
+        with app.run():
+            from pipelines_v2.runtime.deadlines import bounded_remote_call
+            if not bounded_remote_call(verify, payloads, timeout_seconds=120):
+                raise IntegrityError("Remote artifact payload integrity mismatch")
+
+    def commit_visibility(self) -> None:
+        import modal
+        modal.Volume.from_name(self.name).commit()
+
+    def writer_lock(self, key: str):
+        from pipelines_v2.storage.leases import modal_writer_lock
+        return modal_writer_lock(self, key)
+
     def has_local_artifact(self, artifact_id: str) -> bool:
         artifact_root = Path(self.root) / artifact_id
         if artifact_root.exists():
@@ -83,9 +120,7 @@ class ModalVolumeStore:
     def write_safetensors(self, artifact_id: str, relative_path: str, tensors: dict[str, Any]) -> dict[str, Any]:
         path = self._resolve_inside_artifact(artifact_id, relative_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        save_file(tensors, str(tmp))
-        os.replace(tmp, path)
+        atomic_replace(path, lambda temporary: save_file(tensors, str(temporary)))
         return {
             "store": self.kind,
             "name": self.name,
@@ -97,10 +132,10 @@ class ModalVolumeStore:
     def write_json(self, artifact_id: str, relative_path: str, payload: Any) -> dict[str, Any]:
         path = self._resolve_inside_artifact(artifact_id, relative_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        with tmp.open("w", encoding="utf-8") as f:
-            json.dump(payload, f, sort_keys=True, indent=2, default=json_default)
-        os.replace(tmp, path)
+        def write(temporary):
+            with temporary.open("w", encoding="utf-8") as stream:
+                json.dump(payload, stream, sort_keys=True, indent=2, default=json_default)
+        atomic_replace(path, write)
         return {
             "store": self.kind,
             "name": self.name,

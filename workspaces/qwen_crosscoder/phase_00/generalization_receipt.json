@@ -1,0 +1,194 @@
+{
+  "scope": "general-purpose crosscoder plumbing",
+  "scientific_verdict": "not_tested",
+  "configuration": {
+    "prompts": 6,
+    "train": 4,
+    "heldout": 2,
+    "width": 64,
+    "steps": 6,
+    "checkpoint_step": 3,
+    "feature": 40
+  },
+  "cpu": {
+    "run_id": "wr_scratch_4e03ab205d2c49af859831bd9990eab7",
+    "artifacts": {
+      "paired_capture": {
+        "id": "crosscoder_pair_capture_1_4b794e691c10",
+        "provenance_status": "resolved"
+      },
+      "checkpoint": {
+        "id": "crosscoder_fit_1_1191f3d567b5",
+        "provenance_status": "resolved"
+      },
+      "fit": {
+        "id": "crosscoder_fit_1_99622c89b039",
+        "provenance_status": "resolved"
+      },
+      "dictionary": {
+        "id": "crosscoder_import_1_2b76f198d965",
+        "provenance_status": "resolved"
+      },
+      "encode": {
+        "id": "crosscoder_encode_1_aa31fdcb5c95",
+        "provenance_status": "resolved"
+      },
+      "decode": {
+        "id": "crosscoder_decode_1_0b225183c6e1",
+        "provenance_status": "resolved"
+      },
+      "splice": {
+        "id": "crosscoder_feature_splice_1_ecb2c21f43dd",
+        "provenance_status": "resolved"
+      },
+      "report": {
+        "id": "report_1_9b2f5d0eb704",
+        "provenance_status": "resolved"
+      }
+    },
+    "splice_oracles": [
+      {
+        "model": "Qwen/Qwen2.5-0.5B",
+        "key": "prompt_4",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 1.0501909255981445,
+        "reconstruction_max_abs": 20.920734405517578
+      },
+      {
+        "model": "Qwen/Qwen2.5-0.5B",
+        "key": "prompt_5",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 0.2994956970214844,
+        "reconstruction_max_abs": 20.632984161376953
+      },
+      {
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "key": "prompt_4",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 0.7929067611694336,
+        "reconstruction_max_abs": 20.64430046081543
+      },
+      {
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "key": "prompt_5",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 0.28713083267211914,
+        "reconstruction_max_abs": 19.41678237915039
+      }
+    ]
+  },
+  "cuda": {
+    "run_id": "wr_b8b8539a74b4_080b674f",
+    "artifacts": {
+      "paired_capture": {
+        "id": "crosscoder_pair_capture_1_2147f4cce02d",
+        "provenance_status": "resolved"
+      },
+      "checkpoint": {
+        "id": "crosscoder_fit_1_211c96fb8d09",
+        "provenance_status": "resolved"
+      },
+      "fit": {
+        "id": "crosscoder_fit_1_d36c8dec1822",
+        "provenance_status": "resolved"
+      },
+      "dictionary": {
+        "id": "crosscoder_import_1_bef804566b2d",
+        "provenance_status": "resolved"
+      },
+      "encode": {
+        "id": "crosscoder_encode_1_9160688df3e4",
+        "provenance_status": "resolved"
+      },
+      "decode": {
+        "id": "crosscoder_decode_1_8f523f1a3b32",
+        "provenance_status": "resolved"
+      },
+      "splice": {
+        "id": "crosscoder_feature_splice_1_2cd25705d160",
+        "provenance_status": "resolved"
+      },
+      "report": {
+        "id": "report_1_4249810be925",
+        "provenance_status": "resolved"
+      }
+    },
+    "splice_oracles": [
+      {
+        "model": "Qwen/Qwen2.5-0.5B",
+        "key": "prompt_4",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 1.050217628479004,
+        "reconstruction_max_abs": 20.920957565307617
+      },
+      {
+        "model": "Qwen/Qwen2.5-0.5B",
+        "key": "prompt_5",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 0.29946696758270264,
+        "reconstruction_max_abs": 20.633106231689453
+      },
+      {
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "key": "prompt_4",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 0.7929306030273438,
+        "reconstruction_max_abs": 20.644344329833984
+      },
+      {
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "key": "prompt_5",
+        "noop_max_abs": 0.0,
+        "direct_delta_max_abs_error": 0.0,
+        "feature_delta_max_abs": 0.2871437072753906,
+        "reconstruction_max_abs": 19.416851043701172
+      }
+    ]
+  },
+  "cuda_device": "NVIDIA L4",
+  "cuda_runtime": "13.0",
+  "cpu_exit_code": 0,
+  "cuda_exit_code": 0,
+  "tests": "13 targeted passed; 3 config/serialization follow-ups passed; 1 Modal volume/default test passed",
+  "reuse_gate": {
+    "status": "passed",
+    "initial_run_id": "wr_ab55ac0771b9_315ce039",
+    "reused_run": {
+      "run_id": "wr_ab55ac0771b9_613efa70",
+      "counts": {
+        "gpu_execution_calls": 0,
+        "cpu_readiness_calls": 2
+      },
+      "steps": {
+        "fit": {
+          "status": "reused",
+          "artifact_id": "crosscoder_fit_1_e7c75e0ad00c",
+          "reused_from_run_id": "wr_ab55ac0771b9_315ce039"
+        },
+        "paired_capture": {
+          "status": "reused",
+          "artifact_id": "crosscoder_pair_capture_1_96c027caff7c",
+          "reused_from_run_id": "wr_ab55ac0771b9_315ce039"
+        }
+      }
+    },
+    "initial_exit_code": 0,
+    "reuse_exit_code": 0,
+    "source_digest": "e59577a32010619c88ebda7f53134a098ea4879b2271a8f3922265fa0f8152b2",
+    "profile": {
+      "prompts": 2,
+      "width": 8,
+      "steps": 1,
+      "device": "NVIDIA L4"
+    },
+    "guard": "fresh macOS process; ModalRunner.run and run_many fail if invoked; exactly two actual CPU readiness calls; both artifact IDs unchanged",
+    "runtime_platform_cpu_and_gpu": "Linux-4.19.0-gvisor-x86_64-with-glibc2.36"
+  }
+}

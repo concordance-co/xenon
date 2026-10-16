@@ -254,9 +254,8 @@ def build_modal_app(
 
     runtime_env = merged_runtime_env(deployment.runtime.env, target.resources.env)
     app = modal.App(target.app_name)
-    image = modal.Image.debian_slim(python_version=deployment.runtime.python_version)
-    if deployment.runtime.pip_packages:
-        image = image.pip_install(*deployment.runtime.pip_packages)
+    from pipelines_v2.runtime.locks import build_locked_image, runtime_for_target
+    image = build_locked_image(modal, runtime_for_target(deployment.runtime, target="modal"))
     source_mounts, pythonpath_entries = _resolved_local_python_sources(_deployment_sources(deployment))
     if pythonpath_entries:
         existing_pythonpath = runtime_env.get("PYTHONPATH", "")
@@ -270,7 +269,10 @@ def build_modal_app(
     resources = target.resources
     function_kwargs: dict[str, Any] = {
         "image": image,
-        "secrets": [modal.Secret.from_name(str(secret.name)) for secret in resources.secrets],
+        "secrets": [
+            modal.Secret.from_name(str(secret.name), required_keys=list(secret.env_vars))
+            for secret in resources.secrets
+        ],
         "volumes": {
             volume.mount_path: modal.Volume.from_name(volume.name, create_if_missing=volume.create_if_missing)
             for volume in resources.volumes

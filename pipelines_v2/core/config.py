@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -102,6 +102,15 @@ def load_workspace_config(start: Path | None = None) -> WorkspaceConfig:
     workflow_section = _mapping(section.get("workflow"))
     dashboard_section = _mapping(section.get("dashboard"))
     modal_section = _mapping(section.get("modal"))
+    _validate_section(section, "pipelines_v2", {
+        "catalog_postgres_env", "local_catalog_root", "workflow", "dashboard", "modal",
+    }, tables={"workflow", "dashboard", "modal"})
+    for name, values, schema in (
+        ("workflow", workflow_section, WorkflowDefaults),
+        ("dashboard", dashboard_section, DashboardDefaults),
+        ("modal", modal_section, ModalDefaults),
+    ):
+        _validate_section(values, f"pipelines_v2.{name}", {item.name for item in fields(schema)})
 
     return WorkspaceConfig(
         workspace_root=workspace_root,
@@ -139,6 +148,20 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     return value
 
 
+def _validate_section(
+    values: Mapping[str, Any], name: str, allowed: set[str], *, tables: set[str] | None = None,
+) -> None:
+    unknown = sorted(set(values) - allowed)
+    if unknown:
+        raise ValueError(f"Unknown xenon.toml settings in [{name}]: {', '.join(unknown)}")
+    for key, value in values.items():
+        if key in (tables or ()):
+            continue
+        expected = bool if key in {"use_workspace_catalog", "use_vllm_torch_compile_cache"} else str
+        if type(value) is not expected:
+            raise ValueError(f"xenon.toml {name}.{key} must be {expected.__name__}, got {type(value).__name__}")
+
+
 def _string(value: Any) -> str | None:
     if value is None:
         return None
@@ -149,7 +172,9 @@ def _string(value: Any) -> str | None:
 def _bool(value: Any, *, default: bool) -> bool:
     if value is None:
         return default
-    return bool(value)
+    if type(value) is not bool:
+        raise ValueError(f"Expected TOML boolean, got {type(value).__name__}")
+    return value
 
 
 def _path(value: Any, *, workspace_root: Path) -> Path | None:

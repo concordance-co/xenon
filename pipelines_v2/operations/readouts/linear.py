@@ -37,6 +37,8 @@ class ProbeSpec(OperationSpec):
     persist_predictions: bool = False
     persist_model: bool = False
 
+    seed: int = field(default=42, metadata={"omit_if_default": True})
+
     kind: ClassVar[str] = "probe"
 
     def runtime_secrets(self) -> tuple[RuntimeSecret, ...]:
@@ -49,6 +51,7 @@ class ProbeSpec(OperationSpec):
     def from_dict(cls, payload: dict[str, Any]) -> "ProbeSpec":
         return cls(
             schema_version=int(payload.get("schema_version", 1)),
+            seed=payload.get("seed", 42),
             feature=spec_value_from_dict(payload.get("feature")),
             rows=row_selector_from_dict(payload.get("rows")),
             labels=spec_value_from_dict(payload.get("labels")),

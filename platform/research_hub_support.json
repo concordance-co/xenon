@@ -1,0 +1,938 @@
+{
+  "schema_version": 1,
+  "matrix_version": "2026-10-16.4",
+  "observed_on": "2026-10-16",
+  "release_status": "supported_llm_generalization_complete",
+  "scope": "Supported-model LLM generalization; small plumbing checks, no research campaign",
+  "documentation_source_digest": "3f2397dca29c603f6f0c9cbb61e2395de0ce742803c223af4dd459b7474199b3",
+  "identity_notes": [
+    "Rows identify observed task evidence, not qualification of every later integrated source change.",
+    "Receipt hashes capture read-only evidence at observation; receipts may later gain review results.",
+    "Source digests may be task deltas rather than whole trees; use the referenced receipt for their exact scope.",
+    "Complete C01 identity, C03 integrity, C02 measured envelope and scientific evidence are separate predicates."
+  ],
+  "status_definitions": {
+    "passed": "Actual named model/operation cell executed; does not mean scientific or release acceptance.",
+    "passed_integration_pending": "Actual coordinator evidence exists; final recipe/receipt integration pending.",
+    "pending": "No completed cell evidence asserted.",
+    "unsupported": "Explicitly rejected by the named adapter.",
+    "unverified": "No live evidence; do not infer support from adjacent cells."
+  },
+  "release_gates_pending": [
+    "Foundation/vision internals outside the final Fable review remain separately reviewable",
+    "Unexecuted scientific and broader hardware/fault/qualification campaigns remain explicit"
+  ],
+  "cells": [
+    {
+      "id": "gpt2-matched-residual",
+      "task": "T08",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "pending",
+      "model": {
+        "repository": "openai-community/gpt2",
+        "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+      },
+      "operation": "capture; target logprobs; identity/zero/matched/same-label/random donor interventions",
+      "device": "local CPU/macOS arm64",
+      "dtype": "float32",
+      "runtime": "core-local Python3.13.6; eager",
+      "recipe": "workspaces/local_research/phase_00/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t08_matched_final",
+          "wr_t08_matched_repeat"
+        ],
+        "artifact_ids": [
+          "report_1_165b7c36b44c"
+        ]
+      },
+      "receipt": {
+        "path": ".planning/receipts/T08.json",
+        "sha256_at_observation": "371bcab429d6ee5cedc377f181586df3d011d359b600b01fbb4e0ce8b79c2a3a"
+      },
+      "source_digest": null,
+      "limitations": [
+        "Eight fixed prompts, 600s/8GiB/256MiB scratch envelope",
+        "Whole-profile interrupted compute resume unsupported",
+        "Model/bank C01 complete; summary/report C01 unresolved",
+        "No CUDA/MPS or paper reproduction claim"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "qwen3-native-sites",
+      "task": "T12",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": "Qwen/Qwen3-0.6B",
+        "revision": "c1899de289a04d12100db370d81485cdf75e47ca"
+      },
+      "operation": "four signed MLP quantities; selected gate intervention",
+      "device": "local CPU/macOS arm64",
+      "dtype": "float32",
+      "runtime": "core-local; eager",
+      "recipe": "platform/NATIVE_SITES.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t12_qwen_native_final"
+        ],
+        "artifact_ids": [
+          "capture_1_0ce934019029",
+          "patched_generation_1_fa40ffb63334"
+        ]
+      },
+      "receipt": {
+        "path": ".planning/receipts/T12.json",
+        "sha256_at_observation": "70780a2f1d1bb5742a9855715591fe2fd5b4053ed5be5664abf606d8b5e7a1b0"
+      },
+      "source_digest": "63134dd9b0eb39bd908ab3219e39e5643385f30cb20c5c4df8ea8f28879d7a82",
+      "limitations": [
+        "Plain text; no chat/thinking wrapper",
+        "Qwen attention/GQA hooks, real MoE, Qwen3-32B and CUDA/MPS unsupported by this adapter",
+        "Report C01 unresolved"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "qwen3-neuron-dossiers",
+      "task": "T13",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": "Qwen/Qwen3-0.6B",
+        "revision": "c1899de289a04d12100db370d81485cdf75e47ca"
+      },
+      "operation": "bounded contexts; explanation records; dossier; native neuron edit",
+      "device": "local CPU/macOS arm64",
+      "dtype": "float32",
+      "runtime": "core-local; eager",
+      "recipe": "workspaces/native_neurons/phase_00/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t13_neuron_microscope_final"
+        ],
+        "artifact_ids": [
+          "transform_1_c725c6a8242e"
+        ]
+      },
+      "receipt": {
+        "path": ".planning/receipts/T13.json",
+        "sha256_at_observation": "98a7bb48f3f24622e6cdd24a4272c8181ebac027cef3139ad1fc7bd0be8106c9"
+      },
+      "source_digest": "1a5a9669db679997e35fcc47c2905ca38a26e199933d3a03c47cdcc87ce7667c",
+      "limitations": [
+        "Four prompts and three neurons; two unexplained",
+        "Explanations not validated; Goodfire scientific findings not reproduced",
+        "Summary/dossier C01 unresolved; native model outputs complete"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "gpt2-native-graph",
+      "task": "T14",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": "openai-community/gpt2",
+        "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+      },
+      "operation": "direct head interventions; C07 native-effect graph; embedding IG candidates",
+      "device": "local CPU/macOS arm64",
+      "dtype": "float32",
+      "runtime": "core-local; eager",
+      "recipe": "workspaces/native_route_smoke/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t14_native_route_smoke"
+        ],
+        "artifact_ids": [
+          "native_route_1_16af6824522d"
+        ],
+        "counts": {
+          "nodes": 3,
+          "edges": 2,
+          "controls": 20
+        }
+      },
+      "receipt": {
+        "path": ".planning/receipts/T14.json",
+        "sha256_at_observation": "a1f4d4d19184878796fc54f032ca78c2d9d88bd09c55d65dab968d6b498cc914"
+      },
+      "source_digest": "68a541bbe3ddb477d33cd09110f1a879168bf38a65a7830e340321bd09b583c6",
+      "limitations": [
+        "Two examples and fixed head sites; no discovered circuit claim",
+        "Four-interval embedding IG not converged",
+        "No production TransformerLens/HF graph annotation mapping"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "gpt2-official-mattr",
+      "task": "T10",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "pending",
+      "model": {
+        "repository": "openai-community/gpt2",
+        "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+      },
+      "operation": "official MAttr IOI node attribution and ten-point MIB evaluation",
+      "device": "local CPU",
+      "dtype": "float32",
+      "runtime": "isolated Python3.12 official upstream uv.lock; Xenon core control interpreter",
+      "recipe": "platform/MATTR.md",
+      "evidence": {
+        "artifact_ids": [
+          "external_mattr_1_69065e13"
+        ],
+        "counts": {
+          "nodes": 157,
+          "curve_points": 10
+        }
+      },
+      "receipt": {
+        "path": ".planning/receipts/T10.json",
+        "sha256_at_observation": "a3a12ab624e135152bfc8ebc3cc8b97d8066be4b58f597c270658e2aed711871"
+      },
+      "source_digest": "008c4ce27d078f63494cae08327b098dd14686ecff04d6251018b7774bf66417",
+      "limitations": [
+        "Two fitting steps/two validation examples only",
+        "External numerical/file C01 policy may remain unresolved",
+        "No optimizer-step continuation; unfinished method/seed units restart",
+        "Modal MAttr runtime not live-tested"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "qwen25-official-mattr",
+      "task": "T11",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": "Qwen/Qwen2.5-0.5B",
+        "revision": "060db6499f32faf8b98477b0a26969ef7d8b9987"
+      },
+      "operation": "official MAttr IOI node attribution; bounded summary export",
+      "device": "local CPU",
+      "dtype": "bfloat16",
+      "runtime": "isolated Python3.12 official upstream uv.lock; Xenon core control interpreter",
+      "recipe": "workspaces/mattr/phase_01/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t11_qwen25_mattr_smoke"
+        ],
+        "artifact_ids": [
+          "external_mattr_1_c6345d93a805",
+          "transform_1_8c2d2571cf93"
+        ],
+        "counts": {
+          "nodes": 361,
+          "curve_points": 10
+        },
+        "elapsed_seconds": 62.320194290950894,
+        "peak_rss_bytes": 8514109440
+      },
+      "receipt": {
+        "path": ".planning/receipts/T11.json",
+        "sha256_at_observation": "d3a9e7ca06dd9b0a8f96938af15b9044e4777e686c2bb052d4bdc616316232d5"
+      },
+      "source_digest": "f708002be045a2e08b2b630d0723d5bdb089609638b40dbc0fe79037affb76c7",
+      "limitations": [
+        "Different numerical cell from GPT2; no cross-model equivalence",
+        "C01 data.unobserved_file_input and numerics.operation_policy unresolved",
+        "Full reference study, baseline sweep and seed stability not run"
+      ],
+      "execution_budget": {
+        "memory_bytes": 12884901888,
+        "timeout_seconds": 600,
+        "note": "Raised from 8 GiB after review; observed prior peak remains 8514109440 bytes. No changed model/fitting semantics or rerun implied."
+      },
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "gpt2-pretrained-sae",
+      "task": "T18",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": "openai-community/gpt2",
+        "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+      },
+      "operation": "SAE import/encode/decode and original-model decoder-direction splice",
+      "device": "local CPU/macOS arm64",
+      "dtype": "float32",
+      "runtime": "core-local production; isolated pinned SAELens6.54.5/TL3.2.1 oracle",
+      "recipe": "pipelines_v2/representation/sae/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_scratch_59fe7bc699bf499da0c32050a564b35c"
+        ],
+        "dictionary_repository": "jbloom/GPT2-Small-SAEs-Reformatted",
+        "dictionary_revision": "57d08a4fd333fbf18caf3fbea63ceeb88e2f50d9",
+        "site": "blocks.6.hook_resid_pre",
+        "elapsed_seconds": 13.450375042157248
+      },
+      "receipt": {
+        "path": ".planning/receipts/T18.json",
+        "sha256_at_observation": "4eab198365c93d9b6aec28a6d1c8c2261c474cf323b7a587df325c37b69bd1e5"
+      },
+      "source_digest": "8a0a4818ea85cf84fb0eb6207d2bc044fa699fbf1ebfeb06e9ba6a35b9cd2cf6",
+      "limitations": [
+        "Two prompts; coordinate oracle required",
+        "Dictionary historical training checkpoint revision unknown",
+        "Generic dictionary/numerical C01 unresolved; qualified reuse unavailable",
+        "No feature quality or held-out fidelity claim"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "qwen3-pretrained-plt",
+      "task": "T20",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": "Qwen/Qwen3-0.6B",
+        "revision": "c1899de289a04d12100db370d81485cdf75e47ca"
+      },
+      "operation": "official circuit-tracer; C07 signed replacement-flow graph; raw graph import",
+      "device": "Modal NVIDIA A100-SXM4-80GB",
+      "dtype": "float32",
+      "runtime": "isolated Python3.12/Torch2.8.0/TL2.16.1/Transformers4.57.3/circuit-tracer0.5.3",
+      "recipe": "workspaces/circuit_trace_smoke/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t20_qwen3_plt_smoke"
+        ],
+        "artifact_ids": [
+          "circuit_trace_1_326bb8eaf356"
+        ],
+        "app_ids": [
+          "ap-Xz1Cc3S7cz9ZWYvB8n7yjS"
+        ],
+        "dictionary_repository": "mwhanna/qwen3-0.6b-transcoders-lowl0",
+        "dictionary_revision": "28aefe686c09e9bc1a862195b51e145f10868d87",
+        "dictionary_type": "PLT",
+        "counts": {
+          "nodes": 61,
+          "edges": 90,
+          "error_nodes": 56
+        },
+        "cuda_peak_allocated_bytes": 43015907840
+      },
+      "receipt": {
+        "path": ".planning/receipts/T20.json",
+        "sha256_at_observation": "a1834c669a3a3f5becf7bde1cc376086b0350b0a5819bff8ea88796563d2e811"
+      },
+      "source_digest": "ff4f6dcb3b4db735691e275393a0008a3ac020d85b304d8519e4a8a40dce1531",
+      "limitations": [
+        "One prompt/two tokens/two selected features/one logit",
+        "Strict HF/TL parity did not pass; optional original-model edit skipped",
+        "Replacement-flow weights are not native causal effects",
+        "Live CLT unverified; fixture-only CLT import",
+        "T06 tracing-shape qualification pending"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "crosscoder-pair",
+      "task": "T19",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": "Qwen/Qwen2.5-0.5B",
+        "revision": "060db6499f32faf8b98477b0a26969ef7d8b9987"
+      },
+      "operation": "aligned paired capture; explicit 10-to-20-step crosscoder resume; import/encode/decode; original-model decoder splices",
+      "device": "local CPU/macOS arm64",
+      "dtype": "float32",
+      "runtime": "isolated Python3.13/Torch2.11.0/Transformers5.9.0; separate bounded fitter subprocess",
+      "recipe": "workspaces/qwen_crosscoder/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_scratch_98522166e2f54300b392442e249c2211"
+        ],
+        "artifact_ids": [
+          "crosscoder_pair_capture_1_91c1dd7f6f4e",
+          "crosscoder_fit_1_4118dd9b5357",
+          "crosscoder_fit_1_e40b4cb27939",
+          "crosscoder_import_1_0cabf955a8ee",
+          "crosscoder_encode_1_ed928ddbfde2",
+          "crosscoder_feature_splice_1_96408540869a",
+          "crosscoder_decode_1_7ef9d6ee25d7",
+          "report_1_f145c56782cd"
+        ],
+        "step_artifacts": {
+          "paired_capture": "crosscoder_pair_capture_1_91c1dd7f6f4e",
+          "checkpoint": "crosscoder_fit_1_4118dd9b5357",
+          "fit": "crosscoder_fit_1_e40b4cb27939",
+          "dictionary": "crosscoder_import_1_0cabf955a8ee",
+          "encode": "crosscoder_encode_1_ed928ddbfde2",
+          "splice": "crosscoder_feature_splice_1_96408540869a",
+          "decode": "crosscoder_decode_1_7ef9d6ee25d7",
+          "report": "report_1_f145c56782cd"
+        },
+        "elapsed_seconds": 20.44999845791608,
+        "peak_rss_bytes": 3553869824,
+        "artifact_bytes": 2792013,
+        "C03_verified_artifacts": 8,
+        "direct_parity_passed": true,
+        "counts": {
+          "training_prompts": 3,
+          "heldout_prompts": 1,
+          "width": 16,
+          "steps": 20,
+          "checkpoint_step": 10
+        },
+        "exit_code": 0
+      },
+      "receipt": {
+        "path": ".planning/receipts/T19.json",
+        "sha256_at_observation": "6009575dbd6a3534cd46769983af4c589ef91c1ebdf05f80452c32099e188d75"
+      },
+      "source_digest": "4ecf3445cb45c1cfe10e8e543761edbd0786568c33288b2b5f5d443ea9328cce",
+      "limitations": [
+        "Generic C01 observed execution profile remains unresolved, so cross-run coordinator reuse remains unavailable.",
+        "Explicit stop_after checkpoint/resume works; arbitrary killed-optimizer-step auto recovery is not implemented.",
+        "Linux/Modal fitter profile is not qualified; initial proof is macOS arm64 CPU only.",
+        "Research campaign, two-seed stability, feature selection and scientific causal claims deferred per user."
+      ],
+      "paired_model": {
+        "repository": "Qwen/Qwen2.5-0.5B-Instruct",
+        "revision": "7ae557604adf67be50417f59c2c2f167def9a775"
+      },
+      "runtime_lock": {
+        "path": "pipelines_v2/representation/crosscoder/requirements-darwin-arm64.lock",
+        "sha256": "16f742cf62b4cab774436c9f6e2ea7fd55374f5a6b1e4941b2658f4a9421f71c"
+      },
+      "integration": "pending coordinator integration and independent review",
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "published-results",
+      "task": "T09",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": null,
+        "revision": null
+      },
+      "operation": "approved publication and bounded retrieval",
+      "device": "CPU/Modal publication",
+      "dtype": null,
+      "runtime": "Modal CPU worker plus configured shared catalog; no model imports",
+      "recipe": "platform/PUBLICATION.md",
+      "evidence": {
+        "published_result_id": "published_680d3770d3a0868dd67148eaee9c",
+        "payload_bytes": 273866,
+        "readback": {
+          "artifact_id": "published_680d3770d3a0868dd67148eaee9c",
+          "shared_catalog_read": true,
+          "file_catalog_mirror_equal": true,
+          "bounded_result_read_bytes": 124496,
+          "published_result_equal_source": true,
+          "source_C03_still_valid": true,
+          "C01_unchanged": true,
+          "scientific_identity": "569e62ee897652e913520a60b8570bed39294e7c44703b7d74b863b3bebddcdb",
+          "remote_C03_payload_count": 3,
+          "no_hardware_requalification": true,
+          "shared_root": "xenon-data:/data/publications/t09"
+        }
+      },
+      "receipt": {
+        "path": ".planning/receipts/T09.json",
+        "sha256_at_observation": "d3c586663b6f78dc55231453d9ae220c35e2744438d32f699da1cef584a5b65e"
+      },
+      "source_digest": "4fe9315e13a5e0871fb14f006c0a7761622868a957c9d50ff451142a08593615",
+      "limitations": [
+        "Conservative v1 allowlist: no bulk captures, activation banks, arbitrary datasets, or report migration.",
+        "Publication preserves source execution scientific identity; no hardware requalification.",
+        "Staging blobs retained for idempotent retry; corruption fails closed and requires targeted operator diagnosis.",
+        "Live proof publishes one no-input-dependency result; nested dependency closure and failure recovery tested locally."
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "evidence-workbench",
+      "task": "T21",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "accepted within bounded plumbing scope; see review disposition",
+      "model": {
+        "repository": null,
+        "revision": null
+      },
+      "operation": "bounded catalog queries and summary-only report rendering",
+      "device": "local CPU",
+      "dtype": null,
+      "runtime": "core control; no model execution",
+      "recipe": "platform/EVIDENCE.md",
+      "evidence": {
+        "artifact_ids": [
+          "transform_1_8c2d2571cf93",
+          "circuit_trace_1_326bb8eaf356",
+          "transform_1_c725c6a8242e",
+          "native_route_1_16af6824522d"
+        ],
+        "summary_bytes_read_including_publication_proof": 576135,
+        "published_artifact_id": "published_680d3770d3a0868dd67148eaee9c",
+        "published_summary_checksum_verified": true,
+        "published_identity_complete": true,
+        "report": "/Users/marshallvyletel/repos/concordance/xenon/.planning/evidence/T21/llm-workbench.html",
+        "model_executions": 0,
+        "bulk_tensor_reads": 0,
+        "receipt_path": ".planning/evidence/T21/llm-verified.json",
+        "receipt_sha256": "6eecbfde3ae28e7089bee842c156a082c00b99cfb461c31ed66b9f13146a2315"
+      },
+      "receipt": {
+        "path": ".planning/receipts/T21.json",
+        "sha256_at_observation": "811816be9397347bae64d02ac6ccf6b15218bd1c80e286849a5660c4631232d5"
+      },
+      "source_digest": null,
+      "limitations": [
+        "Default16MiB actual JSON transfer;100nodes/300edges",
+        "Incomplete C01 blocks scientific comparability",
+        "Original full upstream payload not reverified by reading a summary"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "vit-recognition",
+      "task": "T15",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "pending",
+      "model": {
+        "repository": "google/vit-base-patch16-224",
+        "revision": "3f49326eb077187dfe1c2a2bb15fbd74e6ab91e3"
+      },
+      "operation": "recognition activations and selected edit",
+      "device": "local CPU/macOS arm64",
+      "dtype": "float32",
+      "runtime": "core-local",
+      "recipe": "workspaces/recognition/phase_00/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t15_vit_microscope_final"
+        ],
+        "artifact_ids": [
+          "recognition_microscope_1_da53b7080fae"
+        ]
+      },
+      "receipt": {
+        "path": ".planning/receipts/T15.json",
+        "sha256_at_observation": "b110423e94eed30eab1db016b11b6b73b5ce7ad8a420a8b67dd0afdd47485e0b"
+      },
+      "source_digest": "6b248d7fc70b04cc6c8e68fb6340c2d035d30634e978634ff63e7c66d6040f7d",
+      "limitations": [
+        "Two fixture images; no recognition quality claim"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    },
+    {
+      "id": "sdxl-steering",
+      "task": "T17",
+      "plumbing": "passed",
+      "research_qualification": "not_tested",
+      "independent_review": "pending",
+      "model": {
+        "repository": "stabilityai/stable-diffusion-xl-base-1.0",
+        "revision": "462165984030d82259a11f4367a4eed129e94a7b"
+      },
+      "operation": "spatial UNet capture and same-noise internal steering",
+      "device": "Modal NVIDIA A100-SXM4-80GB",
+      "dtype": "float16",
+      "runtime": "separate Diffusers lock; Euler scheduler",
+      "recipe": "workspaces/sdxl_steering/README.md",
+      "evidence": {
+        "run_ids": [
+          "wr_t17_discovery",
+          "wr_t17_direction_recovery",
+          "wr_t17_steering"
+        ]
+      },
+      "receipt": {
+        "path": ".planning/receipts/T17.json",
+        "sha256_at_observation": "9a0352254c22a08fc924b9e2ddb528a270dee6aeca3363873e7ae67ec7635da0"
+      },
+      "source_digest": "83a9edafa27161e7c3ae42a5fb556adb717a4d8ba1067681e20a1f70cfe07512",
+      "limitations": [
+        "Engineering images only; aggressive edits distorted geometry",
+        "No clean semantic-control or research-reproduction claim"
+      ],
+      "evidence_scope": "Historical capability-increment observation; current generalizations are recorded separately below."
+    }
+  ],
+  "outside_observed_support": [
+    {
+      "cell": "Live pretrained CLT trace",
+      "state": "unverified",
+      "reason": "Only PLT live pair executed; CLT-format fixtures are not live support."
+    },
+    {
+      "cell": "Native Qwen attention/GQA, real MoE, Qwen3-32B",
+      "state": "unsupported",
+      "reason": "Current native adapter explicitly supports dense Qwen3-0.6B MLP coordinates only."
+    },
+    {
+      "cell": "Local MPS / arbitrary CUDA architectures",
+      "state": "unsupported",
+      "reason": "GPT-2 and pinned Qwen3 native CUDA are now verified on Modal L4; MPS and other architectures remain unsupported."
+    },
+    {
+      "cell": "Full release qualification and paper reproduction",
+      "state": "pending",
+      "reason": "Scientific campaigns and broader hardware/fault qualification are outside the completed user-requested plumbing scope."
+    }
+  ],
+  "integrated_checks": {
+    "local_suite": {
+      "passed": 907,
+      "skipped": 8,
+      "warnings": 14,
+      "seconds": 74.52,
+      "exit_code": 0,
+      "log": ".planning/evidence/T22/post-review-tests.log"
+    },
+    "last_readiness_alignment": {
+      "passed": 50,
+      "seconds": 0.86,
+      "log": ".planning/evidence/T22/readiness-env-tests.log"
+    },
+    "core_only_wheel": {
+      "status": "passed",
+      "asset_count": 17,
+      "wheel_sha256": "8fa3411f7b96dd484b9f377e98c8ac7f1252fccb1938cbe110af9d28aaf0fd8b",
+      "installed_package": "/private/tmp/xenon-t22-wheel-core/lib/python3.13/site-packages/pipelines_v2",
+      "optional_import_check": true
+    },
+    "source_snapshot": "3157eb8910ad05d820f32b10e1dc73ec7f532346314c1786db9d87b3f506374b",
+    "scope": "Code snapshot before final status-document updates; no new model executions"
+  },
+  "independent_review": {
+    "reviewer": "Claude Fable",
+    "verdict": "accepted; all five findings closed by Fable, minor readiness alignment applied and locally checked",
+    "reference": ".planning/evidence/T22/review-disposition.json",
+    "scope": "LLM capability paths, evidence, publication, T05 closure and packaging; not full foundation or vision internals"
+  },
+  "generalization": {
+    "documentation": "platform/LLM_RESEARCH.md",
+    "priorities": [
+      "Configurable datasets and workload budgets within supported model/dictionary families",
+      "Observed input/runtime/numeric provenance and safe cross-run reuse",
+      "Typed LLM publication with explicit transfer budgets and preserved lineage",
+      "Explicit CPU/Modal resource profiles and early real-model GPU checks"
+    ],
+    "deferred": [
+      "Warm LLM model session sharing",
+      "GPU crash recovery",
+      "Tracer-to-original-model parity"
+    ],
+    "checks": {
+      "local_sae_reuse": {
+        "first_run_id": "wr_108c2b393169_162056b8",
+        "reuse_run_id": "wr_108c2b393169_80106b4d",
+        "elapsed_seconds": 15.9600286250934,
+        "examples": 9,
+        "feature_edits": 3,
+        "all_identity_complete": true,
+        "all_c03_verified": true,
+        "second_run_model_calls": 0,
+        "second_run_operation_calls": 0,
+        "artifacts": {
+          "dictionary": "sae_dictionary_import_1_30f4087fb897",
+          "splice": "sae_feature_splice_1_1fe4622def7d",
+          "report": "report_1_fe6f4f552838"
+        },
+        "scientific_identities": {
+          "dictionary": "72475a6075580b39ab5841cb01b99bc7d0f56397bacf6e91c3b79fab9e24bca1",
+          "splice": "3f713fa12637dc97e407175af086e2d4068cc088f1b6c8dbd7b03835c7c661fe",
+          "report": "bb0f84282afdeb5934f06caab657887d003b3cfffe66a93334fd50df059bfa49"
+        },
+        "research_verdict": "not_tested",
+        "source_snapshot": "/private/tmp/xenon-g01-sae-source"
+      },
+      "local_mattr_reuse": {
+        "first": "wr_7dccde7949f9_05b6c2fc",
+        "reuse": "wr_7dccde7949f9_17258374",
+        "C01_complete": true,
+        "C03_verified": true,
+        "second_execution_calls": 0,
+        "artifacts": {
+          "attribution": "external_mattr_1_c4b4ed07d9c8",
+          "summary": "transform_1_007b0145be9b",
+          "report": "report_1_131781200512"
+        }
+      },
+      "modal_fresh_process_reuse": {
+        "receipt": ".planning/evidence/G01-modal-reuse/receipt.json",
+        "status": "passed",
+        "cpu_readiness_calls": 1,
+        "gpu_execution_calls_on_repeat": 0
+      },
+      "local_to_shared_graph": {
+        "artifact_id": "published_857b7fdaa10c907d935def826309",
+        "bytes_read": 75610,
+        "shared_and_mirror_equal": true,
+        "source_payload_equal": true,
+        "C01_complete": true,
+        "summary_checksum_verified": true,
+        "graph_id": "476e75d907dc870ad1539d017c3a4f65d34ae0ec51ec9ecea0e8001051b2274a",
+        "node_count": 3,
+        "edge_count": 2,
+        "source_scientific_identity": "87ff284f7500cc6c0b8e10495f6bbdb88f7604b29970a5b8d5eeff70a748005b",
+        "published_scientific_identity": "87ff284f7500cc6c0b8e10495f6bbdb88f7604b29970a5b8d5eeff70a748005b"
+      },
+      "mounted_shared_copy": {
+        "artifact_id": "published_5848a5c4b5307042fe0c6519c7dd",
+        "bytes_read": 75610,
+        "shared_and_mirror_equal": true,
+        "source_payload_equal": true,
+        "C01_unchanged": true,
+        "summary_checksum_verified": true,
+        "payloads_copied_on_mount": 1,
+        "tensor_bytes_downloaded": 0,
+        "scientific_identity": "87ff284f7500cc6c0b8e10495f6bbdb88f7604b29970a5b8d5eeff70a748005b"
+      },
+      "modal_gpt2": {
+        "run_id": "wr_f3fd6d3c86af_475fe9b5",
+        "artifacts": [
+          {
+            "step": "capture",
+            "artifact_id": "capture_1_a12d5a1898e2",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "74280052a6bdabcdcb0b7d48d562af70c2845d3be5e7db8827d26f453f137d8c"
+          },
+          {
+            "step": "generation",
+            "artifact_id": "generation_run_1_0f7d1c7469fc",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "e1488b6bb8ef1e390b9ad6d828ba22efe35346b3169a97fd89147815155acb09"
+          },
+          {
+            "step": "report",
+            "artifact_id": "report_1_9e3ad3bb5a79",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "48311c78e42c10e0f52c4cdfadbca321d9d16c78f27466c7fdd3ce07fe58590b"
+          }
+        ]
+      },
+      "modal_native_qwen3": {
+        "run_id": "wr_c9a04fd5820f_8d3a6503",
+        "artifacts": [
+          {
+            "step": "baseline",
+            "artifact_id": "generation_run_1_9da3f04305ba",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "73c17c5273159ba44dceea187eac40772976fb5810c2776401f71609e3d1b009"
+          },
+          {
+            "step": "capture",
+            "artifact_id": "capture_1_49e70d8c6881",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "8f77f3c1e70e5f831c878f7af54a77a58300f66258d2f793484d9e0d8db68ca8"
+          },
+          {
+            "step": "intervention",
+            "artifact_id": "patched_generation_1_602102160cda",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "cd265b7a60c004b43155fa13709af679bc7cd6dfa5e9dae3cac2c7b405fec9f5"
+          },
+          {
+            "step": "report",
+            "artifact_id": "report_1_ef7a373d65b1",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "05e5a5693ba9ffb5e3636836c4c6e55d258094254e18c1faedc0a532f531904b"
+          }
+        ]
+      },
+      "modal_sae": {
+        "run_id": "wr_a38bb5caeaba_b0c9dcc4",
+        "artifacts": [
+          {
+            "step": "dictionary",
+            "artifact_id": "sae_dictionary_import_1_491d65cbbd9c",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "6a1030278e3af6853d294507dbfcc35baed5fbe41255a23a1536c99490df8bed"
+          },
+          {
+            "step": "report",
+            "artifact_id": "report_1_b300e26e52a7",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "08cb3ab722a2e3c60cd9690dd5f35ba59c7f2dfd89baccdba07055299a631c66"
+          },
+          {
+            "step": "splice",
+            "artifact_id": "sae_feature_splice_1_b56018b37d73",
+            "C01_complete": true,
+            "unresolved": [],
+            "scientific_identity": "b866fdf1791bd335bfa94822b1430416677a9bcd588dc6f3b14c1bfcbca08b09"
+          }
+        ]
+      },
+      "integrated_suite": {
+        "passed": 930,
+        "skipped": 10,
+        "warnings": 14,
+        "seconds": 77.82,
+        "log": ".planning/evidence/G01/integration-final.log"
+      },
+      "wheel": {
+        "status": "passed",
+        "asset_count": 20,
+        "wheel_sha256": "5a7b12dbb9d6f78b3fbc196c03040def948df10e867ff0317d595b0781adaf5d",
+        "installed_package": "/private/tmp/xenon-t22-wheel-core/lib/python3.13/site-packages/pipelines_v2",
+        "optional_import_check": true
+      },
+      "modal_crosscoder": {
+        "run_id": "wr_b8b8539a74b4_080b674f",
+        "status": "passed",
+        "steps": {
+          "paired_capture": {
+            "artifact_id": "crosscoder_pair_capture_1_2147f4cce02d",
+            "provenance_status": "resolved"
+          },
+          "checkpoint": {
+            "artifact_id": "crosscoder_fit_1_211c96fb8d09",
+            "provenance_status": "resolved"
+          },
+          "fit": {
+            "artifact_id": "crosscoder_fit_1_d36c8dec1822",
+            "provenance_status": "resolved"
+          },
+          "dictionary": {
+            "artifact_id": "crosscoder_import_1_bef804566b2d",
+            "provenance_status": "resolved"
+          },
+          "encode": {
+            "artifact_id": "crosscoder_encode_1_9160688df3e4",
+            "provenance_status": "resolved"
+          },
+          "decode": {
+            "artifact_id": "crosscoder_decode_1_8f523f1a3b32",
+            "provenance_status": "resolved"
+          },
+          "splice": {
+            "artifact_id": "crosscoder_feature_splice_1_2cd25705d160",
+            "provenance_status": "resolved"
+          },
+          "report": {
+            "artifact_id": "report_1_4249810be925",
+            "provenance_status": "resolved"
+          }
+        },
+        "research_verdict": "not_tested"
+      },
+      "modal_mattr": {
+        "run_id": "wr_db2c54453229_315fccd4",
+        "status": "passed",
+        "receipt": ".planning/evidence/G01-mattr-readiness/receipt.json",
+        "artifacts": {
+          "attribution": "external_mattr_1_16ffa6ac0f5e",
+          "summary": "transform_1_11ebcd4a9f9f",
+          "report": "report_1_9836cb51d22a"
+        },
+        "C01_complete": true,
+        "C03_verified": true
+      },
+      "modal_residual_edits": {
+        "status": "passed",
+        "policy": {
+          "dtype": "float32",
+          "attention_implementation": "gpt2-eager",
+          "device": {
+            "kind": "cuda",
+            "torch_version": "2.11.0+cu130",
+            "name": "NVIDIA L4",
+            "compute_capability": [
+              8,
+              9
+            ],
+            "total_memory": 23689363456,
+            "cuda_runtime": "13.0"
+          },
+          "determinism": "frozen-eval-weights-greedy-no-sampling",
+          "compile": false,
+          "matmul": {
+            "float32_precision": "highest",
+            "allow_tf32": false,
+            "cudnn_allow_tf32": true,
+            "num_threads": 2,
+            "num_interop_threads": 1
+          },
+          "environment": {
+            "OMP_NUM_THREADS": "4",
+            "MKL_NUM_THREADS": "4",
+            "OPENBLAS_NUM_THREADS": "4"
+          },
+          "policy_version": "gpt2-cuda-eager-v2"
+        },
+        "edits": {
+          "interchange": {
+            "oracle_max_error": 0.0,
+            "max_logit_delta": 81.47762298583984,
+            "device": "cuda:0"
+          },
+          "add_direction": {
+            "oracle_max_error": 0.0,
+            "max_logit_delta": 4.439361572265625,
+            "device": "cuda:0"
+          }
+        },
+        "research_verdict": "not_tested"
+      },
+      "mount_error_followup": {
+        "passed": 9,
+        "seconds": 0.14
+      },
+      "crosscoder_fresh_process_reuse": {
+        "run_id": "wr_ab55ac0771b9_613efa70",
+        "counts": {
+          "gpu_execution_calls": 0,
+          "cpu_readiness_calls": 2
+        },
+        "steps": {
+          "fit": {
+            "status": "reused",
+            "artifact_id": "crosscoder_fit_1_e7c75e0ad00c",
+            "reused_from_run_id": "wr_ab55ac0771b9_315ce039"
+          },
+          "paired_capture": {
+            "status": "reused",
+            "artifact_id": "crosscoder_pair_capture_1_96c027caff7c",
+            "reused_from_run_id": "wr_ab55ac0771b9_315ce039"
+          }
+        }
+      }
+    },
+    "remaining_validation": [],
+    "review": {
+      "reviewer": "Claude Fable",
+      "verdict": "accepted: all stated conditions satisfied",
+      "reference": ".planning/evidence/G01/fable-followup.log",
+      "findings": "F1-F8 resolved; optional R1 mount-error reporting fixed with9passing tests",
+      "hardware_conditions": {
+        "residual_cuda_oracles": ".planning/evidence/G01/gpu-residual-edits-result.json",
+        "crosscoder_fresh_process_reuse": ".planning/evidence/G01/crosscoder-reuse.json"
+      }
+    }
+  }
+}

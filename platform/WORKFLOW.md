@@ -108,6 +108,31 @@ Operational notes:
   the later run lands on the same GPU family and variant that produced the
   cache.
 
+## Modal Preflight
+
+`workflow plan` returns a nonzero exit code when a step has validation errors.
+Planning checks vLLM option names, numeric ranges and booleans, GPU presence,
+GPUs per container versus tensor/pipeline parallelism, and volume mount paths.
+Absolute model paths must be covered by a volume mount. For example,
+`tensor_parallel_size=2` needs a GPU resource such as `"A100-80GB:2"`;
+`shard_count=2` supplies two independent containers, not two GPUs per model.
+
+Unknown `xenon.toml` keys and wrong value types are errors. Use TOML booleans
+(`false`), not strings (`"false"`). Engine `extra` supports `llm_kwargs`,
+`chat_template_kwargs`, `attention_backend`, and `attention_config`; unsupported
+options are rejected during planning. Declared Modal secret keys are also
+checked by Modal when resolving the secret, before starting the worker.
+
+Prompt lengths are checked after tokenization and before model weight loading,
+including reusable sessions. Deferred datasets are checked as each materialized
+batch becomes available; planning does not fetch full datasets or inspect GPU
+memory. Volume existence, model files, and actual GPU memory fit still require
+remote validation.
+
+Generation result merging and resume use example keys. Identical prompts under
+different keys remain separate trials, and incomplete result coverage prevents
+publishing a completed generation artifact.
+
 ## Modal Workflow Batching
 
 `ModalResources(enable_workflow_batching=True)` opts a runner into orchestrator
@@ -184,3 +209,14 @@ The usual deployment pattern is:
 - [pipelines_v2/cli.py](../pipelines_v2/cli.py)
 - [pipelines_v2/api.py](../pipelines_v2/api.py)
 - [pipelines_v2/workflow/orchestrator.py](../pipelines_v2/workflow/orchestrator.py)
+
+
+## Explicit offline local experiments
+
+For small local fixtures, use the existing workflow shape with
+`workflow run --profile local-scratch --file workflow.py`. Declare local runner
+specs or omit runner construction; cloud runner declarations are rejected.
+The workflow import/build and execution happen inside the offline worker.
+Use prepared CPU adapters and local datasets; remote datasets and cached remote
+feature references are forbidden. See [LOCAL_SCRATCH.md](LOCAL_SCRATCH.md) for
+budgets, input contracts and recoverable local publication.

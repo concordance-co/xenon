@@ -498,7 +498,30 @@ class ResidualPathPatch(ActivationPatchSpec):
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ScalePatch(ActivationPatchSpec):
+    """Multiply selected residual states; zero ablates and one is identity."""
+    scale: float = 1.0
+    kind: ClassVar[str] = 'scale_patch'
+    operator_name: ClassVar[str] = 'scale'
+
+    def __post_init__(self):
+        import math
+        ActivationPatchSpec.__post_init__(self)
+        if not math.isfinite(self.scale) or self.strength != 1:
+            raise SpecValidationError('ScalePatch requires finite scale and strength=1')
+
+    @classmethod
+    def from_dict(cls, payload):
+        return cls(write_site=site_from_payload(payload.get('write_site',{})),
+                   target_tokens=token_selector_from_payload(payload.get('target_tokens'),default=TokenSelector.last()),
+                   application=patch_application_from_payload(payload.get('application')),
+                   source_layer_map=normalize_layer_map(payload.get('source_layer_map')),
+                   strength=payload.get('strength',1.),scale=payload.get('scale',1.))
+
+
 PATCH_LOADERS: dict[str, Any] = {
+    ScalePatch.kind: ScalePatch.from_dict,
     InterchangePatch.kind: InterchangePatch.from_dict,
     ProjectOutPatch.kind: ProjectOutPatch.from_dict,
     AddDirectionPatch.kind: AddDirectionPatch.from_dict,
@@ -511,6 +534,7 @@ PATCH_LOADERS: dict[str, Any] = {
 
 __all__ = [
     "ActivationPatchSpec",
+    "ScalePatch",
     "AddDirectionPatch",
     "InterchangePatch",
     "PatchApplication",

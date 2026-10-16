@@ -1,0 +1,16 @@
+{
+  "method": "residual",
+  "backend": "local",
+  "engine": {
+    "model_id": "/absolute/prepared/gpt2",
+    "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+  },
+  "examples": [
+    {"key": "france", "prompt": "The capital of France is"},
+    {"key": "bird", "prompt": "A blue bird flew over the"}
+  ],
+  "max_examples": 10000,
+  "layers": [5, 6],
+  "max_new_tokens": 8,
+  "local_artifact_root": "/absolute/local/artifacts"
+}

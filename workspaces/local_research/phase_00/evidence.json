@@ -1,0 +1,27 @@
+{
+  "status": "code_complete_integration_pending",
+  "study_scope": "plumbing verification; scientific inconclusive",
+  "run_ids": [
+    "wr_t08_matched_final",
+    "wr_t08_matched_repeat"
+  ],
+  "workflow_hash": "e06659131d5dae3c0f622f97d2fd6c87a7a69adeec2bb6e301f99b94014859b1",
+  "report_artifact_id": "report_1_165b7c36b44c",
+  "repeat_summary_exact": true,
+  "both_runs_match_independent_oracle": true,
+  "C03_all_verified": true,
+  "C01_model_and_bank_complete": true,
+  "C01_summary_report_complete": false,
+  "independent_oracle": "/private/tmp/xenon-t08-oracle-final/result.json",
+  "evidence_root": "/Users/marshallvyletel/.codex/worktrees/research-torch/xenon/.planning/evidence/T08",
+  "report": "/Users/marshallvyletel/.codex/worktrees/research-torch/xenon/.planning/evidence/T08/FINAL_REPORT.md",
+  "pending": [
+    "Whole-profile interrupted compute resume gate",
+    "Independent Fable review",
+    "Root integration"
+  ],
+  "original_download_seconds": null,
+  "preparation_verification_seconds": 0.22597187501378357,
+  "final_workflow_seconds": 31.105006041005254,
+  "repeat_workflow_seconds": 29.931245374958962
+}

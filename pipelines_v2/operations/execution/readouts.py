@@ -81,6 +81,7 @@ def run_probe(spec: ProbeSpec) -> OperationExecutionResult:
                 class_names=classes,
                 persist_predictions=spec.persist_predictions,
                 persist_model=spec.persist_model,
+                seed=spec.seed,
             )
         )
 
@@ -782,6 +783,7 @@ def probe_layer(
     class_names: Sequence[str] | None = None,
     persist_predictions: bool = False,
     persist_model: bool = False,
+    seed: int = 42,
 ) -> dict[str, Any]:
     effective_train_values = tuple(train_values)
     normalized_train_stages = tuple(tuple(stage) for stage in train_stages if stage)
@@ -796,6 +798,7 @@ def probe_layer(
         train_values=effective_train_values,
         test_values=test_values,
         folds=folds,
+        seed=seed,
     )
     if not splits:
         raise SpecValidationError("ProbeSpec could not produce any validation splits")
@@ -816,7 +819,7 @@ def probe_layer(
             split=split,
             train_stages=normalized_train_stages,
             stage_epochs=stage_epochs,
-            seed=42 + fold_index,
+            seed=seed + fold_index,
         )
         X_test = scaler.transform(X[test_idx])
         predictions = model.predict(X_test)
@@ -851,13 +854,13 @@ def probe_layer(
             baseline.fit(X[train_idx], y[train_idx])
             baseline_scores["majority"].append(float(accuracy_score(y[test_idx], baseline.predict(X[test_idx]))))
         if compute_shuffled_control:
-            rng = np.random.default_rng(seed=fold_index)
+            rng = np.random.default_rng(seed=(seed - 42 + fold_index) % 2**32)
             shuffled = np.array(y[train_idx], copy=True)
             rng.shuffle(shuffled)
             control_scaler = StandardScaler()
             X_train_control = control_scaler.fit_transform(X[train_idx])
             X_test_control = control_scaler.transform(X[test_idx])
-            control = _make_probe_estimator(seed=4042 + fold_index)
+            control = _make_probe_estimator(seed=seed + 4000 + fold_index)
             control.fit(X_train_control, shuffled)
             shuffled_control_scores.append(float(accuracy_score(y[test_idx], control.predict(X_test_control))))
 
@@ -912,7 +915,7 @@ def probe_layer(
             split=split,
             train_stages=normalized_train_stages,
             stage_epochs=stage_epochs,
-            seed=9000 + int(layer),
+            seed=seed + 8958 + int(layer),
         )
         result["persisted_probe"] = _serialize_probe_model(
             scaler=final_scaler,
@@ -1035,6 +1038,7 @@ def classification_splits(
     train_values: Sequence[Any],
     test_values: Sequence[Any],
     folds: int,
+    seed: int = 42,
 ) -> tuple[list[tuple[NDArray[np.int64], NDArray[np.int64]]], str]:
     if split is not None:
         train_allowed = {str(value) for value in train_values}
@@ -1062,7 +1066,7 @@ def classification_splits(
         min_class = int(class_counts.min()) if class_counts.size else 0
         n_splits = max(2, min(folds, len(unique_groups), min_class if min_class > 0 else len(unique_groups)))
         if min_class >= 2:
-            splitter = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=42)
+            splitter = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
             return (
                 [(train.astype(np.int64), test.astype(np.int64)) for train, test in splitter.split(np.zeros_like(y), y, groups)],
                 "stratified_group_kfold",
@@ -1077,7 +1081,7 @@ def classification_splits(
     min_class = int(class_counts.min())
     if min_class < 2:
         return [], "stratified_kfold"
-    splitter = StratifiedKFold(n_splits=max(2, min(folds, len(y), min_class)), shuffle=True, random_state=42)
+    splitter = StratifiedKFold(n_splits=max(2, min(folds, len(y), min_class)), shuffle=True, random_state=seed)
     return (
         [(train.astype(np.int64), test.astype(np.int64)) for train, test in splitter.split(np.zeros_like(y), y)],
         "stratified_kfold",

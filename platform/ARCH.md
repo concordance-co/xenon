@@ -1309,3 +1309,24 @@ These need to be decided before implementation:
 - Keep cloud tests out of normal PR flow by default: run local contract tests
   always, Modal transport tests nightly or explicitly, and tiny vLLM GPU smoke
   tests for release gates.
+- Keep training out of this repo. Proxy training for the activation-proxy
+  ladder (LoRA adapters, output and activation distillation) belongs in a
+  sibling repo with its own Modal image, because vLLM's torch pin conflicts
+  with a current peft/transformers stack. Xenon keeps teacher capture, the
+  patch op, probe and map fitting, and workflow orchestration.
+- Exchange with the training sibling through files on a shared Modal volume,
+  not shared imports. Xenon exports teacher activations at registered sites
+  and positions, frozen map parameters, source-group and partition ids, and
+  token alignment records. The sibling returns a merged bf16 checkpoint, the
+  parameter mask and its verification, seeds, a training log, and a run record
+  in the ladder's Section 11.2 schema.
+- Merge adapters before handing a trained proxy back. `VLLMEngine` has no LoRA
+  path, and the patch custom op is untested against vLLM LoRA. A merged
+  checkpoint is a plain model directory with a clean pinned-revision hash.
+- Measure the HF-to-vLLM numeric gap once at Level 0. A proxy trained under HF
+  kernels and evaluated under vLLM kernels will drift by a few thousandths in
+  answer probability; the sibling's HF forward path doubles as an independent
+  implementation of the intervention for the Level 0 hook checks.
+- Precompute teacher activations for training rather than running the teacher
+  online in the training loop. This reuses the tensors the map was fit on and
+  keeps teacher compute as a separately accounted xenon run.

@@ -94,6 +94,7 @@ def build_vllm_session_runtime(
     engine: "VLLMEngine",
     specs: Sequence[OperationSpec],
     progress_callback: Any | None = None,
+    preflight_spec: OperationSpec | None = None,
 ) -> VLLMSessionRuntime:
     """Construct one loaded vLLM runtime for a compatible operation group."""
 
@@ -121,11 +122,19 @@ def build_vllm_session_runtime(
 
     enable_model_load_progress(llm_kwargs, progress_callback)
     load_started = time.perf_counter()
-    tokenizer_started = time.perf_counter()
-    tokenizer = AutoTokenizer.from_pretrained(engine.resolved_model_path(), trust_remote_code=True)
-    tokenizer_seconds = time.perf_counter() - tokenizer_started
-    engine_started = time.perf_counter()
     try:
+        tokenizer_started = time.perf_counter()
+        tokenizer = AutoTokenizer.from_pretrained(engine.resolved_model_path(), trust_remote_code=True)
+        tokenizer_seconds = time.perf_counter() - tokenizer_started
+        from .capture import _preflight_spec_prompt_lengths
+
+        preflight_started = time.perf_counter()
+        for spec in specs_tuple:
+            _preflight_spec_prompt_lengths(engine=engine, spec=spec, tokenizer=tokenizer)
+        if preflight_spec is not None:
+            _preflight_spec_prompt_lengths(engine=engine, spec=preflight_spec, tokenizer=tokenizer)
+        preflight_seconds = time.perf_counter() - preflight_started
+        engine_started = time.perf_counter()
         with model_load_progress_monitor(progress_callback):
             llm = LLM(**llm_kwargs)
     except Exception:
@@ -135,6 +144,7 @@ def build_vllm_session_runtime(
     engine_init_seconds = time.perf_counter() - engine_started
     load_performance = {
         "tokenizer_load_seconds": float(tokenizer_seconds),
+        "prompt_preflight_seconds": float(preflight_seconds),
         "engine_init_seconds": float(engine_init_seconds),
         "model_ready_seconds": float(time.perf_counter() - load_started),
     }
@@ -267,6 +277,12 @@ def _base_llm_kwargs(engine: "VLLMEngine") -> dict[str, Any]:
         llm_kwargs["max_num_batched_tokens"] = int(engine.max_num_batched_tokens)
     if bool(engine.async_scheduling):
         llm_kwargs["async_scheduling"] = True
+    if engine.dtype is not None:
+        llm_kwargs["dtype"] = engine.dtype
+    if engine.revision is not None:
+        llm_kwargs["revision"] = engine.revision
+    if engine.model_seed is not None:
+        llm_kwargs["seed"] = engine.model_seed
     llm_kwargs.update(engine.extra_llm_kwargs())
     return llm_kwargs
 

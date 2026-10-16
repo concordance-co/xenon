@@ -27,4 +27,13 @@ def load_from_kind_registry(
     return loader(payload)
 
 
-__all__ = ["load_from_kind_registry"]
+def register_kind(registry: dict[str, T], kind: str, value: T, *, label: str) -> None:
+    """Register trusted code explicitly; serialized payloads never supply loaders."""
+    if not isinstance(kind, str) or not kind.strip() or kind != kind.strip():
+        raise ValueError(f"{label} kind must be a non-empty, whitespace-free name")
+    if kind in registry:
+        raise ValueError(f"{label} kind already registered: {kind!r}")
+    registry[kind] = value
+
+
+__all__ = ["load_from_kind_registry", "register_kind"]

@@ -151,7 +151,7 @@ def test_modal_build_app_threads_runtime_and_lifecycle(monkeypatch: pytest.Monke
     assert app.function_kwargs["min_containers"] == 1
     assert app.function_kwargs["scaledown_window"] == 900
     assert app.function_kwargs["volumes"] == {"/models": ("models", True)}
-    assert app.function_kwargs["secrets"] == ["huggingface"]
+    assert app.function_kwargs["secrets"] == [("huggingface", ["HF_TOKEN"])]
     assert "serialized" not in app.function_kwargs
     assert app.function_kwargs["name"] == "deployment_echo"
     assert fake_modal.images[-1].env_payload["A"] == "target"
@@ -251,8 +251,8 @@ def _install_fake_modal(monkeypatch: pytest.MonkeyPatch) -> Any:
 
     class FakeSecret:
         @staticmethod
-        def from_name(name: str) -> str:
-            return name
+        def from_name(name: str, *, required_keys: list[str]) -> tuple[str, list[str]]:
+            return name, required_keys
 
     class FakeVolume:
         @staticmethod

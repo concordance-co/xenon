@@ -1526,6 +1526,7 @@ def test_local_runner_applies_runtime_env_and_runner_env_overrides(
     from pipelines_v2.engine.base import PythonRuntimeSpec
 
     class EnvEngine:
+        sequence_length = 8
         def identity(self) -> dict[str, Any]:
             return {"kind": "env_engine"}
 
@@ -1548,9 +1549,8 @@ def test_local_runner_applies_runtime_env_and_runner_env_overrides(
             return ()
 
         def capture(self, spec: CaptureSpec) -> EngineCaptureResult:
-            del spec
             return EngineCaptureResult(
-                features={},
+                features=ToyEngine().capture(spec).features,
                 metadata={
                     "spec_only": os.environ.get("XENON_TEST_SPEC_ONLY"),
                     "shared": os.environ.get("XENON_TEST_SHARED"),
@@ -1579,7 +1579,8 @@ def test_local_runner_applies_runtime_env_and_runner_env_overrides(
         )
     )
 
-    assert artifact.manifest().metadata == {
+    assert artifact.manifest().provenance_status == "unresolved"
+    assert {key: value for key, value in artifact.manifest().metadata.items() if key in {"spec_only", "shared", "runner_only"}} == {
         "spec_only": "spec_only",
         "shared": "runner_value",
         "runner_only": "runner_only",
@@ -2596,7 +2597,9 @@ def test_remote_executor_shards_generation_by_prompt_hash_and_merges(tmp_path: P
     assert payload["summary"]["shard_count"] == 3
 
 
-def test_remote_executor_reuses_completed_shard_artifact_on_resume(tmp_path: Path) -> None:
+def test_remote_executor_reuses_completed_shard_artifact_on_resume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.core.provenance as provenance_module
+
     dataset = Dataset.from_examples(
         [Example(key="ex_a", prompt="prompt a")],
         name="resume_shard_dataset",
@@ -2606,11 +2609,16 @@ def test_remote_executor_reuses_completed_shard_artifact_on_resume(tmp_path: Pat
         dataset=dataset,
         generation=GenerationSpec(enabled=True, max_tokens=2),
     )
+    # This fake worker has complete observed facts; unresolved real workers may not reuse.
+    observed = provenance_module.resolve_provenance(replace(spec, engine=ToyEngine()))
+    assert observed.identity_complete
+    monkeypatch.setattr(provenance_module, "resolve_provenance", lambda *_args, **_kwargs: observed)
     context = {
         "run_id": "wr_resume",
         "workflow_step_key": "wf.generate",
         "execution_shard": {"index": 0, "count": 2},
     }
+    context = provenance_module.execution_context(spec, {"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}}, context)
     first = execute_remote(
         runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
         store_config={"kind": "local", "root": str(tmp_path / "artifacts")},
@@ -2620,9 +2628,6 @@ def test_remote_executor_reuses_completed_shard_artifact_on_resume(tmp_path: Pat
     result_path = Path(first["storage_refs"]["result"]["path"])
     with result_path.open("r", encoding="utf-8") as f:
         payload = json.load(f)
-    payload["rows"] = [{"example_key": "sentinel", "example": {"prompt_hash": "sentinel"}}]
-    with result_path.open("w", encoding="utf-8") as f:
-        json.dump(payload, f)
 
     second = execute_remote(
         runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
@@ -2633,7 +2638,7 @@ def test_remote_executor_reuses_completed_shard_artifact_on_resume(tmp_path: Pat
 
     assert second["artifact_id"] == first["artifact_id"]
     with result_path.open("r", encoding="utf-8") as f:
-        assert json.load(f)["rows"][0]["example_key"] == "sentinel"
+        assert json.load(f) == payload
 
     branched = execute_remote(
         runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
@@ -2645,7 +2650,10 @@ def test_remote_executor_reuses_completed_shard_artifact_on_resume(tmp_path: Pat
     assert branched["artifact_id"] != first["artifact_id"]
 
 
-def test_remote_executor_reuses_generation_artifact_when_only_vllm_batch_size_changes(tmp_path: Path) -> None:
+def test_remote_executor_reuses_generation_artifact_when_only_vllm_batch_size_changes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.core.provenance as provenance_module
+    from pipelines_v2.runtime.remote_executor import _apply_execution_shard, _bind_execution_dataset
+
     dataset = Dataset.from_examples(
         [Example(key="ex_a", prompt="prompt a")],
         name="resume_vllm_batch_dataset",
@@ -2664,14 +2672,20 @@ def test_remote_executor_reuses_generation_artifact_when_only_vllm_batch_size_ch
         generation=GenerationSpec(enabled=True, max_tokens=None),
     )
     larger_batch_spec = replace(base_spec, engine=larger_batch_engine)
+    # This fake worker has complete observed facts; unresolved real workers may not reuse.
+    observed = provenance_module.resolve_provenance(replace(base_spec, engine=ToyEngine()))
+    assert observed.identity_complete
+    monkeypatch.setattr(provenance_module, "resolve_provenance", lambda *_args, **_kwargs: observed)
     context = {
         "run_id": "wr_resume_vllm",
         "workflow_step_key": "wf.generate",
         "execution_shard": {"index": 0, "count": 2},
     }
+    context = provenance_module.execution_context(base_spec, {"kind": "modal", "resources": {"gpu": "H200", "shard_count": 2}}, context)
 
     assert base_spec.spec_hash() != larger_batch_spec.spec_hash()
     assert base_spec.semantic_hash() == larger_batch_spec.semantic_hash()
+    _bind_execution_dataset(context, _apply_execution_shard(spec=base_spec, workflow_context=context).dataset)
     artifact_id = _artifact_id_for(spec=base_spec, workflow_context=context)
     assert artifact_id == _artifact_id_for(spec=larger_batch_spec, workflow_context=context)
 
@@ -2698,10 +2712,11 @@ def test_remote_executor_reuses_generation_artifact_when_only_vllm_batch_size_ch
         input_artifact_refs=(),
         example_coverage={"count": 1},
         storage_refs={"result": result_ref},
-        metadata={"execution_shard": {"index": 0, "count": 2}},
+        metadata={"execution_shard": {"index": 0, "count": 2}, "provenance_v1": context["provenance_v1"]},
         workflow_context=context,
     )
-    store.write_json(artifact_id, "manifest.json", manifest.to_dict())
+    from pipelines_v2.storage.finalization import finalize_manifest
+    finalize_manifest(store, manifest)
 
     reused = execute_remote(
         runner_config={"kind": "modal", "resources": {"gpu": "H200", "shard_count": 2}},
@@ -2715,7 +2730,10 @@ def test_remote_executor_reuses_generation_artifact_when_only_vllm_batch_size_ch
     assert reused["operation_semantic_hash"] == larger_batch_spec.semantic_hash()
 
 
-def test_remote_executor_resumes_generation_from_partial_result_rows(tmp_path: Path) -> None:
+def test_remote_executor_resumes_generation_from_partial_result_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.core.provenance as provenance_module
+    from pipelines_v2.runtime.remote_executor import _apply_execution_shard, _bind_execution_dataset
+
     examples = [
         Example(key="ex_a", prompt="prompt a"),
         Example(key="ex_b", prompt="prompt b"),
@@ -2727,21 +2745,24 @@ def test_remote_executor_resumes_generation_from_partial_result_rows(tmp_path: P
         dataset=dataset,
         generation=GenerationSpec(enabled=True, max_tokens=2),
     )
+    # This fake worker has complete observed facts; unresolved real workers may not reuse.
+    observed = provenance_module.resolve_provenance(replace(spec, engine=ToyEngine()))
+    assert observed.identity_complete
+    monkeypatch.setattr(provenance_module, "resolve_provenance", lambda *_args, **_kwargs: observed)
     context = {
         "run_id": "wr_partial_resume",
         "workflow_step_key": "wf.generate",
-        "execution_shard": {"index": 0, "count": 2},
+        "execution_shard": {"index": 0, "count": 1},
     }
+    context = provenance_module.execution_context(spec, {"kind": "modal", "resources": {"gpu": "L4", "shard_count": 1}}, context)
     store = LocalArtifactStore(root=tmp_path / "artifacts")
+    _bind_execution_dataset(context, _apply_execution_shard(spec=spec, workflow_context=context).dataset)
     artifact_id = _artifact_id_for(spec=spec, workflow_context=context)
     store.ensure_artifact_dir(artifact_id)
-    store.write_json(
-        artifact_id,
-        "result.json",
-        {
-            "kind": "generation_run_result",
-            "summary": {"example_count": 1, "partial": True},
-            "rows": [
+    from pipelines_v2.runtime.remote_executor import _write_generation_result_payload
+    _write_generation_result_payload(store=store, artifact_id=artifact_id, total_example_count=3, partial=True, semantic_hash=spec.semantic_hash(),
+        expected_keys=[str(row.key) for row in _apply_execution_shard(spec=spec, workflow_context=context).dataset.examples], shard=context.get("execution_shard"),
+        metadata={"provenance_v1": context["provenance_v1"]}, rows=[
                 {
                     "example_key": "ex_b",
                     "example": examples[1].to_dict(),
@@ -2750,12 +2771,10 @@ def test_remote_executor_resumes_generation_from_partial_result_rows(tmp_path: P
                     "finish_reason": "stop",
                     "request_id": "partial",
                 }
-            ],
-        },
-    )
+            ])
 
     manifest = execute_remote(
-        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 2}},
+        runner_config={"kind": "modal", "resources": {"gpu": "L4", "shard_count": 1}},
         store_config=store.identity(),
         spec_payload=spec.to_dict(),
         workflow_context=context,
@@ -3326,10 +3345,30 @@ def test_modal_worker_merges_spec_runtime_secrets_into_runtime_spec() -> None:
     assert [secret.env_var for secret in runtime_spec.secrets] == ["XENON_DATABASE_URL"]
 
 
+def _mock_admission_for_transport_fixture(monkeypatch):
+    """These fakes test transport/env; lock and readiness behavior have dedicated tests."""
+    import pipelines_v2.runtime.modal_worker as worker
+    from pipelines_v2.runtime.readiness import AdmissionRecord
+    from pipelines_v2.runtime.admission import AdmissionCheck, workload_envelope
+    from pipelines_v2.core.provenance import resolve_provenance
+    from pipelines_v2.operations import operation_spec_from_dict
+    original_builder = worker.build_locked_image
+    monkeypatch.setattr(worker, "build_locked_image", lambda modal, runtime: original_builder(modal, replace(runtime, lock=None)))
+    def call(function, *args, timeout_seconds=None):
+        if function._fn.__name__ == "_remote_readiness":
+            runner, _, payload = args
+            operation = operation_spec_from_dict(payload)
+            return AdmissionRecord((AdmissionCheck("fixture", "readiness", "passed", "fixture", "Mocked target readiness"),),
+                resolve_provenance(operation, runner), workload_envelope(operation, runner).to_dict(), scope="cpu_preflight").to_dict()
+        return function.remote(*args)
+    monkeypatch.setattr(worker, "bounded_remote_call", call)
+
+
 def test_modal_worker_threads_runtime_env_to_function_kwargs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    _mock_admission_for_transport_fixture(monkeypatch)
     captured: dict[str, object] = {}
     progress_events: list[dict[str, object]] = []
 
@@ -3361,8 +3400,8 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
 
     class FakeSecret:
         @staticmethod
-        def from_name(name: str) -> object:
-            return {"name": name}
+        def from_name(name: str, *, required_keys: list[str]) -> object:
+            return {"name": name, "required_keys": required_keys}
 
     class FakeFunction:
         def __init__(self, fn: object) -> None:
@@ -3435,7 +3474,7 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
     result = run_on_modal(
         runner_config={
             "kind": "modal",
-            "resources": {"max_containers": 1},
+            "resources": {"max_containers": 1, "secrets": [{"name": "test-db", "env_vars": ["TEST_DB"]}]},
         },
         store_config={
             "kind": "modal_volume",
@@ -3464,11 +3503,14 @@ def test_modal_worker_threads_runtime_env_to_function_kwargs(
     ]
     assert progress_events[0]["metrics"]["source_mount_count"] >= 0
 
+    assert captured["function_kwargs"]["secrets"] == [{"name": "test-db", "required_keys": ["TEST_DB"]}]
+
 
 def test_modal_worker_shards_model_bound_specs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    _mock_admission_for_transport_fixture(monkeypatch)
     captured: dict[str, object] = {}
     shard_contexts: list[dict[str, object]] = []
     merged_inputs: list[dict[str, object]] = []
@@ -3500,7 +3542,7 @@ def test_modal_worker_shards_model_bound_specs(
 
     class FakeSecret:
         @staticmethod
-        def from_name(name: str) -> object:
+        def from_name(name: str, *, required_keys: list[str]) -> object:
             return {"name": name}
 
     class FakeFunction:
@@ -3632,6 +3674,7 @@ def test_modal_worker_shards_batched_model_bound_specs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    _mock_admission_for_transport_fixture(monkeypatch)
     captured: dict[str, object] = {}
     execute_many_calls: list[list[dict[str, object]]] = []
     merge_calls: list[dict[str, object]] = []
@@ -3663,8 +3706,8 @@ def test_modal_worker_shards_batched_model_bound_specs(
 
     class FakeSecret:
         @staticmethod
-        def from_name(name: str) -> object:
-            return {"name": name}
+        def from_name(name: str, *, required_keys: list[str]) -> object:
+            return {"name": name, "required_keys": required_keys}
 
     class FakeFunction:
         def __init__(self, fn: object) -> None:
@@ -3798,7 +3841,7 @@ def test_modal_worker_shards_batched_model_bound_specs(
     results = run_many_on_modal(
         runner_config={
             "kind": "modal",
-            "resources": {"max_containers": 2, "shard_count": 2},
+            "resources": {"max_containers": 2, "shard_count": 2, "secrets": [{"name": "test-db", "env_vars": ["TEST_DB"]}]},
         },
         store_config={
             "kind": "modal_volume",
@@ -3835,11 +3878,15 @@ def test_modal_worker_shards_batched_model_bound_specs(
     assert "remote_batch_shards_submitted" in [event["stage"] for event in progress_events]
     assert "remote_batch_shards_finished" in [event["stage"] for event in progress_events]
 
+    assert all(kwargs["secrets"] == [{"name": "test-db", "required_keys": ["TEST_DB"]}]
+               for kwargs in captured["function_kwargs"])
+
 
 def test_modal_worker_runner_env_overrides_spec_runtime_env(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    _mock_admission_for_transport_fixture(monkeypatch)
     captured: dict[str, object] = {}
 
     class FakeImage:
@@ -3868,7 +3915,7 @@ def test_modal_worker_runner_env_overrides_spec_runtime_env(
 
     class FakeSecret:
         @staticmethod
-        def from_name(name: str) -> object:
+        def from_name(name: str, *, required_keys: list[str]) -> object:
             return {"name": name}
 
     class FakeFunction:
@@ -3990,7 +4037,8 @@ def test_workflow_orchestrator_records_runtime_app_id_for_completed_remote_step(
         spec_payload: dict[str, object],
         workflow_context: dict[str, object] | None = None,
     ) -> dict[str, object]:
-        return {
+        from pipelines_v2.storage.finalization import finalize_manifest
+        payload = {
             "artifact_id": "capture_test",
             "artifact_kind": "capture",
             "schema_version": 1,
@@ -4008,6 +4056,7 @@ def test_workflow_orchestrator_records_runtime_app_id_for_completed_remote_step(
             "metadata": {},
             "workflow_context": dict(workflow_context or {}),
         }
+        return finalize_manifest(LocalArtifactStore(tmp_path / "fixture-artifacts"), ArtifactManifest.from_dict(payload)).to_dict()
 
     monkeypatch.setattr("pipelines_v2.runtime.modal.run_on_modal", fake_run_on_modal)
     catalog = FileCatalog(tmp_path / "catalog")
@@ -4060,7 +4109,8 @@ def test_workflow_orchestrator_persists_progress_snapshot_for_remote_step_submis
                     "message": "Modal app started",
                 }
             )
-        return {
+        from pipelines_v2.storage.finalization import finalize_manifest
+        payload = {
             "artifact_id": "capture_test_progress",
             "artifact_kind": "capture",
             "schema_version": 1,
@@ -4078,6 +4128,7 @@ def test_workflow_orchestrator_persists_progress_snapshot_for_remote_step_submis
             "metadata": {},
             "workflow_context": dict(workflow_context or {}),
         }
+        return finalize_manifest(LocalArtifactStore(tmp_path / "fixture-artifacts"), ArtifactManifest.from_dict(payload)).to_dict()
 
     monkeypatch.setattr("pipelines_v2.runtime.modal.run_on_modal", fake_run_on_modal)
     catalog = FileCatalog(tmp_path / "catalog")
@@ -4702,7 +4753,22 @@ def test_capture_spec_semantic_hash_ignores_vllm_batching_runtime_tuning() -> No
     assert spec_a.semantic_hash() == spec_b.semantic_hash()
 
 
-def test_workflow_orchestrator_records_workflow_lineage_and_can_resume(tmp_path: Path) -> None:
+def test_workflow_orchestrator_records_workflow_lineage_and_can_resume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.core.provenance as provenance_module
+
+    original_resolver = provenance_module.resolve_provenance
+
+    def fixture_resolver(spec, *args, **kwargs):
+        # Explicit fixture policy for reuse assertions, not live qualification.
+        if spec.kind == "probe":
+            kwargs["numerics"] = {
+                "dtype": "fixture-float32", "attention_implementation": "not_applicable",
+                "device": "cpu", "determinism": "fixture-fixed", "compile": False,
+                "matmul": "fixture-cpu",
+            }
+        return original_resolver(spec, *args, **kwargs)
+
+    monkeypatch.setattr(provenance_module, "resolve_provenance", fixture_resolver)
     dataset = Dataset.from_examples(
         [
             Example(key="a", prompt="alpha", labels={"class": "pos", "split": "train"}, case_key="c1"),
@@ -5000,7 +5066,22 @@ def test_workflow_orchestrator_resume_recovers_persisted_artifact_from_running_s
     assert step_records["probe"].status == "completed"
 
 
-def test_workflow_orchestrator_reuses_matching_completed_steps_across_runs(tmp_path: Path) -> None:
+def test_workflow_orchestrator_reuses_matching_completed_steps_across_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import pipelines_v2.core.provenance as provenance_module
+
+    original_resolver = provenance_module.resolve_provenance
+
+    def fixture_resolver(spec, *args, **kwargs):
+        # Explicit fixture policy for reuse assertions, not live qualification.
+        if spec.kind == "probe":
+            kwargs["numerics"] = {
+                "dtype": "fixture-float32", "attention_implementation": "not_applicable",
+                "device": "cpu", "determinism": "fixture-fixed", "compile": False,
+                "matmul": "fixture-cpu",
+            }
+        return original_resolver(spec, *args, **kwargs)
+
+    monkeypatch.setattr(provenance_module, "resolve_provenance", fixture_resolver)
     dataset = Dataset.from_examples(
         [
             Example(key="a", prompt="alpha", labels={"class": "pos", "split": "train"}, case_key="c1"),
@@ -7304,6 +7385,21 @@ def test_pipelines_v2_cli_rerun_step_and_from_step_use_prior_run_artifacts(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    import pipelines_v2.core.provenance as provenance_module
+
+    original_resolver = provenance_module.resolve_provenance
+
+    def fixture_resolver(spec, *args, **kwargs):
+        # Explicit fixture policy for reuse assertions, not live qualification.
+        if spec.kind == "probe":
+            kwargs["numerics"] = {
+                "dtype": "fixture-float32", "attention_implementation": "not_applicable",
+                "device": "cpu", "determinism": "fixture-fixed", "compile": False,
+                "matmul": "fixture-cpu",
+            }
+        return original_resolver(spec, *args, **kwargs)
+
+    monkeypatch.setattr(provenance_module, "resolve_provenance", fixture_resolver)
     workflow_file = _write_cli_local_workflow_file(tmp_path)
     monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
     monkeypatch.setenv("XENON_NEON_DATABASE_URL", "")
@@ -7385,6 +7481,21 @@ def test_pipelines_v2_cli_rerun_step_supports_mixed_shared_and_local_catalog_run
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    import pipelines_v2.core.provenance as provenance_module
+
+    original_resolver = provenance_module.resolve_provenance
+
+    def fixture_resolver(spec, *args, **kwargs):
+        # Explicit fixture policy for reuse assertions, not live qualification.
+        if spec.kind == "probe":
+            kwargs["numerics"] = {
+                "dtype": "fixture-float32", "attention_implementation": "not_applicable",
+                "device": "cpu", "determinism": "fixture-fixed", "compile": False,
+                "matmul": "fixture-cpu",
+            }
+        return original_resolver(spec, *args, **kwargs)
+
+    monkeypatch.setattr(provenance_module, "resolve_provenance", fixture_resolver)
     workflow_file = _write_cli_mixed_catalog_workflow_file(tmp_path)
     monkeypatch.setenv("XENON_HOME", str(tmp_path / ".xenon"))
 

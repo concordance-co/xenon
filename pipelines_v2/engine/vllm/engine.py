@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from pathlib import PurePosixPath
 from typing import Any
@@ -39,6 +41,9 @@ class VLLMEngine:
     reasoning_parser: str | None = None
     enable_thinking: bool | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+    dtype: str | None = field(default=None, metadata={"omit_if_default": True})
+    revision: str | None = field(default=None, metadata={"omit_if_default": True})
+    model_seed: int | None = field(default=None, metadata={"omit_if_default": True})
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "VLLMEngine":
@@ -82,6 +87,9 @@ class VLLMEngine:
             "reasoning_parser": self.reasoning_parser,
             "enable_thinking": self.enable_thinking,
             "extra": self.extra,
+            **({"dtype": self.dtype} if self.dtype is not None else {}),
+            **({"revision": self.revision} if self.revision is not None else {}),
+            **({"model_seed": self.model_seed} if self.model_seed is not None else {}),
         }
 
     def semantic_identity(self) -> dict[str, Any]:
@@ -95,6 +103,9 @@ class VLLMEngine:
             "reasoning_parser": self.reasoning_parser,
             "enable_thinking": self.enable_thinking,
             "extra": self.extra,
+            **({"dtype": self.dtype} if self.dtype is not None else {}),
+            **({"revision": self.revision} if self.revision is not None else {}),
+            **({"model_seed": self.model_seed} if self.model_seed is not None else {}),
         }
 
     def extra_llm_kwargs(self) -> dict[str, Any]:
@@ -142,7 +153,14 @@ class VLLMEngine:
             EngineCapability.REQUEST_SCOPED_INTERVENTIONS,
         }
 
+    def supported_input_modalities(self) -> frozenset[str]:
+        return frozenset({"text"})
+
+    def supported_patch_operators(self) -> frozenset[str]:
+        return frozenset({"interchange", "residual_path", "project_out", "add_direction", "swap_mean", "swap_components", "random_control"})
+
     def runtime_spec(self) -> PythonRuntimeSpec:
+        from pipelines_v2.runtime.locks import load_runtime_lock
         env = {
             "VLLM_ALLOW_INSECURE_SERIALIZATION": "1",
             "VLLM_COMPILE_CACHE_SAVE_FORMAT": "binary",
@@ -162,6 +180,7 @@ class VLLMEngine:
         # Modal rebuild can silently change behavior. These constraints match
         # vLLM 0.25.1's CUDA requirements.
         return PythonRuntimeSpec(
+            lock=load_runtime_lock("vllm-linux"),
             pip_packages=(
                 "matplotlib",
                 "vllm==0.25.1",
@@ -177,6 +196,53 @@ class VLLMEngine:
 
     def planning_errors(self, spec: Any) -> tuple[str, ...]:
         errors: list[str] = []
+        if self.dtype is not None and self.dtype not in {"auto", "float16", "half", "bfloat16", "float32", "float"}:
+            errors.append("VLLMEngine.dtype is unsupported")
+        if self.model_seed is not None and (type(self.model_seed) is not int or not 0 <= self.model_seed < 2**32):
+            errors.append("VLLMEngine.model_seed must be an integer in [0, 2**32)")
+        if not isinstance(self.model_id, str) or not self.model_id.strip():
+            errors.append("VLLMEngine.model_id must be a non-empty string")
+        for name in (
+            "tensor_parallel_size", "pipeline_parallel_size", "max_num_seqs",
+            "max_model_len", "max_num_batched_tokens",
+        ):
+            value = getattr(self, name)
+            if value is None and name in {"max_model_len", "max_num_batched_tokens"}:
+                continue
+            if type(value) is not int or value <= 0:
+                errors.append(f"VLLMEngine.{name} must be a positive integer")
+        utilization = self.gpu_memory_utilization
+        if (
+            type(utilization) not in (int, float)
+            or not math.isfinite(utilization)
+            or not 0 < utilization <= 1
+        ):
+            errors.append("VLLMEngine.gpu_memory_utilization must be in (0, 1]")
+        for name in (
+            "enforce_eager", "enable_prefix_caching", "enable_chunked_prefill",
+            "async_scheduling", "add_generation_prompt", "enable_thinking",
+        ):
+            value = getattr(self, name)
+            if value is None and name == "enable_thinking":
+                continue
+            if type(value) is not bool:
+                errors.append(f"VLLMEngine.{name} must be a boolean")
+        if not isinstance(self.extra, Mapping):
+            errors.append("VLLMEngine.extra must be a mapping")
+        else:
+            allowed = {"llm_kwargs", "chat_template_kwargs", "attention_backend", "attention_config"}
+            unknown = sorted(str(key) for key in self.extra if key not in allowed)
+            if any(any(part in key.lower() for part in ("token", "password", "credential", "api_key")) for key in unknown):
+                errors.append("Raw credential fields are forbidden in VLLMEngine.extra; use RuntimeSecret/environment binding names")
+            elif unknown:
+                errors.append(f"Unsupported VLLMEngine.extra keys: {', '.join(unknown)}")
+            for name in ("llm_kwargs", "chat_template_kwargs"):
+                if name in self.extra and not isinstance(self.extra[name], Mapping):
+                    errors.append(f"VLLMEngine.extra.{name} must be a mapping")
+            try:
+                self.extra_llm_kwargs()
+            except (TypeError, ValueError) as exc:
+                errors.append(str(exc))
         wants_routing = isinstance(spec, CaptureSpec) and any(isinstance(site, MoERoutingSite) for site in spec.sites)
         if wants_routing and bool(self.enable_prefix_caching):
             errors.append(

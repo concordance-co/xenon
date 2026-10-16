@@ -4,14 +4,16 @@ Hand-curated reference for the Modal surface area `pipelines_v2` actually uses.
 Not a full mirror; if you need something not covered here, fetch the upstream
 docs at https://modal.com/docs.
 
+Repo usage reviewed: 2026-10-16 (code inspection; upstream API reference is linked above).
+
 Primary call site: `pipelines_v2/runtime/modal_worker.py`. Read it to see how
 these primitives compose in practice.
 
 ## Core primitives used in this repo
 
 ### `modal.App(name)`
-Per-workflow app, named dynamically (see `_modal_app_name`). One app per
-workflow run; functions are registered on it then invoked via `.remote(...)`.
+Apps are named dynamically (see `_modal_app_name`). Ordinary operations create
+ephemeral apps; opt-in SDXL scopes share one app across workflow steps.
 
 ### `modal.Image.debian_slim(python_version=...)`
 Base image. Chained with:
@@ -38,13 +40,13 @@ launch.
 - `timeout` — int seconds (xenon defaults to 7200)
 - `serialized=True` — required for runtime-built functions; image is built once
   and the function body is pickled
-- `gpu` — string or list, e.g. `"A10G"`, `"H100:2"`
+- `gpu` — validated device/count string, e.g. `"L4"`, `"H100:2"`
 - `cpu`, `memory` (MB), `max_containers`, `env`
 
 ### Invocation
 `fn.remote(*args, **kwargs)` — synchronous remote call returning the result.
-Async variants (`.remote.aio(...)`, `.spawn(...)`) exist but xenon does not
-currently use them in the runtime path.
+`runtime/deadlines.py` uses `.spawn(...)` with bounded submit/get/cancel calls
+so submission and result waits have explicit deadlines.
 
 ## Gotchas (xenon-specific, debugged in past work)
 
@@ -79,16 +81,22 @@ is cleaner than `add_local_dir` + PYTHONPATH. The `pipelines_v2` runtime path
 manipulates PYTHONPATH explicitly because it builds images dynamically; for
 hand-written modal apps, prefer the named-source form.
 
-## What xenon does NOT use (skip these in upstream docs)
+## Other usage and boundaries
+
+The writer registry uses `modal.Dict` (`storage/leases.py`). Deployment serving
+uses `modal.fastapi_endpoint` (`runtime/modal_deployments.py`).
+
+Currently unused:
 
 - `modal.Cls` with `parameter()` — runtime path uses dynamic functions instead
 - `modal.Sandbox` — not used
-- `modal.Queue`, `modal.Dict` — not used in the platform path
-- Web endpoints / `@web_endpoint` — dashboard runs locally, not on Modal
+- `modal.Queue` — not used in the platform path
+
 - Modal's scheduling primitives (`modal.Cron`, schedules) — workflows are
   user-triggered, not scheduled
 
-If a task seems to need any of these, escalate to the user before adopting.
+Check current code before extending the platform; this list describes usage,
+not an approval requirement.
 
 ## Where to look in the repo
 

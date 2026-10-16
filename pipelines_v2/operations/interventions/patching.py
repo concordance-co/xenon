@@ -4,6 +4,7 @@ from .comparison import PatchComparisonSpec
 from .generation import GenerationRunSpec, PatchedGenerationSpec
 from .recipes import (
     ActivationPatchSpec,
+    ScalePatch,
     AddDirectionPatch,
     InterchangePatch,
     PatchApplication,
@@ -17,6 +18,7 @@ from .sites import InterventionSite, ResidualInterventionSite
 
 __all__ = [
     "ActivationPatchSpec",
+    "ScalePatch",
     "AddDirectionPatch",
     "GenerationRunSpec",
     "InterchangePatch",

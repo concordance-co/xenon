@@ -46,6 +46,7 @@ def run_activation_bank(spec: ActivationBankSpec) -> OperationExecutionResult:
         result_layers[str(layer)] = {
             key: {
                 "values": layer_payload[key]["values"],
+                **({"tokens":list(layer_payload[key]["tokens"])} if "model_identity" in payload and "tokens" in layer_payload[key] else {}),
                 "token_count": int(layer_payload[key].get("token_count", len(layer_payload[key]["values"]))),
                 "token_sections": dict(layer_payload[key].get("token_sections", {})),
             }
@@ -53,6 +54,7 @@ def run_activation_bank(spec: ActivationBankSpec) -> OperationExecutionResult:
         }
     payload_out = {
         "kind": "activation_bank_result",
+        **({key:payload[key] for key in ("model_identity","adapter_version") if key in payload}),
         "feature": feature_name(spec.feature),
         "site": str(payload.get("site") or ""),
         "layers": result_layers,
