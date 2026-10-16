@@ -1,13 +1,7 @@
-# Recognition microscope — plumbing phase
+# ViT recognition recipe
 
-Premise: make recognition-model image inputs, spatial/token coordinates, selected capture/edit and local reports usable through the public workflow API. The parent explicitly chose one ViT implementation instead of the original T15 ResNet example. The latest user scope requests plumbing checks, not a scientific evaluation.
+A completed CPU plumbing fixture for the pinned ViT model: two synthetic RGB patterns, selected block/token/channel capture, identity control, coordinate editing and a local report/gallery.
 
-Frozen fixture: official `google/vit-base-patch16-224` revision `3f49326eb077187dfe1c2a2bb15fbd74e6ab91e3`, exact weights/configuration/processor SHA256 checks, CPU FP32 eager. Two authored mathematical image patterns (128×192 gradient and checkerboard), RGB direct resize 224×224 with bilinear interpolation, no crop, normalization mean/std 0.5. Block 0 residual output, read tokens 0/1/98 and channels 0–7; edit token 98 channels 0–7 by zero, with a scale-one identity control. Token 0 is the class token. Spatial boxes label original patch coordinates, not post-attention receptive fields.
+Independent processor, forward, capture and edit checks passed. Synthetic patterns establish tensor and artifact behavior; they do not measure natural-image accuracy or semantic feature quality. GPU and additional recognition architectures require separate checks.
 
-Observed public run: `wr_t15_vit_microscope_final`, workflow hash `f30895ebd402d03ca70d5d4afacdb552b22b7d485da8dcffdfbab3d5f7cbb971`, 10.99 seconds, sampled peak process-tree RSS 0.72GiB, 436052 new artifact bytes. Identity was exact for both images. Maximum logit changes were 0.00457466 and 0.00281572; these show the selected edit propagates, not that any classifier concept has been identified.
-
-Independent direct-model oracle on the gradient image had exactly zero processor, forward, selected capture, edited-forward and unselected-coordinate errors. Identity was exact and hooks were removed. Eighty-five focused recognition/image/legacy tests passed. The initial CLI run exposed an existing dataclass reconstruction bug for ImageInput.schema_version (init=False); a one-line orchestrator fix now reconstructs constructor fields only, with a regression test.
-
-Recognition artifact `recognition_microscope_1_da53b7080fae` has complete C01 execution identity. It and ReportSpec `report_1_e3d1bda273d6` passed C03 integrity validation. ReportSpec retains the existing unresolved generic numerical policy. Prepared source image pixels are durable image-codec features; the gallery renders from stored artifacts. Evidence and raw diagnostics are retained in the T15 integration receipt under `.planning/evidence/T15/`.
-
-Closure: code complete, integration/Fable review pending. No natural-image corpus, optimized feature visualization, heldout interpretation, shuffled control study, GPU qualification or representative performance claim was attempted. Original broader T15 study acceptance remains pending. This is one executable bounded capability recipe, not a qualified multi-preset C05 research pack. Scientific verdict: not tested.
+Use [the recipe guide](README.md) and `workflow.py` for current execution instructions. Record new experiment outcomes in a new phase rather than extending this fixture’s old run history.

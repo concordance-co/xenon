@@ -1,15 +1,7 @@
-# Native microscope plumbing — phase 00
+# Native neuron microscope recipe
 
-Premise: make native Qwen neuron capture, signed context summaries, manual explanation records, single-coordinate edits and local reports usable through the existing workflow CLI. Latest user direction limits validation to plumbing; no research campaign or quality claim is intended.
+A completed plumbing fixture for Qwen3-0.6B native capture, signed context summaries, manual explanation records, selected-coordinate edits and bounded local reports. The workflow uses four authored prompts and three selected layer-0 neurons.
 
-Design: four original short authored prompts (France, arithmetic, weather, Python), with disjoint document IDs. The first two are discovery fixtures, the latter two heldout fixtures for provider-boundary testing only. Three fixed layer-0 neurons (0, 1, 2), last prompt token, all four Qwen SwiGLU quantities. Qwen3-0.6B official revision `c1899de289a04d12100db370d81485cdf75e47ca`, CPU FP32 eager, plain text without chat template or thinking wrapper. No sampling weights, representativeness or scientific heldout evaluation is claimed. Fixture text is authored here and imposes no third-party dataset terms.
+The manual description tests the provider interface; it is not a validated explanation. Larger-corpus evaluation, predictive explanations and stronger causal controls belong to a new research phase.
 
-One prompt has baseline, identity and neuron-0 gate-preactivation-zero arms, two generated tokens and target token IDs 10/20. Target IDs are engineering coordinates, not preregistered task metrics. One stored manual description tests the provider interface; neurons 1 and 2 remain unexplained. ReportSpec consumes bounded dossier output only. Original inputs and all exact settings live in `workflow.py`.
-
-Observed run: `wr_t13_neuron_microscope_final`, workflow hash `0a85285419c36c76f72a629767a2742df905dae91d9268c01f8f2fe957b96ad3`. Full offline run completed in 37.87s, sampled process-tree peak 4.90GiB, 378784 new artifact bytes. Twelve neuron/token observations were summarized. Identity target log probabilities and generated tokens were exact; the zero edit produced finite target deltas (token 10: +0.00250244, token 20: +0.02035046) while the two-token continuation stayed ` Paris.`. These establish execution plumbing only.
-
-All seven artifacts passed C03 validation. Capture/baseline/identity/edit C01 identities were complete. Summary/dossier/report retain explicitly unresolved generic-transform file-input and/or numerical policy/upstream fields; they are not scientifically qualified. Read-only inspector output lists exact unresolved fields. Fifteen focused deterministic tests cover signed values, exhaustive tiny comparison, deterministic retention, bounds, coordinate matching, discovery leakage, unknown explanations, payload envelopes and failed identity rejection.
-
-The initial run exposed a GenerationRun result-schema difference (no status field); the dossier adapter was corrected before the successful fresh run. No research settings were tuned. Detailed evidence is in the T13 integration receipt and `.planning/evidence/T13/`; canonical ReportSpec ID is `report_1_6a084c464577`. The user-facing inspector can recreate the reading view from stored local artifacts.
-
-Closure: code complete, integration/review pending. Scientific verdict not tested. Larger corpus/pilot, predictive explanations, blinded/shuffled/matched controls, uncertainty, human labels and 32B qualification remain pending in phase 01. This is a local executable capability fixture, not a completed Goodfire study or qualified multi-preset research pack.
+Use [the recipe guide](README.md) and `workflow.py` for current execution instructions. Record new experiment outcomes in a new phase rather than extending this fixture’s old run history.

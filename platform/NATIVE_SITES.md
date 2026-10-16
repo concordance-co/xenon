@@ -37,7 +37,7 @@ workspaces/local_research/.cache/runtime/bin/python -m pipelines_v2.cli workflow
 
 This command captures three selected neurons for each of the four Qwen quantities, performs one selected gate ablation with two generated tokens, and produces a local ReportSpec artifact. It uses one plain text prompt, no chat template, no thinking-mode prompt wrapper and no network during execution. The default scratch envelope enforces 8GiB aggregate RSS, 600s and 256MiB outputs. Use a new run ID for a rerun.
 
-For GPT-2, use the prepared pinned GPT-2 cache and `XENON_NATIVE_ARCHITECTURE=gpt2`; the same workflow selects head zero before projection. Synthetic tensor oracles verify both adapters; real Qwen CPU evidence is recorded in the T12 handoff. Modal L4 FP32/eager capture and edits also passed. MPS, Qwen3-32B and real MoE remain outside current support. These checks establish plumbing, not research findings.
+For GPT-2, use the prepared pinned GPT-2 cache and `XENON_NATIVE_ARCHITECTURE=gpt2`; the same workflow selects head zero before projection. Synthetic tensor oracles verify both adapters, and a real Qwen CPU recipe has passed. Modal L4 FP32/eager capture and edits also passed. MPS, Qwen3-32B and real MoE remain outside current support. These checks establish plumbing, not research findings.
 
 ## Configurable CPU/Modal execution
 

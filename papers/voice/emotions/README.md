@@ -82,15 +82,10 @@ Generation uses `H100:4`, tensor parallel `4`, max model length `16384`, and
 `max_num_seqs=8`; the parsed text checkpoint is table
 `papers_voice_emotions_llama70b_generated_rows_v1` in Neon.
 
-Generation calibration evidence:
-
-- Estimates and launch checklist:
-  `replication/LLAMA70B_GENERATION_STATUS.md`.
-- `wr_4a37c7ffd513_45ec6346`: 50 story prompts plus 5 neutral prompts at
-  `max_tokens=4096`; all 600 story rows parsed, but neutral required stronger
-  parsing and more headroom.
-- `wr_cd914fcd8f4f_23e35982`: 5 neutral prompts at `max_tokens=6144` with
-  strict QA; 60/60 neutral rows parsed, zero length caps.
+Generation, vector construction and validation entry points are indexed in
+[the workflow recipes](replication/README.md). Inspect the catalog and configured
+Neon table for current state before continuing a run; this guide does not keep a
+separate launch checklist or latest-run ledger.
 
 Data hooks:
 
@@ -102,14 +97,11 @@ Data hooks:
 - `EmotionPrecomputedVectorSpaceSpec(...)` remains the path for released or
   user-owned precomputed emotion-space artifacts.
 
-Paper-scale scaffold:
+Study inputs and boundaries:
 
-- `replication/` contains TODO-marked prompts, config, data manifest, report
-  directories, and workflows for recreating the paper's story-vector recipe
-  without treating the work as a normal Xenon research phase.
-
-Claim boundary: the Qwen smoke vectors are fixture-only, and the Llama 70B
-asset is still planned until the pilot and full runs record artifact IDs in the
-manifest. Paper-level claims require large labeled story/dialogue data,
-naturalistic transcript checks, preference or behavior evaluations, and
-intervention controls.
+- [Replication recipes](replication/README.md) describe the available workflow
+  entry points and distinguish executable settings from legacy planning scaffolds.
+- Model, dataset and vector availability must be checked against the configured
+  assets and catalog; their presence in a recipe does not establish completion.
+- Paper-level claims require labeled data, study-specific validation and
+  intervention controls. A small smoke run establishes plumbing only.

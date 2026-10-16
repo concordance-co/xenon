@@ -1,44 +1,9 @@
-# Data Manifest
+# Emotion replication data
 
-No generated data should be committed here.
+Checked-in assets are the label/topic lists used by prompt builders: `emotions.txt` and `topics.txt`. Generated stories, dialogues and captures are stored outside this directory.
 
-Use this file to record where the real replication data lives.
+For the Llama generation workflow, `generated_rows_table()` resolves `EMOTION_ASSET_GENERATED_ROWS_TABLE`, defaulting to `papers_voice_emotions_llama70b_generated_rows_v1`. The vector workflow consumes the configured prepared rows. Other recipes may use different tables or artifact-backed datasets; inspect the chosen workflow rather than assuming this default applies.
 
-## Emotional Stories
+Before continuing a study, record its actual table/query, row count and split, generator/model revision, parsing/filtering policy and source run IDs in the study's phase record. Discover captures and derived vectors through the catalog and asset manifest. This directory is not a live run ledger or a place to commit generated data.
 
-- TODO: Neon table or external dataset:
-- TODO: row count:
-- TODO: emotion count:
-- TODO: topic count:
-- TODO: generation date:
-- TODO: generator model:
-- TODO: uploader script or dataset loader:
-
-## Neutral Transcripts
-
-- TODO: Neon table or external dataset:
-- TODO: row count:
-- TODO: generation date:
-- TODO: generator model:
-- TODO: uploader script or dataset loader:
-
-## Emotional Dialogues
-
-- TODO: in scope? yes/no
-- TODO: storage location:
-- TODO: row count:
-- TODO: generator model:
-
-## Capture Artifacts
-
-- TODO: workflow run id:
-- TODO: capture artifact id:
-- TODO: residual site:
-- TODO: layers:
-
-## Derived Artifacts
-
-- TODO: emotion vector-space artifact id:
-- TODO: geometry artifact id:
-- TODO: exported direction artifact ids:
-
+See the [workflow index](../README.md) and [locality rules](../../../../../operations/LOCALITY.md).

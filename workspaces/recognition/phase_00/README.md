@@ -2,7 +2,7 @@
 
 A pinned open ViT classifies two synthetic image fixtures, captures selected block-output token/channel coordinates, runs exact identity and zero-edit controls, and produces a ReportSpec artifact. A local inspector renders the stored images and coordinates into a bounded gallery. This is recognition, not image generation.
 
-The parent explicitly selected ViT for this implementation instead of the original T15 ResNet example. No second recognition architecture is included. Natural-image retrieval, optimized visualization, heldout interpretation and the original Oxford Pet study remain pending under the user's plumbing-only scope.
+This recipe supports one pinned ViT architecture. Natural-image studies and additional architectures require their own experiment design and verification.
 
 ## Prepare separately
 
@@ -40,7 +40,7 @@ The OS and inherited Python network sentinels apply throughout execution. Scratc
 
 Preprocessing is direct resize to 224×224 using Pillow bilinear interpolation, no crop, rescale by 1/255, RGB mean/std 0.5, NCHW FP32. It is explicitly different from diffusion preprocessing. Input half-open pixel-edge coordinates map to preprocessed edges by width/224 and height/224. Bilinear sample centers use the half-pixel convention. Patch boxes describe embedding origins, not localized receptive fields after attention. Class-token boxes are null.
 
-C08 ImageInput verifies original encoded bytes; the original decoded pixels are persisted through the existing image tensor codec with that origin digest. Selected activation values and complete 1,000-class logits are bounded result arrays. Reports copy only small results; the optional gallery loads at most 16MiB of stored image tensors and embeds them locally. It can render after the prepared input cache is removed. The model/processor/class-map and numerical execution C01 identities are complete; ReportSpec's generic numerical policy remains explicitly unresolved.
+C08 ImageInput verifies original encoded bytes; the original decoded pixels are persisted through the existing image tensor codec with that origin digest. Selected activation values and complete 1,000-class logits are bounded result arrays. Reports copy only small results; the optional gallery loads at most 16MiB of stored image tensors and embeds them locally. It can render after the prepared input cache is removed. Check the saved artifact’s model, processor, class-map and numerical identity before reuse; unresolved older artifacts remain ineligible.
 
 Independent real-model verification is available separately:
 

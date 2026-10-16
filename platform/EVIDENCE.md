@@ -69,10 +69,10 @@ level, metric units, model/tokenizer, methods, numerical and data semantics must
 difference is displayed as non-comparable; there is no automatic averaging,
 cross-model equivalence policy, inferred metric or scientific promotion.
 
-Actual integration evidence includes the T13 Qwen3 neuron dossiers, T14 native
-route graph and T17 SDXL steering gallery. Full scientific study quality is
-outside this plumbing check. Independent reviewer inspection remains a separate
-gate.
+Actual integration evidence includes Qwen3 neuron dossiers, a native
+route graph and an SDXL steering gallery. Full scientific study quality is
+outside this plumbing check; interpretation of displayed evidence is
+study-specific.
 
 C05 link verification is one hop only. `compare_evidence` consumes the trusted
 in-memory views returned by `EvidenceReader`; its verification marker is not an

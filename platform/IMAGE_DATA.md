@@ -78,6 +78,6 @@ Shared encoded images and latent payloads live on Modal volumes; shared metadata
 and labels live in Neon. Bounded fixtures may use local temporary caches; the
 local-scratch profile adds supervision and budget enforcement. Tensor codecs
 preserve the store's transfer policy. Identical artifact format does not imply
-identical classifier/generator normalization. T15/T16 adapters must verify input
+identical classifier/generator normalization. Recognition and generation adapters verify input
 bytes, advertise their supported modalities and pass their own actual model
 load/operation gates before downstream research claims.

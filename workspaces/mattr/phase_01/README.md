@@ -29,10 +29,4 @@ To regenerate only the summary from an existing artifact, set
 That mode loads the existing artifact from the configured local store/catalog;
 it does not run the optimizer or load the model again.
 
-The actual integration run `wr_t11_qwen25_mattr_smoke` produced
-`external_mattr_1_c6345d93a805`: 361 nodes, ten curve points, 62.32 seconds CPU,
-8,514,109,440 bytes sampled peak RSS. Its compact summary
-`transform_1_8c2d2571cf93` is 42,797 bytes. C03 payload integrity passed. Generic
-C01 file-input/numerical policy remains unresolved, so automatic qualified reuse
-is not claimed. Qwen uses upstream BF16; GPT-2 uses upstream FP32. Scientific
-verdict remains `not_tested`.
+Current MAttr observes tool/runtime, input-file and numerical identities. Reuse requires complete provenance and verified payloads; older artifacts can remain ineligible. See [the MAttr guide](../../../platform/MATTR.md) for configurable inputs and current execution support. Qwen uses upstream BF16; GPT-2 uses FP32. Small runs validate plumbing, not attribution quality.

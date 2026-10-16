@@ -66,8 +66,8 @@ with engine.open_session() as session:
 
 Session hooks preserve autograd and are removed even after an exception. Normal
 capture detaches returned tensors; no request graphs or KV caches are retained.
-Close releases the model. Sessions are explicit; T06 owns worker scheduling and
-warm lifetimes. The adapter's CPU numerical policy and actual checkpoint/tokenizer
+Close releases the model. Sessions are explicit; shared warm LLM workers are
+[deferred](BACKBURNER.md). The adapter’s numerical policy and actual checkpoint/tokenizer
 bytes enter C01, alongside ordinary C03 payload verification. An engineering
 steering effect is not a scientific claim about a localized mechanism.
 

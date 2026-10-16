@@ -31,4 +31,4 @@ Pins and sources:
 - [Model snapshot](https://huggingface.co/Qwen/Qwen3-0.6B/tree/c1899de289a04d12100db370d81485cdf75e47ca)
 - [PLT snapshot](https://huggingface.co/mwhanna/qwen3-0.6b-transcoders-lowl0/tree/28aefe686c09e9bc1a862195b51e145f10868d87)
 
-T06 tracing-shape qualification, T18 integration, held-out fidelity and independent review are separate acceptance gates. Fixture-only CLT format round-trips are not live CLT evidence.
+For a different workload, verify its resource envelope with a small real run. Original-model parity and broader model coverage are on the [backburner](../../platform/BACKBURNER.md). Fixture-only CLT format round-trips are not live CLT evidence.

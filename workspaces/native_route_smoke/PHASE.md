@@ -1,9 +1,7 @@
-# Native route plumbing phase
+# Native route graph recipe
 
-Premise: exercise typed graph serialization, native original-model controls and bounded report wiring on a prepared GPT-2 model. This is an engineering phase, not a circuit discovery experiment.
+A completed plumbing fixture for GPT-2 head interventions, paired IOI examples, explicit controls, embedding-gradient candidates, typed graph output and a local report.
 
-Design: two predeclared layer-5 head sites; two official held-out IOI rows; identity, zero, opposite-label, same-label and fixed unmatched donor controls. Scalar target is the next-token correct-minus-foil logit margin. Read and write sites are explicitly recorded. Candidate embedding IG uses four trapezoidal intervals; no gradient is taken with respect to selected head captures.
+Identity replacement preserves logits, and intervention effects remain inspectable. This small recipe does not establish route selectivity, circuit faithfulness or generalization.
 
-Acceptance: public workflow produces its graph artifact and nonempty HTML report; identity replacement preserves logits; control effects remain inspectable. Tiny examples cannot establish route selectivity, faithfulness, generalization or scientific importance. Research verdict: **not tested**. T11 comparison and independent review remain pending.
-
-Observed evidence is recorded in the T14 implementation receipt and run artifacts. No research conclusion is promoted by a successful plumbing check.
+Use [the recipe guide](README.md) and `workflow.py` for current execution instructions. Record new experiment outcomes in a new phase rather than extending this fixture’s old run history.

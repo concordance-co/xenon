@@ -58,15 +58,15 @@ Atomic payload writes use unique temporary files, file/directory fsync and
 replacement. Modal commits payload visibility before publishing journals/finals;
 lock acquisition reloads the volume. Full integrity checks for remote refs run
 in a small CPU worker on the mounted volume, without downloading activations.
-This worker has a 60-second execution limit; client transport deadlines and CPU
-merge resource placement are T02 integration responsibilities. A worker timeout
-alone does not bound allocation, queueing or client result streaming.
+This worker has a 60-second execution limit and a 120-second bounded client
+call. [Admission](ADMISSION.md) describes the separate submission, streaming and
+CPU merge budgets.
 
 New capture codecs must register a coverage verifier with
 `register_capture_coverage_validator(kind, verifier)` when their layout is not the
 legacy example/layer/token structure. The verifier must attest expected axes and
 keys before any complete manifest can be published.
 
-Validation evidence and remaining live gates are in the T05 receipt. Filesystem
-failure tests exercise actual process exits around journal/final boundaries;
-fixture tests do not claim live GPU recovery qualification.
+Filesystem failure tests exercise actual process exits around journal/final
+boundaries. Real GPU crash recovery remains on the [backburner](BACKBURNER.md);
+successful checkpoint continuation does not establish arbitrary crash recovery.
