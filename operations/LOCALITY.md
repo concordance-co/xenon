@@ -1,109 +1,70 @@
-# Locality
+# Data and storage
 
-Where data lives, what's allowed local, what's not.
+Choose storage with the execution mode. The rules below describe team practice
+and the limits that code enforces. See [execution modes](README.md#select-compute-and-storage).
 
-Hard rules first, then reference by data class.
+## Storage by mode
 
-## Hard rules
+| Data | Shared Modal workflow | Ordinary local workflow | Offline scratch |
+| --- | --- | --- | --- |
+| Dataset | Neon/Postgres is the team default. | Explicit local inputs or configured data source. | Local fixtures only; no deferred or remote data. |
+| Activations and generations | Modal artifact volume. | Configured `LocalArtifactStore`. | Private local attempt, then verified local publication. |
+| Model and tool assets | Prepared worker image or mounted cache. | Prepared assets at the configured paths. | Prepared offline cache; no downloads. |
+| Runs and artifact manifests | Configured catalog plus CLI local mirror. | Configured catalog plus CLI local mirror. | Local catalog only. |
+| Reports | Built locally from selected results. | Built locally. | Built within the scratch limits. |
 
-1. Shared or durable datasets live in Postgres (Neon), not local files.
-2. Capture activations and generations live in Modal volumes, not local.
-3. Workflow runs and artifacts are indexed through the catalog, not discovered by listing files.
-4. Shared capture and analysis run on Modal. Reports and plots build locally. The explicit bounded offline scratch exception below permits small local fixtures.
-5. Large remote reads are blocked by `ModalVolumeStore.transfer_policy` unless explicitly overridden — don't override casually.
-6. No data artifacts (jsonl, parquet, safetensors, activation dumps) get committed to the repo.
-7. Local files are for smoke fixtures, audit exports, report inputs, and scratch. Nothing else.
-8. Synth generation runs that write to Neon must surface to the user first — show the spec, a sample of rows, and the planned row count. Smoke first (typically <100 rows); scale only after user approval and behavioral sanity against the criteria specified.
+The default local catalog is `$XENON_HOME/pipelines_v2/catalog`.
+`XENON_HOME` defaults to `~/.xenon`. Ordinary local artifact paths come from the runner.
+Scratch artifacts default to `$XENON_HOME/pipelines_v2/artifacts`.
 
-## Bounded offline scratch exception
+## Shared work
 
-`workflow run --profile local-scratch --file workflow.py` explicitly selects a
-CPU-only, offline local experiment. It uses LocalArtifactStore under
-`$XENON_HOME/pipelines_v2/artifacts` and the existing FileCatalog root, ignoring
-shared Postgres catalog defaults. It never localizes remote activations or
-uploads local artifacts. Production locality and transfer policy stay in force.
+Use Neon for durable team datasets. Record the source table, version, and selection.
+Use repeatable import code when a dataset comes from an external source.
+Use a new version when changed data must remain reproducible.
 
-The default ceilings are 64 examples, 256 input tokens/example, 32 generated
-tokens/example, 256 MiB newly written artifacts, 600 seconds for the supervised
-worker, and 8 GiB aggregate process-tree RSS. Any increases are explicit in the
-saved profile. Model cache preparation is separate; scratch never downloads.
-OS network isolation also covers native subprocesses, and unsupported sandbox
-hosts fail before compute. Strict CUDA/MPS memory limits are unsupported and
-rejected. See [local scratch](../platform/LOCAL_SCRATCH.md) for execution,
-enforcement boundaries, recovery, and authoring.
+Use Modal volumes for shared captures and analysis outputs.
+The current recipes use `xenon-data` for artifacts and `xenon-models` for model caches.
+Volume names and mount paths are configuration, not universal constants.
+Keep analysis near bulk tensors. Pass typed artifact refs between steps.
 
-## Data class reference
+Use the catalog to find runs and artifacts. A file on a volume does not prove
+that the artifact is complete or indexed. See [discovery](INDEXING.md).
 
-For each class: canonical home, how to read it, what's allowed locally.
+## Local work and transfers
 
-### Synth datasets
+Local capture and analysis are supported. They do not require a scratch profile.
+Ordinary local execution does not provide scratch isolation or its resource limits.
+Select the mode that meets the task's compute, storage, and network requirements.
 
-- **Home.** Neon table.
-- **Read.** `Dataset.from_postgres(source=PostgresSource.from_env("XENON_NEON_DATABASE_URL"), table=..., ...)`.
-- **Local.** Small fixtures for smoke (`Dataset.from_examples(...)`). No committed parquet or jsonl. `Dataset.from_parquet(...)` and `Dataset.from_json(...)` exist for temporary imports and scratch only.
+Read the fields needed for the task through typed artifact handles or the evidence reader.
+Avoid downloading a full remote capture to obtain a small statistic or plot.
+Compute the reduction on Modal, then read the result locally.
+Keep exports and report inputs within an explicit size budget.
 
-### Real / production traces
+`ModalVolumeStore.transfer_policy` rejects transfers with an unknown size or a size
+above its configured limit, unless an override is set. The code checks size;
+it does not decide whether a transfer serves the research task.
+Set an override only for an intentional transfer with known scope and available storage.
 
-- **Home.** Neon table. Uploaded via repeatable workspace-level uploader scripts.
-- **Read.** Same as synth datasets.
-- **Local.** Same rules. Uploader scripts should live next to the workflow or data manifest they support; they are the only sanctioned path for getting real data into Neon.
+Shared images and latent tensors use the same volume and transfer model.
+Reports can use bounded thumbnails or summaries. See [image contracts](../platform/IMAGE_DATA.md).
 
-### Images and latent tensors
+## Code-enforced limits
 
-- **Home.** Shared image bytes and latent tensors live in Modal volumes. Image metadata, content digests and labels live in Neon.
-- **Read.** Prepared `ImageInput` refs are verified at the execution mount. Spatial/latent tensors use registered safetensors codecs; no URI-only identity or implicit download.
-- **Local.** Bounded fixture images may use temporary prepared caches. Reports consume separately bounded summaries or thumbnails, never a full activation bank. See [image data contracts](../platform/IMAGE_DATA.md); classifier and generator normalization remain explicit and distinct.
+- [Scratch](../platform/LOCAL_SCRATCH.md) enforces CPU execution, offline access, supported inputs, and explicit resource limits.
+- [Transfer policy](../pipelines_v2/storage/modal.py) checks remote read sizes.
+- [Completion checks](../platform/DURABILITY.md) verify stored payloads before eligible reuse.
+- [Publication](../platform/PUBLICATION.md) checks supported artifact types, dependencies, and transfer budgets.
 
-### Captured activations
+These limits are distinct from the team's choice to keep shared datasets in Neon.
+Do not assume that every storage convention is enforced by a constructor.
 
-- **Home.** Modal volumes via `ModalVolumeStore`.
-- **Read.** Don't download. Reference via `FeatureRef` or `FeatureLayerRef` from the capture artifact. Analysis specs consume these on Modal.
-- **Local.** Do not localize full activation tensors. `transfer_policy` blocks by default. If you believe you need activations locally, you are almost certainly doing the wrong analysis locally instead of as an analysis spec on Modal.
+## Repository contents
 
-### Captured generations
+Keep source, configuration, small example fixtures, and report templates in Xenon.
+Keep generated artifact stores, captures, checkpoints, model weights, and credentials out of commits.
+Use the consuming research repo for study-specific records and chosen deliverables.
 
-- **Home.** Stored as part of the capture artifact in the Modal volume.
-- **Read.** Reference via the artifact. For downstream analysis, use `StepRef` / `GenerationRunSpec` results.
-- **Local.** Do not dump full generation sets to local jsonl for inspection. If you need to read generations by eye, sample with a SQL query (generations persisted to Neon) or use a `result.summary()` payload.
-
-### Probes, directions, subspaces, centroids
-
-- **Home.** Artifact outputs in Modal volume, indexed by catalog.
-- **Read.** `OperationArtifact` with typed refs. Metadata and small result payloads can come local; full activations cannot.
-- **Local.** Probe weights, direction vectors, and result JSON are small and fine to localize for reporting. Activation banks are not.
-
-### Workflow runs and step records
-
-- **Home.** The catalog — shared Postgres catalog plus the local `FileCatalog` mirror at `~/.xenon/pipelines_v2/catalog`.
-- **Read.** `workflow runs`, `workflow show`, or direct queries against the catalog. See `INDEXING.md`.
-- **Local.** The local mirror already exists and is authoritative for the local machine. Don't build parallel tracking.
-
-### Reports
-
-- **Home.** Local, under the workflow workspace's `reports/` tree.
-- **Read.** Locally.
-- **Local.** This is the sanctioned local build surface. See `REPORTING.md`.
-
-## What NOT to do locally
-
-- Don't commit jsonl, parquet, safetensors, or activation files.
-- Don't download activations for inspection.
-- Don't dump full generation results to a local file for reading.
-- Don't construct a local file as the primary dataset surface when Neon is available.
-- Don't print thousands of rows to stdout or notebooks. Sample or query.
-- Don't mount entire Modal volumes to read one artifact. Use the catalog to get the artifact id, then read via the store.
-- Don't bypass `transfer_policy` without a reason you can state in one sentence.
-
-## Enforcement surfaces
-
-Code already enforces most of this. When an agent fights an enforcement, the enforcement is right.
-
-- `Dataset.from_postgres(...)` is the canonical dataset constructor for shared data. File-backed constructors are allowed but marked for fixtures and scratch only.
-- `ModalVolumeStore.transfer_policy` blocks large downloads.
-- `CaptureArtifact.localize()` and `OperationArtifact.localize()` estimate bytes before transferring.
-- `ReportSpec` is the only spec family that runs local by design. Any new code on the Modal import path must keep `pipelines_v2.reporting` imports lazy.
-- Repo `.gitignore` should cover data artifact extensions. Confirm before committing new data-adjacent directories.
-
-## When in doubt
-
-If you are about to write a local file that looks like production data, stop. Say what you're trying to do and ask whether it should be a Neon query, a workflow spec, or a `result.summary()` read instead.
+Publication is an explicit operation. Local artifacts do not become shared automatically.
+Use [the publication procedure](../platform/PUBLICATION.md) for supported artifacts.

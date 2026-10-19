@@ -22,14 +22,14 @@ ROOT = Path(__file__).resolve().parents[3]
 def observed(tmp_path):
     runner = LocalRunner(artifacts=LocalArtifactStore(tmp_path / 'artifacts'), catalog=FileCatalog(tmp_path / 'catalog'))
     import importlib.util
-    module_spec = importlib.util.spec_from_file_location('observed_toy', ROOT / 'workspaces/toy_pack/workflow.py')
+    module_spec = importlib.util.spec_from_file_location('observed_toy', ROOT / 'examples/toy_pack/workflow.py')
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
     workflow = module.unchecked_workflow()
     workflow = replace(workflow, steps=tuple(replace(step, spec=replace(step.spec, output_dir=str(tmp_path / 'reports'))) if step.name == 'report' else step for step in workflow.steps))
     run = WorkflowOrchestrator(runners={'fixture_local':runner, 'report_local':runner}).run(workflow)
     artifact = run.step_results['labels']
-    pack = ExperimentPack.load(ROOT / 'workspaces/toy_pack/pack.json')
+    pack = ExperimentPack.load(ROOT / 'examples/toy_pack/pack.json')
     link = {'artifact_id':artifact.id, 'run_id':artifact.manifest().workflow_context['run_id'],
             'scientific_identity':artifact.manifest().provenance().scientific_identity,
             'selector':{'domain':'result', 'pointer':'/mapped_count', 'expected':2}}

@@ -11,7 +11,8 @@ The canonical flow is:
 Capture and analysis jobs can run on Modal. Reports are built locally from
 workflow artifacts.
 
-For a new experiment or agent thread, start with the [LLM experiment guide](platform/LLM_RESEARCH.md).
+Start with the [agent guide](AGENTS.md) and [operations guide](operations/README.md).
+Use the [LLM guide](platform/LLM_RESEARCH.md) for model and method configuration.
 The [research hub map](platform/RESEARCH_HUB.md) covers:
 local patching, neuron inspection, official attribution, SAE edits, paired-model
 crosscoders, and pretrained transcoder traces. Its [support matrix](platform/research_hub_support.json)
@@ -59,6 +60,8 @@ pipelines_v2/
   storage/
   workflow/
 
+examples/                maintained runnable recipes
+
 platform/
   API.md
   WORKFLOW.md
@@ -72,9 +75,10 @@ tests/
 ```
 
 The package build publishes `pipelines_v2` and the compatibility `papers.voice`
-helpers used by downstream repos. Methodology, operations, and
-platform docs are reference material for using and extending the workflow
-system.
+helpers used by downstream repos; their import paths are preserved. New research
+studies belong in a separate research repo, using the maintained [examples](examples/README.md).
+Operations and platform docs explain how to use and extend the system.
+[Methodology](methodology/README.md) offers optional research prompts and illustrative examples.
 
 ## Tests
 
@@ -138,7 +142,8 @@ GitHub environment.
 
 ## Docs
 
-- [Start an experiment or new thread](platform/LLM_RESEARCH.md)
+- [Operations guide](operations/README.md)
+- [Configure an LLM experiment](platform/LLM_RESEARCH.md)
 - [Capabilities and recipes](platform/RESEARCH_HUB.md)
 - [Documentation index](platform/README.md)
 - [Deferred work](platform/BACKBURNER.md)

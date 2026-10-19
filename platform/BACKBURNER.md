@@ -20,6 +20,7 @@ Current supported-model experiments can proceed. These items are deferred work, 
 
 ## Research is its own workstream
 
-Paper reproduction, baseline comparisons, held-out generalization, large dictionary studies, and strong scientific claims were intentionally outside the infrastructure checks. Start those as experiments with [methodology/FLYWHEEL.md](../methodology/FLYWHEEL.md) and a [phase record](../methodology/templates/PHASE.md). A small successful plumbing run is not a paper result.
+Paper reproduction, baseline comparisons, held-out generalization, large dictionary studies, and strong scientific claims were intentionally outside the infrastructure checks. Use the [operations guide](../operations/README.md) to execute them. Choose the research process and record format for the study. A small successful plumbing run is not a paper result.
 
-The [original plan](archive/RESEARCH_HUB_PLAN.md) and [task graph](archive/research_hub_execution/README.md) preserve detailed design history. They include larger ambitions and old acceptance checklists; this file is the current deferral list. Current runnable scope lives in [RESEARCH_HUB.md](RESEARCH_HUB.md).
+Current runnable scope lives in [RESEARCH_HUB.md](RESEARCH_HUB.md). Historical
+build plans are preserved in Git history and the external cleanup bundle.

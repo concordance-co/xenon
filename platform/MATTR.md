@@ -12,8 +12,8 @@ uv run python -m pipelines_v2.operations.attribution prepare \
   --model /path/to/gpt2-snapshot
 
 export XENON_MATTR_CONFIG=/path/to/isolated-mattr/execution.json
-uv run python -m pipelines_v2.cli workflow plan --file workspaces/mattr_ioi_smoke/workflow.py
-uv run python -m pipelines_v2.cli workflow run --file workspaces/mattr_ioi_smoke/workflow.py
+uv run python -m pipelines_v2.cli workflow plan --file examples/mattr_ioi_smoke/workflow.py
+uv run python -m pipelines_v2.cli workflow run --file examples/mattr_ioi_smoke/workflow.py
 ```
 
 The default smoke fits two steps and evaluates two validation examples. It runs offline after preparation, writes a cataloged `external_attribution` artifact, and uses the existing workflow runner. The separate tool environment never imports Xenon. The main environment never imports TransformerLens or unpickles upstream evaluator outputs.
@@ -24,9 +24,9 @@ For Qwen2.5, prepare the exact base checkpoint
 `060db6499f32faf8b98477b0a26969ef7d8b9987` and use
 `prepare --model-name qwen2.5 --model /path/to/qwen-snapshot --root /path/to/isolated-qwen-mattr`.
 Then set `XENON_MATTR_CONFIG` to that preparation's `execution.json` and run
-`workspaces/mattr/phase_01/workflow.py`. The public constructor is
+`examples/mattr/phase_01/workflow.py`. The public constructor is
 `MAttrSpec.qwen25_ioi(...)`; the workflow also produces a compact summary artifact.
-See its [recipe](../workspaces/mattr/phase_01/README.md).
+See its [recipe](../examples/mattr/phase_01/README.md).
 
 Qwen follows the upstream BF16 policy and has 361 scored nodes. GPT-2 follows
 upstream FP32 and has 157. These are separate model/numerical cells, not equivalent

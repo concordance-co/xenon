@@ -1,8 +1,8 @@
 """Analytical checks for the study's primary color proxy and random control."""
 import numpy as np
 import pytest
-from workspaces.sdxl_steering.metrics import background_mask, fit_direction, image_metrics, prompt_bootstrap
-from workspaces.sdxl_steering.study import discovery_rows, held_out_rows, SPATIAL_REGIONS
+from examples.sdxl_steering.metrics import background_mask, fit_direction, image_metrics, prompt_bootstrap
+from examples.sdxl_steering.study import discovery_rows, held_out_rows, SPATIAL_REGIONS
 
 
 def test_color_proxy_distinguishes_background_and_center_edits():
@@ -52,8 +52,8 @@ def test_prompt_bootstrap_keeps_seeds_together():
 
 
 def _plumbing_direction():
-    from workspaces.sdxl_steering.plumbing import SCOPE, PLUMBING_STEPS, direction_digest
-    from workspaces.sdxl_steering.study import SITE, design_digest
+    from examples.sdxl_steering.plumbing import SCOPE, PLUMBING_STEPS, direction_digest
+    from examples.sdxl_steering.study import SITE, design_digest
     values = [1.0] * 1280
     return {'scope': SCOPE, 'design_digest': design_digest(), 'site': SITE,
             'steps': list(PLUMBING_STEPS), 'training_pairs': 1,
@@ -61,8 +61,8 @@ def _plumbing_direction():
 
 
 def test_plumbing_workflows_keep_six_images_shared_noise_and_strong_signed_edits():
-    from workspaces.sdxl_steering.phase_00.workflow import build_workflow as discovery
-    from workspaces.sdxl_steering.phase_01.workflow import build_workflow as steering
+    from examples.sdxl_steering.phase_00.workflow import build_workflow as discovery
+    from examples.sdxl_steering.phase_01.workflow import build_workflow as steering
     first = discovery()
     second = steering(direction_payload=_plumbing_direction(), full_gut_check=True)
     all_steps = (*first.steps, *second.steps)
@@ -79,7 +79,7 @@ def test_plumbing_workflows_keep_six_images_shared_noise_and_strong_signed_edits
 
 
 def test_plumbing_direction_rejects_mutation():
-    from workspaces.sdxl_steering.plumbing import validate_direction
+    from examples.sdxl_steering.plumbing import validate_direction
     payload = _plumbing_direction()
     assert len(validate_direction(payload)) == 1280
     payload['direction'][0] = 2.0
@@ -89,7 +89,7 @@ def test_plumbing_direction_rejects_mutation():
 
 def test_plumbing_capture_to_direction_to_export(monkeypatch, tmp_path):
     from types import SimpleNamespace
-    from workspaces.sdxl_steering import plumbing
+    from examples.sdxl_steering import plumbing
     values = np.arange(1, 1281, dtype=np.float32)[None, :, None, None]
     class Child:
         def __init__(self, name): self.id = name
@@ -114,7 +114,7 @@ def test_plumbing_capture_to_direction_to_export(monkeypatch, tmp_path):
 
 def test_plumbing_remote_summary_and_local_gallery(monkeypatch, tmp_path):
     from types import SimpleNamespace
-    from workspaces.sdxl_steering import plumbing
+    from examples.sdxl_steering import plumbing
     class Child:
         def __init__(self, index): self.id = str(index); self.index = index
         def manifest(self):

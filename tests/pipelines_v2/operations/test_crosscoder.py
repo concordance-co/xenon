@@ -83,7 +83,7 @@ def test_checked_in_workflow_loads_and_all_specs_roundtrip(monkeypatch):
     from pipelines_v2.operations import operation_spec_from_dict
     for key,value in {'BASE':'/base','INSTRUCT':'/instruct','REFERENCE':REFERENCE}.items():
         monkeypatch.setenv('XENON_CROSSCODER_'+key,value)
-    path=Path(__file__).resolve().parents[3]/'workspaces/qwen_crosscoder/phase_00/workflow.py'
+    path=Path(__file__).resolve().parents[3]/'examples/qwen_crosscoder/phase_00/workflow.py'
     dataset,workflow,runners=load_python_workflow_file(path=path)
     assert len(workflow.steps)==8 and set(runners)=={'compute','report_local'}
     for step in workflow.steps:

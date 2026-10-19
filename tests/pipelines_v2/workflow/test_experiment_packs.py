@@ -15,7 +15,7 @@ from pipelines_v2.experiments import ExperimentPack
 from pipelines_v2.core.types import SpecValidationError
 
 ROOT = Path(__file__).resolve().parents[3]
-TOY = ROOT / 'workspaces' / 'toy_pack'
+TOY = ROOT / 'examples' / 'toy_pack'
 
 
 def toy_module(path=TOY):

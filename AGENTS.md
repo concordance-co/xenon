@@ -1,142 +1,76 @@
-# AGENTS.md
+# Agent guide
 
-Orientation for agents working in this repo.
+Xenon is Concordance's platform for mechanistic interpretability.
+It provides workflow execution, model adapters, analysis, interventions,
+artifact storage, and reports.
 
-## What this is
+## Start here
 
-Xenon is Concordance's mech interp platform. The open-source repo centers on
-`pipelines_v2`: workflow specs, runners, storage, operation specs, vLLM
-integration, reporting, and deployment runtime helpers.
+Read the [operations guide](operations/README.md) for setup and execution.
+Then use the reference that fits the task:
 
-## Orientation
+| Task | Reference |
+| --- | --- |
+| Develop a research idea | [Research prompts and examples](methodology/README.md) |
+| Choose a capability or model | [Capability map](platform/RESEARCH_HUB.md) |
+| Configure an LLM experiment | [LLM guide](platform/LLM_RESEARCH.md) |
+| Adapt a runnable recipe | [Examples](examples/README.md) |
+| Write a workflow | [Workflow API](platform/API.md), [spec conventions](platform/SPECS.md) |
+| Inspect data or stored results | [Storage](operations/LOCALITY.md), [discovery](operations/INDEXING.md) |
+| Build or share a report | [Reporting](operations/REPORTING.md) |
+| Change the platform | [Architecture](platform/ARCH.md), relevant code and tests |
 
-Start a new LLM experiment with [platform/LLM_RESEARCH.md](platform/LLM_RESEARCH.md):
-current capabilities, setup, config examples, verification, and a thread handoff template.
-Use [platform/RESEARCH_HUB.md](platform/RESEARCH_HUB.md) to choose a recipe.
-[platform/BACKBURNER.md](platform/BACKBURNER.md) holds deferred work; do not
-restart the archived infrastructure build plans during an experiment.
+Read further references when the task needs them. Do not load every guide.
 
-Three reference trees. Load the relevant one for the work.
+## Execute the requested scope
 
-- **`methodology/`** — research flywheel, principles, checks, hypothesis catalog spec, method roster, templates.
-- **`operations/`** — data locality, indexing, and report-building conventions.
-- **`platform/`** — `pipelines_v2` API, workflow authoring, specs, architecture, and examples.
+- Use the user's objective, budget, and completion criteria to set the scope.
+- Resolve routine details from the task, code, and existing recipes.
+  Ask when missing information prevents a sound decision.
+- Choose checks for the risk of the change. A smoke test is a check, not the goal.
+- Use relevant existing evidence. Repeat a check when a change or failure warrants it.
+- Check changes to GPU execution on the actual model path during implementation.
+  Do not leave all live GPU checks until the end.
+- Separate working infrastructure from research findings. State what the result supports.
+- Keep a concise record of the config, run IDs, result, and next action.
+  Use the research project's format. No fixed phase sequence is required here.
 
-Archive directories (`*/archive/`) are historical. Treat them as effectively
-deleted unless explicitly digging through old work.
+[Methodology](methodology/README.md) offers prompts and illustrative examples for research planning.
+Use it when it helps. It does not require a plan template or a fixed research process.
+[Backburner work](platform/BACKBURNER.md) is outside the task unless the task needs it.
 
-## Agent Protocol
-
-For research-method work, load `methodology/` by default. The flywheel,
-principles, and checks are part of the expected reasoning context.
-
-For operational work touching data, captures, or reports, load `operations/` by
-default. The rules in `LOCALITY.md` are enforced in code and will fail if
-ignored.
-
-For workflow authoring, load `platform/`.
-
-Decision points that trigger `methodology/CHECKS.md`:
-
-- picking a measurement locus
-- promoting a claim up the evidence ladder
-- committing to a synth design
-- scaling synth generation
-- crossing into real data
-- designing an intervention
-- closing a phase
-
-Each research phase should keep a canonical `PHASE.md` per
-`methodology/templates/PHASE.md`. It starts as the phase's
-premise/design/orientation surface, stays current as work runs, and becomes the
-closure artifact when the phase ends.
-
-## Canonical Execution Model
+## Repository boundaries
 
 ```text
-workflow.py -> workflow run -> artifacts -> local report
+pipelines_v2/       Reusable platform code
+examples/           Maintained recipes and integration fixtures
+platform/           API and capability references
+operations/         Setup, execution, storage, and reports
+tests/              Platform tests
+papers/voice/       Packaged compatibility helpers
+scripts/            Infrastructure tools
+dashboard/          Frontend source; outside the Python package
+methodology/        Research prompts and illustrative examples
 ```
 
-Capture and analysis run on Modal when the workflow uses Modal runners. Reports
-build locally. See `operations/LOCALITY.md`.
+Keep new research studies in a separate repo that uses Xenon.
+Preserve `papers.voice` imports and bundled assets; downstream repos use them.
+Promote reusable helpers into `pipelines_v2/`. Keep study code with its study.
+Historical plans and outputs are outside this checkout. They are not setup inputs.
 
-## CLI Cheat Sheet
+## Implementation and writing
 
-```bash
-# plan a workflow
-uv run python -m pipelines_v2.cli workflow plan --file <workflow.py>
+- Treat `workflow.py` as the executable source of truth.
+- Set `local_python_sources` to explicit source directories. Do not mount `"."`.
+- Keep shared data in its assigned store. Use the catalog to find workflow results.
+- Preserve the user's changes. Do not include credentials or generated data in commits.
+- Use ASD-STE100 Simplified Technical English for technical instructions.
+  Use short sentences, active voice, and consistent terms. Keep exact API names.
+  Separate required actions, recommended practices, and code-enforced limits.
 
-# run with structured progress
-uv run python -m pipelines_v2.cli workflow run --file <workflow.py> --logging INFO
+## Running workflows from a sibling repo
 
-# discover runs for a workflow
-uv run python -m pipelines_v2.cli workflow runs --file <workflow.py>
-
-# inspect one run
-uv run python -m pipelines_v2.cli workflow show --run-id wr_...
-
-# recover a failed run
-uv run python -m pipelines_v2.cli workflow resume --file <workflow.py> --latest-failed
-
-# rerun a step (new run, reuses upstream artifacts)
-uv run python -m pipelines_v2.cli workflow rerun-step --file <workflow.py> --run-id wr_... --step <name>
-
-# rerun a step and all downstream dependents
-uv run python -m pipelines_v2.cli workflow rerun-from-step --file <workflow.py> --run-id wr_... --step <name>
-```
-
-Full CLI reference: `platform/API.md`.
-
-## Repo Map
-
-```text
-methodology/             research substrate
-operations/              data locality, indexing, reporting
-platform/                pipelines_v2 reference and examples
-pipelines_v2/            active platform code
-tests/                   platform tests
-workspaces/              checked-in experiment sources and small recipes
-```
-
-Dashboard and paper workspaces are outside the public package surface for this
-release.
-
-## Conventions
-
-- Checked-in `workflow.py` is the executable source of truth for a workflow.
-- `workflow.json` snapshots are optional, for reviewability.
-- When using `PromptMetadataBuilder.from_function(...)`, pass narrow
-  `local_python_sources` like `("pipelines_v2", "scripts")`. Do not rely on
-  `"."`.
-- Helpers that repeat across downstream workspaces should be promoted into
-  `pipelines_v2/`; keep one-off workflow code next to the workflow file.
-
-## Running Workflows From A Sibling Repo
-
-Downstream repos (e.g. `persona-audit`) consume Xenon as a Git dependency and
-run their own workflow files through this CLI. The Modal runner mounts local
-sources (`pipelines_v2/`, `papers/`, ...) from the detected workspace root
-(`pipelines_v2.core.paths.find_workspace_root`: module path, then cwd, first
-ancestor with `pyproject.toml`/`.git`). From a sibling repo with a
-non-editable install, detection lands on the wrong root and Modal fails with
-`local dir .../pipelines_v2 does not exist`.
-
-Two supported fixes:
-
-- Set `XENON_WORKSPACE_ROOT=/path/to/xenon` — overrides detection entirely and
-  also anchors `xenon.toml` config loading to this checkout.
-- Or run the CLI with cwd inside this checkout and `PYTHONPATH` pointing at
-  the sibling repo so its workflow-file imports resolve.
-
-Either way, `--file` paths must be absolute or resolvable from the effective
-cwd.
-
-## Workspace Defaults
-
-Defaults live in repo-root `xenon.toml`:
-
-- `[pipelines_v2.modal]` — Modal volume and vLLM cache defaults
-- catalog — local `FileCatalog` at `~/.xenon/pipelines_v2/catalog` is always on; external Postgres catalog defaults to the shared team catalog
-
-Don't override the catalog with `NullCatalog` unless you mean to be invisible
-to the team.
+For workflows that need only Xenon worker sources, set `XENON_WORKSPACE_ROOT` to the Xenon checkout.
+This selects its config and Modal source mount base.
+Use absolute workflow paths. Include the research repo on `PYTHONPATH` when needed.
+See [the complete procedure](operations/README.md#use-a-workflow-from-another-repo).

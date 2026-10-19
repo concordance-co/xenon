@@ -20,17 +20,17 @@ Use `engine.site(name, quantity, layer, neurons=(...), heads=(...), tokens=..., 
 
 ## Prepare and run one real example
 
-Use the exact isolated `core-local` environment installation from [local pack setup](../workspaces/local_research/phase_00/README.md). The pinned core lock already includes the required Transformers implementation; no shared environment modification is required. Prepare the official checkpoint separately:
+Use the exact isolated `core-local` environment installation from [local pack setup](../examples/local_research/phase_00/README.md). The pinned core lock already includes the required Transformers implementation; no shared environment modification is required. Prepare the official checkpoint separately:
 
 ```bash
 export XENON_NATIVE_MODEL_CACHE="$HOME/.cache/xenon/qwen3-0.6b-c1899de"
-workspaces/local_research/.cache/runtime/bin/hf download Qwen/Qwen3-0.6B \
+examples/local_research/.cache/runtime/bin/hf download Qwen/Qwen3-0.6B \
   config.json generation_config.json merges.txt model.safetensors tokenizer.json tokenizer_config.json vocab.json README.md LICENSE \
   --revision c1899de289a04d12100db370d81485cdf75e47ca --local-dir "$XENON_NATIVE_MODEL_CACHE"
 export XENON_NATIVE_ARCHITECTURE=qwen3
 export XENON_HOME="$HOME/.xenon-native-smoke"
 export PYTHONPATH="$PWD"
-workspaces/local_research/.cache/runtime/bin/python -m pipelines_v2.cli workflow run \
+examples/local_research/.cache/runtime/bin/python -m pipelines_v2.cli workflow run \
   --file platform/examples/07_native_sites.py --profile local-scratch \
   --scratch-model-cache "$XENON_NATIVE_MODEL_CACHE" --run-id wr_native_001
 ```

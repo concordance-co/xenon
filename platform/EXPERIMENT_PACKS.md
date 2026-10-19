@@ -4,7 +4,7 @@
 an ordinary `WorkflowSpec`. There is no pack scheduler. Load `pack.json` inside
 `build_workflow`, then call `pack.validate_workflow(workflow, phase_dir=...)`
 before returning it. The existing plan/run/runs/show/resume/report commands
-continue to work. See `workspaces/toy_pack/workflow.py` and its checked-in pack.
+continue to work. See `examples/toy_pack/workflow.py` and its checked-in pack.
 
 `XENON_EXPERIMENT_PRESET` selects `setup`, `smoke`, `reference`, or `scale`;
 the default is smoke. All four have separate enabled flags, workflow hashes,
@@ -70,4 +70,4 @@ unverified C01 evidence link. Qualification status is a record, never a grant.
 
 The report's evidence field is omitted by default from serialization and hashes,
 preserving existing report specs. Report modules stay lazy on execution paths.
-PHASE.md starts with Premise/Artifacts only; populate results from actual runs.
+Use the study’s chosen record format. Distinguish planned work from observed results.

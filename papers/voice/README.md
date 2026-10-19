@@ -1,13 +1,12 @@
-# Voice Paper Replications
+# Voice compatibility package
 
-Xenon-native smoke replications for direction/intervention papers about model
-"voice": persona, emotion, refusal, and truthfulness. These are public example
-workflows, not normal `projects/<project>/phase_XX` research phases.
+This tree remains packaged with Xenon because downstream repos import its asset,
+runtime and validation helpers. Existing module paths and bundled resources are
+preserved. It is not the home for new research studies.
 
-These workflows live in `xenon-projects`, a small `uv` project that depends on
-the sibling `../xenon` checkout in editable mode. Run workflow commands from
-the `xenon-projects` repository root; `uv run ...` will expose `pipelines_v2`
-without a manual `PYTHONPATH` or `--project ../xenon` override.
+Use `examples/` for current Xenon recipes and a separate research repo for paper
+replication or study work. The older recipes below remain available for compatibility.
+Run them from this checkout, or follow the sibling-repo setup in root `AGENTS.md`.
 
 Reusable vector and geometry artifacts use Modal volume `xenon-data` under
 `/data/artifacts/model-assets/vectors/<paper-or-method>/<run>`. Product demos

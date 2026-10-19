@@ -11,29 +11,35 @@ The four completed implementation areas are:
 
 ## First session or new thread
 
-1. Read [AGENTS.md](../AGENTS.md), choose a method from the [capability map](RESEARCH_HUB.md), and inspect its recipe. Read [locality](../operations/LOCALITY.md) before handling shared data. For research design, also load the methodology flywheel, principles and checks.
-2. Create `workspaces/<study>/<phase>/`. Save the question, dataset/split, model revision, method, budget and success check in `PHASE.md` using the [template](../methodology/templates/PHASE.md). Keep `workflow.py` as executable source of truth. Add an [experiment pack](EXPERIMENT_PACKS.md) when preset/recipe-lock validation is useful.
-3. Prepare immutable model/tool assets separately. Confirm the exact runtime and asset paths from the relevant recipe. Do not assume old `/private/tmp` paths or ignored `.planning/` logs exist on a new machine.
-4. Plan, then run one small real example through capture/intervention, saved artifact and local report. Check shapes, finite values, example alignment and an obvious effect or no-op control. Expand only after this path works.
-5. Save run/artifact IDs, the executed config, outcome and next step in the phase record. Use the catalog for discovery; leave large tensors on their compute store.
+1. Read [AGENTS.md](../AGENTS.md) and the [operations guide](../operations/README.md).
+   Choose a method from the [capability map](RESEARCH_HUB.md).
+2. Keep the study in a separate research repo. Copy or adapt a maintained recipe from `examples/`.
+   Use the requested objective and budget to set the workload. Resolve routine settings from the recipe.
+3. Prepare model and tool assets with the method's instructions.
+   Do not assume that old temporary paths or archived logs are available.
+4. Plan the workflow. Select runtime and model checks for the changes and risks involved.
+   Use relevant prior evidence for unchanged paths. Continue to the requested outcome after checks pass.
+5. Record the executed config, run IDs, result, and next action in the study's chosen format.
+   Phase templates and [experiment packs](EXPERIMENT_PACKS.md) are optional.
 
-For plain local CPU execution, install the exact isolated runtime in the [GPT-2 setup](../workspaces/local_research/phase_00/README.md#explicit-preparation-network-allowed-here-only). For Modal control, use the repo environment with `uv sync --extra modal`; target images install their own locks. Official MAttr and crosscoders have separate preparation instructions. Keep those tool dependencies out of the shared control environment.
+For plain local CPU execution, install the exact isolated runtime in the [GPT-2 setup](../examples/local_research/phase_00/README.md#explicit-preparation-network-allowed-here-only). For Modal control, use the repo environment with `uv sync --extra modal`; target images install their own locks. Official MAttr and crosscoders have separate preparation instructions. Keep those tool dependencies out of the shared control environment.
 
 ## Start with a configuration
 
-Copy [local.example.json](../workspaces/llm_research/local.example.json) or [modal.example.json](../workspaces/llm_research/modal.example.json) into the new phase. Set the prepared checkpoint and artifact/report paths, examples, layers and generation budget. The checked-in [workflow loader](../workspaces/llm_research/workflow.py) reads this file; copy or adapt it into the phase when adding steps.
+Copy [local.example.json](../examples/llm_research/local.example.json) or [modal.example.json](../examples/llm_research/modal.example.json) into the study directory. Set the prepared checkpoint and artifact/report paths, examples, layers and generation budget. The checked-in [workflow loader](../examples/llm_research/workflow.py) reads this file; copy or adapt it when adding steps.
 
 Use `dataset_file` instead of `examples` for a JSON array of Example records (`key`, `prompt`, optional labels/metadata). Python workflows can pass a `Dataset` directly. Local JSON is for explicit fixtures and scratch data; shared datasets retain Neon/locality conventions.
 
 ```bash
+# Run these commands from the Xenon checkout.
 # Choose the prepared local runtime, or the Modal control environment's Python.
 export XENON_EXPERIMENT_PYTHON=/absolute/path/to/runtime/bin/python
 export PYTHONPATH="$PWD"
-export XENON_LLM_CONFIG="$PWD/workspaces/my_study/phase_00/config.json"
+export XENON_LLM_CONFIG=/absolute/path/to/research-repo/workspaces/my_study/phase_00/config.json
 
-"$XENON_EXPERIMENT_PYTHON" -m pipelines_v2.cli workflow plan --file workspaces/llm_research/workflow.py
-"$XENON_EXPERIMENT_PYTHON" -m pipelines_v2.cli workflow run --file workspaces/llm_research/workflow.py --logging INFO
-"$XENON_EXPERIMENT_PYTHON" -m pipelines_v2.cli workflow runs --file workspaces/llm_research/workflow.py
+"$XENON_EXPERIMENT_PYTHON" -m pipelines_v2.cli workflow plan --file examples/llm_research/workflow.py
+"$XENON_EXPERIMENT_PYTHON" -m pipelines_v2.cli workflow run --file examples/llm_research/workflow.py --logging INFO
+"$XENON_EXPERIMENT_PYTHON" -m pipelines_v2.cli workflow runs --file examples/llm_research/workflow.py
 "$XENON_EXPERIMENT_PYTHON" -m pipelines_v2.cli workflow show --run-id wr_YOUR_RUN
 ```
 
@@ -55,7 +61,7 @@ SAE config supplies `dictionary: {cache_root, model_path, coordinate_evidence}` 
 
 MAttr config supplies `tool_paths` for a prepared local interpreter/source checkout and `attribution: {model, model_path, dataset_path, steps, eval_examples, seed, ...budgets}`. The two JSON files must follow the pinned upstream IOI schema. Their bytes become the data identity; custom files cannot masquerade as the official benchmark revision. For Modal, prepare the request locally and supply its serialized `request` with mounted model/dataset paths. Runtime source/environment provisioning occurs during image preparation. No broader task-format compatibility is implied.
 
-Crosscoder uses its own configurable builder in `workspaces/qwen_crosscoder`: datasets, explicit train/heldout keys, dictionary width, steps, token batches, feature edits, exact checkpoint continuation, and CPU/CUDA profiles. It processes model activations sequentially and bounds activation/parameter/output/device allocations. See that workspace's README.
+Crosscoder uses its own configurable builder in `examples/qwen_crosscoder`: datasets, explicit train/heldout keys, dictionary width, steps, token batches, feature edits, exact checkpoint continuation, and CPU/CUDA profiles. It processes model activations sequentially and bounds activation/parameter/output/device allocations. See that workspace's README.
 
 `CircuitTraceSpec` accepts positive feature-node/token/time/memory/output budgets instead of the former fixed two-node/two-token fixture. Each operation traces one prompt; ordinary workflow steps compose multiple prompts. The PLT-to-original-model parity limitation remains explicit and deferred.
 
@@ -96,18 +102,21 @@ Copy this into a new chat and fill in the concrete values:
 
 ```text
 Repo: /absolute/path/to/xenon
-Read AGENTS.md and platform/LLM_RESEARCH.md, then my phase's PHASE.md.
+Read AGENTS.md, operations/README.md, and the study's current notes.
 Question and desired output: ...
-Phase directory / workflow / config: ...
+Study directory / workflow / config: ...
 Model revision and prepared local or mounted paths: ...
 Runtime interpreter / local CPU or Modal GPU profile: ...
 Dataset source, split and current sample size: ...
 Budget: examples/tokens/steps, memory, timeout, GPU and worker count.
 Latest run/artifact IDs and result: ...
 Next action and verification condition: ...
-Start with a small real plumbing check. Continue routine implementation
-without asking. Keep shared captures on Modal and build reports locally.
+Use checks that address changes or unresolved risks. Complete the requested scope.
+Resolve routine choices without asking. Keep shared captures on Modal and build reports locally.
 Do not pick up platform/BACKBURNER.md unless this experiment requires it.
 ```
 
-The [platform index](README.md) points to deeper APIs and operational guides. Historical T00–T25 plans are archived; they are not a startup checklist for new experiments.
+The [platform index](README.md) points to deeper APIs and operational guides.
+See [AGENTS.md](../AGENTS.md#running-workflows-from-a-sibling-repo) for source mounting
+when executing from a sibling repo. Historical build plans and local evidence
+are outside this checkout; current setup never depends on them.

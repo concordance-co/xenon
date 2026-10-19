@@ -50,7 +50,7 @@ A real adapter must expose exact offline `scratch_token_counts(examples)`, a CPU
 device and model_id inside `--scratch-model-cache`. Prepare that cache separately
 with an immutable revision, for example `hf download <model> --revision <commit>
 --local-dir <cache>`. Missing cache is an actionable error, never a download.
-Toy fixtures and prepared GPT-2 CPU capture/interventions have been exercised; see the [local recipe](../workspaces/local_research/phase_00/README.md).
+Toy fixtures and prepared GPT-2 CPU capture/interventions have been exercised; see the [local recipe](../examples/local_research/phase_00/README.md).
 
 macOS requires sandbox-exec; Linux requires bubblewrap with a working unshared
 network namespace. Missing/unsupported OS isolation fails explicitly. The OS

@@ -1,117 +1,77 @@
-# Indexing
+# Find runs and artifacts
 
-How to discover what exists without downloading it.
+Start with the catalog. It records runs, steps, artifact IDs, and storage refs.
+Use storage inspection to diagnose a known path, not to infer the full run history.
 
-The catalog is the primary index for anything workflow-produced. For data uploaded outside workflows, use naming conventions plus workspace-local helpers. For Modal volumes, use CLI listing.
+## Catalog selection
 
-## The catalog is the index
+Normal CLI execution adds a local `FileCatalog` mirror.
+Its default root is `$XENON_HOME/pipelines_v2/catalog`, usually `~/.xenon/pipelines_v2/catalog`.
+`--local-catalog-root` or workspace config can select a different root.
 
-All workflow runs, workflow steps, and artifacts are recorded in a Postgres catalog that is shared across the team. A local `FileCatalog` mirrors state at `~/.xenon/pipelines_v2/catalog`. `CompositeCatalog` reads from both.
+The repo's `xenon.toml` names `XENON_NEON_DATABASE_URL` for the shared Postgres catalog.
+The CLI uses this default when the environment variable is available.
+An explicit runner catalog takes precedence over this default.
+Runners in one workflow must resolve to a common catalog identity.
 
-Default behavior is configured in repo-root `xenon.toml`. Don't override with `NullCatalog` unless you mean to be invisible to the team.
+An explicit local catalog can keep a workflow out of the team catalog.
+`NullCatalog` also behaves differently in a direct runner and through the CLI:
+the CLI attaches its local mirror and can apply the shared default.
+Inspect the effective setup rather than using `NullCatalog` as an offline switch.
+Use `local-scratch` for enforced offline execution.
 
-### Discovery through the CLI
+## Discover and inspect
 
-```bash
-# list runs for a specific workflow file
-uv run python -m pipelines_v2.cli workflow runs --file path/to/workflow.py
-
-# inspect one run (steps, statuses, artifact ids, progress snapshots)
-uv run python -m pipelines_v2.cli workflow show --run-id wr_...
-```
-
-This is the default agent-facing discovery path. When an agent wants to know "what has been run for this phase," use these commands.
-
-### Direct catalog queries
-
-For cross-workflow discovery, query the Postgres catalog directly. See `pipelines_v2/storage/postgres.py` for table names and schema. Typical questions:
-
-- recent runs across all workflows
-- artifacts of a given kind across a time window
-- which workflows have produced a particular artifact kind (probe, direction, etc.)
-
-The catalog holds artifact manifests (which include `workflow_context`, input refs, storage refs), workflow run records, and step records. Everything needed to trace lineage without reading any data.
-
-## Neon tables outside the catalog
-
-Not everything in Neon goes through workflows. Ad-hoc uploads land in plain tables:
-
-- uploaded real datasets (complaint exports, trace exports, benchmark imports)
-- seed corpora
-- workspace-level reference tables
-
-These are not catalog-indexed. Discovery is via SQL against Neon's information_schema:
-
-```sql
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-```
-
-### Naming convention
-
-Recommended pattern: `<workspace>_<purpose>_v<N>`. A new version produces a new table, never an in-place mutation.
-
-Keep using this pattern for new uploads. If you need something that doesn't fit, propose a convention extension before creating the table.
-
-### Uploaders
-
-Ad-hoc uploads go through repeatable uploader scripts near the workflow or data manifest:
-
-```
-workflows/<workflow_name>/scripts/upload_<what>_to_neon.py
-```
-
-When you upload a new table, document the table name, purpose, and one-line schema note in the workspace's data inventory.
-
-## Modal volumes
-
-Two volumes of relevance:
-
-- `xenon-data` — artifacts produced by workflows
-- `xenon-models` — model weights and vLLM compile cache
-
-### Listing without mounting
+Use the selected runtime's Python. These examples use `python` as shorthand.
 
 ```bash
-modal volume ls xenon-data <path_prefix>
+python -m pipelines_v2.cli workflow runs --file /absolute/path/workflow.py
+python -m pipelines_v2.cli workflow runs --status failed --limit 10
+python -m pipelines_v2.cli workflow show --run-id wr_YOUR_RUN
 ```
 
-This is the default agent-facing path for "is this artifact present on the volume?" Don't mount the volume to check.
+`runs --file` imports the workflow and uses its name and runner catalog settings.
+Keep its builders free of unrelated side effects. Without `--file`, discovery uses workspace defaults.
+`show` returns run data, step records, and local progress snapshots.
 
-### Reading artifacts
+For an alternate local catalog:
 
-Programmatic access goes through `ModalVolumeStore`. Use the catalog to get an `artifact_id`, then use the typed artifact handle (`CaptureArtifact`, `OperationArtifact`) to read refs. Don't shell into the volume to grep for files.
+```bash
+python -m pipelines_v2.cli workflow show --run-id wr_YOUR_RUN --local-catalog-root /absolute/path/catalog
+```
 
-## Workspace-local helpers
+Use the same workspace config and catalog roots as the original run.
+An unknown ID can mean the wrong catalog, not a missing output.
 
-Workspace-specific discovery helpers should live near the workflow code:
+## Read selected results
 
-- `paths.py` — path helpers (export roots, phase-local paths, env-driven overrides)
-- `neon.py` — Neon connection and query helpers
-- `catalogs.py` — workspace-local catalog surface (if needed beyond the shared catalog)
+The evidence CLI defaults to the local mirror. It does not silently query Postgres.
 
-These are workspace-local by design. If a helper pattern starts repeating across workspaces, it is a candidate for promotion into `pipelines_v2/`.
+```bash
+python -m pipelines_v2.evidence runs --study steering --limit 10
+python -m pipelines_v2.evidence show wr_YOUR_RUN
+python -m pipelines_v2.evidence artifact ARTIFACT_ID --result
+python -m pipelines_v2.evidence --catalog-root /absolute/path/catalog show wr_YOUR_RUN
+```
 
-## Cross-workflow discovery
+Place `--catalog-root` before the evidence subcommand.
+The reader limits metadata scans and result sizes. It reports missing or oversized inputs.
+A truncated result is not a complete inventory. Remote result reads need access to their store.
+See [evidence](../platform/EVIDENCE.md) for Python queries and comparison rules.
 
-The catalog is cross-workflow by default. Neon tables and Modal volumes are not indexed by workspace unless the workspace records that metadata.
+## Data outside workflow catalogs
 
-Each real-data workspace should list:
+An independently uploaded Neon table is not automatically a workflow artifact.
+Keep its table name, purpose, version, and selection with the study config.
+Query `information_schema.tables` when the table name is unknown.
+`<study>_<purpose>_v<N>` is a useful naming convention, not a code requirement.
 
-- active Neon tables (with purpose and version)
-- active Modal volume prefixes relevant to the work
-- catalog identity if the workflow uses a non-default catalog
+For a known Modal path, inspect its volume without downloading the contents:
 
-This makes the work discoverable to an agent landing on it cold.
+```bash
+modal volume ls xenon-data PATH_PREFIX
+```
 
-## Default agent workflow when orienting to a workflow
-
-1. Read the workflow's README, `PHASE.md`, or equivalent context doc.
-2. `workflow runs --file <workflow.py>` to see what's been run.
-3. `workflow show --run-id <latest>` for the most recent run's shape.
-4. If real data is involved, read the workspace data inventory for Neon table names.
-5. Query Neon or the catalog directly for anything else.
-
-Don't discover by listing directories. Don't discover by downloading.
+Use the artifact manifest to resolve its volume and path.
+Do not substitute a directory listing for completion or lineage checks.
+For custom queries, see [catalog implementations](../pipelines_v2/storage/).

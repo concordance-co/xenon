@@ -4,8 +4,8 @@ The canonical Xenon workflow is:
 
 `workflow.py -> workflow run -> artifacts -> local report`
 
-For real jobs, capture and analysis run on Modal. Reports are built locally
-from workflow artifacts.
+Runner specs select local or Modal capture and analysis. Reports are built locally
+from workflow artifacts. Start with the [operations guide](../operations/README.md).
 
 Deployments are separate from workflows. A deployment is a long-lived service
 process with endpoint(s), runtime requirements, and target profiles; it does

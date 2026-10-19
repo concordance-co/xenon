@@ -9,9 +9,9 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--models',required=True);parser.add_argument('--reference',required=True);parser.add_argument('--output',required=True);parser.add_argument('--recover')
     parser.add_argument('--workflow',type=Path,help='Path to the checked-in qwen_crosscoder workflow.py (required outside a checkout)')
     args=parser.parse_args()
-    workflow=args.workflow or Path(__file__).resolve().parents[3]/'workspaces/qwen_crosscoder/phase_00/workflow.py'
+    workflow=args.workflow or Path(__file__).resolve().parents[3]/'examples/qwen_crosscoder/phase_00/workflow.py'
     if not args.recover and not workflow.is_file():
-        parser.error('Crosscoder demo needs the repository recipe; pass --workflow /path/to/xenon/workspaces/qwen_crosscoder/phase_00/workflow.py')
+        parser.error('Crosscoder demo needs the repository recipe; pass --workflow /path/to/xenon/examples/qwen_crosscoder/phase_00/workflow.py')
     models=json.loads(Path(args.models).read_text())['models']
     os.environ.update(XENON_CROSSCODER_BASE=models[0]['path'],XENON_CROSSCODER_INSTRUCT=models[1]['path'],
         XENON_CROSSCODER_REFERENCE=str(Path(args.reference).resolve()),XENON_CROSSCODER_OUTPUT=str(Path(args.output).resolve()))

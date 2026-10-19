@@ -9,7 +9,8 @@
     "Rows identify observed task evidence, not qualification of every later integrated source change.",
     "Receipt hashes capture read-only evidence at observation; receipts may later gain review results.",
     "Source digests may be task deltas rather than whole trees; use the referenced receipt for their exact scope.",
-    "Complete C01 identity, C03 integrity, C02 measured envelope and scientific evidence are separate predicates."
+    "Complete C01 identity, C03 integrity, C02 measured envelope and scientific evidence are separate predicates.",
+    "Repository cleanup moved maintained recipes from workspaces/ to examples/. Historical local evidence paths (including .planning and archived receipts) refer to the external cleanup bundle, not current files or runtime dependencies. Observation dates and recorded digests are unchanged."
   ],
   "status_definitions": {
     "passed": "Actual named model/operation cell executed; does not mean scientific or release acceptance.",
@@ -37,7 +38,7 @@
       "device": "local CPU/macOS arm64",
       "dtype": "float32",
       "runtime": "core-local Python3.13.6; eager",
-      "recipe": "workspaces/local_research/phase_00/README.md",
+      "recipe": "examples/local_research/phase_00/README.md",
       "evidence": {
         "run_ids": [
           "wr_t08_matched_final",
@@ -110,7 +111,7 @@
       "device": "local CPU/macOS arm64",
       "dtype": "float32",
       "runtime": "core-local; eager",
-      "recipe": "workspaces/native_neurons/phase_00/README.md",
+      "recipe": "examples/native_neurons/phase_00/README.md",
       "evidence": {
         "run_ids": [
           "wr_t13_neuron_microscope_final"
@@ -145,7 +146,7 @@
       "device": "local CPU/macOS arm64",
       "dtype": "float32",
       "runtime": "core-local; eager",
-      "recipe": "workspaces/native_route_smoke/README.md",
+      "recipe": "examples/native_route_smoke/README.md",
       "evidence": {
         "run_ids": [
           "wr_t14_native_route_smoke"
@@ -222,7 +223,7 @@
       "device": "local CPU",
       "dtype": "bfloat16",
       "runtime": "isolated Python3.12 official upstream uv.lock; Xenon core control interpreter",
-      "recipe": "workspaces/mattr/phase_01/README.md",
+      "recipe": "examples/mattr/phase_01/README.md",
       "evidence": {
         "run_ids": [
           "wr_t11_qwen25_mattr_smoke"
@@ -306,7 +307,7 @@
       "device": "Modal NVIDIA A100-SXM4-80GB",
       "dtype": "float32",
       "runtime": "isolated Python3.12/Torch2.8.0/TL2.16.1/Transformers4.57.3/circuit-tracer0.5.3",
-      "recipe": "workspaces/circuit_trace_smoke/README.md",
+      "recipe": "examples/circuit_trace_smoke/README.md",
       "evidence": {
         "run_ids": [
           "wr_t20_qwen3_plt_smoke"
@@ -355,7 +356,7 @@
       "device": "local CPU/macOS arm64",
       "dtype": "float32",
       "runtime": "isolated Python3.13/Torch2.11.0/Transformers5.9.0; separate bounded fitter subprocess",
-      "recipe": "workspaces/qwen_crosscoder/README.md",
+      "recipe": "examples/qwen_crosscoder/README.md",
       "evidence": {
         "run_ids": [
           "wr_scratch_98522166e2f54300b392442e249c2211"
@@ -519,7 +520,7 @@
       "device": "local CPU/macOS arm64",
       "dtype": "float32",
       "runtime": "core-local",
-      "recipe": "workspaces/recognition/phase_00/README.md",
+      "recipe": "examples/recognition/phase_00/README.md",
       "evidence": {
         "run_ids": [
           "wr_t15_vit_microscope_final"
@@ -552,7 +553,7 @@
       "device": "Modal NVIDIA A100-SXM4-80GB",
       "dtype": "float16",
       "runtime": "separate Diffusers lock; Euler scheduler",
-      "recipe": "workspaces/sdxl_steering/README.md",
+      "recipe": "examples/sdxl_steering/README.md",
       "evidence": {
         "run_ids": [
           "wr_t17_discovery",

@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "study_id": "local-research",
+  "phase_id": "phase_00",
+  "papers": [],
+  "workflow": "workflow.py",
+  "source_locks": {
+    "workflow.py": "d495b783649153e3bf07d9d6a48297817fdfab5ae22fd52ae84b9d5f89f1e2da",
+    "fixtures.py": "41318e70013556baafc0957dc254ad9bea9d9e351658dd40830de3496a036f05",
+    "analysis.py": "211a672f86da7278f52991383556e55f753d0a07cf916699d9be5f688eb1a1c1",
+    "model_lock.json": "057ab6bc22c378317dd8e03aac587b283f3f245934bfa453ff7a9eba6d42c37b"
+  },
+  "model_locks": {
+    "capture": "0baa236e7b7965fe1d3a6f5e8909dab72a5c55d299ac951104c6983f16b941f5",
+    "baseline": "0baa236e7b7965fe1d3a6f5e8909dab72a5c55d299ac951104c6983f16b941f5",
+    "identity": "0baa236e7b7965fe1d3a6f5e8909dab72a5c55d299ac951104c6983f16b941f5",
+    "zero": "0baa236e7b7965fe1d3a6f5e8909dab72a5c55d299ac951104c6983f16b941f5",
+    "matched": "0baa236e7b7965fe1d3a6f5e8909dab72a5c55d299ac951104c6983f16b941f5",
+    "same_label": "0baa236e7b7965fe1d3a6f5e8909dab72a5c55d299ac951104c6983f16b941f5",
+    "random_donor": "0baa236e7b7965fe1d3a6f5e8909dab72a5c55d299ac951104c6983f16b941f5"
+  },
+  "data_locks": {
+    "capture/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "baseline/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "identity/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "zero/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "matched/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "matched/pair_by/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "matched/target_when/label_set/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "matched/donor_when/label_set/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "same_label/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "same_label/pair_by/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "same_label/target_when/label_set/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "same_label/donor_when/label_set/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "random_donor/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "random_donor/pair_by/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "random_donor/target_when/label_set/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc",
+    "random_donor/donor_when/label_set/dataset": "5d13d2d3eb646586bebffc93d52a20936dded44daea0237703a102ade6675adc"
+  },
+  "question_ids": [
+    "Q-local-steering"
+  ],
+  "hypothesis_ids": [
+    "H-opposite-donor-shift"
+  ],
+  "presets": {
+    "setup": {
+      "enabled": false,
+      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "model_bindings": {
+        "capture": "capture",
+        "baseline": "baseline",
+        "identity": "identity",
+        "zero": "zero",
+        "matched": "matched",
+        "same_label": "same_label",
+        "random_donor": "random_donor"
+      },
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "baseline/dataset": "baseline/dataset",
+        "identity/dataset": "identity/dataset",
+        "zero/dataset": "zero/dataset",
+        "matched/dataset": "matched/dataset",
+        "matched/pair_by/dataset": "matched/pair_by/dataset",
+        "matched/target_when/label_set/dataset": "matched/target_when/label_set/dataset",
+        "matched/donor_when/label_set/dataset": "matched/donor_when/label_set/dataset",
+        "same_label/dataset": "same_label/dataset",
+        "same_label/pair_by/dataset": "same_label/pair_by/dataset",
+        "same_label/target_when/label_set/dataset": "same_label/target_when/label_set/dataset",
+        "same_label/donor_when/label_set/dataset": "same_label/donor_when/label_set/dataset",
+        "random_donor/dataset": "random_donor/dataset",
+        "random_donor/pair_by/dataset": "random_donor/pair_by/dataset",
+        "random_donor/target_when/label_set/dataset": "random_donor/target_when/label_set/dataset",
+        "random_donor/donor_when/label_set/dataset": "random_donor/donor_when/label_set/dataset"
+      },
+      "limits": {
+        "max_examples": 8,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Pretrained GPT-2 engineering experiment; no paper reproduction or held-out claim."
+      },
+      "qualification_refs": []
+    },
+    "smoke": {
+      "enabled": true,
+      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "model_bindings": {
+        "capture": "capture",
+        "baseline": "baseline",
+        "identity": "identity",
+        "zero": "zero",
+        "matched": "matched",
+        "same_label": "same_label",
+        "random_donor": "random_donor"
+      },
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "baseline/dataset": "baseline/dataset",
+        "identity/dataset": "identity/dataset",
+        "zero/dataset": "zero/dataset",
+        "matched/dataset": "matched/dataset",
+        "matched/pair_by/dataset": "matched/pair_by/dataset",
+        "matched/target_when/label_set/dataset": "matched/target_when/label_set/dataset",
+        "matched/donor_when/label_set/dataset": "matched/donor_when/label_set/dataset",
+        "same_label/dataset": "same_label/dataset",
+        "same_label/pair_by/dataset": "same_label/pair_by/dataset",
+        "same_label/target_when/label_set/dataset": "same_label/target_when/label_set/dataset",
+        "same_label/donor_when/label_set/dataset": "same_label/donor_when/label_set/dataset",
+        "random_donor/dataset": "random_donor/dataset",
+        "random_donor/pair_by/dataset": "random_donor/pair_by/dataset",
+        "random_donor/target_when/label_set/dataset": "random_donor/target_when/label_set/dataset",
+        "random_donor/donor_when/label_set/dataset": "random_donor/donor_when/label_set/dataset"
+      },
+      "limits": {
+        "max_examples": 8,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Pretrained GPT-2 engineering experiment; no paper reproduction or held-out claim."
+      },
+      "qualification_refs": []
+    },
+    "reference": {
+      "enabled": false,
+      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "model_bindings": {
+        "capture": "capture",
+        "baseline": "baseline",
+        "identity": "identity",
+        "zero": "zero",
+        "matched": "matched",
+        "same_label": "same_label",
+        "random_donor": "random_donor"
+      },
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "baseline/dataset": "baseline/dataset",
+        "identity/dataset": "identity/dataset",
+        "zero/dataset": "zero/dataset",
+        "matched/dataset": "matched/dataset",
+        "matched/pair_by/dataset": "matched/pair_by/dataset",
+        "matched/target_when/label_set/dataset": "matched/target_when/label_set/dataset",
+        "matched/donor_when/label_set/dataset": "matched/donor_when/label_set/dataset",
+        "same_label/dataset": "same_label/dataset",
+        "same_label/pair_by/dataset": "same_label/pair_by/dataset",
+        "same_label/target_when/label_set/dataset": "same_label/target_when/label_set/dataset",
+        "same_label/donor_when/label_set/dataset": "same_label/donor_when/label_set/dataset",
+        "random_donor/dataset": "random_donor/dataset",
+        "random_donor/pair_by/dataset": "random_donor/pair_by/dataset",
+        "random_donor/target_when/label_set/dataset": "random_donor/target_when/label_set/dataset",
+        "random_donor/donor_when/label_set/dataset": "random_donor/donor_when/label_set/dataset"
+      },
+      "limits": {
+        "max_examples": 8,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Pretrained GPT-2 engineering experiment; no paper reproduction or held-out claim."
+      },
+      "qualification_refs": []
+    },
+    "scale": {
+      "enabled": false,
+      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "model_bindings": {
+        "capture": "capture",
+        "baseline": "baseline",
+        "identity": "identity",
+        "zero": "zero",
+        "matched": "matched",
+        "same_label": "same_label",
+        "random_donor": "random_donor"
+      },
+      "data_bindings": {
+        "capture/dataset": "capture/dataset",
+        "baseline/dataset": "baseline/dataset",
+        "identity/dataset": "identity/dataset",
+        "zero/dataset": "zero/dataset",
+        "matched/dataset": "matched/dataset",
+        "matched/pair_by/dataset": "matched/pair_by/dataset",
+        "matched/target_when/label_set/dataset": "matched/target_when/label_set/dataset",
+        "matched/donor_when/label_set/dataset": "matched/donor_when/label_set/dataset",
+        "same_label/dataset": "same_label/dataset",
+        "same_label/pair_by/dataset": "same_label/pair_by/dataset",
+        "same_label/target_when/label_set/dataset": "same_label/target_when/label_set/dataset",
+        "same_label/donor_when/label_set/dataset": "same_label/donor_when/label_set/dataset",
+        "random_donor/dataset": "random_donor/dataset",
+        "random_donor/pair_by/dataset": "random_donor/pair_by/dataset",
+        "random_donor/target_when/label_set/dataset": "random_donor/target_when/label_set/dataset",
+        "random_donor/donor_when/label_set/dataset": "random_donor/donor_when/label_set/dataset"
+      },
+      "limits": {
+        "max_examples": 8,
+        "max_workers": 1,
+        "timeout_seconds": 600,
+        "max_gpu_hours": 0
+      },
+      "paper_settings": {
+        "scope": "Pretrained GPT-2 engineering experiment; no paper reproduction or held-out claim."
+      },
+      "qualification_refs": []
+    }
+  },
+  "split_policy": {
+    "unit": "prompt-template",
+    "partitions": [
+      "exploratory"
+    ],
+    "held_out": [],
+    "digest": "3edc24f6e9f36890276bfcece8d2f4762b11871465d782cda339d5e3885db936"
+  },
+  "metrics": {
+    "opposite_label_shift": {
+      "evaluator_digest": "211a672f86da7278f52991383556e55f753d0a07cf916699d9be5f688eb1a1c1",
+      "direction": "higher",
+      "unit": "log_probability_difference"
+    }
+  },
+  "controls": {
+    "identity": {
+      "purpose": "Exact no-op equivalence",
+      "required": true
+    },
+    "zero": {
+      "purpose": "Residual ablation baseline",
+      "required": true
+    },
+    "matched": {
+      "purpose": "Opposite-label full-state donor",
+      "required": true
+    },
+    "same_label": {
+      "purpose": "Same-label context disruption",
+      "required": true
+    },
+    "random_donor": {
+      "purpose": "Seeded unmatched donor",
+      "required": true
+    }
+  },
+  "qualification_requirements": [],
+  "expected_outputs": {
+    "capture": "capture",
+    "bank": "activation_bank",
+    "baseline": "generation_run",
+    "identity": "patched_generation",
+    "zero": "patched_generation",
+    "matched": "patched_generation",
+    "same_label": "patched_generation",
+    "random_donor": "patched_generation",
+    "summary": "transform",
+    "report": "report"
+  }
+}

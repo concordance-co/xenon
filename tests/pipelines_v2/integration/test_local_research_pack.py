@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from workspaces.local_research.phase_00.fixtures import PAIRS, PROMPTS, TARGETS, DONORS, TOKENS, SEED, examples
-from workspaces.local_research.phase_00.workflow import build_workflow
-from workspaces.local_research.phase_00.analysis import summarize
+from examples.local_research.phase_00.fixtures import PAIRS, PROMPTS, TARGETS, DONORS, TOKENS, SEED, examples
+from examples.local_research.phase_00.workflow import build_workflow
+from examples.local_research.phase_00.analysis import summarize
 
 
 def fixture_results():
@@ -86,7 +86,7 @@ def test_directional_flip_and_format_diagnostics():
 
 
 def test_preparation_requires_pinned_bytes(tmp_path):
-    from workspaces.local_research.phase_00.prepare import prepare
+    from examples.local_research.phase_00.prepare import prepare
     (tmp_path/'README.md').write_text('not the pinned checkpoint')
     with pytest.raises(ValueError,match='Incomplete prepared snapshot'):
         prepare(tmp_path)
@@ -98,6 +98,6 @@ def test_offline_fixture_token_bounds_when_explicitly_prepared():
     if not cache:
         pytest.skip('Set XENON_TEST_GPT2_CACHE for the separately prepared pretrained fixture')
     from pipelines_v2.engine.torch import TorchEngine
-    from workspaces.local_research.phase_00.fixtures import REVISION
+    from examples.local_research.phase_00.fixtures import REVISION
     engine=TorchEngine(model_id=str(Path(cache)),revision=REVISION)
     assert max(engine.scratch_token_counts(examples())) <= 128
