@@ -520,6 +520,16 @@ Fields:
 - `layers`
 - `tokens`
 - `storage`
+- `layer_indexing`: new Python sites default to `"decoder_block"` (zero-based
+  block output for `resid_post`, matching intervention indices). Explicit
+  `"vllm_aux"` preserves backend auxiliary indices. Old serialized sites without
+  this field deserialize in legacy mode; old Python workflows must opt into
+  legacy mode explicitly if preserving their former requests.
+
+See [residual layer indexing and migration](residual_layer_indexing.md) before
+reusing historical activation banks or removing a manual `source_layer_map`.
+New captures carry versioned coordinate provenance; unsupported backend
+conventions fail closed rather than silently applying an offset.
 
 ### `RoutingRecord`
 

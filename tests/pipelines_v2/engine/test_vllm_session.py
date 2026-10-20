@@ -97,7 +97,7 @@ def test_vllm_session_builds_superset_runtime_for_capture_generation_and_patchin
         assert kwargs["additional_config"]["xenon_activation_patch_compiled_operator"] == "subspace"
         assert kwargs["speculative_config"]["draft_model_config"]["hf_config"][
             "eagle_aux_hidden_state_layer_ids"
-        ] == [0, 2]
+        ] == [1, 3]
         assert kwargs["kv_transfer_config"]["kv_connector"] == "ExampleHiddenStatesConnector"
         assert "kv_connector_module_path" not in kwargs["kv_transfer_config"]
         assert reasoning_parser == "qwen3"

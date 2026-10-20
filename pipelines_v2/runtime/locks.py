@@ -153,4 +153,9 @@ def build_locked_image(modal, runtime):
             stream.write(lock.requirements)
             temporary = Path(stream.name)
         temporary.replace(path)
-    return image.pip_install_from_requirements(str(path), extra_options="--no-deps")
+    image = image.pip_install_from_requirements(str(path), extra_options="--no-deps")
+    if lock.name == 'vllm-linux':
+        # Triton's CUDA driver builds a C extension on first use, including
+        # eager residual capture. The slim Python base has no C toolchain.
+        image = image.apt_install('gcc', 'libc6-dev')
+    return image

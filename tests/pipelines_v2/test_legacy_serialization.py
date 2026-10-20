@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,18 @@ from pipelines_v2.operations.registry import BUILTIN_OPERATION_KINDS, operation_
 FIXTURES = json.loads((Path(__file__).parent / 'fixtures/legacy_serialization_v1.json').read_text())
 
 
+def with_explicit_legacy_coordinates(payload):
+    """Keep the old golden bytes; assert the deliberate coordinate migration."""
+    expected = deepcopy(payload)
+    if expected.get('kind') == 'capture':
+        for site in expected['sites']:
+            if 'site' in site:
+                site['layer_indexing'] = 'vllm_aux'
+    for step in expected.get('steps', []):
+        step['spec'] = with_explicit_legacy_coordinates(step['spec'])
+    return expected
+
+
 def test_golden_covers_every_builtin_operation_and_patch_family():
     assert {item['kind'] for item in FIXTURES['operations']} == BUILTIN_OPERATION_KINDS
     # New native/scale codecs have their own oracles; preserve pre-T24 goldens.
@@ -24,9 +37,15 @@ def test_golden_covers_every_builtin_operation_and_patch_family():
 def test_legacy_operation_sparse_defaults_and_canonical_roundtrip(fixture):
     for payload in (fixture['input'], fixture['payload']):
         spec = operation_spec_from_dict(payload)
-        assert spec.to_dict() == fixture['payload']
-        assert spec.spec_hash() == fixture['spec_hash']
-        assert spec.semantic_hash() == fixture['semantic_hash']
+        expected = with_explicit_legacy_coordinates(fixture['payload'])
+        assert spec.to_dict() == expected
+        if fixture['kind'] == 'capture':
+            assert spec.spec_hash() != fixture['spec_hash']
+            assert spec.semantic_hash() != fixture['semantic_hash']
+            assert operation_spec_from_dict(spec.to_dict()).to_dict() == expected
+        else:
+            assert spec.spec_hash() == fixture['spec_hash']
+            assert spec.semantic_hash() == fixture['semantic_hash']
 
 
 @pytest.mark.parametrize('fixture', FIXTURES['patches'], ids=lambda item: item['kind'])
@@ -47,9 +66,10 @@ def test_legacy_engine_identity(fixture):
 def test_legacy_workflow_snapshot():
     fixture = FIXTURES['workflow']
     workflow = WorkflowSpec.from_dict(fixture['payload'])
-    assert workflow.to_dict() == fixture['payload']
-    assert workflow.spec_hash() == fixture['spec_hash']
-    assert workflow.semantic_hash() == fixture['semantic_hash']
+    assert workflow.to_dict() == with_explicit_legacy_coordinates(fixture['payload'])
+    assert workflow.spec_hash() != fixture['spec_hash']
+    assert workflow.semantic_hash() != fixture['semantic_hash']
+    assert WorkflowSpec.from_dict(workflow.to_dict()).to_dict() == workflow.to_dict()
 
 
 def test_residual_and_moe_feature_wire_payloads_match_baseline():

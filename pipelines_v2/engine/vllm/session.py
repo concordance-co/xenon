@@ -17,6 +17,7 @@ from pipelines_v2.operations.specs import (
 )
 
 from .intervention_build import build_llm_kwargs
+from .residual_coordinates import auxiliary_indices, validate_capture_coordinates
 
 if TYPE_CHECKING:
     from pipelines_v2.engine.base import (
@@ -44,6 +45,7 @@ class VLLMSessionRuntime:
     batch_size: int
     session_key: str
     load_performance: dict[str, float]
+    residual_auxiliary_indices: tuple[int, ...] = ()
     _tempdir: tempfile.TemporaryDirectory[str] | None = None
 
     def capture(
@@ -164,6 +166,7 @@ def build_vllm_session_runtime(
         batch_size=max(1, int(engine.max_num_seqs or 1)),
         session_key=vllm_session_key(engine=engine, specs=specs_tuple),
         load_performance=load_performance,
+        residual_auxiliary_indices=tuple(_residual_layers_for_specs(specs_tuple)),
         _tempdir=tempdir,
     )
 
@@ -191,6 +194,10 @@ def build_vllm_session_llm_kwargs(
             llm_kwargs["structured_outputs_config"] = {"reasoning_parser": reasoning_parser}
 
     residual_layers = _residual_layers_for_specs(specs_tuple)
+    validate_capture_coordinates(engine, [
+        site for spec in specs_tuple if isinstance(spec, CaptureSpec)
+        for site in spec.sites if isinstance(site, ResidualSite)
+    ])
     tempdir: tempfile.TemporaryDirectory[str] | None = None
     if residual_layers:
         tempdir = tempfile.TemporaryDirectory(prefix="pipelines_v2_vllm_")
@@ -288,16 +295,10 @@ def _base_llm_kwargs(engine: "VLLMEngine") -> dict[str, Any]:
 
 
 def _residual_layers_for_specs(specs: Sequence[OperationSpec]) -> list[int]:
-    return sorted(
-        {
-            int(layer)
-            for spec in specs
-            if isinstance(spec, CaptureSpec)
-            for site in spec.sites
-            if isinstance(site, ResidualSite)
-            for layer in site.layers
-        }
-    )
+    return auxiliary_indices([
+        site for spec in specs if isinstance(spec, CaptureSpec)
+        for site in spec.sites if isinstance(site, ResidualSite)
+    ])
 
 
 def _reasoning_parser_for_specs(

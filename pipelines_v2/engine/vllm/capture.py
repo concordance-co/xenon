@@ -15,6 +15,14 @@ from pipelines_v2.engine.prompt_metadata import resolve_prompt_metadata, section
 from pipelines_v2.engine.routing import requested_topk_from_gate_k, routing_record_payload
 from pipelines_v2.operations.specs import CaptureSpec, MoERoutingSite, ResidualSite, RoutingRecord, TokenPooling
 
+from .residual_coordinates import (
+    audit_model_coordinates,
+    auxiliary_index,
+    auxiliary_indices,
+    coordinate_metadata,
+    validate_capture_coordinates,
+)
+
 if TYPE_CHECKING:
     from pipelines_v2.engine.vllm.engine import VLLMEngine
 
@@ -58,7 +66,8 @@ def run_vllm_capture(
     examples = list(spec.dataset.examples)
     residual_sites = [site for site in spec.sites if isinstance(site, ResidualSite)]
     routing_sites = [site for site in spec.sites if isinstance(site, MoERoutingSite)]
-    residual_layers = sorted({int(layer) for site in residual_sites for layer in site.layers})
+    residual_layers = auxiliary_indices(residual_sites)
+    validate_capture_coordinates(engine, residual_sites)
     wants_residual = bool(residual_sites)
     wants_routing = bool(routing_sites)
     wants_generation = bool(spec.generation.enabled)
@@ -311,6 +320,7 @@ def run_vllm_capture_with_runtime(
         batch_callback=batch_callback,
         progress_callback=progress_callback,
         load_performance=dict(getattr(runtime, "load_performance", {}) or {}),
+        captured_auxiliary_indices=runtime.residual_auxiliary_indices,
     )
 
 
@@ -324,6 +334,7 @@ def _run_vllm_capture_loaded(
     batch_callback: Callable[[list[Example], list[dict[str, Any]], list[dict[str, Any]]], None] | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
     load_performance: dict[str, float] | None = None,
+    captured_auxiliary_indices: tuple[int, ...] | None = None,
 ) -> EngineCaptureResult:
     from functools import partial
 
@@ -331,7 +342,27 @@ def _run_vllm_capture_loaded(
     examples = list(spec.dataset.examples)
     residual_sites = [site for site in spec.sites if isinstance(site, ResidualSite)]
     routing_sites = [site for site in spec.sites if isinstance(site, MoERoutingSite)]
-    residual_layers = sorted({int(layer) for site in residual_sites for layer in site.layers})
+    requested_auxiliary_indices = auxiliary_indices(residual_sites)
+    residual_layers = (
+        list(captured_auxiliary_indices)
+        if captured_auxiliary_indices is not None
+        else requested_auxiliary_indices
+    )
+    if not set(requested_auxiliary_indices).issubset(residual_layers):
+        raise ValueError("Capture requests auxiliary boundaries missing from the loaded session")
+    validate_capture_coordinates(engine, residual_sites)
+    requested_blocks = tuple(sorted({
+        int(layer)
+        for site in residual_sites
+        if site.layer_indexing == "decoder_block"
+        for layer in site.layers
+    }))
+    coordinate_audits = (
+        llm.apply_model(partial(audit_model_coordinates, requested_blocks=requested_blocks))
+        if requested_blocks else []
+    )
+    if requested_blocks and not coordinate_audits:
+        raise RuntimeError("No model workers verified residual capture coordinates")
     wants_residual = bool(residual_sites)
     wants_routing = bool(routing_sites)
     wants_generation = bool(spec.generation.enabled)
@@ -364,6 +395,8 @@ def _run_vllm_capture_loaded(
         )
 
     feature_payloads: dict[str, dict[str, Any]] = {site.name: _empty_feature(site) for site in spec.sites}
+    for site in residual_sites:
+        feature_payloads[site.name]["residual_coordinates"]["runtime_audits"] = coordinate_audits
     generations: list[dict[str, Any]] = []
     example_metadata: list[dict[str, Any]] = []
     performance_batches: list[dict[str, float | int]] = []
@@ -533,7 +566,11 @@ def _run_vllm_capture_loaded(
             "router_enabled": router_enabled,
             "requested_router_layers": sorted({int(layer) for site in routing_sites for layer in site.layers}),
             "discovered_router_layers": discovered_router_layers,
-            "residual_layers": residual_layers,
+            "residual_layers": sorted({int(layer) for site in residual_sites for layer in site.layers}),
+            "captured_auxiliary_indices": residual_layers,
+            "residual_layer_coordinates": {
+                site.name: feature_payloads[site.name]["residual_coordinates"] for site in residual_sites
+            },
             "batch_size": batch_size,
             "spec_hash": spec.spec_hash(),
             "performance": performance,
@@ -579,6 +616,7 @@ def _empty_feature(site: ResidualSite | MoERoutingSite) -> dict[str, Any]:
             "kind": "residual",
             "site": site.site,
             "storage": {"dtype": site.storage.dtype, "format": site.storage.format},
+            "residual_coordinates": coordinate_metadata(site),
             "layers": {str(layer): {} for layer in site.layers},
         }
         if site.pooling is not None:
@@ -839,6 +877,8 @@ def _fill_residual_features(
         return
     if residual is None:
         raise RuntimeError("Residual capture requested but no residual tensor was produced")
+    if residual.ndim != 3 or residual.shape[0] != len(residual_layers):
+        raise RuntimeError("Residual tensor layer axis does not match the loaded auxiliary capture plan")
     layer_index = {layer: idx for idx, layer in enumerate(residual_layers)}
     for site in residual_sites:
         positions = site.tokens.resolve(token_count, token_sections=token_sections)
@@ -851,7 +891,7 @@ def _fill_residual_features(
             selected_positions=positions,
         )
         for layer in site.layers:
-            idx = layer_index[int(layer)]
+            idx = layer_index[auxiliary_index(site, int(layer))]
             values = residual[idx, positions, :]
             if site.pooling is not None:
                 values, pooling_indices = _pool_capture_values(values, pooling=site.pooling)

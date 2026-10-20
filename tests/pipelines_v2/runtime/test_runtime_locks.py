@@ -58,11 +58,14 @@ def test_bundled_locks_have_distinct_targets_and_stacks():
     assert core.base_image.startswith('python@sha256:')
 
 
-def test_modal_build_keeps_lazy_requirements_context(lock):
+@pytest.mark.parametrize('vllm', [False, True])
+def test_modal_build_keeps_lazy_requirements_context(lock, vllm):
     from pathlib import Path
     from types import SimpleNamespace
     from pipelines_v2.runtime.locks import build_locked_image
     seen = {}
+    if vllm:
+        lock = load_runtime_lock('vllm-linux')
     class Image:
         @classmethod
         def from_registry(cls, value):
@@ -71,9 +74,13 @@ def test_modal_build_keeps_lazy_requirements_context(lock):
         def pip_install_from_requirements(self, path, **kwargs):
             seen.update(path=path, kwargs=kwargs)
             return self
+        def apt_install(self, *packages):
+            seen['apt_packages'] = packages
+            return self
     build_locked_image(SimpleNamespace(Image=Image), PythonRuntimeSpec(lock=lock))
     assert Path(seen['path']).read_text() == lock.requirements
     assert seen['kwargs'] == {'extra_options':'--no-deps'}
+    assert seen.get('apt_packages', ()) == (('gcc', 'libc6-dev') if vllm else ())
 
 
 def test_modified_reserved_name_lock_is_not_reinterpreted():

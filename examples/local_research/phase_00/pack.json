@@ -46,7 +46,7 @@
   "presets": {
     "setup": {
       "enabled": false,
-      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "workflow_hash": "af0370f950cbe31a1fa0212eaad5ecd2031a43e8feca62ffaf419186842e2119",
       "model_bindings": {
         "capture": "capture",
         "baseline": "baseline",
@@ -87,7 +87,7 @@
     },
     "smoke": {
       "enabled": true,
-      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "workflow_hash": "af0370f950cbe31a1fa0212eaad5ecd2031a43e8feca62ffaf419186842e2119",
       "model_bindings": {
         "capture": "capture",
         "baseline": "baseline",
@@ -128,7 +128,7 @@
     },
     "reference": {
       "enabled": false,
-      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "workflow_hash": "af0370f950cbe31a1fa0212eaad5ecd2031a43e8feca62ffaf419186842e2119",
       "model_bindings": {
         "capture": "capture",
         "baseline": "baseline",
@@ -169,7 +169,7 @@
     },
     "scale": {
       "enabled": false,
-      "workflow_hash": "b694ff0bb2a139ed38e04df4a5e625cd135fcf6e58c3e4528f8681494fb4d4b3",
+      "workflow_hash": "af0370f950cbe31a1fa0212eaad5ecd2031a43e8feca62ffaf419186842e2119",
       "model_bindings": {
         "capture": "capture",
         "baseline": "baseline",

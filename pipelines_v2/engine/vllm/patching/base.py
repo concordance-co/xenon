@@ -311,6 +311,8 @@ def extract_hidden_tensor(output: Any) -> Any | None:
     if isinstance(output, tuple) and output:
         first = output[0]
         if hasattr(first, "shape"):
+            if len(output) == 2 and isinstance(output[1], torch.Tensor):
+                return first + output[1]
             return first
     if hasattr(output, "shape"):
         return output
@@ -322,6 +324,16 @@ def replace_hidden_tensor(output: Any, new_hidden: Any) -> Any:
         output.hidden_states = new_hidden
         return output
     if isinstance(output, tuple) and output:
+        if len(output) == 2 and isinstance(output[1], torch.Tensor):
+            # vLLM carries the post-block residual as (branch, residual).
+            # Replace the combined state without adding the residual twice.
+            # Preserve unchanged components exactly, including no-op writes.
+            branch, residual = output
+            changed = new_hidden != branch + residual
+            return (
+                torch.where(changed, new_hidden, branch),
+                torch.where(changed, torch.zeros_like(residual), residual),
+            )
         return (new_hidden, *output[1:])
     return new_hidden
 

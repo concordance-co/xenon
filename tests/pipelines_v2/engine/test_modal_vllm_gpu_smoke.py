@@ -255,6 +255,10 @@ def test_modal_vllm_generated_residual_and_moe_routing_contract(tmp_path: Path) 
 
     metadata = artifact.manifest().metadata
     assert metadata["router_enabled"] is True
+    coordinates = metadata["residual_layer_coordinates"]["generated_residual"]
+    assert coordinates["layer_indexing"] == "decoder_block"
+    assert coordinates["capture_aux_indices"] == {"0": 1, "24": 25}
+    assert coordinates["runtime_audits"]
     assert {0, 24}.issubset(set(metadata["discovered_router_layers"]))
     example_metadata = list(metadata["example_metadata"])
     assert len(example_metadata) == 2
