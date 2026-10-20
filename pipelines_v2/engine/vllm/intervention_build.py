@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -85,6 +86,22 @@ def build_activation_bank_runtime_payload(
     activation_bank: Mapping[str, Any],
     resolved_cases: list[dict[str, Any]],
 ) -> dict[int, dict[str, Any]]:
+    coordinates = activation_bank.get("residual_coordinates")
+    if isinstance(spec.patch, InterchangePatch):
+        if isinstance(coordinates, Mapping) and coordinates.get("layer_indexing") == "vllm_aux":
+            missing = set(spec.patch.write_site.layers) - set(spec.patch.source_layer_map)
+            if missing:
+                raise ValueError(
+                    "Legacy vllm_aux activation bank requires an explicit source_layer_map for every "
+                    "write block; equal labels do not imply equal boundaries. "
+                    "See platform/residual_layer_indexing.md."
+                )
+        elif not isinstance(coordinates, Mapping):
+            warnings.warn(
+                "Activation bank has no residual coordinate provenance. Historical vLLM captures "
+                "may use auxiliary indices; verify source_layer_map before interpreting this write.",
+                UserWarning, stacklevel=2,
+            )
     layers_payload = activation_bank["layers"]
     keys: set[str] = set()
     keys.update(item["donor"].key for item in resolved_cases)
