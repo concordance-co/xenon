@@ -62,6 +62,8 @@ def run_activation_bank(spec: ActivationBankSpec) -> OperationExecutionResult:
             "layer_indices": [int(layer) for layer in selected_layers],
         },
     }
+    if "residual_coordinates" in payload:
+        payload_out["residual_coordinates"] = dict(payload["residual_coordinates"])
     return OperationExecutionResult(
         payload=payload_out,
         example_coverage={

@@ -5,14 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from pipelines_v2.core.types import EngineCapability
+from pipelines_v2.core.types import EngineCapability, SpecValidationError
 from pipelines_v2.operations.common.schemas import TensorStorage
 from pipelines_v2.operations.common.tokens import TokenPooling, TokenSelector
 
 
 @dataclass(frozen=True, slots=True)
 class ResidualSite:
-    """Capture request for residual activations at one named site."""
+    """Capture residuals by zero-based decoder block, not backend auxiliary index.
+
+    ``vllm_aux`` is an explicit compatibility mode for historical captures.
+    Unversioned serialized sites retain that historical interpretation.
+    """
 
     name: str
     site: str
@@ -20,6 +24,13 @@ class ResidualSite:
     tokens: TokenSelector = field(default_factory=TokenSelector.last)
     pooling: TokenPooling | None = None
     storage: TensorStorage = field(default_factory=TensorStorage)
+    layer_indexing: str = "decoder_block"
+
+    def __post_init__(self) -> None:
+        if self.layer_indexing not in {"decoder_block", "vllm_aux"}:
+            raise SpecValidationError(f"Unknown residual layer_indexing: {self.layer_indexing!r}")
+        if not self.layers or any(int(layer) < 0 for layer in self.layers):
+            raise SpecValidationError("ResidualSite requires nonnegative layer indices")
 
     def required_capabilities(self) -> set[EngineCapability]:
         return {EngineCapability.RESIDUAL_CAPTURE}
@@ -37,6 +48,7 @@ class ResidualSite:
                 else None
             ),
             storage=TensorStorage.from_dict(payload.get("storage", {})),
+            layer_indexing=str(payload.get("layer_indexing", "vllm_aux")),
         )
 
 

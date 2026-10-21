@@ -310,6 +310,10 @@ def extract_hidden_tensor(output: Any) -> Any | None:
         return output.hidden_states
     if isinstance(output, tuple) and output:
         first = output[0]
+        # vLLM decoder outputs may split resid_post into the new branch and
+        # the accumulated residual. EAGLE captures their sum, not the branch.
+        if len(output) >= 2 and _is_residual_pair(first, output[1]):
+            return first + output[1]
         if hasattr(first, "shape"):
             return first
     if hasattr(output, "shape"):
@@ -322,8 +326,26 @@ def replace_hidden_tensor(output: Any, new_hidden: Any) -> Any:
         output.hidden_states = new_hidden
         return output
     if isinstance(output, tuple) and output:
+        if len(output) >= 2 and _is_residual_pair(output[0], output[1]):
+            branch, residual = output[:2]
+            combined = branch + residual
+            # A zero combined-state delta must leave both original tensors
+            # bitwise unchanged, including in reduced precision. Recomputing
+            # branch = new_hidden - residual need not preserve that identity.
+            patched_branch = branch + (new_hidden - combined).to(branch.dtype)
+            return (patched_branch, residual, *output[2:])
         return (new_hidden, *output[1:])
     return new_hidden
+
+
+def _is_residual_pair(first: Any, second: Any) -> bool:
+    return bool(
+        isinstance(first, torch.Tensor)
+        and isinstance(second, torch.Tensor)
+        and first.shape == second.shape
+        and first.dtype.is_floating_point
+        and second.dtype.is_floating_point
+    )
 
 
 def selected_component_rows(
