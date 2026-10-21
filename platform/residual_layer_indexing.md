@@ -145,3 +145,24 @@ serialization/hashing, provenance, and fail-closed guards. These are CPU tests,
 not a live vLLM GPU certification. A release smoke should capture and self-patch
 first/middle/final blocks under the target backend, with lossless storage and
 matched numerical execution, checking activation deltas and outputs separately.
+
+## Live smoke, 2026-10-20
+
+Phase 117 tested Llama-3.3-70B-Instruct on pinned vLLM 0.25.1 at physical block
+12 (auxiliary read 13). The initial index-only build failed the exact-self gate:
+choices were unchanged but activation deltas were nonzero. Scientific swaps
+were blocked. Adding the combined-residual tuple fix above produced exact zero
+activation delta and unchanged choices for all 48 self checks over three spans.
+
+On 16 frozen original role-binding factorial targets, role-only and content-only
+swaps each changed 12 chosen answers, with all changes toward the intended donor
+policy. Joint same-policy swaps changed 0/16. The remaining four targets were
+one risk task where natural donors also chose the baseline answer; both swap
+arms restored 12/12 naturally divergent choices. All 112 baseline/patch choices
+match the earlier experiment's corresponding subset. No log-margin claim is
+made. All 96 patched targets had valid outputs and matched nonzero token counts.
+
+Neon workflow: `wr_a46e6bcc3730_b4d86ccb`; reduced summary:
+`transform_1_83eddadb`; production code: `b1ca919`. This is one-block Llama
+evidence, not first/final-block or Qwen certification, and it does not
+retroactively certify historical capture coordinates. All owned apps stopped.
