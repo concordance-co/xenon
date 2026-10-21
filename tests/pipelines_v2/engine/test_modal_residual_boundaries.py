@@ -35,11 +35,12 @@ def test_modal_vllm_residual_boundary_self_patch():
         spec=CaptureSpec(engine=engine,dataset=dataset,
             sites=[ResidualSite(name='residual',site='resid_post',layers=blocks,tokens=TokenSelector.full_sequence(),storage=TensorStorage(dtype='float32'))],
             generation=GenerationSpec(enabled=True,max_tokens=1,temperature=0.))
-        def patch_spec(bank):
+        def patch_spec(bank, source_layer_map=None):
             return PatchedGenerationSpec(engine=engine,dataset=dataset,
                 pair_by=dataset.cases('case_key'),target_when=dataset.labels('role').equals('self'),donor_when=dataset.labels('role').equals('self'),
                 patch=InterchangePatch(activation_bank=bank,write_site=ResidualInterventionSite(site='resid_post',layers=blocks),
-                    target_tokens=TokenSelector.full_sequence(),donor_tokens=TokenSelector.full_sequence()),generation=spec.generation)
+                    target_tokens=TokenSelector.full_sequence(),donor_tokens=TokenSelector.full_sequence(),
+                    source_layer_map=source_layer_map or {}),generation=spec.generation)
         session=build_vllm_session_runtime(engine=engine,specs=[spec,patch_spec({'layers':{}})])
         def install(model):
             model=unwrap_model(model)
@@ -74,7 +75,19 @@ def test_modal_vllm_residual_boundary_self_patch():
         after=session.llm.apply_model(lambda model: unwrap_model(model)._boundary_probe)[0]
         for block in blocks:
             checks[str(block)]['live_patch_delta']=float(np.max(np.abs(after[block]['combined']-probes[block]['combined'])))
-        return {'checks':checks,'generation':result.generations,'patched':patched.rows,'audit':result.metadata['residual_layer_coordinates']}
+        # Relabel the same donor tensors to exercise explicit source lookup.
+        # With the old fallback, these writes silently skip missing banks.
+        source_map = {block: 100 + block for block in blocks}
+        mapped_bank = {**bank, 'layers': {
+            str(source_map[block]): bank['layers'][str(block)] for block in blocks
+        }}
+        mapped = session.intervene(patch_spec(SimpleNamespace(result=lambda:mapped_bank), source_map))
+        mapped_after = session.llm.apply_model(lambda model: unwrap_model(model)._boundary_probe)[0]
+        for block in blocks:
+            checks[str(block)]['mapped_patch_delta'] = float(np.max(np.abs(
+                mapped_after[block]['combined'] - probes[block]['combined'])))
+        return {'checks':checks,'generation':result.generations,'patched':patched.rows,
+                'mapped':mapped.rows,'audit':result.metadata['residual_layer_coordinates']}
 
     runtime = VLLMEngine(model_id="Qwen/Qwen3-0.6B").runtime_spec()
     image = build_locked_image(modal, runtime).env(dict(runtime.env))
@@ -82,7 +95,7 @@ def test_modal_vllm_residual_boundary_self_patch():
     root = Path(__file__).resolve().parents[3]
     image = image.add_local_dir(str(root / "pipelines_v2"), remote_path="/root/pipelines_v2")
     app = modal.App("xenon-residual-boundary-check")
-    remote = app.function(image=image, gpu="L4", cpu=4, memory=16384, timeout=900,
+    remote = app.function(image=image, gpu=os.getenv("XENON_RESIDUAL_BOUNDARY_GPU", "L4"), cpu=4, memory=16384, timeout=900,
         volumes={"/models": modal.Volume.from_name("xenon-models")}, serialized=True)(
             _check_residual_boundaries)
     with modal.enable_output(), app.run():
@@ -93,11 +106,12 @@ def test_modal_vllm_residual_boundary_self_patch():
 def _assert_boundary_result(result):
     assert len(result["checks"]) == 3
     for check in result["checks"].values():
-        for metric in ("capture_error", "extract_error", "self_write_error", "live_patch_delta"):
+        for metric in ("capture_error", "extract_error", "self_write_error", "live_patch_delta", "mapped_patch_delta"):
             assert check[metric] == 0, (metric, check)
-    assert len(result["patched"]) == 1
-    patched = result["patched"][0]
-    assert patched["status"] == "ok"
-    assert patched["generated_token_ids"] == result["generation"][0]["generated_token_ids"]
-    assert set(patched["patch_stats"]) == set(result["checks"])
-    assert all(stat["status"] == "ok" for stat in patched["patch_stats"].values())
+    for variant in ("patched", "mapped"):
+        assert len(result[variant]) == 1
+        patched = result[variant][0]
+        assert patched["status"] == "ok"
+        assert patched["generated_token_ids"] == result["generation"][0]["generated_token_ids"]
+        assert set(patched["patch_stats"]) == set(result["checks"])
+        assert all(stat["status"] == "ok" for stat in patched["patch_stats"].values())

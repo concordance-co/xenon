@@ -45,6 +45,15 @@ applying an edit. It replaces the combined state. It does not add the old
 residual to a replacement value. Unchanged components keep their original
 split values, so an exact self-patch preserves the computation.
 
+The tuple adapter combines only matching-shape floating-point tensors.
+It preserves additional output fields and leaves non-residual tuples alone.
+The fallback interchange path uses `source_layer_map` to select the donor bank,
+as the compiled path does. A write block and its donor bank can have different labels.
+
+This branch uses direct replacement for changed residual components. It keeps
+unchanged components intact. Adding a combined-state delta to the branch can
+lose precision through cancellation in BF16; the regression suite checks that case.
+
 PR #5 fixes the index translation. This branch also fixes the split-state
 write helper. Earlier writes changed only the branch tensor. An index offset
 alone cannot correct those historical interventions. Re-run them before
@@ -143,7 +152,9 @@ XENON_RUN_MODAL_RESIDUAL_BOUNDARIES=1 .venv/bin/python -m pytest -q \
 
 This check uses one Modal L4, Qwen3-0.6B, eager BF16 execution, and float32
 capture storage. It compares first, middle, and final captures with independent
-block-output sums. It then checks a self-patch through the intervention path.
+block-output sums. It then checks ordinary and explicitly mapped self-patches
+through the intervention path.
 It checks activation deltas, generated tokens, and patch execution status.
 The standard vLLM image includes the C compiler required by Triton's driver.
 Other model families and compiled execution require their own live checks.
+Set `XENON_RESIDUAL_BOUNDARY_GPU=A10G` to use an A10G if L4 allocation is delayed.

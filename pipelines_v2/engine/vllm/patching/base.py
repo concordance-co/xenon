@@ -310,9 +310,9 @@ def extract_hidden_tensor(output: Any) -> Any | None:
         return output.hidden_states
     if isinstance(output, tuple) and output:
         first = output[0]
+        if len(output) >= 2 and _is_residual_pair(first, output[1]):
+            return first + output[1]
         if hasattr(first, "shape"):
-            if len(output) == 2 and isinstance(output[1], torch.Tensor):
-                return first + output[1]
             return first
     if hasattr(output, "shape"):
         return output
@@ -324,18 +324,29 @@ def replace_hidden_tensor(output: Any, new_hidden: Any) -> Any:
         output.hidden_states = new_hidden
         return output
     if isinstance(output, tuple) and output:
-        if len(output) == 2 and isinstance(output[1], torch.Tensor):
+        if len(output) >= 2 and _is_residual_pair(output[0], output[1]):
             # vLLM carries the post-block residual as (branch, residual).
             # Replace the combined state without adding the residual twice.
             # Preserve unchanged components exactly, including no-op writes.
-            branch, residual = output
+            branch, residual = output[:2]
             changed = new_hidden != branch + residual
             return (
                 torch.where(changed, new_hidden, branch),
                 torch.where(changed, torch.zeros_like(residual), residual),
+                *output[2:],
             )
         return (new_hidden, *output[1:])
     return new_hidden
+
+
+def _is_residual_pair(first: Any, second: Any) -> bool:
+    return bool(
+        isinstance(first, torch.Tensor)
+        and isinstance(second, torch.Tensor)
+        and first.shape == second.shape
+        and first.dtype.is_floating_point
+        and second.dtype.is_floating_point
+    )
 
 
 def selected_component_rows(

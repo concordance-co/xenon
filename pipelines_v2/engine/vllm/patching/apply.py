@@ -124,7 +124,8 @@ def patch_hidden_states_for_layer(
     if spec.is_interchange():
         donor_positions = list(spec.donor_positions)
         bank = getattr(owner_model, "_v2_activation_patch_bank", {})
-        layer_bank = bank.get(int(layer_idx))
+        source_layer = spec.source_layer_for(int(layer_idx))
+        layer_bank = bank.get(int(source_layer))
         if not isinstance(layer_bank, dict):
             return hidden_states, {
                 "layer": int(layer_idx),
