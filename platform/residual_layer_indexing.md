@@ -34,6 +34,26 @@ movement, and actual selected-answer changes are distinct endpoints. This PR
 does not relabel past experiments as same-site or claim that indexing explains
 their behavioral outcomes.
 
+### Residual value convention is a separate required correction
+
+The live release smoke also exposed a missing fix that existed only in the
+research checkout: vLLM's reviewed decoder implementations return
+`(branch_output, accumulated_residual)`. EAGLE captures their **sum**. Patching
+only the first tuple member with that sum double-counts the accumulated
+residual downstream, even when read and write block numbers agree.
+
+The production tuple hooks now read the combined state and apply its delta
+to the branch, preserving the accumulated residual and other output fields.
+A self replacement therefore leaves both original components bitwise unchanged.
+Non-self replacements remain subject to ordinary reduced-precision rounding;
+this is not a promise of exact arbitrary BF16 transplantation. Regression tests
+exercise the actual tuple helpers in FP32/BF16/FP16, not only a toy coordinate
+oracle. The fallback interchange path also honors explicit source-layer maps.
+
+These value-convention and index-convention fixes are independent. The initial
+index-only PR was incomplete as an end-to-end same-site correction; the live
+self-identity gate is required before any scientific interpretation.
+
 ## New contract
 
 New Python `ResidualSite` instances default to `layer_indexing="decoder_block"`.
